@@ -19,6 +19,9 @@ export class Hud {
     this.aviso = $('#aviso');
     this.estado = $('#estado');
     this.depurar = $('#depurar');
+    this.vida = $('#vida');
+    this.vidaLleno = $('#vida .lleno');
+    this.vidaNum = $('#vida .txt b');
     this.humoPantalla = $('#humo-pantalla');
     this.sangre = $('#sangre');
     this.flash = $('#flash');
@@ -27,23 +30,7 @@ export class Hud {
     this.tCartuchera = 0;
     this.vecesQueAcerto = 0;     // el cartel grande se apaga solo cuando ya entendiste
     this.verDepurar = false;
-    this._grano();
-  }
-
-  _grano () {
-    const c = document.getElementById('grano');
-    const x = c.getContext('2d');
-    const n = 220;
-    c.width = c.height = n;
-    const img = x.createImageData(n, n);
-    for (let i = 0; i < img.data.length; i += 4) {
-      const v = Math.random() * 255;
-      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-      img.data[i + 3] = 255;
-    }
-    x.putImageData(img, 0, 0);
-    c.style.width = '100%';
-    c.style.height = '100%';
+    this.tVidaVisible = 0;
   }
 
   mostrarAviso (texto, tipo) {
@@ -113,19 +100,27 @@ export class Hud {
     // --- humo en los ojos ---
     this.humoPantalla.style.opacity = String(Math.min(0.86, datos.humoLocal * 0.95));
 
-    // --- heridas ---
-    const h = datos.heridas;
-    this.sangre.style.opacity = h === 0 ? '0' : (h === 1 ? '0.42' : (h === 2 ? '0.8' : '0.95'));
+    // --- vida: barra que aparece cuando hace falta y se va sola ---
+    const v = Math.max(0, Math.min(100, datos.vida));
+    this.vidaLleno.style.width = v + '%';
+    this.vidaNum.textContent = Math.round(v);
+    this.vida.classList.toggle('grave', v < 32);
+    this.vida.classList.toggle('regenerando', datos.regenerando && v < 100);
+    if (v < 100) this.tVidaVisible = 2.2;
+    else this.tVidaVisible = Math.max(0, this.tVidaVisible - dt);
+    this.vida.style.opacity = this.tVidaVisible > 0 ? '1' : '0';
+
+    // la pantalla se tiñe a medida que baja la vida
+    const dano = 1 - v / 100;
+    this.sangre.style.opacity = String(Math.pow(dano, 1.4) * 0.9);
 
     // --- línea de estado ---
     let txt = `${datos.nombreArma} · <b>${datos.estadoArma}</b> · ${datos.postura}`;
     if (datos.emplome > 0) txt += ` · ánima: ${datos.emplome} tiros`;
-    if (h === 1) txt += ' · <span class="mal">herido</span>';
-    if (h === 2) txt += ' · <span class="mal">grave</span>';
-    if (h >= 3) txt += ' · <span class="mal">fuera de combate — Enter para volver a formar</span>';
-    if (datos.vendando > 0) txt += ` · vendando ${datos.vendando.toFixed(1)}s`;
+    if (v <= 0) txt += ' · <span class="mal">fuera de combate — Enter para volver a formar</span>';
+    else if (datos.vendando > 0) txt += ' · <span class="mal">vendando…</span>';
     if (datos.postura === 'cuerpo a tierra') txt += ' · <span class="mal">no se puede cargar tirado</span>';
-    txt += `<br>realistas en pie: ${datos.enemigos} · vendas: ${datos.vendas}`;
+    txt += `<br>realistas ${datos.enemigos} · granaderos ${datos.aliados} · vendas ${datos.vendas}`;
     this.estado.innerHTML = txt;
 
     // --- depuración ---

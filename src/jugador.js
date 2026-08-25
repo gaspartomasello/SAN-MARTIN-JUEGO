@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-// Controlador en primera persona: movimiento, posturas, aliento, heridas y los
+// Controlador en primera persona: movimiento, posturas, aliento, vida y los
 // efectos de cámara. La sacudida es por "trauma": se acumula y decae, y el
 // temblor va al cuadrado, así un cañonazo se siente distinto a un tiro.
 
@@ -9,13 +9,21 @@ const RADIO = 0.36;
 // Cuerpo a tierra no se puede recargar un arma de avancarga: no hay forma de
 // meter la baqueta por la boca del cañón acostado. Por eso penalCarga = 0.
 export const POSTURAS = {
-  pie:      { nombre: 'de pie',        altura: 1.68, vel: 1.00, dispersion: 1.00, penalCarga: 1.00, blanco: 1.00 },
-  agachado: { nombre: 'agachado',      altura: 1.12, vel: 0.55, dispersion: 0.70, penalCarga: 1.30, blanco: 0.62 },
+  pie:      { nombre: 'de pie',          altura: 1.68, vel: 1.00, dispersion: 1.00, penalCarga: 1.00, blanco: 1.00 },
+  agachado: { nombre: 'agachado',        altura: 1.12, vel: 0.55, dispersion: 0.70, penalCarga: 1.30, blanco: 0.62 },
   tierra:   { nombre: 'cuerpo a tierra', altura: 0.48, vel: 0.26, dispersion: 0.48, penalCarga: 0.00, blanco: 0.28 }
 };
 
-const GRAVEDAD = 19;
-const IMPULSO = 4.3;
+// Salto con la gravedad del Source: sv_gravity 800 son 15,24 m/s², y con un
+// impulso de 5,2 m/s da unos 89 cm de altura. Lo mismo que salta un jugador
+// de Counter-Strike.
+const GRAVEDAD = 15.24;
+const IMPULSO = 5.2;
+
+const REGEN_ESPERA = 4.5;   // segundos sin recibir plomo antes de recuperarse
+const REGEN_TASA = 21;      // puntos por segundo
+const VENDA_CURA = 48;
+const VENDA_TIEMPO = 1.4;
 
 export class Jugador {
   constructor (camara, colisiones) {
@@ -34,9 +42,13 @@ export class Jugador {
 
     this.aliento = 100;
     this.tSinCorrer = 0;
-    this.heridas = 0;
+
+    this.vidaMax = 100;
+    this.vida = 100;
+    this.tSinDano = 99;
     this.vendas = 3;
     this.vendando = 0;
+    this.golpeDesde = 0;        // ángulo del último impacto, para el tirón de cámara
 
     this.trauma = 0;
     this.retroPitch = 0;
@@ -46,10 +58,11 @@ export class Jugador {
     this.bob = 0;
     this.balanceo = 0;
     this.alAviso = null;
+    this.alMorir = null;
   }
 
-  get vivo () { return this.heridas < 3; }
-  get grave () { return this.heridas >= 2; }
+  get vivo () { return this.vida > 0; }
+  get maltrecho () { return this.vida < 32; }
   get cfgPostura () { return POSTURAS[this.postura]; }
 
   mirar (dx, dy, sens) {
@@ -61,19 +74,34 @@ export class Jugador {
 
   sacudir (t) { this.trauma = Math.min(1, this.trauma + t); }
 
-  herir () {
+  recibir (dano, desde) {
     if (!this.vivo) return;
-    this.heridas++;
-    this.sacudir(0.85);
+    this.vida = Math.max(0, this.vida - dano);
+    this.tSinDano = 0;
+    this.vendando = 0;
+    this.sacudir(Math.min(0.9, 0.25 + dano / 90));
+    if (desde) this.golpeDesde = Math.atan2(desde.x, desde.z);
+    if (this.vida <= 0 && this.alMorir) this.alMorir();
   }
 
   vendar () {
-    if (this.vendas <= 0 || this.heridas === 0 || !this.vivo || this.vendando > 0) return false;
-    this.vendando = 3;
+    if (this.vendas <= 0 || this.vida >= this.vidaMax || !this.vivo || this.vendando > 0) return false;
+    this.vendando = VENDA_TIEMPO;
     return true;
   }
 
-  // Ctrl agacha, Z cuerpo a tierra. Volver a apretar la misma tecla te levanta.
+  revivir () {
+    this.vida = this.vidaMax;
+    this.aliento = 100;
+    this.vendas = 3;
+    this.vendando = 0;
+    this.tSinDano = 99;
+    this.postura = 'pie';
+    this.saltoY = 0; this.saltoVel = 0; this.enElAire = false;
+    this.vel.set(0, 0, 0);
+    this.pos.set(0, POSTURAS.pie.altura, 4);
+  }
+
   alternarPostura (cual) {
     if (!this.vivo || this.enElAire) return;
     this.postura = this.postura === cual ? 'pie' : cual;
@@ -81,9 +109,9 @@ export class Jugador {
   }
 
   saltar () {
-    if (!this.vivo || this.enElAire || this.postura !== 'pie' || this.grave) return false;
+    if (!this.vivo || this.enElAire || this.postura !== 'pie') return false;
     if (this.aliento < 14) return false;
-    this.aliento -= 12;
+    this.aliento -= 11;
     this.saltoVel = IMPULSO;
     this.enElAire = true;
     return true;
@@ -96,9 +124,17 @@ export class Jugador {
       return;
     }
 
+    // --- vida: se recupera sola si te dejan en paz, como en Call of Duty ---
+    this.tSinDano += dt;
     if (this.vendando > 0) {
       this.vendando -= dt;
-      if (this.vendando <= 0) { this.heridas = Math.max(0, this.heridas - 1); this.vendas--; }
+      if (this.vendando <= 0) {
+        this.vida = Math.min(this.vidaMax, this.vida + VENDA_CURA);
+        this.vendas--;
+        this.tSinDano = REGEN_ESPERA;      // y arranca a regenerar enseguida
+      }
+    } else if (this.tSinDano > REGEN_ESPERA && this.vida < this.vidaMax) {
+      this.vida = Math.min(this.vidaMax, this.vida + REGEN_TASA * dt);
     }
 
     const adelante = (teclas.has('KeyW') ? 1 : 0) - (teclas.has('KeyS') ? 1 : 0);
@@ -106,17 +142,16 @@ export class Jugador {
     const quiereCorrer = teclas.has('ShiftLeft') || teclas.has('ShiftRight');
     const moviendo = adelante !== 0 || lado !== 0;
     const p = this.cfgPostura;
-    const puedeCorrer = quiereCorrer && this.aliento > 6 && !this.grave && !apuntando &&
+    const puedeCorrer = quiereCorrer && this.aliento > 6 && !apuntando &&
       this.vendando <= 0 && this.postura === 'pie';
 
     let vmax = 3.4;
     if (puedeCorrer) vmax = 6.1;
     if (apuntando) vmax = 1.7;
-    if (cargando) vmax = 2.5;
+    if (cargando) vmax = 2.6;
     vmax *= p.vel;
-    if (this.heridas === 1) vmax *= 0.86;
-    if (this.grave) vmax = Math.min(vmax, 1.5);
-    if (this.vendando > 0) vmax = 0.6;
+    if (this.maltrecho) vmax *= 0.85;
+    if (this.vendando > 0) vmax = 0.7;
 
     const dir = new THREE.Vector3(lado, 0, -adelante);
     if (dir.lengthSq() > 0) dir.normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
@@ -131,21 +166,18 @@ export class Jugador {
     } else {
       this.tSinCorrer += dt;
       if (this.tSinCorrer > 0.7) {
-        const rec = this.grave ? 7 : (this.heridas === 1 ? 10 : 14);
-        this.aliento = Math.min(100, this.aliento + rec * dt);
+        this.aliento = Math.min(100, this.aliento + (this.maltrecho ? 9 : 14) * dt);
       }
     }
 
     this._mover(this.vel.x * dt, this.vel.z * dt);
 
-    // salto: bajo, pesado y sin control en el aire
     if (this.enElAire) {
       this.saltoVel -= GRAVEDAD * dt;
       this.saltoY += this.saltoVel * dt;
       if (this.saltoY <= 0) { this.saltoY = 0; this.saltoVel = 0; this.enElAire = false; }
     }
 
-    // la postura cambia con tiempo, no de golpe
     this.altura += (p.altura - this.altura) * Math.min(1, 7 * dt);
     this.pos.y = this.altura + this.saltoY;
 
@@ -173,8 +205,7 @@ export class Jugador {
       const cz = Math.max(caja.min.z, Math.min(this.pos.z, caja.max.z));
       const dx = this.pos.x - cx, dz = this.pos.z - cz;
       // saltando por encima de un parapeto bajo no hay colisión
-      const piesY = this.saltoY;
-      if (dx * dx + dz * dz < RADIO * RADIO && caja.max.y > piesY + 0.15) {
+      if (dx * dx + dz * dz < RADIO * RADIO && caja.max.y > this.saltoY + 0.15) {
         if (eje === 'x') this.pos.x -= delta;
         else this.pos.z -= delta;
         this.vel[eje] = 0;
@@ -194,8 +225,9 @@ export class Jugador {
     const bobY = Math.sin(this.bob * 2) * 0.032 * Math.min(1, rapidez / 4);
     const bobX = Math.cos(this.bob) * 0.022 * Math.min(1, rapidez / 4);
 
-    const falta = 1 - this.aliento / 100;
-    const resp = Math.sin(t * (2.2 + falta * 3.4)) * (0.004 + falta * 0.016);
+    // la respiración se acelera con poco aliento y con poca vida
+    const falta = Math.max(1 - this.aliento / 100, 1 - this.vida / this.vidaMax);
+    const resp = Math.sin(t * (2.2 + falta * 3.6)) * (0.004 + falta * 0.018);
 
     this.retroPitch *= Math.exp(-9 * dt);
 

@@ -20,8 +20,7 @@
 
   /* ---- capas de presentación ---- */
   #vineta{position:fixed;inset:0;pointer-events:none;z-index:5;
-    background:radial-gradient(ellipse at center,rgba(0,0,0,0) 42%,rgba(8,10,14,.55) 100%)}
-  #grano{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:.05;mix-blend-mode:overlay}
+    background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(8,10,14,.34) 100%)}
   #humo-pantalla{position:fixed;inset:0;pointer-events:none;z-index:4;background:#9AA3AB;opacity:0;
     transition:opacity .18s linear}
   #sangre{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;transition:opacity .5s ease;
@@ -68,6 +67,16 @@
   #aviso.malo{color:#E4797B}
   #aviso.bien{color:var(--bronce)}
 
+  #vida{position:absolute;left:34px;bottom:96px;width:196px;opacity:0;transition:opacity .4s}
+  #vida .marco{height:9px;background:rgba(10,14,18,.55);border:1px solid rgba(230,226,214,.35);
+    padding:1px}
+  #vida .lleno{height:100%;width:100%;background:#c9d2c4;transition:width .12s linear}
+  #vida .txt{margin-top:5px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:rgba(230,226,214,.75);display:flex;justify-content:space-between}
+  #vida .txt b{font-weight:600;color:var(--bronce);font-variant-numeric:tabular-nums}
+  #vida.regenerando .lleno{background:#9bc48f}
+  #vida.grave .lleno{background:#c9484b}
+
   #estado{position:absolute;left:34px;bottom:34px;opacity:.75;font-size:12px;letter-spacing:.13em;
     text-transform:uppercase;text-shadow:0 2px 6px rgba(0,0,0,.8);line-height:1.9}
   #estado b{color:var(--bronce);font-weight:600}
@@ -107,7 +116,6 @@
 <body>
 <div id="humo-pantalla"></div>
 <div id="vineta"></div>
-<canvas id="grano"></canvas>
 <div id="sangre"></div>
 <div id="flash"></div>
 
@@ -118,6 +126,10 @@
   <div id="ahora">¡AHORA!<small>click izquierdo</small></div>
   <div id="tomar"><b>[G]</b> tomar el fusil con bayoneta</div>
   <div id="aviso"></div>
+  <div id="vida">
+    <div class="marco"><div class="lleno"></div></div>
+    <div class="txt"><span>vida</span><b>100</b></div>
+  </div>
   <div id="estado"></div>
   <div id="depurar"></div>
 </div>
@@ -127,9 +139,9 @@
     <div class="franja"><i></i><i></i><i></i></div>
     <div class="eyebrow">Fase 1 · prototipo jugable</div>
     <h1>El campo de tiro</h1>
-    <p class="sub">Cuartel del Retiro, diciembre de 1812. Tenés un tiro y después diez segundos de
-      carga. Mientras cargás, <strong>hacé click cuando se encienda ¡AHORA!</strong> — acertar los
-      tres tiempos es la diferencia entre volver a tirar o comerte una bayoneta.</p>
+    <p class="sub">Cuartel del Retiro, diciembre de 1812. Arrancás con las armas cargadas y tenés
+      un tiro. Después, <strong>apretá R y hacé click cuando se encienda ¡AHORA!</strong> — acertar
+      los tres tiempos es la diferencia entre volver a tirar o comerte una bayoneta.</p>
     <div class="teclas">
       <div><kbd>W A S D</kbd><span>moverse</span></div>
       <div><kbd>Shift</kbd><span>correr</span></div>
@@ -138,13 +150,14 @@
       <div><kbd>Z</kbd><span>cuerpo a tierra</span></div>
       <div><kbd>Click izq.</kbd><span>disparar · marcar el tiempo</span></div>
       <div><kbd>Click der.</kbd><span>apuntar por el cañón</span></div>
-      <div><kbd>R sostenida</kbd><span>cargar el arma</span></div>
+      <div><kbd>R</kbd><span>cargar el arma (una apretada)</span></div>
       <div><kbd>F</kbd><span>culatazo / bayonetazo</span></div>
       <div><kbd>1 / 2 / 3</kbd><span>arma larga · sable · pistolón</span></div>
       <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
       <div><kbd>C</kbd><span>revisar la cartuchera</span></div>
-      <div><kbd>V</kbd><span>vendarse · <kbd>L</kbd> limpiar</span></div>
-      <div><kbd>O</kbd><span>que vengan los realistas</span></div>
+      <div><kbd>V</kbd><span>vendarse (cura rápido)</span></div>
+      <div><kbd>O</kbd><span>que empiece el combate</span></div>
+      <div><kbd>L</kbd><span>limpiar el ánima</span></div>
       <div><kbd>F3</kbd><span>datos de depuración</span></div>
     </div>
     <button id="empezar">Formar</button>

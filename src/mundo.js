@@ -144,9 +144,61 @@ export function entornoIluminacion (render) {
   return entorno;
 }
 
+// Niebla de río: tres capas horizontales que derivan despacio. Es lo que
+// convierte el amanecer en una madrugada.
+function capasDeNiebla (escena) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const x = c.getContext('2d');
+  x.clearRect(0, 0, 256, 256);
+  for (let i = 0; i < 60; i++) {
+    const cx = Math.random() * 256, cy = Math.random() * 256;
+    const r = 24 + Math.random() * 64;
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, 'rgba(255,255,255,' + (0.1 + Math.random() * 0.16).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g;
+    x.fillRect(cx - r, cy - r, r * 2, r * 2);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 3);
+
+  const capas = [];
+  const alturas = [[0.35, 0.9, 0.16], [0.75, 0.7, 0.12], [1.25, 0.5, 0.085],
+    [1.95, 0.34, 0.06], [3.0, 0.2, 0.04]];
+  for (const [y, op, vel] of alturas) {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(230, 230),
+      new THREE.MeshBasicMaterial({
+        map: tex.clone(), transparent: true, opacity: op * 0.22,
+        depthWrite: false, color: 0xe4e6de, fog: true
+      })
+    );
+    m.material.map.wrapS = m.material.map.wrapT = THREE.RepeatWrapping;
+    m.material.map.repeat.set(3, 3);
+    m.material.map.needsUpdate = true;
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(0, y, -40);
+    m.renderOrder = 1;
+    escena.add(m);
+    capas.push({ malla: m, vel });
+  }
+  return {
+    actualizar (dt) {
+      for (const c2 of capas) {
+        const mapa = c2.malla.material.map;
+        mapa.offset.x += c2.vel * dt * 0.06;
+        mapa.offset.y -= c2.vel * dt * 0.035;
+      }
+    }
+  };
+}
+
 export function construirMundo (escena) {
   escena.add(cieloDomo());
-  escena.fog = new THREE.Fog(0xd6c6a8, 70, 230);
+  // niebla de las cinco de la mañana sobre el Paraná
+  escena.fog = new THREE.Fog(0xd2d0c2, 20, 175);
 
   // --- luz de amanecer: sol bajo desde el este ---
   const sol = new THREE.DirectionalLight(0xffd9a0, 2.5);
@@ -198,9 +250,10 @@ export function construirMundo (escena) {
     colisiones.push(new THREE.Box3().setFromObject(m));
   }
 
-  // --- parapeto de tierra y sacos: cobertura para probar el ritmo ---
+  // --- cobertura: sacos, carretas, barriles, tapiales ---
   const sacoMat = new THREE.MeshStandardMaterial({ color: 0x8f855f, roughness: 1 });
-  for (const [px, pz, largo] of [[-8, -6, 5], [7.5, -10, 4], [0, -18, 6], [-13, -22, 4]]) {
+  for (const [px, pz, largo] of [[-8, -6, 5], [7.5, -10, 4], [0, -18, 6], [-13, -22, 4],
+    [12, -20, 5], [-4, -30, 5], [9, -34, 4], [-15, -38, 5], [3, -46, 6], [-9, -52, 4], [14, -50, 4]]) {
     const grupo = new THREE.Group();
     for (let i = 0; i < largo; i++) {
       for (let f = 0; f < 2; f++) {
@@ -214,6 +267,73 @@ export function construirMundo (escena) {
     grupo.position.set(px, 0, pz);
     escena.add(grupo);
     colisiones.push(new THREE.Box3().setFromObject(grupo));
+  }
+
+  // carretas de la intendencia: cobertura alta, de las que tapan de verdad
+  const maderaMat = new THREE.MeshStandardMaterial({ color: PALETA.madera, roughness: 0.95 });
+  const llantaMat = new THREE.MeshStandardMaterial({ color: PALETA.maderaOsc, roughness: 0.95 });
+  for (const [px, pz, giro] of [[-11, -14, 0.4], [10, -27, -0.7], [-6, -42, 1.1], [16, -40, 0.2]]) {
+    const carreta = new THREE.Group();
+    const caja = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.62, 2.5), maderaMat);
+    caja.position.y = 1.05;
+    carreta.add(caja);
+    const piso = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 2.6), llantaMat);
+    piso.position.y = 0.74;
+    carreta.add(piso);
+    for (const sx of [-1, 1]) {
+      const rueda = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.1, 6, 16), llantaMat);
+      rueda.position.set(sx * 0.95, 0.66, 0.35);
+      rueda.rotation.y = Math.PI / 2;          // el eje de la rueda va a lo ancho
+      carreta.add(rueda);
+      for (let r = 0; r < 6; r++) {
+        const rayo2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.24, 0.05), llantaMat);
+        rayo2.position.set(sx * 0.95, 0.66, 0.35);
+        rayo2.rotation.set(0, Math.PI / 2, (r / 6) * Math.PI);
+        carreta.add(rayo2);
+      }
+    }
+    const eje = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.11, 0.11), llantaMat);
+    eje.position.set(0, 0.66, 0.35);
+    carreta.add(eje);
+    for (const sx of [-0.55, 0.55]) {          // varas hacia adelante
+      const vara = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 1.9), maderaMat);
+      vara.position.set(sx, 0.8, -2.0);
+      vara.rotation.x = 0.12;
+      carreta.add(vara);
+    }
+    carreta.position.set(px, 0, pz);
+    carreta.rotation.y = giro;
+    carreta.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    escena.add(carreta);
+    const caj = new THREE.Box3().setFromObject(carreta);
+    caj.max.y = Math.min(caj.max.y, 1.4);      // las varas no frenan al jugador
+    colisiones.push(caj);
+  }
+
+  // barriles de pólvora
+  for (const [px, pz] of [[5, -8], [5.9, -8.6], [-16, -30], [-15.2, -30.7], [2, -56], [11, -12]]) {
+    const barril = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.86, 10), maderaMat);
+    barril.position.set(px, 0.43, pz);
+    barril.castShadow = true; barril.receiveShadow = true;
+    escena.add(barril);
+    for (const y of [0.62, 0.24]) {
+      const aro = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.025, 5, 12), llantaMat);
+      aro.position.set(px, y, pz);
+      aro.rotation.x = Math.PI / 2;
+      escena.add(aro);
+    }
+    colisiones.push(new THREE.Box3().setFromObject(barril));
+  }
+
+  // tapiales de adobe sueltos, a media altura
+  for (const [px, pz, ancho, giro] of [[-19, -12, 4.5, 0.2], [17, -16, 3.5, -0.3],
+    [-2, -36, 5, 0.6], [13, -58, 4, -0.15]]) {
+    const tapial = new THREE.Mesh(new THREE.BoxGeometry(ancho, 1.25, 0.55), cal);
+    tapial.position.set(px, 0.62, pz);
+    tapial.rotation.y = giro;
+    tapial.castShadow = true; tapial.receiveShadow = true;
+    escena.add(tapial);
+    colisiones.push(new THREE.Box3().setFromObject(tapial));
   }
 
   // --- blancos a distancias reales de fusil de chispa ---
@@ -269,18 +389,28 @@ export function construirMundo (escena) {
   matas.receiveShadow = true;
   escena.add(matas);
 
-  // --- un ombú lejano, para que el horizonte no sea una línea ---
-  const tronco = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.6, 6, 7),
-    new THREE.MeshStandardMaterial({ color: 0x54432e, roughness: 1 }));
-  tronco.position.set(-30, 3, -70);
-  tronco.castShadow = true;
-  escena.add(tronco);
-  const copa = new THREE.Mesh(new THREE.SphereGeometry(6.5, 10, 8),
-    new THREE.MeshStandardMaterial({ color: 0x4e5c39, roughness: 1, flatShading: true }));
-  copa.position.set(-30, 8.6, -70);
-  copa.castShadow = true;
-  copa.scale.set(1.3, 0.8, 1.2);
-  escena.add(copa);
+  // --- arboleda: los troncos frenan, y sirven de cobertura ---
+  const cortezaMat = new THREE.MeshStandardMaterial({ color: 0x54432e, roughness: 1 });
+  const follajeMat = new THREE.MeshStandardMaterial({ color: 0x4e5c39, roughness: 1, flatShading: true });
+  const arboles = [
+    [-30, -70, 1.6, 6.0, 6.5], [-18, -26, 0.5, 4.2, 2.6], [15, -44, 0.55, 4.6, 2.9],
+    [-8, -60, 0.6, 5.0, 3.2], [22, -66, 0.5, 4.4, 2.7], [-24, -48, 0.45, 3.8, 2.4],
+    [7, -72, 0.55, 4.8, 3.0]
+  ];
+  for (const [x, z, radio, alto, copaR] of arboles) {
+    const tronco = new THREE.Mesh(new THREE.CylinderGeometry(radio * 0.6, radio, alto, 7), cortezaMat);
+    tronco.position.set(x, alto / 2, z);
+    tronco.castShadow = true; tronco.receiveShadow = true;
+    escena.add(tronco);
+    const copa = new THREE.Mesh(new THREE.SphereGeometry(copaR, 10, 8), follajeMat);
+    copa.position.set(x, alto + copaR * 0.42, z);
+    copa.scale.set(1.3, 0.8, 1.2);
+    copa.castShadow = true;
+    escena.add(copa);
+    colisiones.push(new THREE.Box3().setFromObject(tronco));
+  }
 
-  return { colisiones, blancos, sol };
+  const niebla = capasDeNiebla(escena);
+
+  return { colisiones, blancos, sol, niebla };
 }

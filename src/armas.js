@@ -7,18 +7,18 @@ import { PALETA } from './mundo.js';
 // interrumpible y persistente: cada arma se acuerda de dónde quedó.
 
 export const PASOS = {
-  cartucho:   { nombre: 'Sacar el cartucho',      dur: 1.55, golpe: false },
-  morder:     { nombre: 'Morder el cartucho',     dur: 1.15, golpe: true },
-  cebar:      { nombre: 'Cebar la cazoleta',      dur: 2.10, golpe: false },
-  polvora:    { nombre: 'Verter la pólvora',      dur: 1.95, golpe: false },
-  bala:       { nombre: 'Introducir la bala',     dur: 1.75, golpe: false },
-  baqueta:    { nombre: 'Atacar con la baqueta',  dur: 2.55, golpe: true },
-  amartillar: { nombre: 'Amartillar',             dur: 0.95, golpe: true }
+  cartucho:   { nombre: 'Sacar el cartucho',      dur: 0.95, golpe: false },
+  morder:     { nombre: 'Morder el cartucho',     dur: 0.75, golpe: true },
+  cebar:      { nombre: 'Cebar la cazoleta',      dur: 1.35, golpe: false },
+  polvora:    { nombre: 'Verter la pólvora',      dur: 1.25, golpe: false },
+  bala:       { nombre: 'Introducir la bala',     dur: 1.10, golpe: false },
+  baqueta:    { nombre: 'Atacar con la baqueta',  dur: 1.65, golpe: true },
+  amartillar: { nombre: 'Amartillar',             dur: 0.65, golpe: true }
 };
 
 export const SECUENCIA = ['cartucho', 'morder', 'cebar', 'polvora', 'bala', 'baqueta', 'amartillar'];
 
-const PENAL = 1.2;
+const PENAL = 0.9;
 const RETARDO = 0.09;
 const P_FOGONAZO = 0.04;
 const P_CHISPA = 0.03;
@@ -131,18 +131,49 @@ function llaveDeChispa (g, x, y, z, laton, hierro, cuelloDeCisne) {
   return { martillo, rastrillo };
 }
 
-function manoYManga (g, xMano, yMano, zMano, zManga) {
+// El brazo del granadero: casaca azul, bocamanga encarnada y galón blanco.
+// Cuelga hacia abajo desde la muñeca; la inclinación se da con `rot`, que es
+// mucho más predecible que calcularla entre dos puntos.
+export function brazoGranadero (pos, rot, largo, grosor) {
+  const g = new THREE.Group();
+
+  const bocamanga = new THREE.Mesh(
+    new THREE.BoxGeometry(grosor * 1.14, grosor * 0.5, grosor * 1.14), mat(PALETA.carmesi, 0.9));
+  bocamanga.position.y = -grosor * 0.25;
+  g.add(bocamanga);
+
+  const manga = new THREE.Mesh(
+    new THREE.BoxGeometry(grosor, largo, grosor * 0.94), mat(PALETA.azul, 0.9));
+  manga.position.y = -largo * 0.5 - grosor * 0.45;
+  g.add(manga);
+
+  // vivo de la costura, apenas una línea
+  const vivo = new THREE.Mesh(
+    new THREE.BoxGeometry(grosor * 0.16, largo * 0.92, grosor * 0.16), mat(0xd8d2c0, 0.9));
+  vivo.position.set(grosor * 0.45, -largo * 0.5 - grosor * 0.45, grosor * 0.45);
+  g.add(vivo);
+
+  g.position.copy(pos);
+  g.rotation.copy(rot);
+  return g;
+}
+
+function manoYManga (g, xMano, yMano, zMano) {
   const guante = mat(0xb9ac93, 0.95);
-  const manoDer = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.075, 0.1), guante);
+  const manoDer = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.078, 0.105), guante);
   manoDer.position.set(xMano, yMano, zMano);
   g.add(manoDer);
-  const manga = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.08, 0.1), mat(PALETA.azul, 0.9));
-  manga.position.set(xMano, yMano - 0.005, zManga);
-  g.add(manga);
-  const vivo = new THREE.Mesh(new THREE.BoxGeometry(0.066, 0.084, 0.018), mat(PALETA.carmesi, 0.9));
-  vivo.position.set(xMano, yMano - 0.005, zManga - 0.045);
-  g.add(vivo);
+  // el antebrazo cuelga de la muñeca hacia el hombro
+  g.add(brazoGranadero(
+    new THREE.Vector3(xMano, yMano - 0.03, zMano + 0.04),
+    new THREE.Euler(-0.85, 0, -0.18), 0.46, 0.082));
   return manoDer;
+}
+
+function brazoIzquierdo (g, mano) {
+  g.add(brazoGranadero(
+    new THREE.Vector3(mano.position.x, mano.position.y - 0.03, mano.position.z + 0.04),
+    new THREE.Euler(-0.95, 0, 0.3), 0.42, 0.076));
 }
 
 function fogonazoYLuz (g, boca) {
@@ -199,10 +230,11 @@ function construirTercerola () {
   baqueta.position.set(0, -0.014, -0.36);
   g.add(baqueta);
 
-  manoYManga(g, 0.012, -0.05, 0.02, 0.1);
+  manoYManga(g, 0.012, -0.05, 0.02);
   const manoIzq = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.07, 0.095), mat(0xb9ac93, 0.95));
   manoIzq.position.set(-0.02, -0.045, -0.30);
   g.add(manoIzq);
+  brazoIzquierdo(g, manoIzq);
 
   const boca = new THREE.Vector3(0, ejeY, -0.90);
   const { fogonazo, luz } = fogonazoYLuz(g, boca);
@@ -266,10 +298,11 @@ function construirFusil () {
   baqueta.position.set(0, -0.02, -0.52);
   g.add(baqueta);
 
-  manoYManga(g, 0.012, -0.052, -0.02, 0.06);
+  manoYManga(g, 0.012, -0.052, -0.02);
   const manoIzq = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.07, 0.095), mat(0xb9ac93, 0.95));
   manoIzq.position.set(-0.02, -0.048, -0.46);
   g.add(manoIzq);
+  brazoIzquierdo(g, manoIzq);
 
   const { martillo, rastrillo } = llaveDeChispa(g, 0.033, 0.024, -0.12, laton, hierro);
 
@@ -346,7 +379,7 @@ function construirPistolon () {
   baqueta.position.set(0, -0.004, -0.24);
   g.add(baqueta);
 
-  manoYManga(g, 0.006, -0.075, 0.075, 0.15);
+  manoYManga(g, 0.006, -0.075, 0.075);
   const manoIzq = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.065, 0.085), mat(0xb9ac93, 0.95));
   manoIzq.position.set(-0.035, -0.05, -0.02);
   g.add(manoIzq);
@@ -489,6 +522,26 @@ export class ArmaFuego {
   }
 
   soltarCarga () { this.cargando = false; }
+
+  // `R` no se mantiene apretada: una vez arranca, otra vez pausa. La carga
+  // sigue sola mientras caminás y se interrumpe si cambiás de arma, saltás o
+  // das un puntazo — pero nunca se borra: el paso queda donde estaba.
+  alternarCarga () {
+    if (this.cargando) { this.cargando = false; this._aviso('Carga en pausa', 'bien'); return false; }
+    this.iniciarCarga();
+    return this.cargando;
+  }
+
+  // el arma arranca la partida lista para tirar
+  cargarDeUnaVez () {
+    this.polvora = true;
+    this.bala = true;
+    this.cebado = true;
+    this.amartillada = true;
+    this.cargando = false;
+    this.secuencia = SECUENCIA.slice();
+    this.paso = 0; this.tPaso = 0; this.penal = 0; this.marcado = null;
+  }
 
   _nuevaSecuencia () {
     if (this.cargada && this.cebado && !this.amartillada) this.secuencia = ['amartillar'];

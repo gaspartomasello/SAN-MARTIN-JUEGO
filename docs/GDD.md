@@ -76,9 +76,9 @@ Guardarse el tiro para el momento justo es la decisión que se repite mil veces.
 | Arma | Tiros | Recarga | Rol |
 |---|---|---|---|
 | Sable corvo | — | — | Principal cuerpo a cuerpo. Hoja de curva profunda, guarda en cruz, pomo en gancho: el de San Martín. |
-| Tercerola (carabina de chispa) | 1 | ~14 s | Único tiro a distancia propio del granadero. |
-| Pistolón de arzón | 1 | ~7 s | El tiro de emergencia. Inútil más allá de diez metros. |
-| Fusil de chispa con bayoneta | 1 | ~12 s | **Premio**: se le saca a un realista caído con `G`. Más alcance y más daño en el cuerpo a cuerpo, más lento de cargar. |
+| Tercerola (carabina de chispa) | 1 | 6,5 s | Único tiro a distancia propio del granadero. |
+| Pistolón de arzón | 1 | 4,7 s | El tiro de emergencia. Inútil más allá de diez metros. |
+| Fusil de chispa con bayoneta | 1 | 7,7 s | **Premio**: se le saca a un realista caído con `G`. Más alcance y más daño en el cuerpo a cuerpo, más lento de cargar. |
 | Cañón de a 4 (2 piezas) | metralla | escena guionada | Set piece: dar vuelta los cañones tomados contra las embarcaciones. |
 
 **El golpe corto (`F`).** Cada arma larga pega con lo que tiene: la tercerola de
@@ -104,9 +104,10 @@ caballo, no las usaban. Meter granadas sería el atajo que arruina la identidad 
 
 ### 4.2 La recarga (el sistema estrella)
 
-Siete pasos reales, mapeados a tres momentos de timing. Se mantiene apretada `R` y se
-marca el tiempo con **click izquierdo** —el dedo ya está ahí, y mientras cargás el click
-no dispara—. Un cartel de **¡AHORA!** avisa las primeras veces y después se apaga solo.
+Siete pasos reales, mapeados a tres momentos de timing. Se aprieta `R` **una vez** —no se
+mantiene— y se marca el tiempo con **click izquierdo**, que mientras cargás no dispara. Un
+cartel de **¡AHORA!** avisa las primeras veces y después se apaga solo. Volver a apretar
+`R` pausa la carga sin perderla.
 
 1. Sacar el cartucho de la cartuchera
 2. **Morder el cartucho** ← timing
@@ -131,8 +132,11 @@ Esta es la mecánica que hay que prototipar primero. Si recargar no es divertido
 juego no existe.
 
 **Medido en el prototipo de la Fase 1:** acertando los tres tiempos la carga completa
-tarda **10,3 s**; errándolos todos, **15,7 s**. Cinco segundos y medio de diferencia
-entre jugar bien y jugar mal es el margen que hace que valga la pena prestar atención.
+tarda **6,6 s**; errándolos todos, **10,5 s**. Casi cuatro segundos de diferencia entre
+jugar bien y jugar mal — suficiente para que valga la pena prestar atención, y corto
+como para no aburrir. La primera versión tardaba 10,3 s y se sentía eterna.
+
+Y se arranca la partida con **las armas cargadas**: nadie quiere empezar recargando.
 
 ---
 
@@ -159,8 +163,10 @@ Así que tirarte te salva de una descarga cerrada y te deja sin poder cargar. Te
 decidir cuándo levantarte, y ese momento es el más peligroso de la partida. Las
 transiciones tardan, así que cada postura es un compromiso y no un botón de esquivar.
 
-El salto (`Espacio`) existe para pasar un parapeto: bajo, pesado, sin control en el aire,
-gasta aliento e interrumpe la carga. No es para brincar en un tiroteo.
+El salto (`Espacio`) existe para pasar un parapeto: sin control en el aire, gasta aliento
+e interrumpe la carga. La gravedad es la del Source —`sv_gravity 800`, o sea 15,24 m/s²—
+con un impulso de 5,2 m/s: **89 cm de altura**, lo mismo que salta un jugador de
+Counter-Strike.
 
 ---
 

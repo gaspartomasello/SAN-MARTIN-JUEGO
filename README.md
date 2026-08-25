@@ -34,6 +34,9 @@ Lo que ya funciona:
   bayoneta se le saca a un caído con `G` y da más alcance en el acero.
 - **Posturas**: de pie, agachado y cuerpo a tierra — y tirado **no se puede recargar**,
   porque no entra la baqueta.
+- **Dos bandos**: granaderos de azul a tu lado y realistas de blanco enfrente, que se
+  eligen objetivo entre ellos y pelean sin vos.
+- **Vida que se regenera** si te cubrís, con vendaje para apurarla.
 - **Apuntado por el cañón** con desenfoque del arma salvo en el centro, fogonazo que
   ilumina el campo y estela dibujada a la velocidad real de la bala.
 - **Cámara**: sacudida por trauma, golpe de FOV, retroceso, cabeceo y respiración.
@@ -74,7 +77,7 @@ y mouse, así que en celular no se juega.
 | `Ctrl` izq. | agacharse · `Z` cuerpo a tierra |
 | Click izq. | disparar · **marcar el tiempo mientras cargás** |
 | Click der. | apuntar por el cañón |
-| `R` sostenida | cargar el arma |
+| `R` | cargar el arma (una apretada; otra la pausa) |
 | `F` | culatazo (tercerola) / bayonetazo (fusil) |
 | `1` `2` `3` | arma larga · sable corvo · pistolón |
 | `G` | tomar el fusil de un realista caído / intercambiar |
@@ -94,14 +97,14 @@ npm run capturas      # capturas de pantalla a capturas/
 Requieren `npm i` y un Chromium; si no está en el `PATH` de Playwright,
 pasarlo con `CHROMIUM=/ruta/al/chrome`.
 
-**Números medidos hoy** (con seis realistas y 57 nubes de humo en pantalla):
+**Números medidos hoy:**
 
 | Medición | Valor |
 |---|---|
-| Carga acertando los tres tiempos | **10,3 s** |
-| Carga errándolos todos | **15,7 s** |
-| Llamadas de dibujo | 195 |
-| Triángulos | 15.750 |
+| Carga acertando los tres tiempos | **6,6 s** |
+| Carga errándolos todos | **10,5 s** |
+| Altura de salto | 0,89 m (gravedad 15,24 m/s², como `sv_gravity 800`) |
+| Bala de mosquete sobre el jugador | 52 de 100 · regenera tras 4,5 s |
 
 Las 195 llamadas ya pasan el presupuesto de 120 del GDD: cada realista son trece mallas
 sueltas. Es exactamente el problema que resuelve el sistema de multitud de la Fase 4.

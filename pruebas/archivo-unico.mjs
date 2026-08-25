@@ -13,9 +13,12 @@ await pag.waitForTimeout(2500);
 const ok = await pag.evaluate(() => {
   if (!window.juego) return { arranco: false };
   const t = window.juego.arma;
-  t.polvora = t.bala = t.cebado = t.amartillada = true;
-  t.gatillo();
-  for (let i = 0; i < 30; i++) t.actualizar(1/60, { apuntando: false, presion: 0, penalCarga: 1, dispersion: 1 });
+  // se intenta varias veces: una de cada catorce, el arma no da fuego a propósito
+  for (let intento = 0; intento < 4 && t.tiros === 0; intento++) {
+    t.polvora = t.bala = t.cebado = t.amartillada = true;
+    t.gatillo();
+    for (let i = 0; i < 30; i++) t.actualizar(1/60, { apuntando: false, presion: 0, penalCarga: 1, dispersion: 1 });
+  }
   return { arranco: true, tiros: t.tiros, nubes: window.juego.humo.nubes.filter(n => n.viva).length };
 });
 await pag.waitForTimeout(1200);

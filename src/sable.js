@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PALETA } from './mundo.js';
+import { brazoGranadero } from './armas.js';
 
 // Sable corvo de San Martín: hoja de curva profunda, guarda en cruz con
 // perillas en las puntas y pomo en gancho. Sin guardamano de canasta — el
@@ -102,19 +103,17 @@ export class Sable {
     gancho.position.set(0, 0.022, 0.062);
     g.add(gancho);
 
-    const mano = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.078, 0.1), guante);
+    const mano = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.082, 0.105), guante);
     mano.position.set(0, 0.002, 0.005);
     g.add(mano);
-    const manga = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.084, 0.1), new THREE.MeshStandardMaterial({ color: PALETA.azul, roughness: 0.9 }));
-    manga.position.set(0, -0.006, 0.095);
-    g.add(manga);
-    const vivo = new THREE.Mesh(new THREE.BoxGeometry(0.069, 0.088, 0.02), new THREE.MeshStandardMaterial({ color: PALETA.carmesi, roughness: 0.9 }));
-    vivo.position.set(0, -0.006, 0.05);
-    g.add(vivo);
+    // el brazo entero: casaca azul, bocamanga encarnada y galón
+    g.add(brazoGranadero(
+      new THREE.Vector3(0, -0.03, 0.07),
+      new THREE.Euler(-0.55, 0, 0.12), 0.62, 0.092));
 
     g.scale.setScalar(0.78);
-    g.position.set(0.17, -0.26, -0.44);
-    g.rotation.set(0.02, -0.6, 0.42);
+    g.position.set(0.22, -0.12, -0.58);
+    g.rotation.set(0.02, -0.42, 0.26);
     g.traverse(o => { o.frustumCulled = false; });
     g.visible = false;
     camaraArma.add(g);
@@ -141,8 +140,8 @@ export class Sable {
       if (u < 1) {
         // tajo diagonal: entra de arriba a la derecha y sale abajo a la izquierda
         const e = Math.sin(Math.min(1, u * 1.15) * Math.PI);
-        this.grupo.position.set(0.17 - e * 0.48, -0.26 + e * 0.26, -0.44 - e * 0.14);
-        this.grupo.rotation.set(0.02 - e * 0.5, -0.6 + e * 1.5, 0.42 + e * 1.8);
+        this.grupo.position.set(0.22 - e * 0.5, -0.12 + e * 0.2, -0.58 - e * 0.08);
+        this.grupo.rotation.set(0.02 - e * 0.45, -0.42 + e * 1.35, 0.26 + e * 1.85);
         if (!this.golpeo && u > 0.3 && u < 0.58) {
           this.golpeo = true;
           if (this.alGolpear) this.alGolpear();
