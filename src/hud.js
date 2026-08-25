@@ -116,7 +116,6 @@ export class Hud {
 
     // --- línea de estado ---
     let txt = `${datos.nombreArma} · <b>${datos.estadoArma}</b> · ${datos.postura}`;
-    if (datos.emplome > 0) txt += ` · ánima: ${datos.emplome} tiros`;
     if (v <= 0) txt += ' · <span class="mal">fuera de combate — Enter para volver a formar</span>';
     else if (datos.vendando > 0) txt += ' · <span class="mal">vendando…</span>';
     if (datos.postura === 'cuerpo a tierra') txt += ' · <span class="mal">no se puede cargar tirado</span>';

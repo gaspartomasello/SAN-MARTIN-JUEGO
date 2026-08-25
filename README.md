@@ -30,8 +30,9 @@ Lo que ya funciona:
   segundos y medio; si te pierden en el humo, van a donde te vieron por última vez.
 - **HUD diegético**: el estado del arma se lee en el modelo —martillo y rastrillo—, los
   cartuchos se cuentan abriendo la cartuchera y la salud es una viñeta, no una barra.
-- **Tres armas y un premio**: tercerola, sable corvo y pistolón de arzón; el fusil con
-  bayoneta se le saca a un caído con `G` y da más alcance en el acero.
+- **Tres armas y un premio**: tercerola, sable corvo y pistolón de arzón, todas cargadas
+  al empezar; el fusil con bayoneta se le saca a un caído con `G` —cargado o descargado,
+  según haya llegado a tirar— y da más alcance en el acero.
 - **Posturas**: de pie, agachado y cuerpo a tierra — y tirado **no se puede recargar**,
   porque no entra la baqueta.
 - **Dos bandos**: granaderos de azul a tu lado y realistas de blanco enfrente, que se
@@ -82,7 +83,7 @@ y mouse, así que en celular no se juega.
 | `1` `2` `3` | arma larga · sable corvo · pistolón |
 | `G` | tomar el fusil de un realista caído / intercambiar |
 | `C` | revisar la cartuchera |
-| `V` | vendarse · `L` limpiar el ánima |
+| `V` | vendarse |
 | `O` | que vengan los realistas |
 | `F3` | datos de depuración |
 
@@ -101,7 +102,7 @@ pasarlo con `CHROMIUM=/ruta/al/chrome`.
 
 | Medición | Valor |
 |---|---|
-| Carga acertando los tres tiempos | **6,6 s** |
+| Carga acertando los tres tiempos | **6,6 s** (pistolón: 3,1 s) |
 | Carga errándolos todos | **10,5 s** |
 | Altura de salto | 0,89 m (gravedad 15,24 m/s², como `sv_gravity 800`) |
 | Bala de mosquete sobre el jugador | 52 de 100 · regenera tras 4,5 s |

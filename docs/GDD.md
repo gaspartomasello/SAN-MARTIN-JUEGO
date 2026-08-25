@@ -77,8 +77,8 @@ Guardarse el tiro para el momento justo es la decisión que se repite mil veces.
 |---|---|---|---|
 | Sable corvo | — | — | Principal cuerpo a cuerpo. Hoja de curva profunda, guarda en cruz, pomo en gancho: el de San Martín. |
 | Tercerola (carabina de chispa) | 1 | 6,5 s | Único tiro a distancia propio del granadero. |
-| Pistolón de arzón | 1 | 4,7 s | El tiro de emergencia. Inútil más allá de diez metros. |
-| Fusil de chispa con bayoneta | 1 | 7,7 s | **Premio**: se le saca a un realista caído con `G`. Más alcance y más daño en el cuerpo a cuerpo, más lento de cargar. |
+| Pistolón de arzón | 1 | 3,1 s | El tiro de emergencia. Inútil más allá de diez metros. |
+| Fusil de chispa con bayoneta | 1 | 7,7 s | **Premio**: se le saca a un realista caído con `G`, y viene cargado o descargado según haya llegado a tirar o no. Más alcance y más daño en el cuerpo a cuerpo, más lento de cargar. |
 | Cañón de a 4 (2 piezas) | metralla | escena guionada | Set piece: dar vuelta los cañones tomados contra las embarcaciones. |
 
 **El golpe corto (`F`).** Cada arma larga pega con lo que tiene: la tercerola de
@@ -125,8 +125,15 @@ Reglas:
 - Bajo presión (enemigo a menos de 8 m, poco aliento, herido) las ventanas se achican y
   las manos tiemblan visiblemente.
 - Fallas: **fogonazo sin tiro** (~4 %, más con humedad de río) → recebar, un paso rápido.
-  Chispa fallida (~3 %) → volver a amartillar. Emplome del ánima: cada 6 disparos suma
-  0,5 s a la recarga hasta limpiar.
+  Chispa fallida (~3 %) → volver a amartillar.
+- Se puede **correr cargando**: cuesta un poco de velocidad y las ventanas de tiempo se
+  achican con el traqueteo, pero nadie tiene que quedarse quieto para recargar.
+
+> **Descartado:** el emplome del ánima —cada seis tiros, la carga un poco más lenta hasta
+> limpiar con `L`—. Limpiar salía gratis y era instantáneo, así que no era una decisión
+> sino un trámite, y el único aviso era un número en la esquina. Si vuelve, tiene que
+> volver como probabilidad creciente de que el arma no dé fuego, y limpiar tiene que
+> costar cuatro segundos de estar vendido.
 
 Esta es la mecánica que hay que prototipar primero. Si recargar no es divertido, el
 juego no existe.
@@ -136,7 +143,7 @@ tarda **6,6 s**; errándolos todos, **10,5 s**. Casi cuatro segundos de diferenc
 jugar bien y jugar mal — suficiente para que valga la pena prestar atención, y corto
 como para no aburrir. La primera versión tardaba 10,3 s y se sentía eterna.
 
-Y se arranca la partida con **las armas cargadas**: nadie quiere empezar recargando.
+Y se arranca la partida con **todas las armas cargadas**: nadie quiere empezar recargando.
 
 ---
 

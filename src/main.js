@@ -180,9 +180,13 @@ function tomarOIntercambiar () {
     caido.entregarFusil();
     armas.fusil = new ArmaFuego('fusil', camaraArma, camara, sonido, humo);
     conectar(armas.fusil);
-    armas.fusil.cargarDeUnaVez();          // el realista no llegó a tirar
+    // puede que el realista no haya llegado a tirar, o puede que sí
+    const veniaCargado = Math.random() < 0.5;
+    if (veniaCargado) armas.fusil.cargarDeUnaVez();
+    else armas.fusil.dejarDescargada();
     cambiarLarga('fusil');
-    hud.mostrarAviso('Fusil con bayoneta tomado', 'bien');
+    hud.mostrarAviso(veniaCargado ? 'Fusil tomado · cargado' : 'Fusil tomado · descargado',
+      veniaCargado ? 'bien' : 'malo');
     return;
   }
   cambiarLarga(armaLarga === 'fusil' ? 'tercerola' : 'fusil');
@@ -305,7 +309,6 @@ addEventListener('keydown', ev => {
     case 'Digit3': cambiarArma('pistolon'); break;
     case 'KeyC': hud.verCartuchera(); break;
     case 'KeyV': if (jugador.vendar()) hud.mostrarAviso('Vendando', 'bien'); break;
-    case 'KeyL': { const a = armaActual(); if (a) a.limpiar(); break; }
     case 'KeyO':
       combate = !combate;
       hud.mostrarAviso(combate ? '¡Ahí vienen!' : 'Alto el fuego', combate ? 'malo' : 'bien');
@@ -353,8 +356,21 @@ addEventListener('mousemove', ev => {
 let bloqueado = false;
 document.addEventListener('pointerlockchange', () => {
   bloqueado = document.pointerLockElement === lienzo;
-  if (!bloqueado) teclas.clear();
+  if (!bloqueado) { teclas.clear(); apuntando = false; }
 });
+document.addEventListener('pointerlockerror', () => { bloqueado = false; });
+
+// Soltar el mouse pase lo que pase. Sin esto el puntero queda capturado y
+// desaparece en las otras pestañas del navegador.
+function soltarMouse () {
+  teclas.clear();
+  apuntando = false;
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+addEventListener('blur', soltarMouse);
+addEventListener('pagehide', soltarMouse);
+addEventListener('beforeunload', soltarMouse);
+document.addEventListener('visibilitychange', () => { if (document.hidden) soltarMouse(); });
 
 document.getElementById('empezar').addEventListener('click', () => {
   document.getElementById('portada').classList.add('oculto');
@@ -444,7 +460,6 @@ function cuadro () {
     estadoArma: arma ? arma.etiquetaEstado : 'en mano',
     postura: p.nombre,
     puedeTomarFusil: !armas.fusil && !!caidoConFusil(),
-    emplome: arma ? arma.tiros : 0,
     vida: jugador.vida,
     regenerando: jugador.tSinDano > 4.5 && jugador.vida < 100,
     vendas: jugador.vendas,

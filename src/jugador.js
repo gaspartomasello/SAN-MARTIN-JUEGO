@@ -5,6 +5,7 @@ import * as THREE from 'three';
 // temblor va al cuadrado, así un cañonazo se siente distinto a un tiro.
 
 const RADIO = 0.36;
+const ESCALON = 0.42;      // lo que se sube sin saltar
 
 // Cuerpo a tierra no se puede recargar un arma de avancarga: no hay forma de
 // meter la baqueta por la boca del cañón acostado. Por eso penalCarga = 0.
@@ -36,8 +37,8 @@ export class Jugador {
 
     this.postura = 'pie';
     this.altura = POSTURAS.pie.altura;
-    this.saltoY = 0;
-    this.saltoVel = 0;
+    this.pies = 0;           // altura del suelo bajo los pies
+    this.velY = 0;
     this.enElAire = false;
 
     this.aliento = 100;
@@ -97,7 +98,7 @@ export class Jugador {
     this.vendando = 0;
     this.tSinDano = 99;
     this.postura = 'pie';
-    this.saltoY = 0; this.saltoVel = 0; this.enElAire = false;
+    this.pies = 0; this.velY = 0; this.enElAire = false;
     this.vel.set(0, 0, 0);
     this.pos.set(0, POSTURAS.pie.altura, 4);
   }
@@ -112,7 +113,7 @@ export class Jugador {
     if (!this.vivo || this.enElAire || this.postura !== 'pie') return false;
     if (this.aliento < 14) return false;
     this.aliento -= 11;
-    this.saltoVel = IMPULSO;
+    this.velY = IMPULSO;
     this.enElAire = true;
     return true;
   }
@@ -145,10 +146,11 @@ export class Jugador {
     const puedeCorrer = quiereCorrer && this.aliento > 6 && !apuntando &&
       this.vendando <= 0 && this.postura === 'pie';
 
+    // se puede correr cargando: es más difícil acertar los tiempos, pero se corre
     let vmax = 3.4;
-    if (puedeCorrer) vmax = 6.1;
+    if (cargando) vmax = 2.9;
     if (apuntando) vmax = 1.7;
-    if (cargando) vmax = 2.6;
+    if (puedeCorrer) vmax = cargando ? 5.2 : 6.1;
     vmax *= p.vel;
     if (this.maltrecho) vmax *= 0.85;
     if (this.vendando > 0) vmax = 0.7;
@@ -171,15 +173,10 @@ export class Jugador {
     }
 
     this._mover(this.vel.x * dt, this.vel.z * dt);
-
-    if (this.enElAire) {
-      this.saltoVel -= GRAVEDAD * dt;
-      this.saltoY += this.saltoVel * dt;
-      if (this.saltoY <= 0) { this.saltoY = 0; this.saltoVel = 0; this.enElAire = false; }
-    }
+    this._caer(dt);
 
     this.altura += (p.altura - this.altura) * Math.min(1, 7 * dt);
-    this.pos.y = this.altura + this.saltoY;
+    this.pos.y = this.pies + this.altura;
 
     const rapidez = Math.hypot(this.vel.x, this.vel.z);
     this.bob += dt * rapidez * 1.9;
@@ -192,25 +189,83 @@ export class Jugador {
 
   _mover (dx, dz) {
     this.pos.x += dx;
-    this._resolver('x', dx);
     this.pos.z += dz;
-    this._resolver('z', dz);
     this.pos.x = Math.max(-60, Math.min(60, this.pos.x));
     this.pos.z = Math.max(-105, Math.min(20, this.pos.z));
+
+    // Se resuelve empujando al jugador fuera de la caja, no deshaciendo el
+    // movimiento: deshacerlo es lo que hacía vibrar la pantalla al quedar
+    // trabado entre dos obstáculos.
+    const cabeza = this.pies + this.altura;
+    for (const caja of this.colisiones) {
+      if (caja.max.y <= this.pies + ESCALON) continue;   // se sube sin saltar
+      if (caja.min.y >= cabeza) continue;                // pasa por abajo
+      this._empujar(caja);
+    }
   }
 
-  _resolver (eje, delta) {
-    for (const caja of this.colisiones) {
-      const cx = Math.max(caja.min.x, Math.min(this.pos.x, caja.max.x));
-      const cz = Math.max(caja.min.z, Math.min(this.pos.z, caja.max.z));
-      const dx = this.pos.x - cx, dz = this.pos.z - cz;
-      // saltando por encima de un parapeto bajo no hay colisión
-      if (dx * dx + dz * dz < RADIO * RADIO && caja.max.y > this.saltoY + 0.15) {
-        if (eje === 'x') this.pos.x -= delta;
-        else this.pos.z -= delta;
-        this.vel[eje] = 0;
-      }
+  _empujar (caja) {
+    const cx = Math.max(caja.min.x, Math.min(this.pos.x, caja.max.x));
+    const cz = Math.max(caja.min.z, Math.min(this.pos.z, caja.max.z));
+    const dx = this.pos.x - cx;
+    const dz = this.pos.z - cz;
+    const d2 = dx * dx + dz * dz;
+    if (d2 >= RADIO * RADIO) return;
+
+    if (d2 > 1e-8) {
+      const d = Math.sqrt(d2);
+      const empuje = RADIO - d;
+      this.pos.x += (dx / d) * empuje;
+      this.pos.z += (dz / d) * empuje;
+      // se frena sólo la parte de la velocidad que entra en la pared
+      const nx = dx / d, nz = dz / d;
+      const entrante = this.vel.x * nx + this.vel.z * nz;
+      if (entrante < 0) { this.vel.x -= entrante * nx; this.vel.z -= entrante * nz; }
+      return;
     }
+
+    // el centro quedó dentro de la caja: se sale por el lado más cerca
+    const salidas = [
+      { d: this.pos.x - caja.min.x + RADIO, x: -1, z: 0 },
+      { d: caja.max.x - this.pos.x + RADIO, x: 1, z: 0 },
+      { d: this.pos.z - caja.min.z + RADIO, x: 0, z: -1 },
+      { d: caja.max.z - this.pos.z + RADIO, x: 0, z: 1 }
+    ];
+    salidas.sort((a, b) => a.d - b.d);
+    const s = salidas[0];
+    this.pos.x += s.x * s.d;
+    this.pos.z += s.z * s.d;
+    this.vel.set(0, this.vel.y, 0);
+  }
+
+  // gravedad y apoyo: se puede quedar parado arriba de un cajón o un parapeto
+  _caer (dt) {
+    const piesAntes = this.pies;
+    this.velY -= GRAVEDAD * dt;
+    let piesNuevos = this.pies + this.velY * dt;
+
+    let soporte = 0;
+    for (const caja of this.colisiones) {
+      if (this.pos.x < caja.min.x - RADIO || this.pos.x > caja.max.x + RADIO) continue;
+      if (this.pos.z < caja.min.z - RADIO || this.pos.z > caja.max.z + RADIO) continue;
+      const techo = caja.max.y;
+      const aterriza = piesAntes >= techo - 0.03 && piesNuevos <= techo;
+      const escalon = techo <= piesAntes + ESCALON && techo >= piesNuevos;
+      if ((aterriza || escalon) && techo > soporte) soporte = techo;
+    }
+
+    if (this.velY <= 0 && piesNuevos <= soporte) {
+      piesNuevos = soporte;
+      this.velY = 0;
+      this.enElAire = false;
+    } else if (piesNuevos <= 0) {
+      piesNuevos = 0;
+      this.velY = 0;
+      this.enElAire = false;
+    } else {
+      this.enElAire = true;
+    }
+    this.pies = piesNuevos;
   }
 
   _aplicarCamara (dt, rapidez) {

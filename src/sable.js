@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETA } from './mundo.js';
-import { brazoGranadero } from './armas.js';
+import { brazoLibre } from './armas.js';
 
 // Sable corvo de San Martín: hoja de curva profunda, guarda en cruz con
 // perillas en las puntas y pomo en gancho. Sin guardamano de canasta — el
@@ -106,10 +106,6 @@ export class Sable {
     const mano = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.082, 0.105), guante);
     mano.position.set(0, 0.002, 0.005);
     g.add(mano);
-    // el brazo entero: casaca azul, bocamanga encarnada y galón
-    g.add(brazoGranadero(
-      new THREE.Vector3(0, -0.03, 0.07),
-      new THREE.Euler(-0.55, 0, 0.12), 0.62, 0.092));
 
     g.scale.setScalar(0.78);
     g.position.set(0.22, -0.12, -0.58);
@@ -119,15 +115,39 @@ export class Sable {
     camaraArma.add(g);
     this.grupo = g;
     this.reposo = { p: g.position.clone(), r: g.rotation.clone() };
+
+    // El brazo no cuelga del sable: va aparte y siempre une la muñeca con el
+    // hombro. Si fuera hijo del sable, al tirar el tajo el brazo giraría con
+    // la hoja y quedaría cortado en el aire.
+    this.brazo = brazoLibre(0.062);
+    this.brazo.visible = false;
+    camaraArma.add(this.brazo);
+    this.hombro = new THREE.Vector3(0.2, -0.62, 0.26);
+    this._mano = new THREE.Vector3();
+    this.manoLocal = new THREE.Vector3(0, -0.02, 0.06);
+
+    this.zurdo = false;      // los tajos alternan de lado, como el cuchillo del Counter
   }
 
-  sacar () { this.guardado = false; this.grupo.visible = true; }
-  guardar () { this.guardado = true; this.grupo.visible = false; this.t = -1; }
+  _acomodarBrazo () {
+    // hay que refrescar la matriz: si no, el brazo va un cuadro atrás del
+    // sable y en pleno tajo se ve despegado de la mano
+    this.grupo.updateWorldMatrix(true, false);
+    this._mano.copy(this.manoLocal).applyMatrix4(this.grupo.matrixWorld);
+    this.brazo.position.copy(this._mano);
+    this.brazo.lookAt(this.hombro);
+    this.brazo.scale.z = Math.max(0.25, this._mano.distanceTo(this.hombro));
+  }
+
+  sacar () { this.guardado = false; this.grupo.visible = true; this.brazo.visible = true; }
+  guardar () { this.guardado = true; this.grupo.visible = false; this.brazo.visible = false; this.t = -1; }
 
   tajo () {
     if (this.guardado || this.t >= 0) return;
     this.t = 0;
     this.golpeo = false;
+    this.zurdo = !this.zurdo;        // un tajo va de ida y el siguiente de vuelta
+    this.duracion = this.zurdo ? 0.46 : 0.52;
     this.sonido.sable();
   }
 
@@ -138,14 +158,21 @@ export class Sable {
       this.t += dt;
       const u = this.t / this.duracion;
       if (u < 1) {
-        // tajo diagonal: entra de arriba a la derecha y sale abajo a la izquierda
         const e = Math.sin(Math.min(1, u * 1.15) * Math.PI);
-        this.grupo.position.set(0.22 - e * 0.5, -0.12 + e * 0.2, -0.58 - e * 0.08);
-        this.grupo.rotation.set(0.02 - e * 0.45, -0.42 + e * 1.35, 0.26 + e * 1.85);
+        if (this.zurdo) {
+          // revés: entra de abajo a la izquierda y sale arriba a la derecha
+          this.grupo.position.set(0.22 - e * 0.4, -0.14 - e * 0.04, -0.58 - e * 0.1);
+          this.grupo.rotation.set(0.02 + e * 0.6, -0.42 - e * 1.1, 0.26 - e * 1.5);
+        } else {
+          // tajo: de arriba a la derecha hacia abajo a la izquierda
+          this.grupo.position.set(0.22 - e * 0.46, -0.12 + e * 0.1, -0.58 - e * 0.06);
+          this.grupo.rotation.set(0.02 - e * 0.45, -0.42 + e * 1.35, 0.26 + e * 1.85);
+        }
         if (!this.golpeo && u > 0.3 && u < 0.58) {
           this.golpeo = true;
           if (this.alGolpear) this.alGolpear();
         }
+        this._acomodarBrazo();
         return;
       }
       this.t = -1;
@@ -154,5 +181,6 @@ export class Sable {
     this.grupo.rotation.x += (this.reposo.r.x - this.grupo.rotation.x) * k;
     this.grupo.rotation.y += (this.reposo.r.y - this.grupo.rotation.y) * k;
     this.grupo.rotation.z += (this.reposo.r.z - this.grupo.rotation.z) * k;
+    this._acomodarBrazo();
   }
 }

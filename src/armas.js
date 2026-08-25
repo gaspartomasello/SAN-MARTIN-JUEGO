@@ -37,7 +37,7 @@ export const ARMAS = {
     largo: true
   },
   pistolon: {
-    nombre: 'Pistolón de arzón', escala: 0.68, cargaMult: 0.72,
+    nombre: 'Pistolón de arzón', escala: 0.68, cargaMult: 0.48,
     conoCadera: 5.0, conoApuntado: 2.2,
     golpe: { nombre: 'Culatazo', alcance: 1.5, dano: 1, dur: 0.38 },
     largo: false
@@ -155,6 +155,22 @@ export function brazoGranadero (pos, rot, largo, grosor) {
 
   g.position.copy(pos);
   g.rotation.copy(rot);
+  return g;
+}
+
+// Brazo suelto: la manga arranca en la muñeca y se va hacia +Z con largo 1,
+// así se estira con `scale.z` y se orienta con `lookAt` hacia el hombro.
+// Ojo con el +Z: `lookAt` en un objeto común apunta el eje Z POSITIVO al
+// objetivo, al revés que en una cámara.
+export function brazoLibre (grosor) {
+  const g = new THREE.Group();
+  const bocamanga = new THREE.Mesh(
+    new THREE.BoxGeometry(grosor * 1.14, grosor * 1.14, 0.05), mat(PALETA.carmesi, 0.9));
+  bocamanga.position.z = 0.025;
+  g.add(bocamanga);
+  const manga = new THREE.Mesh(new THREE.BoxGeometry(grosor, grosor * 0.94, 1), mat(PALETA.azul, 0.9));
+  manga.position.z = 0.5;
+  g.add(manga);
   return g;
 }
 
@@ -445,7 +461,7 @@ export class ArmaFuego {
     this.cargando = false;
     this.guardada = true;
 
-    this.tiros = 0;
+    this.tiros = 0;        // sólo para llevar la cuenta
     this.apuntando = false;
     this.esperaTiro = -1;
     this.presion = 0;
@@ -499,8 +515,7 @@ export class ArmaFuego {
   guardar () { this.guardada = true; this.grupo.visible = false; this.cargando = false; this.tGolpe = -1; }
 
   _duracion (id) {
-    const suciedad = 1 + Math.floor(this.tiros / 6) * 0.075;
-    return PASOS[id].dur * suciedad * this.cfg.cargaMult * this.penalPostura;
+    return PASOS[id].dur * this.cfg.cargaMult * this.penalPostura;
   }
 
   _ventana (id) {
@@ -530,6 +545,17 @@ export class ArmaFuego {
     if (this.cargando) { this.cargando = false; this._aviso('Carga en pausa', 'bien'); return false; }
     this.iniciarCarga();
     return this.cargando;
+  }
+
+  // deja el arma descargada del todo, como si el dueño acabara de tirar
+  dejarDescargada () {
+    this.polvora = false;
+    this.bala = false;
+    this.cebado = false;
+    this.amartillada = false;
+    this.cargando = false;
+    this.secuencia = SECUENCIA.slice();
+    this.paso = 0; this.tPaso = 0; this.penal = 0; this.marcado = null;
   }
 
   // el arma arranca la partida lista para tirar
@@ -671,13 +697,6 @@ export class ArmaFuego {
       { cantidad: 15, vida: 10, empuje: 2.0, radio: 0.3, opacidad: 0.42, claro: 0.45 });
 
     if (this.alDisparar) this.alDisparar(origen, dir, disp);
-  }
-
-  limpiar () {
-    if (this.tiros === 0) { this._aviso('El ánima está limpia', 'bien'); return; }
-    this.tiros = 0;
-    this.sonido.baqueta();
-    this._aviso('Ánima limpia', 'bien');
   }
 
   _aviso (t, tipo) { if (this.alAviso) this.alAviso(t, tipo); }
