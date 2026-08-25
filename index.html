@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>El Clarín de San Lorenzo — Fase 1: el campo de tiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Saira+Condensed:wght@500;600&display=swap">
+<style>
+  :root{
+    --azul:#23385E; --carmesi:#8F2126; --bronce:#C69B54;
+    --hueso:#E6E2D6; --tinta:#0F141A;
+    --ui:"Saira Condensed","Arial Narrow",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#0F141A;color:var(--hueso);
+    font-family:var(--ui);-webkit-font-smoothing:antialiased}
+  canvas{display:block}
+
+  /* ---- capas de presentación ---- */
+  #vineta{position:fixed;inset:0;pointer-events:none;z-index:5;
+    background:radial-gradient(ellipse at center,rgba(0,0,0,0) 42%,rgba(8,10,14,.55) 100%)}
+  #grano{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:.05;mix-blend-mode:overlay}
+  #humo-pantalla{position:fixed;inset:0;pointer-events:none;z-index:4;background:#9AA3AB;opacity:0;
+    transition:opacity .18s linear}
+  #sangre{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;transition:opacity .5s ease;
+    background:radial-gradient(ellipse at center,rgba(0,0,0,0) 30%,rgba(96,16,18,.75) 100%)}
+  #flash{position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;background:#FFE7B0}
+
+  /* ---- HUD diegético (mínimo) ---- */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+  .lbl{font-weight:600;text-transform:uppercase;letter-spacing:.16em;font-size:12px}
+
+  #paso{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);text-align:center;
+    opacity:0;transition:opacity .15s linear;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+  #paso .nombre{font-size:15px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+  #paso .cont{margin-top:7px;width:210px;height:3px;background:rgba(230,226,214,.22);position:relative}
+  #paso .prog{position:absolute;inset:0 auto 0 0;width:0;background:var(--hueso)}
+  #paso .win{position:absolute;top:-4px;height:11px;background:var(--bronce);opacity:0;width:0}
+  #paso.golpe .win{opacity:.95}
+
+  #aliento{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);
+    width:210px;height:2px;background:rgba(230,226,214,.14);opacity:0;transition:opacity .3s}
+  #aliento i{display:block;height:100%;width:100%;background:#8FA6C4}
+
+  #cartuchera{position:absolute;right:34px;bottom:34px;text-align:right;opacity:0;
+    transition:opacity .25s;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+  #cartuchera .n{font-family:"Libre Caslon Display",Georgia,serif;font-size:38px;line-height:1}
+  #cartuchera .t{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
+
+  #aviso{position:absolute;left:50%;top:64px;transform:translateX(-50%);text-align:center;
+    opacity:0;transition:opacity .3s;text-shadow:0 2px 8px rgba(0,0,0,.9);
+    font-size:16px;letter-spacing:.13em;text-transform:uppercase;font-weight:600}
+  #aviso.malo{color:#E4797B}
+  #aviso.bien{color:var(--bronce)}
+
+  #estado{position:absolute;left:34px;bottom:34px;opacity:.75;font-size:12px;letter-spacing:.13em;
+    text-transform:uppercase;text-shadow:0 2px 6px rgba(0,0,0,.8);line-height:1.9}
+  #estado b{color:var(--bronce);font-weight:600}
+  #estado .mal{color:#E4797B}
+
+  #depurar{position:absolute;left:34px;top:24px;font-size:11px;letter-spacing:.08em;opacity:.55;
+    display:none;line-height:1.7;font-variant-numeric:tabular-nums}
+
+  /* ---- portada ---- */
+  #portada{position:fixed;inset:0;z-index:20;background:#0F141A;display:flex;align-items:center;
+    justify-content:center;padding:32px}
+  #portada.oculto{display:none}
+  .caja{max-width:660px;width:100%}
+  .franja{display:flex;height:5px;width:132px;margin-bottom:30px}
+  .franja i{flex:1}
+  .franja i:nth-child(1){background:var(--azul)}
+  .franja i:nth-child(2){background:var(--carmesi)}
+  .franja i:nth-child(3){background:var(--bronce)}
+  .eyebrow{color:#D9696C;font-weight:600;text-transform:uppercase;letter-spacing:.18em;font-size:12px}
+  h1{font-family:"Libre Caslon Display",Georgia,serif;font-weight:400;font-size:clamp(38px,7vw,62px);
+    line-height:1.05;margin:14px 0 6px;letter-spacing:-.01em}
+  .sub{color:#8B97A1;font-size:16px;letter-spacing:.04em;margin:0 0 26px;max-width:46ch;line-height:1.6}
+  .teclas{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:1px;
+    background:rgba(230,226,214,.13);border:1px solid rgba(230,226,214,.13);margin-bottom:26px}
+  .teclas div{background:#161D25;padding:9px 13px;display:flex;justify-content:space-between;gap:12px;
+    font-size:13px;letter-spacing:.05em}
+  .teclas kbd{color:var(--bronce);font-family:var(--ui);font-weight:600;letter-spacing:.1em;
+    white-space:nowrap}
+  .teclas span{color:#8B97A1;text-align:right}
+  button{font-family:var(--ui);font-weight:600;text-transform:uppercase;letter-spacing:.18em;
+    font-size:14px;color:#0F141A;background:var(--bronce);border:0;padding:15px 34px;cursor:pointer}
+  button:hover{background:#D8AC63}
+  button:focus-visible{outline:2px solid var(--carmesi);outline-offset:3px}
+  .pie{margin-top:22px;color:#5E6A75;font-size:12px;letter-spacing:.11em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div id="humo-pantalla"></div>
+<div id="vineta"></div>
+<canvas id="grano"></canvas>
+<div id="sangre"></div>
+<div id="flash"></div>
+
+<div id="hud">
+  <div id="paso"><div class="nombre"></div><div class="cont"><div class="prog"></div><div class="win"></div></div></div>
+  <div id="aliento"><i></i></div>
+  <div id="cartuchera"><div class="n">0</div><div class="t">cartuchos</div></div>
+  <div id="aviso"></div>
+  <div id="estado"></div>
+  <div id="depurar"></div>
+</div>
+
+<div id="portada">
+  <div class="caja">
+    <div class="franja"><i></i><i></i><i></i></div>
+    <div class="eyebrow">Fase 1 · prototipo jugable</div>
+    <h1>El campo de tiro</h1>
+    <p class="sub">Cuartel del Retiro, diciembre de 1812. Acá se responde la única pregunta que importa
+      todavía: <strong>¿recargar es divertido?</strong> Tenés un tiro. Después, catorce segundos.</p>
+    <div class="teclas">
+      <div><kbd>W A S D</kbd><span>moverse</span></div>
+      <div><kbd>Shift</kbd><span>correr</span></div>
+      <div><kbd>Click izq.</kbd><span>disparar / tajo</span></div>
+      <div><kbd>Click der.</kbd><span>apuntar por el cañón</span></div>
+      <div><kbd>R sostenida</kbd><span>cargar el arma</span></div>
+      <div><kbd>Espacio</kbd><span>golpe de tiempo</span></div>
+      <div><kbd>1 / 2</kbd><span>tercerola / sable</span></div>
+      <div><kbd>C</kbd><span>revisar la cartuchera</span></div>
+      <div><kbd>V</kbd><span>vendarse</span></div>
+      <div><kbd>L</kbd><span>limpiar el ánima</span></div>
+      <div><kbd>G</kbd><span>que vengan los realistas</span></div>
+      <div><kbd>F3</kbd><span>datos de depuración</span></div>
+    </div>
+    <button id="empezar">Formar</button>
+    <div class="pie">Clic para tomar el mouse · Esc para soltarlo</div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,8 +1,8 @@
 # El Clarín de San Lorenzo
 ### Documento de diseño — FPS histórico en three.js sobre la Batalla de San Lorenzo (3 de febrero de 1813)
 
-> Estado: **diseño**. Nada de esto está programado todavía. Este documento existe para
-> decidir la mecánica antes de escribir código.
+> Estado: **Fase 1 en marcha**. Las cuatro decisiones abiertas están tomadas (§15) y el
+> campo de tiro ya es jugable: ver [README](../README.md). El resto sigue siendo diseño.
 
 ---
 
@@ -118,6 +118,10 @@ Reglas:
 
 Esta es la mecánica que hay que prototipar primero. Si recargar no es divertido, el
 juego no existe.
+
+**Medido en el prototipo de la Fase 1:** acertando los tres tiempos la carga completa
+tarda **10,3 s**; errándolos todos, **15,7 s**. Cinco segundos y medio de diferencia
+entre jugar bien y jugar mal es el margen que hace que valga la pena prestar atención.
 
 ---
 
@@ -338,13 +342,17 @@ y no cuatro meses después.
 
 ---
 
-## 15. Decisiones abiertas
+## 15. Decisiones tomadas
 
-1. **Cámara montada:** ¿primera persona con manos y riendas, o tercera persona sólo a caballo?
-   *Recomendación:* primera persona, con tercera como opción de accesibilidad.
-2. **Acto Cabral:** ¿el jugador toma el control de Cabral, o queda como San Martín atrapado
-   mirando? *Recomendación:* tomar el control. Es la diferencia entre ver y entender.
-3. **Tono:** ¿rigor histórico o licencias arcade? *Recomendación:* simulación accesible —
-   sistemas fieles, fricción quitada de la interfaz, nunca de las armas.
-4. **Alcance del primer entregable:** ¿vertical slice del acto 3–4 o campaña completa
-   básica? *Recomendación:* slice. Un acto que se siente bien vale más que siete tibios.
+Las cuatro se resolvieron antes de escribir código. Quedan acá anotadas para que nadie
+las reabra sin motivo:
+
+| Decisión | Resuelto |
+|---|---|
+| Cámara montada | **Primera persona**, con manos y riendas. Tercera persona sólo como opción de accesibilidad. |
+| Acto Cabral | **El jugador toma el control de Cabral** durante los cuarenta segundos. Es la diferencia entre ver y entender. |
+| Tono | **Simulación accesible**: sistemas fieles, fricción quitada de la interfaz, nunca de las armas. |
+| Primer entregable | **Vertical slice de los actos 3–4**. Un acto que se siente bien vale más que siete tibios. |
+
+El orden de construcción arranca por la recarga (Fase 1 del plan de §14), que es donde
+está el riesgo real del proyecto.

@@ -1,0 +1,19 @@
+{
+  "name": "clarin-de-san-lorenzo",
+  "version": "0.1.0",
+  "description": "FPS histórico de la Batalla de San Lorenzo (1813) en three.js. Fase 1: el campo de tiro.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "servir": "python3 -m http.server 8099",
+    "ritmo": "node pruebas/ritmo.mjs",
+    "rendimiento": "node pruebas/rendimiento.mjs",
+    "capturas": "node pruebas/capturas.mjs"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "playwright": "1.49.1"
+  }
+}
