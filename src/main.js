@@ -292,7 +292,9 @@ addEventListener('keydown', ev => {
       if (jugador.saltar()) { const a = armaActual(); if (a) a.soltarCarga(); }
       break;
     }
-    case 'ControlLeft': ev.preventDefault(); jugador.alternarPostura('agachado'); break;
+    // Agacharse va en C y no en Ctrl: el navegador se queda con Ctrl+W y
+    // cierra la pestaña, y eso no hay forma de bloquearlo desde la página.
+    case 'KeyC': jugador.alternarPostura('agachado'); break;
     case 'KeyZ': jugador.alternarPostura('tierra'); break;
     case 'KeyF': {
       const a = armaActual();
@@ -303,7 +305,7 @@ addEventListener('keydown', ev => {
     case 'Digit1': cambiarArma('larga'); break;
     case 'Digit2': cambiarArma('sable'); break;
     case 'Digit3': cambiarArma('pistolon'); break;
-    case 'KeyC': hud.verCartuchera(); break;
+    case 'KeyB': hud.verCartuchera(); break;
     case 'KeyV': if (jugador.vendar()) hud.mostrarAviso('Vendando', 'bien'); break;
     case 'KeyO':
       combate = !combate;
@@ -350,17 +352,46 @@ addEventListener('mousemove', ev => {
 });
 
 let bloqueado = false;
+let empezado = false;
+let tSoltado = 0;
+const pantallaPausa = document.getElementById('pausa');
+
+function mostrarPausa (si) {
+  pantallaPausa.classList.toggle('oculto', !si);
+  document.body.style.cursor = si ? 'default' : 'none';
+}
+
+// El navegador rechaza volver a tomar el mouse si se pide demasiado seguido
+// después de soltarlo, así que se espera un momento.
+function pedirMouse () {
+  if (!empezado) return;
+  if (performance.now() - tSoltado < 1300) return;
+  lienzo.requestPointerLock();
+}
+
 document.addEventListener('pointerlockchange', () => {
   bloqueado = document.pointerLockElement === lienzo;
-  if (!bloqueado) { teclas.clear(); apuntando = false; }
+  if (!bloqueado) {
+    teclas.clear();
+    apuntando = false;
+    tSoltado = performance.now();
+    if (empezado) mostrarPausa(true);
+  } else {
+    mostrarPausa(false);
+  }
 });
-document.addEventListener('pointerlockerror', () => { bloqueado = false; });
+document.addEventListener('pointerlockerror', () => {
+  bloqueado = false;
+  if (empezado) mostrarPausa(true);
+});
+pantallaPausa.addEventListener('click', pedirMouse);
 
 // Soltar el mouse pase lo que pase. Sin esto el puntero queda capturado y
 // desaparece en las otras pestañas del navegador.
 function soltarMouse () {
   teclas.clear();
   apuntando = false;
+  document.body.style.cursor = 'default';
   if (document.pointerLockElement) document.exitPointerLock();
 }
 addEventListener('blur', soltarMouse);
@@ -371,9 +402,10 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) solta
 document.getElementById('empezar').addEventListener('click', () => {
   document.getElementById('portada').classList.add('oculto');
   sonido.iniciar();
+  empezado = true;
+  tSoltado = 0;
   lienzo.requestPointerLock();
 });
-lienzo.addEventListener('click', () => { if (!bloqueado) lienzo.requestPointerLock(); });
 
 addEventListener('resize', () => {
   camara.aspect = innerWidth / innerHeight;
@@ -390,8 +422,10 @@ let fps = 60;
 
 function cuadro () {
   requestAnimationFrame(cuadro);
-  const dt = Math.min(0.05, reloj.getDelta());
-  fps = fps * 0.92 + (1 / Math.max(dt, 0.0001)) * 0.08;
+  const crudo = Math.min(0.05, reloj.getDelta());
+  // en pausa se sigue dibujando, pero el mundo no corre
+  const dt = (empezado && !bloqueado) ? 0 : crudo;
+  fps = fps * 0.92 + (1 / Math.max(crudo, 0.0001)) * 0.08;
 
   let masCerca = 999;
   for (const s of soldados) {
@@ -448,7 +482,7 @@ function cuadro () {
     triangles: mundoInfo.tris + pasadaArma.ultimaInfo.tris
   };
 
-  hud.actualizar(dt, {
+  hud.actualizar(crudo, {
     paso: arma ? arma.infoPaso() : null,
     aliento: jugador.aliento,
     cartuchos,

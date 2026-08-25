@@ -85,6 +85,20 @@
   #depurar{position:absolute;left:34px;top:24px;font-size:11px;letter-spacing:.08em;opacity:.55;
     display:none;line-height:1.7;font-variant-numeric:tabular-nums}
 
+  /* ---- pausa ---- */
+  #pausa{position:fixed;inset:0;z-index:19;background:rgba(9,12,16,.82);display:flex;
+    align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(3px)}
+  #pausa.oculto{display:none}
+  #pausa .centro{text-align:center;max-width:520px;padding:24px}
+  #pausa h2{font-family:"Libre Caslon Display",Georgia,serif;font-weight:400;
+    font-size:clamp(30px,5vw,46px);margin:14px 0 10px;letter-spacing:-.01em}
+  #pausa p{color:#8B97A1;font-size:15px;letter-spacing:.05em;line-height:1.7;margin:0 0 22px}
+  #pausa .volver{display:inline-block;font-weight:600;text-transform:uppercase;
+    letter-spacing:.18em;font-size:13px;color:#0F141A;background:var(--bronce);
+    padding:14px 30px}
+  #pausa .nota{margin-top:20px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:#5E6A75}
+
   /* ---- portada ---- */
   #portada{position:fixed;inset:0;z-index:20;background:#0F141A;display:flex;align-items:center;
     justify-content:center;padding:32px}
@@ -95,6 +109,7 @@
   .franja i:nth-child(1){background:var(--azul)}
   .franja i:nth-child(2){background:var(--carmesi)}
   .franja i:nth-child(3){background:var(--bronce)}
+  #pausa .franja{margin:0 auto 26px}
   .eyebrow{color:#D9696C;font-weight:600;text-transform:uppercase;letter-spacing:.18em;font-size:12px}
   h1{font-family:"Libre Caslon Display",Georgia,serif;font-weight:400;font-size:clamp(38px,7vw,62px);
     line-height:1.05;margin:14px 0 6px;letter-spacing:-.01em}
@@ -134,6 +149,16 @@
   <div id="depurar"></div>
 </div>
 
+<div id="pausa" class="oculto">
+  <div class="centro">
+    <div class="franja"><i></i><i></i><i></i></div>
+    <h2>Alto el fuego</h2>
+    <p>El mouse es tuyo otra vez. La batalla espera: nadie avanza ni te tira hasta que vuelvas.</p>
+    <span class="volver">Volver al combate</span>
+    <div class="nota">clic en cualquier parte · Esc para soltar el mouse</div>
+  </div>
+</div>
+
 <div id="portada">
   <div class="caja">
     <div class="franja"><i></i><i></i><i></i></div>
@@ -146,7 +171,7 @@
       <div><kbd>W A S D</kbd><span>moverse</span></div>
       <div><kbd>Shift</kbd><span>correr</span></div>
       <div><kbd>Espacio</kbd><span>saltar</span></div>
-      <div><kbd>Ctrl izq.</kbd><span>agacharse</span></div>
+      <div><kbd>C</kbd><span>agacharse</span></div>
       <div><kbd>Z</kbd><span>cuerpo a tierra</span></div>
       <div><kbd>Click izq.</kbd><span>disparar · marcar el tiempo</span></div>
       <div><kbd>Click der.</kbd><span>apuntar por el cañón</span></div>
@@ -154,14 +179,14 @@
       <div><kbd>F</kbd><span>culatazo / bayonetazo</span></div>
       <div><kbd>1 / 2 / 3</kbd><span>arma larga · sable · pistolón</span></div>
       <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
-      <div><kbd>C</kbd><span>revisar la cartuchera</span></div>
+      <div><kbd>B</kbd><span>revisar la cartuchera</span></div>
       <div><kbd>V</kbd><span>vendarse (cura rápido)</span></div>
       <div><kbd>Enter</kbd><span>volver a formar</span></div>
       <div><kbd>O</kbd><span>que empiece el combate</span></div>
       <div><kbd>F3</kbd><span>datos de depuración</span></div>
     </div>
     <button id="empezar">Formar</button>
-    <div class="pie">Clic para tomar el mouse · Esc para soltarlo</div>
+    <div class="pie">Clic para tomar el mouse · Esc para soltarlo y pausar</div>
   </div>
 </div>
 

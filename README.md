@@ -66,8 +66,12 @@ npm run servir          # o: npx serve .
 ```
 
 En los dos casos hay que hacer clic en **Formar** para que el navegador entregue el
-mouse; `Esc` lo suelta. Anda en Chrome, Edge y Firefox de escritorio — necesita teclado
-y mouse, así que en celular no se juega.
+mouse. **`Esc` lo suelta y pausa la partida**: aparece el cursor, nadie avanza ni te
+tira, y con un clic volvés al combate. Anda en Chrome, Edge y Firefox de escritorio —
+necesita teclado y mouse, así que en celular no se juega.
+
+> Agacharse va en `C` y no en `Ctrl` a propósito: `Ctrl+W` es un atajo del navegador
+> para cerrar la pestaña y ninguna página puede bloquearlo.
 
 ## Controles
 
@@ -75,14 +79,14 @@ y mouse, así que en celular no se juega.
 |---|---|
 | `W A S D` | moverse · `Shift` correr |
 | `Espacio` | saltar |
-| `Ctrl` izq. | agacharse · `Z` cuerpo a tierra |
+| `C` | agacharse · `Z` cuerpo a tierra |
 | Click izq. | disparar · **marcar el tiempo mientras cargás** |
 | Click der. | apuntar por el cañón |
 | `R` | cargar el arma (una apretada; otra la pausa) |
 | `F` | culatazo (tercerola) / bayonetazo (fusil) |
 | `1` `2` `3` | arma larga · sable corvo · pistolón |
 | `G` | tomar el fusil de un realista caído / intercambiar |
-| `C` | revisar la cartuchera |
+| `B` | revisar la cartuchera |
 | `V` | vendarse |
 | `O` | que vengan los realistas |
 | `F3` | datos de depuración |

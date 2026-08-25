@@ -160,7 +160,7 @@ Cada disparo deja una nube de pólvora negra que dura 10–15 s y deriva con el 
 
 ### 4.3 Posturas
 
-De pie, agachado (`Ctrl`) y cuerpo a tierra (`Z`). Cada una cambia velocidad, dispersión
+De pie, agachado (`C`) y cuerpo a tierra (`Z`). Cada una cambia velocidad, dispersión
 y qué tan blanco sos. Pero la regla que importa es histórica:
 
 > **Cuerpo a tierra no se puede recargar.** No hay forma de meter la baqueta por la boca
