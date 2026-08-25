@@ -8,12 +8,14 @@
     "servir": "python3 -m http.server 8099",
     "ritmo": "node pruebas/ritmo.mjs",
     "rendimiento": "node pruebas/rendimiento.mjs",
-    "capturas": "node pruebas/capturas.mjs"
+    "capturas": "node pruebas/capturas.mjs",
+    "empaquetar": "node herramientas/empaquetar.mjs"
   },
   "dependencies": {
     "three": "0.180.0"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "playwright": "1.49.1"
   }
 }

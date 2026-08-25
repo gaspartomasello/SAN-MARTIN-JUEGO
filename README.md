@@ -37,15 +37,27 @@ Lo que ya funciona:
 Lo que **todavía no** está: el duelo completo (guardia, parada perfecta, riposte) es la
 Fase 2, el escenario del convento la Fase 3, la multitud y la moral la Fase 4.
 
-## Cómo correrlo
+## Cómo probarlo
 
-No hay build: three.js está vendorizado en `vendor/`, así que alcanza con servir la
-carpeta desde cualquier servidor estático.
+**Camino corto — un archivo, doble clic.** Empaqueta todo (three.js incluido) en un
+`.html` autocontenido que abre desde el escritorio, sin servidor ni instalación:
+
+```bash
+npm install
+npm run empaquetar      # genera clarin-san-lorenzo.html
+```
+
+**Camino de desarrollo — servidor estático.** No hay build: three.js está vendorizado en
+`vendor/`, así que alcanza con servir la carpeta y recargar el navegador.
 
 ```bash
 npm run servir          # o: npx serve .
 # abrir http://localhost:8099
 ```
+
+En los dos casos hay que hacer clic en **Formar** para que el navegador entregue el
+mouse; `Esc` lo suelta. Anda en Chrome, Edge y Firefox de escritorio — necesita teclado
+y mouse, así que en celular no se juega.
 
 ## Controles
 
