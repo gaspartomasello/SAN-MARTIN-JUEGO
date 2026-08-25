@@ -12,33 +12,55 @@ const RECARGA = 12.5;
 
 function construirFigura () {
   const g = new THREE.Group();
-  const azul = new THREE.MeshStandardMaterial({ color: 0x2c3f63, roughness: 0.92 });
-  const blanco = new THREE.MeshStandardMaterial({ color: 0xd6d0c0, roughness: 0.95 });
+  // Casaca blanca con vivos encarnados: el uniforme de la infantería española.
+  // Y sirve para leer el campo de un vistazo — azul son los nuestros.
+  const casaca = new THREE.MeshStandardMaterial({ color: 0xdcd7c6, roughness: 0.92 });
+  const vivo = new THREE.MeshStandardMaterial({ color: 0x8f2126, roughness: 0.92 });
+  const calzon = new THREE.MeshStandardMaterial({ color: 0xe4e0d2, roughness: 0.95 });
+  const correa = new THREE.MeshStandardMaterial({ color: 0xcbbb96, roughness: 0.9 });
   const piel = new THREE.MeshStandardMaterial({ color: 0xb98d68, roughness: 0.95 });
   const negro = new THREE.MeshStandardMaterial({ color: 0x1b1c20, roughness: 0.9 });
   const hierro = new THREE.MeshStandardMaterial({ color: 0x4a4f55, roughness: 0.5, metalness: 0.8 });
   const madera = new THREE.MeshStandardMaterial({ color: PALETA.maderaOsc, roughness: 0.9 });
 
-  const piernaIzq = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.82, 0.19), blanco);
-  piernaIzq.position.set(-0.11, 0.41, 0);
+  const piernaIzq = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.6, 0.19), calzon);
+  piernaIzq.position.set(-0.11, 0.52, 0);
   const piernaDer = piernaIzq.clone();
   piernaDer.position.x = 0.11;
+  const botaIzq = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, 0.21), negro);
+  botaIzq.position.set(-0.11, 0.12, 0);
+  const botaDer = botaIzq.clone();
+  botaDer.position.x = 0.11;
 
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.6, 0.26), azul);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.6, 0.26), casaca);
   torso.position.y = 1.12;
-  const correa = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.09, 0.28), blanco);
-  correa.position.y = 1.16;
-  correa.rotation.z = 0.5;
+  const faldon = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.16, 0.25), casaca);
+  faldon.position.y = 0.8;
+  const cuello = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.09, 0.27), vivo);
+  cuello.position.y = 1.4;
+  const solapa = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.27), vivo);
+  solapa.position.set(0, 1.1, 0.005);
 
-  const brazoIzq = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.5, 0.14), azul);
+  // correaje cruzado en blanco de gamuza
+  const correaA = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.075, 0.28), correa);
+  correaA.position.y = 1.16; correaA.rotation.z = 0.5;
+  const correaB = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.075, 0.28), correa);
+  correaB.position.y = 1.16; correaB.rotation.z = -0.5;
+
+  const brazoIzq = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.5, 0.14), casaca);
   brazoIzq.position.set(-0.3, 1.13, 0.02);
   const brazoDer = brazoIzq.clone();
   brazoDer.position.x = 0.3;
+  const bocamangaIzq = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.15), vivo);
+  bocamangaIzq.position.set(-0.3, 0.92, 0.02);
+  const bocamangaDer = bocamangaIzq.clone();
+  bocamangaDer.position.x = 0.3;
 
-  const cuello = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.09, 0.15), piel);
-  cuello.position.y = 1.46;
+  const pescuezo = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.09, 0.15), piel);
+  pescuezo.position.y = 1.46;
   const cabeza = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.25, 0.22), piel);
   cabeza.position.y = 1.62;
+  // sombrero oscuro: contra el pasto claro, la silueta se lee igual
   const sombrero = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.24, 8), negro);
   sombrero.position.y = 1.85;
   const ala = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.03, 10), negro);
@@ -57,13 +79,14 @@ function construirFigura () {
   fusil.position.set(0.26, 1.16, 0);
   fusil.rotation.set(-0.25, 0, 0);
 
-  const partes = [piernaIzq, piernaDer, torso, correa, brazoIzq, brazoDer, cuello, cabeza, sombrero, ala];
+  const partes = [piernaIzq, piernaDer, botaIzq, botaDer, torso, faldon, cuello, solapa,
+    correaA, correaB, brazoIzq, brazoDer, bocamangaIzq, bocamangaDer, pescuezo, cabeza, sombrero, ala];
   partes.forEach(m => { m.castShadow = true; g.add(m); });
   fusil.traverse(o => { if (o.isMesh) o.castShadow = true; });
   g.add(fusil);
 
   g.userData.fusil = fusil;
-  g.userData.piernas = [piernaIzq, piernaDer];
+  g.userData.piernas = [piernaIzq, piernaDer, botaIzq, botaDer];
   g.userData.brazos = [brazoIzq, brazoDer];
   return g;
 }
@@ -86,6 +109,7 @@ export class Realista {
     this.teVe = false;
     this.paso = Math.random() * 6;
     this.caida = 0;
+    this.tieneFusil = true;
     this.alDisparar = null;
     this._v = new THREE.Vector3();
   }
@@ -106,6 +130,14 @@ export class Realista {
       return true;
     }
     return false;
+  }
+
+  // el jugador se le puede llevar el fusil con bayoneta
+  entregarFusil () {
+    if (!this.tieneFusil) return false;
+    this.tieneFusil = false;
+    this.malla.userData.fusil.visible = false;
+    return true;
   }
 
   actualizar (dt, jugador) {
@@ -151,6 +183,8 @@ export class Realista {
           const s = Math.sin(this.paso) * 0.42;
           this.malla.userData.piernas[0].rotation.x = s;
           this.malla.userData.piernas[1].rotation.x = -s;
+          this.malla.userData.piernas[2].rotation.x = s;
+          this.malla.userData.piernas[3].rotation.x = -s;
           this.malla.position.y = Math.abs(Math.sin(this.paso)) * 0.035;
         }
         break;

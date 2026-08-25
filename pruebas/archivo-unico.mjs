@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
-const SP = process.env.SP;
-const nav = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+const SP = process.env.SP || process.cwd();
+const nav = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined,
   args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'] });
 const pag = await nav.newPage({ viewport: { width: 1280, height: 720 } });
 const errs = [];
@@ -12,10 +12,10 @@ await pag.click('#empezar');
 await pag.waitForTimeout(2500);
 const ok = await pag.evaluate(() => {
   if (!window.juego) return { arranco: false };
-  const t = window.juego.tercerola;
+  const t = window.juego.arma;
   t.polvora = t.bala = t.cebado = t.amartillada = true;
   t.gatillo();
-  for (let i = 0; i < 30; i++) t.actualizar(1/60, { apuntando: false, presion: 0 });
+  for (let i = 0; i < 30; i++) t.actualizar(1/60, { apuntando: false, presion: 0, penalCarga: 1, dispersion: 1 });
   return { arranco: true, tiros: t.tiros, nubes: window.juego.humo.nubes.filter(n => n.viva).length };
 });
 await pag.waitForTimeout(1200);

@@ -112,6 +112,38 @@ function siluetaBlanco () {
   return g;
 }
 
+// Sin mapa de entorno, un material metálico no tiene nada que reflejar y sale
+// negro. Este es el cielo del amanecer reducido a una tira: alcanza para que el
+// acero parezca acero y el latón, latón.
+export function entornoIluminacion (render) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 128;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 128);
+  g.addColorStop(0.00, '#5f86b8');
+  g.addColorStop(0.42, '#a9c0d6');
+  g.addColorStop(0.52, '#f0d3a2');
+  g.addColorStop(0.62, '#b6a473');
+  g.addColorStop(1.00, '#6d6244');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 256, 128);
+  // el sol bajo, hacia el este
+  const sol = x.createRadialGradient(200, 60, 0, 200, 60, 46);
+  sol.addColorStop(0, 'rgba(255,240,205,1)');
+  sol.addColorStop(1, 'rgba(255,240,205,0)');
+  x.fillStyle = sol;
+  x.fillRect(150, 14, 100, 92);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const pmrem = new THREE.PMREMGenerator(render);
+  const entorno = pmrem.fromEquirectangular(tex).texture;
+  pmrem.dispose();
+  tex.dispose();
+  return entorno;
+}
+
 export function construirMundo (escena) {
   escena.add(cieloDomo());
   escena.fog = new THREE.Fog(0xd6c6a8, 70, 230);
@@ -129,7 +161,7 @@ export function construirMundo (escena) {
   sol.shadow.camera.far = 160;
   sol.shadow.bias = -0.0009;
   escena.add(sol);
-  escena.add(new THREE.HemisphereLight(0xbcd2e8, 0x8a7a52, 1.05));
+  escena.add(new THREE.HemisphereLight(0xbcd2e8, 0x8a7a52, 0.55));
 
   // --- suelo ---
   const suelo = new THREE.Mesh(

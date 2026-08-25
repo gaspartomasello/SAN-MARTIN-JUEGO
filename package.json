@@ -9,7 +9,8 @@
     "ritmo": "node pruebas/ritmo.mjs",
     "rendimiento": "node pruebas/rendimiento.mjs",
     "capturas": "node pruebas/capturas.mjs",
-    "empaquetar": "node herramientas/empaquetar.mjs"
+    "empaquetar": "node herramientas/empaquetar.mjs",
+    "archivo-unico": "node pruebas/archivo-unico.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

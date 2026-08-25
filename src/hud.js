@@ -14,6 +14,8 @@ export class Hud {
     this.alientoBarra = $('#aliento i');
     this.cartuchera = $('#cartuchera');
     this.cartucheraN = $('#cartuchera .n');
+    this.ahora = $('#ahora');
+    this.tomar = $('#tomar');
     this.aviso = $('#aviso');
     this.estado = $('#estado');
     this.depurar = $('#depurar');
@@ -23,6 +25,7 @@ export class Hud {
 
     this.tAviso = 0;
     this.tCartuchera = 0;
+    this.vecesQueAcerto = 0;     // el cartel grande se apaga solo cuando ya entendiste
     this.verDepurar = false;
     this._grano();
   }
@@ -70,6 +73,8 @@ export class Hud {
       this.pasoProg.style.width = (p.progreso * 100).toFixed(1) + '%';
       if (p.golpe) {
         this.paso.classList.add('golpe');
+        // el aviso grande: mientras la ventana está abierta y no marcaste
+        this.ahora.classList.toggle('si', !!p.enVentana && this.vecesQueAcerto < 6);
         const [a, b] = p.ventana;
         this.pasoWin.style.left = (a * 100).toFixed(1) + '%';
         this.pasoWin.style.width = ((b - a) * 100).toFixed(1) + '%';
@@ -77,10 +82,14 @@ export class Hud {
           : (p.marcado === 'bien' ? '#9BC48F' : 'var(--bronce)');
       } else {
         this.paso.classList.remove('golpe');
+        this.ahora.classList.remove('si');
       }
     } else {
       this.paso.style.opacity = '0';
+      this.ahora.classList.remove('si');
     }
+
+    this.tomar.style.opacity = datos.puedeTomarFusil ? '1' : '0';
 
     // --- aliento: sólo aparece cuando falta ---
     const al = datos.aliento;
@@ -109,12 +118,13 @@ export class Hud {
     this.sangre.style.opacity = h === 0 ? '0' : (h === 1 ? '0.42' : (h === 2 ? '0.8' : '0.95'));
 
     // --- línea de estado ---
-    let txt = `arma: <b>${datos.estadoArma}</b>`;
+    let txt = `${datos.nombreArma} · <b>${datos.estadoArma}</b> · ${datos.postura}`;
     if (datos.emplome > 0) txt += ` · ánima: ${datos.emplome} tiros`;
     if (h === 1) txt += ' · <span class="mal">herido</span>';
     if (h === 2) txt += ' · <span class="mal">grave</span>';
     if (h >= 3) txt += ' · <span class="mal">fuera de combate — Enter para volver a formar</span>';
     if (datos.vendando > 0) txt += ` · vendando ${datos.vendando.toFixed(1)}s`;
+    if (datos.postura === 'cuerpo a tierra') txt += ' · <span class="mal">no se puede cargar tirado</span>';
     txt += `<br>realistas en pie: ${datos.enemigos} · vendas: ${datos.vendas}`;
     this.estado.innerHTML = txt;
 

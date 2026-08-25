@@ -75,11 +75,20 @@ Guardarse el tiro para el momento justo es la decisión que se repite mil veces.
 
 | Arma | Tiros | Recarga | Rol |
 |---|---|---|---|
-| Sable curvo de caballería | — | — | Principal cuerpo a cuerpo. Rápido, tajos, letal al galope. |
+| Sable corvo | — | — | Principal cuerpo a cuerpo. Hoja de curva profunda, guarda en cruz, pomo en gancho: el de San Martín. |
 | Tercerola (carabina de chispa) | 1 | ~14 s | Único tiro a distancia propio del granadero. |
-| Pistolas de arzón ×2 | 1 + 1 | No se recargan a caballo | Dos tiros de emergencia. A menos de 10 m. |
-| Fusil de chispa con bayoneta | 1 | ~16 s | Botín del enemigo. Más alcance en melee, más lento. Dispara a bocajarro en pleno duelo. |
+| Pistolón de arzón | 1 | ~7 s | El tiro de emergencia. Inútil más allá de diez metros. |
+| Fusil de chispa con bayoneta | 1 | ~12 s | **Premio**: se le saca a un realista caído con `G`. Más alcance y más daño en el cuerpo a cuerpo, más lento de cargar. |
 | Cañón de a 4 (2 piezas) | metralla | escena guionada | Set piece: dar vuelta los cañones tomados contra las embarcaciones. |
+
+**El golpe corto (`F`).** Cada arma larga pega con lo que tiene: la tercerola de
+caballería **no llevaba bayoneta** —los granaderos eran jinetes—, así que da un
+**culatazo** que aturde y empuja. El fusil que le sacás al enemigo da el **bayonetazo**,
+con más alcance y más daño. Por eso el fusil es un premio y no un arma más: matás a uno,
+le levantás el arma y ganás alcance en el acero.
+
+Y si el arma está cargada, después del puntazo podés soltarle el tiro **a bocajarro**:
+muerte instantánea, pero quedás descargado y ciego de humo un segundo entero.
 
 **Lo que no va:** granadas. Los granaderos se llamaban así por herencia; en 1813, a
 caballo, no las usaban. Meter granadas sería el atajo que arruina la identidad del juego.
@@ -95,7 +104,9 @@ caballo, no las usaban. Meter granadas sería el atajo que arruina la identidad 
 
 ### 4.2 La recarga (el sistema estrella)
 
-Siete pasos reales, mapeados a tres momentos de timing. Se mantiene apretada `R`:
+Siete pasos reales, mapeados a tres momentos de timing. Se mantiene apretada `R` y se
+marca el tiempo con **click izquierdo** —el dedo ya está ahí, y mientras cargás el click
+no dispara—. Un cartel de **¡AHORA!** avisa las primeras veces y después se apaga solo.
 
 1. Sacar el cartucho de la cartuchera
 2. **Morder el cartucho** ← timing
@@ -135,6 +146,21 @@ Cada disparo deja una nube de pólvora negra que dura 10–15 s y deriva con el 
 - Se acumula: después de tres descargas de línea el campo es niebla y la batalla se
   resuelve obligatoriamente a arma blanca. Eso pasó de verdad y acá pasa por sistema.
 - Táctica emergente: disparar y desplazarse lateralmente, porque tu propia nube te marca.
+
+### 4.3 Posturas
+
+De pie, agachado (`Ctrl`) y cuerpo a tierra (`Z`). Cada una cambia velocidad, dispersión
+y qué tan blanco sos. Pero la regla que importa es histórica:
+
+> **Cuerpo a tierra no se puede recargar.** No hay forma de meter la baqueta por la boca
+> del cañón acostado.
+
+Así que tirarte te salva de una descarga cerrada y te deja sin poder cargar. Tenés que
+decidir cuándo levantarte, y ese momento es el más peligroso de la partida. Las
+transiciones tardan, así que cada postura es un compromiso y no un botón de esquivar.
+
+El salto (`Espacio`) existe para pasar un parapeto: bajo, pesado, sin control en el aire,
+gasta aliento e interrumpe la carga. No es para brincar en un tiroteo.
 
 ---
 
@@ -260,7 +286,16 @@ fallas de percusión reales, sin vendajes, sin recarga rápida).
   no con un número. El estado del arma se lee **en el modelo**: rastrillo abierto o cerrado,
   martillo arriba o abajo. Los toques de clarín indican el objetivo. Todo con opción de
   activar indicadores clásicos por accesibilidad.
-- **Cámara:** FOV 80 con golpe al disparar; sacudida por trauma (`shake = trauma²`, ruido
+- **Apuntar** (`click derecho`): el ojo se pone por encima y por detrás del cañón, la
+  culata queda detrás de la cámara y se ve el caño alejándose hacia el punto de mira de
+  latón —lo único que había para apuntar en un ánima lisa—. El arma se dibuja en una
+  pasada aparte y esa capa se **desenfoca salvo en el centro**: el fierro borroso, el
+  objetivo nítido. Es mucho más barato que desenfocar la escena entera.
+- **El fogonazo** es un chorro de pólvora ardiendo de casi un metro que ilumina el pasto,
+  más una estrella que se lee desde cualquier ángulo. La bala no es trazadora —no se ve—,
+  pero deja una **estela finita que se dibuja a 450 m/s**, la velocidad real: se entiende
+  hacia dónde salió el tiro sin que parezca un láser.
+- **Cámara:** FOV 80, que baja a 62 al apuntar; golpe de FOV al disparar; sacudida por trauma (`shake = trauma²`, ruido
   Perlin en rotación) para los cañonazos; balanceo lateral al correr; tirón direccional al
   ser herido.
 - **Audio:** al reventar un cañón cerca, filtro pasabajos a 800 Hz + acúfeno durante 4 s

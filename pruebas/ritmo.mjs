@@ -7,7 +7,7 @@ await pag.goto((process.env.URL || 'http://localhost:8099') + '/index.html', { w
 await pag.waitForTimeout(2000);
 
 const r = await pag.evaluate(() => {
-  const t = window.juego.tercerola;
+  const t = window.juego.arma;
   const dt = 1 / 120;
   function correr (jugarBien, presion) {
     // reiniciar el arma
@@ -22,7 +22,7 @@ const r = await pag.evaluate(() => {
         if (info.progreso >= a + (b - a) * 0.3 && info.progreso <= b) t.golpe();
       }
       const antes = t.marcado;
-      t.actualizar(dt, { apuntando: false, presion });
+      t.actualizar(dt, { apuntando: false, presion, penalCarga: 1, dispersion: 1 });
       if (t.marcado === 'bien' && antes !== 'bien') aciertos++;
       if (t.marcado === 'mal' && antes !== 'mal') fallos++;
       seg += dt;
@@ -35,15 +35,15 @@ const r = await pag.evaluate(() => {
 
   // disparo
   t.gatillo();
-  for (let i = 0; i < 30; i++) t.actualizar(dt, { apuntando: false, presion: 0 });
+  for (let i = 0; i < 30; i++) t.actualizar(dt, { apuntando: false, presion: 0, penalCarga: 1, dispersion: 1 });
   const trasTiro = { etiqueta: t.etiquetaEstado, cargada: t.cargada, tiros: t.tiros, nubes: window.juego.humo.nubes.filter(n => n.viva).length };
 
   // retomar una carga a medias
   t.iniciarCarga();
-  for (let i = 0; i < 120 * 5; i++) t.actualizar(dt, { apuntando: false, presion: 0 });
+  for (let i = 0; i < 120 * 5; i++) t.actualizar(dt, { apuntando: false, presion: 0, penalCarga: 1, dispersion: 1 });
   const mitad = { paso: t.paso, etiqueta: t.etiquetaEstado };
   t.soltarCarga();
-  for (let i = 0; i < 120 * 3; i++) t.actualizar(dt, { apuntando: false, presion: 0 });
+  for (let i = 0; i < 120 * 3; i++) t.actualizar(dt, { apuntando: false, presion: 0, penalCarga: 1, dispersion: 1 });
   const trasSoltar = { paso: t.paso, igual: t.paso === mitad.paso };
   t.iniciarCarga();
   const retoma = { pasoAlRetomar: t.paso, secuencia: t.secuencia.length };

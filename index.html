@@ -49,6 +49,19 @@
   #cartuchera .n{font-family:"Libre Caslon Display",Georgia,serif;font-size:38px;line-height:1}
   #cartuchera .t{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
 
+  #ahora{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:0;
+    font-size:clamp(38px,7vw,64px);letter-spacing:.1em;font-weight:600;color:var(--bronce);
+    text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 10px rgba(0,0,0,.9);pointer-events:none;
+    transition:opacity .07s linear}
+  #ahora.si{opacity:1}
+  #ahora small{display:block;font-size:15px;letter-spacing:.22em;opacity:.85;margin-top:6px;
+    color:var(--hueso)}
+
+  #tomar{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);opacity:0;
+    transition:opacity .2s;font-size:14px;letter-spacing:.14em;text-transform:uppercase;
+    text-shadow:0 2px 6px rgba(0,0,0,.9)}
+  #tomar b{color:var(--bronce);font-weight:600}
+
   #aviso{position:absolute;left:50%;top:64px;transform:translateX(-50%);text-align:center;
     opacity:0;transition:opacity .3s;text-shadow:0 2px 8px rgba(0,0,0,.9);
     font-size:16px;letter-spacing:.13em;text-transform:uppercase;font-weight:600}
@@ -102,6 +115,8 @@
   <div id="paso"><div class="nombre"></div><div class="cont"><div class="prog"></div><div class="win"></div></div></div>
   <div id="aliento"><i></i></div>
   <div id="cartuchera"><div class="n">0</div><div class="t">cartuchos</div></div>
+  <div id="ahora">¡AHORA!<small>click izquierdo</small></div>
+  <div id="tomar"><b>[G]</b> tomar el fusil con bayoneta</div>
   <div id="aviso"></div>
   <div id="estado"></div>
   <div id="depurar"></div>
@@ -112,20 +127,24 @@
     <div class="franja"><i></i><i></i><i></i></div>
     <div class="eyebrow">Fase 1 · prototipo jugable</div>
     <h1>El campo de tiro</h1>
-    <p class="sub">Cuartel del Retiro, diciembre de 1812. Acá se responde la única pregunta que importa
-      todavía: <strong>¿recargar es divertido?</strong> Tenés un tiro. Después, catorce segundos.</p>
+    <p class="sub">Cuartel del Retiro, diciembre de 1812. Tenés un tiro y después diez segundos de
+      carga. Mientras cargás, <strong>hacé click cuando se encienda ¡AHORA!</strong> — acertar los
+      tres tiempos es la diferencia entre volver a tirar o comerte una bayoneta.</p>
     <div class="teclas">
       <div><kbd>W A S D</kbd><span>moverse</span></div>
       <div><kbd>Shift</kbd><span>correr</span></div>
-      <div><kbd>Click izq.</kbd><span>disparar / tajo</span></div>
+      <div><kbd>Espacio</kbd><span>saltar</span></div>
+      <div><kbd>Ctrl izq.</kbd><span>agacharse</span></div>
+      <div><kbd>Z</kbd><span>cuerpo a tierra</span></div>
+      <div><kbd>Click izq.</kbd><span>disparar · marcar el tiempo</span></div>
       <div><kbd>Click der.</kbd><span>apuntar por el cañón</span></div>
       <div><kbd>R sostenida</kbd><span>cargar el arma</span></div>
-      <div><kbd>Espacio</kbd><span>golpe de tiempo</span></div>
-      <div><kbd>1 / 2</kbd><span>tercerola / sable</span></div>
+      <div><kbd>F</kbd><span>culatazo / bayonetazo</span></div>
+      <div><kbd>1 / 2 / 3</kbd><span>arma larga · sable · pistolón</span></div>
+      <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
       <div><kbd>C</kbd><span>revisar la cartuchera</span></div>
-      <div><kbd>V</kbd><span>vendarse</span></div>
-      <div><kbd>L</kbd><span>limpiar el ánima</span></div>
-      <div><kbd>G</kbd><span>que vengan los realistas</span></div>
+      <div><kbd>V</kbd><span>vendarse · <kbd>L</kbd> limpiar</span></div>
+      <div><kbd>O</kbd><span>que vengan los realistas</span></div>
       <div><kbd>F3</kbd><span>datos de depuración</span></div>
     </div>
     <button id="empezar">Formar</button>

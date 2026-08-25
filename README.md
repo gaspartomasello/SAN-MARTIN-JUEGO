@@ -30,6 +30,12 @@ Lo que ya funciona:
   segundos y medio; si te pierden en el humo, van a donde te vieron por última vez.
 - **HUD diegético**: el estado del arma se lee en el modelo —martillo y rastrillo—, los
   cartuchos se cuentan abriendo la cartuchera y la salud es una viñeta, no una barra.
+- **Tres armas y un premio**: tercerola, sable corvo y pistolón de arzón; el fusil con
+  bayoneta se le saca a un caído con `G` y da más alcance en el acero.
+- **Posturas**: de pie, agachado y cuerpo a tierra — y tirado **no se puede recargar**,
+  porque no entra la baqueta.
+- **Apuntado por el cañón** con desenfoque del arma salvo en el centro, fogonazo que
+  ilumina el campo y estela dibujada a la velocidad real de la bala.
 - **Cámara**: sacudida por trauma, golpe de FOV, retroceso, cabeceo y respiración.
 - **Sonido procedural** con Web Audio, sin un solo archivo de audio: el disparo deja
   sordera momentánea con un pasabajos que se abre de a poco.
@@ -64,14 +70,17 @@ y mouse, así que en celular no se juega.
 | Tecla | Acción |
 |---|---|
 | `W A S D` | moverse · `Shift` correr |
-| Click izq. | disparar / tajo |
+| `Espacio` | saltar |
+| `Ctrl` izq. | agacharse · `Z` cuerpo a tierra |
+| Click izq. | disparar · **marcar el tiempo mientras cargás** |
 | Click der. | apuntar por el cañón |
 | `R` sostenida | cargar el arma |
-| `Espacio` | golpe de tiempo durante la carga |
-| `1` / `2` | tercerola / sable |
+| `F` | culatazo (tercerola) / bayonetazo (fusil) |
+| `1` `2` `3` | arma larga · sable corvo · pistolón |
+| `G` | tomar el fusil de un realista caído / intercambiar |
 | `C` | revisar la cartuchera |
 | `V` | vendarse · `L` limpiar el ánima |
-| `G` | que vengan los realistas |
+| `O` | que vengan los realistas |
 | `F3` | datos de depuración |
 
 ## Pruebas

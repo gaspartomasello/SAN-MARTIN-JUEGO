@@ -1,16 +1,17 @@
 import * as THREE from 'three';
-import { construirMundo } from './mundo.js';
+import { construirMundo, entornoIluminacion } from './mundo.js';
 import { Humo } from './humo.js';
+import { Fuego } from './fuego.js';
 import { Sonido } from './audio.js';
 import { Jugador } from './jugador.js';
-import { Tercerola } from './tercerola.js';
+import { ArmaFuego } from './armas.js';
 import { Sable } from './sable.js';
 import { Realista } from './enemigo.js';
+import { PasadaArma } from './pasadaArma.js';
 import { Hud } from './hud.js';
 
 // ---------------------------------------------------------------------------
 // Fase 1 · El campo de tiro
-// La pregunta que este prototipo tiene que contestar: ¿recargar es divertido?
 // ---------------------------------------------------------------------------
 
 const lienzo = document.createElement('canvas');
@@ -29,51 +30,80 @@ const camara = new THREE.PerspectiveCamera(80, innerWidth / innerHeight, 0.05, 6
 camara.rotation.order = 'YXZ';
 escena.add(camara);
 
-// El arma se dibuja en una pasada aparte, con una cámara de 55°: con el gran
-// angular del mundo las manos se estiran como en un espejo de feria.
+// El arma se dibuja aparte, con cámara de 55°: con el gran angular del mundo
+// las manos se estiran como en un espejo de feria.
 const escenaArma = new THREE.Scene();
 const camaraArma = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.01, 5);
 escenaArma.add(camaraArma);
-escenaArma.add(new THREE.HemisphereLight(0xcfe0f0, 0x6b5f42, 1.5));
-const luzArma = new THREE.DirectionalLight(0xffe0b4, 2.1);
-luzArma.position.set(0.6, 1.2, 0.4);
+escenaArma.add(new THREE.HemisphereLight(0xcfe0f0, 0x6b5f42, 1.2));
+const luzArma = new THREE.DirectionalLight(0xffe8c8, 2.4);
+luzArma.position.set(0.8, 1.1, 0.9);
 escenaArma.add(luzArma);
+const relleno = new THREE.DirectionalLight(0x9fb6d0, 0.9);
+relleno.position.set(-0.9, 0.2, 0.6);
+escenaArma.add(relleno);
+
+const entorno = entornoIluminacion(render);
+escena.environment = entorno;
+escena.environmentIntensity = 0.3;      // en el mundo, apenas para los metales
+escenaArma.environment = entorno;
+escenaArma.environmentIntensity = 0.95; // en el arma, que el acero se vea acero
 
 const mundo = construirMundo(escena);
 const humo = new Humo(escena);
+const fuego = new Fuego(escena, camara);
 const sonido = new Sonido();
 const hud = new Hud();
 const jugador = new Jugador(camara, mundo.colisiones);
-const tercerola = new Tercerola(camaraArma, camara, sonido, humo);
-const sable = new Sable(camaraArma, sonido);
+const pasadaArma = new PasadaArma(render, escenaArma, camaraArma);
 
-// el fogonazo tiene que alumbrar el mundo, no sólo el arma
-const luzBoca = new THREE.PointLight(0xffc46a, 0, 14, 2);
+const luzBoca = new THREE.PointLight(0xffc46a, 0, 16, 2);
 escena.add(luzBoca);
 
 const rayo = new THREE.Raycaster();
 rayo.far = 220;
 const enemigos = [];
-let armaActual = 'tercerola';
+
+// --------------------------- armas ---------------------------
+const sable = new Sable(camaraArma, sonido);
+const armas = {
+  tercerola: new ArmaFuego('tercerola', camaraArma, camara, sonido, humo),
+  pistolon: new ArmaFuego('pistolon', camaraArma, camara, sonido, humo),
+  fusil: null
+};
+let armaLarga = 'tercerola';      // cuál de las dos largas llevo en la mano
+let enMano = 'larga';             // 'larga' | 'sable' | 'pistolon'
+let cartuchos = 24;
 let apuntando = false;
 let oleadas = false;
 let tProxima = 0;
-let tomados = 0;                 // blancos acertados
 
-tercerola.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
+function armaActual () {
+  if (enMano === 'sable') return null;
+  return enMano === 'pistolon' ? armas.pistolon : armas[armaLarga];
+}
+
+function conectar (arma) {
+  arma.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
+  arma.alGastarCartucho = () => { cartuchos = Math.max(0, cartuchos - 1); };
+  arma.alDisparar = resolverDisparo;
+  arma.alGolpear = (cfg) => resolverGolpe(cfg.alcance, cfg.dano, cfg.nombre);
+}
+conectar(armas.tercerola);
+conectar(armas.pistolon);
+armas.tercerola.sacar();
+
+jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 
 // --------------------------- balística ---------------------------
-tercerola.alDisparar = (origen, dir, dispersion) => {
+function resolverDisparo (origen, dir, dispersion) {
   jugador.sacudir(0.42);
-  luzBoca.position.copy(origen);
-  luzBoca.intensity = 26;
   jugador.retroPitch += 0.075;
-  jugador.fov = jugador.fovBase + 5;
-  setTimeout(() => { jugador.fov = jugador.fovBase; }, 90);
-  hud.destello(0.5);
+  luzBoca.position.copy(origen);
+  luzBoca.intensity = 30;
+  hud.destello(0.45);
 
   const d = dir.clone();
-  // cono de dispersión: ánima lisa, sin estrías
   const a = Math.random() * Math.PI * 2;
   const r = Math.sqrt(Math.random()) * dispersion;
   const eje1 = new THREE.Vector3(0, 1, 0).cross(d).normalize();
@@ -87,41 +117,98 @@ tercerola.alDisparar = (origen, dir, dispersion) => {
   for (const e of enemigos) if (e.vivo) candidatos.push(e.malla);
   for (const b of mundo.blancos) candidatos.push(b);
   const golpes = rayo.intersectObjects(candidatos, true);
-  if (golpes.length === 0) return;
 
   const g = golpes[0];
+  fuego.disparo(origen, d, g ? g.distance : 140);
+  if (!g) return;
+
   let raiz = g.object;
   while (raiz.parent && raiz.parent !== escena) raiz = raiz.parent;
 
   const enemigo = enemigos.find(e => e.malla === raiz);
   if (enemigo) {
     sonido.impactoCarne();
-    humo.soltar(g.point, d, { cantidad: 3, vida: 2.5, empuje: 1.4, radio: 0.1, opacidad: 0.35, claro: 0.0 });
+    humo.soltar(g.point, d, { cantidad: 3, vida: 2.5, empuje: 1.4, radio: 0.1, opacidad: 0.35, claro: 0 });
     if (enemigo.recibir(2, d)) hud.mostrarAviso('Realista abatido', 'bien');
   } else if (raiz.userData.blanco) {
     sonido.impactoMadera();
-    tomados++;
     hud.mostrarAviso(`Blanco a ${Math.round(g.distance)} m`, 'bien');
     humo.soltar(g.point, d, { cantidad: 2, vida: 2, empuje: 1, radio: 0.09, opacidad: 0.3 });
   }
-};
+}
 
-// --------------------------- sable ---------------------------
-sable.alGolpear = () => {
+// --------------------------- arma blanca ---------------------------
+function resolverGolpe (alcance, dano, nombre) {
   const frente = new THREE.Vector3();
   camara.getWorldDirection(frente);
   for (const e of enemigos) {
     if (!e.vivo) continue;
     const hacia = new THREE.Vector3().subVectors(e.cabeza(), camara.position);
     const dist = hacia.length();
-    if (dist > 2.4) continue;
+    if (dist > alcance) continue;
     hacia.normalize();
-    if (hacia.dot(frente) < 0.55) continue;
+    if (hacia.dot(frente) < 0.5) continue;
     sonido.impactoCarne();
-    if (e.recibir(1, frente)) hud.mostrarAviso('A sablazos', 'bien');
+    if (e.recibir(dano, frente)) hud.mostrarAviso(nombre, 'bien');
     return;
   }
-};
+}
+sable.alGolpear = () => resolverGolpe(2.4, 2, 'A sablazos');
+
+// --------------------------- tomar el fusil ---------------------------
+function caidoConFusil () {
+  for (const e of enemigos) {
+    if (e.vivo || !e.tieneFusil) continue;
+    if (e.pos.distanceTo(jugador.pos) < 2.6) return e;
+  }
+  return null;
+}
+
+function tomarOIntercambiar () {
+  const caido = caidoConFusil();
+  if (!armas.fusil) {
+    if (!caido) { hud.mostrarAviso('No hay ningún fusil cerca', 'malo'); return; }
+    caido.entregarFusil();
+    armas.fusil = new ArmaFuego('fusil', camaraArma, camara, sonido, humo);
+    conectar(armas.fusil);
+    cambiarLarga('fusil');
+    hud.mostrarAviso('Fusil con bayoneta tomado', 'bien');
+    return;
+  }
+  // ya lo tengo: G intercambia entre las dos armas largas
+  cambiarLarga(armaLarga === 'fusil' ? 'tercerola' : 'fusil');
+  hud.mostrarAviso(armas[armaLarga].nombre, 'bien');
+}
+
+function guardarTodo () {
+  const a = armaActual();
+  if (a) a.soltarCarga();          // la carga a medias se conserva, no se borra
+  armas.tercerola.guardar();
+  armas.pistolon.guardar();
+  if (armas.fusil) armas.fusil.guardar();
+  sable.guardar();
+}
+
+function cambiarLarga (cual) {
+  guardarTodo();
+  armaLarga = cual;
+  enMano = 'larga';
+  armas[armaLarga].sacar();
+}
+
+function cambiarArma (cual) {
+  if (enMano === cual) return;
+  guardarTodo();
+  enMano = cual;
+  if (cual === 'sable') {
+    sable.sacar();
+    hud.mostrarAviso('Sable corvo', 'bien');
+  } else {
+    const a = armaActual();
+    a.sacar();
+    hud.mostrarAviso(a.aMedias ? `${a.nombre} · carga a medias` : a.nombre, 'bien');
+  }
+}
 
 // --------------------------- enemigos ---------------------------
 function soltarRealista () {
@@ -129,11 +216,11 @@ function soltarRealista () {
   const z = -58 - Math.random() * 22;
   const e = new Realista(escena, humo, sonido, new THREE.Vector3(x, 0, z));
   e.alDisparar = (quien, origen, dir) => {
-    // ¿le pegó al jugador? cono ancho, distancia y humo cuentan
     const haciaJugador = new THREE.Vector3().subVectors(jugador.pos, origen).normalize();
     const dist = origen.distanceTo(jugador.pos);
     const oc = humo.oclusion(origen, jugador.pos);
-    const punteria = Math.max(0.02, 0.62 - dist / 110 - oc * 0.45);
+    // agachado sos menos blanco; tirado, casi nada
+    const punteria = Math.max(0.015, (0.62 - dist / 110 - oc * 0.45) * jugador.cfgPostura.blanco);
     if (haciaJugador.dot(dir) > 0.999 && Math.random() < punteria) {
       jugador.herir();
       sonido.golpeRecibido();
@@ -157,21 +244,39 @@ function limpiarCampo () {
 
 // --------------------------- entrada ---------------------------
 const teclas = new Set();
-let sensibilidad = 0.0021;
+const sensibilidad = 0.0021;
 
 addEventListener('keydown', ev => {
   if (ev.code === 'Escape') return;
   teclas.add(ev.code);
   if (ev.repeat) return;
   switch (ev.code) {
-    case 'KeyR': if (armaActual === 'tercerola') tercerola.iniciarCarga(); break;
-    case 'Space': ev.preventDefault(); tercerola.golpe(); break;
-    case 'Digit1': cambiarArma('tercerola'); break;
+    case 'KeyR': {
+      const a = armaActual();
+      if (!a) break;
+      if (cartuchos <= 0 && !a.aMedias && !a.cargada) { hud.mostrarAviso('No quedan cartuchos', 'malo'); break; }
+      a.iniciarCarga();
+      break;
+    }
+    case 'Space':
+      ev.preventDefault();
+      jugador.saltar();
+      break;
+    case 'ControlLeft': ev.preventDefault(); jugador.alternarPostura('agachado'); break;
+    case 'KeyZ': jugador.alternarPostura('tierra'); break;
+    case 'KeyF': {
+      const a = armaActual();
+      if (a) a.puntazo(); else sable.tajo();
+      break;
+    }
+    case 'KeyG': tomarOIntercambiar(); break;
+    case 'Digit1': cambiarArma('larga'); break;
     case 'Digit2': cambiarArma('sable'); break;
+    case 'Digit3': cambiarArma('pistolon'); break;
     case 'KeyC': hud.verCartuchera(); break;
     case 'KeyV': if (jugador.vendar()) hud.mostrarAviso('Vendando', 'bien'); break;
-    case 'KeyL': tercerola.limpiar(); break;
-    case 'KeyG':
+    case 'KeyL': { const a = armaActual(); if (a) a.limpiar(); break; }
+    case 'KeyO':
       oleadas = !oleadas;
       hud.mostrarAviso(oleadas ? '¡Ahí vienen!' : 'Alto el fuego', oleadas ? 'malo' : 'bien');
       if (!oleadas) limpiarCampo();
@@ -181,6 +286,7 @@ addEventListener('keydown', ev => {
     case 'Enter':
       if (!jugador.vivo) {
         jugador.heridas = 0; jugador.vendas = 3; jugador.aliento = 100;
+        jugador.postura = 'pie';
         jugador.pos.set(0, 1.68, 4);
         limpiarCampo();
         hud.mostrarAviso('En pie', 'bien');
@@ -190,27 +296,19 @@ addEventListener('keydown', ev => {
 });
 addEventListener('keyup', ev => {
   teclas.delete(ev.code);
-  if (ev.code === 'KeyR') tercerola.soltarCarga();
+  if (ev.code === 'KeyR') { const a = armaActual(); if (a) a.soltarCarga(); }
 });
-
-function cambiarArma (cual) {
-  if (armaActual === cual) return;
-  armaActual = cual;
-  if (cual === 'sable') {
-    tercerola.soltarCarga();       // la carga queda donde estaba: se retoma después
-    tercerola.guardada = true;
-    sable.sacar();
-    hud.mostrarAviso(tercerola.aMedias ? 'Carga a medias' : 'Sable', 'bien');
-  } else {
-    sable.guardar();
-    tercerola.guardada = false;
-  }
-}
 
 addEventListener('mousedown', ev => {
   if (!bloqueado) return;
   if (ev.button === 0) {
-    if (armaActual === 'tercerola') tercerola.gatillo();
+    const a = armaActual();
+    // mientras cargás, el click marca el tiempo en vez de disparar
+    if (a && a.cargando) {
+      if (a.golpe() === 'bien') hud.vecesQueAcerto++;
+      return;
+    }
+    if (a) a.gatillo();
     else sable.tajo();
   }
   if (ev.button === 2) apuntando = true;
@@ -241,6 +339,7 @@ addEventListener('resize', () => {
   camaraArma.aspect = innerWidth / innerHeight;
   camaraArma.updateProjectionMatrix();
   render.setSize(innerWidth, innerHeight);
+  pasadaArma.redimensionar(innerWidth, innerHeight);
 });
 
 // --------------------------- bucle ---------------------------
@@ -252,7 +351,6 @@ function cuadro () {
   const dt = Math.min(0.05, reloj.getDelta());
   fps = fps * 0.92 + (1 / Math.max(dt, 0.0001)) * 0.08;
 
-  // presión: enemigo cerca + poco aliento + herido. Achica las ventanas de tiempo.
   let masCerca = 999;
   for (const e of enemigos) if (e.vivo) masCerca = Math.min(masCerca, e.pos.distanceTo(jugador.pos));
   const presion = Math.min(1,
@@ -260,17 +358,25 @@ function cuadro () {
     Math.max(0, (45 - jugador.aliento) / 45) * 0.2 +
     jugador.heridas * 0.15);
 
-  jugador.actualizar(dt, teclas, apuntando, tercerola.cargando);
-  tercerola.actualizar(dt, { apuntando, presion });
+  const arma = armaActual();
+  const quiereApuntar = apuntando && !!arma && !arma.cargando && arma.tGolpe < 0;
+  jugador.actualizar(dt, teclas, quiereApuntar, arma ? arma.cargando : false);
+
+  const p = jugador.cfgPostura;
+  const ctx = { apuntando, presion, penalCarga: p.penalCarga, dispersion: p.dispersion };
+  armas.tercerola.actualizar(dt, ctx);
+  armas.pistolon.actualizar(dt, ctx);
+  if (armas.fusil) armas.fusil.actualizar(dt, ctx);
   sable.actualizar(dt);
   humo.actualizar(dt);
+  fuego.actualizar(dt);
 
   for (let i = enemigos.length - 1; i >= 0; i--) {
     const e = enemigos[i];
     e.actualizar(dt, jugador);
     if (!e.vivo && e.caida >= 1) {
       e.tMuerto = (e.tMuerto || 0) + dt;
-      if (e.tMuerto > 22) { e.quitar(); enemigos.splice(i, 1); }
+      if (e.tMuerto > 40) { e.quitar(); enemigos.splice(i, 1); }
     }
   }
 
@@ -283,26 +389,25 @@ function cuadro () {
     }
   }
 
-  luzBoca.intensity = Math.max(0, luzBoca.intensity - dt * 220);
+  luzBoca.intensity = Math.max(0, luzBoca.intensity - dt * 260);
 
-  // el mundo primero, el arma después con su propia cámara
   render.render(escena, camara);
   const mundoInfo = { calls: render.info.render.calls, tris: render.info.render.triangles };
-  render.autoClear = false;
-  render.clearDepth();
-  render.render(escenaArma, camaraArma);
-  render.autoClear = true;
+  pasadaArma.dibujar(quiereApuntar ? 1 : 0);
   const info = {
-    calls: mundoInfo.calls + render.info.render.calls,
-    triangles: mundoInfo.tris + render.info.render.triangles
+    calls: mundoInfo.calls + pasadaArma.ultimaInfo.calls + 1,
+    triangles: mundoInfo.tris + pasadaArma.ultimaInfo.tris
   };
 
   hud.actualizar(dt, {
-    paso: tercerola.infoPaso(),
+    paso: arma ? arma.infoPaso() : null,
     aliento: jugador.aliento,
-    cartuchos: tercerola.cartuchos,
-    estadoArma: armaActual === 'sable' ? 'sable en mano' : tercerola.etiquetaEstado,
-    emplome: tercerola.tiros,
+    cartuchos,
+    nombreArma: arma ? arma.nombre : 'Sable corvo',
+    estadoArma: arma ? arma.etiquetaEstado : 'en mano',
+    postura: p.nombre,
+    puedeTomarFusil: !armas.fusil && !!caidoConFusil(),
+    emplome: arma ? arma.tiros : 0,
     heridas: jugador.heridas,
     vendas: jugador.vendas,
     vendando: Math.max(0, jugador.vendando),
@@ -317,5 +422,5 @@ function cuadro () {
 }
 cuadro();
 
-// para poder mirarlo desde la consola mientras se ajusta el ritmo
-window.juego = { jugador, tercerola, humo, enemigos, escena, soltarRealista };
+window.juego = { jugador, armas, sable, humo, fuego, enemigos, escena, soltarRealista,
+  get arma () { return armaActual(); } };

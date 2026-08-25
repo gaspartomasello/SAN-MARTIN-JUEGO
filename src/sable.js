@@ -1,52 +1,120 @@
 import * as THREE from 'three';
 import { PALETA } from './mundo.js';
 
-// Sable curvo de caballería. Acá va sólo lo mínimo para probar que se puede
-// abandonar la carga a mitad y resolver a acero: el duelo completo (guardia,
-// parada perfecta, riposte) es la Fase 2.
+// Sable corvo de San Martín: hoja de curva profunda, guarda en cruz con
+// perillas en las puntas y pomo en gancho. Sin guardamano de canasta — el
+// original no lo tiene.
+
+// La hoja se genera barriendo una sección en rombo a lo largo de un arco:
+// el lomo va por el lado cóncavo y el filo por el convexo, como corresponde.
+function geometriaHoja ({ largo = 0.82, curva = 0.95, anchoBase = 0.044,
+  anchoPunta = 0.010, grosor = 0.012, pasos = 26 } = {}) {
+  const R = largo / curva;
+  const pos = [];
+  const idx = [];
+
+  for (let i = 0; i <= pasos; i++) {
+    const t = i / pasos;
+    const a = curva * t;
+    // punto sobre el arco
+    const p = new THREE.Vector3(0, R - R * Math.cos(a), -R * Math.sin(a));
+    const n = new THREE.Vector3(0, Math.cos(a), Math.sin(a));   // hacia el lomo
+    const b = new THREE.Vector3(1, 0, 0);                        // espesor
+
+    const w = THREE.MathUtils.lerp(anchoBase, anchoPunta, Math.pow(t, 0.75)) * 0.5;
+    const g = grosor * (1 - 0.62 * t) * 0.5;
+
+    const anillo = [
+      p.clone().addScaledVector(n, w),        // lomo
+      p.clone().addScaledVector(b, g),        // flanco
+      p.clone().addScaledVector(n, -w),       // filo
+      p.clone().addScaledVector(b, -g)        // flanco
+    ];
+    for (const v of anillo) pos.push(v.x, v.y, v.z);
+  }
+
+  for (let i = 0; i < pasos; i++) {
+    const a0 = i * 4, a1 = (i + 1) * 4;
+    for (let k = 0; k < 4; k++) {
+      const k2 = (k + 1) % 4;
+      idx.push(a0 + k, a1 + k, a1 + k2);
+      idx.push(a0 + k, a1 + k2, a0 + k2);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
 
 export class Sable {
   constructor (camaraArma, sonido) {
     this.camara = camaraArma;
     this.sonido = sonido;
     this.guardado = true;
-    this.t = -1;              // tiempo dentro del tajo
-    this.duracion = 0.52;
+    this.t = -1;
+    this.duracion = 0.5;
     this.golpeo = false;
     this.alGolpear = null;
 
     const g = new THREE.Group();
-    const acero = new THREE.MeshStandardMaterial({ color: 0xc9ced4, roughness: 0.28, metalness: 0.95 });
-    const hoja = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.012, 0.78), acero);
-    hoja.position.set(0, 0.02, -0.44);
-    hoja.rotation.x = -0.16;
-    g.add(hoja);
-    const punta = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.12, 6), acero);
-    punta.rotation.x = -Math.PI / 2 - 0.16;
-    punta.position.set(0, 0.09, -0.86);
-    g.add(punta);
-    const guarda = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.007, 6, 12, Math.PI * 1.3),
-      new THREE.MeshStandardMaterial({ color: PALETA.bronce, roughness: 0.35, metalness: 0.9 }));
-    guarda.rotation.set(0, Math.PI / 2, 0.4);
-    guarda.position.set(0, -0.01, -0.05);
-    g.add(guarda);
-    const puno = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.019, 0.12, 8),
-      new THREE.MeshStandardMaterial({ color: 0x3b2f22, roughness: 0.9 }));
-    puno.rotation.x = Math.PI / 2;
-    puno.position.set(0, -0.02, 0.04);
-    g.add(puno);
-    const mano = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.075, 0.1),
-      new THREE.MeshStandardMaterial({ color: 0xb9ac93, roughness: 0.95 }));
-    mano.position.set(0, -0.02, 0.05);
-    g.add(mano);
-    const manga = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.08, 0.1),
-      new THREE.MeshStandardMaterial({ color: PALETA.azul, roughness: 0.9 }));
-    manga.position.set(0, -0.03, 0.14);
-    g.add(manga);
+    const acero = new THREE.MeshStandardMaterial({ color: 0xcdd2d8, roughness: 0.22, metalness: 0.96 });
+    const laton = new THREE.MeshStandardMaterial({ color: PALETA.bronce, roughness: 0.34, metalness: 0.92 });
+    const cuero = new THREE.MeshStandardMaterial({ color: 0x2e2620, roughness: 0.9 });
+    const guante = new THREE.MeshStandardMaterial({ color: 0xb9ac93, roughness: 0.95 });
 
-    g.scale.setScalar(0.7);
-    g.position.set(0.24, -0.22, -0.44);
-    g.rotation.set(0.2, -0.3, 0.28);
+    // hoja: nace en la guarda y se curva hacia adelante
+    const hoja = new THREE.Mesh(geometriaHoja(), acero);
+    hoja.position.set(0, 0, -0.06);
+    g.add(hoja);
+
+    // guarda en cruz: barrote recto con perillas en las puntas
+    const cruz = new THREE.Mesh(new THREE.BoxGeometry(0.155, 0.014, 0.018), laton);
+    cruz.position.set(0, 0, -0.05);
+    g.add(cruz);
+    for (const s of [-1, 1]) {
+      const perilla = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), laton);
+      perilla.position.set(s * 0.079, 0, -0.05);
+      g.add(perilla);
+    }
+    // gavilán corto sobre la hoja
+    const langet = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.01, 0.05), laton);
+    langet.position.set(0, 0.004, -0.078);
+    g.add(langet);
+
+    // empuñadura de cuero con virolas
+    const puno = new THREE.Mesh(new THREE.CylinderGeometry(0.0155, 0.018, 0.105, 10), cuero);
+    puno.rotation.x = Math.PI / 2;
+    puno.position.set(0, 0.004, 0.005);
+    g.add(puno);
+    for (const z of [-0.04, 0.052]) {
+      const virola = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.019, 0.011, 10), laton);
+      virola.rotation.x = Math.PI / 2;
+      virola.position.set(0, 0.004, z);
+      g.add(virola);
+    }
+
+    // pomo en gancho, la firma del sable corvo
+    const gancho = new THREE.Mesh(new THREE.TorusGeometry(0.021, 0.0085, 6, 10, Math.PI * 1.15), laton);
+    gancho.rotation.set(0, Math.PI / 2, -0.5);
+    gancho.position.set(0, 0.022, 0.062);
+    g.add(gancho);
+
+    const mano = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.078, 0.1), guante);
+    mano.position.set(0, 0.002, 0.005);
+    g.add(mano);
+    const manga = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.084, 0.1), new THREE.MeshStandardMaterial({ color: PALETA.azul, roughness: 0.9 }));
+    manga.position.set(0, -0.006, 0.095);
+    g.add(manga);
+    const vivo = new THREE.Mesh(new THREE.BoxGeometry(0.069, 0.088, 0.02), new THREE.MeshStandardMaterial({ color: PALETA.carmesi, roughness: 0.9 }));
+    vivo.position.set(0, -0.006, 0.05);
+    g.add(vivo);
+
+    g.scale.setScalar(0.78);
+    g.position.set(0.17, -0.26, -0.44);
+    g.rotation.set(0.02, -0.6, 0.42);
     g.traverse(o => { o.frustumCulled = false; });
     g.visible = false;
     camaraArma.add(g);
@@ -70,17 +138,18 @@ export class Sable {
     if (this.t >= 0) {
       this.t += dt;
       const u = this.t / this.duracion;
-      if (u >= 1) { this.t = -1; } else {
-        // arco de derecha arriba a izquierda abajo
+      if (u < 1) {
+        // tajo diagonal: entra de arriba a la derecha y sale abajo a la izquierda
         const e = Math.sin(Math.min(1, u * 1.15) * Math.PI);
-        this.grupo.position.set(0.24 - e * 0.5, -0.22 + e * 0.2, -0.44 - e * 0.16);
-        this.grupo.rotation.set(0.2 - e * 0.5, -0.3 + e * 1.5, 0.28 + e * 1.9);
-        if (!this.golpeo && u > 0.32 && u < 0.6) {
+        this.grupo.position.set(0.17 - e * 0.48, -0.26 + e * 0.26, -0.44 - e * 0.14);
+        this.grupo.rotation.set(0.02 - e * 0.5, -0.6 + e * 1.5, 0.42 + e * 1.8);
+        if (!this.golpeo && u > 0.3 && u < 0.58) {
           this.golpeo = true;
           if (this.alGolpear) this.alGolpear();
         }
         return;
       }
+      this.t = -1;
     }
     this.grupo.position.lerp(this.reposo.p, k);
     this.grupo.rotation.x += (this.reposo.r.x - this.grupo.rotation.x) * k;
