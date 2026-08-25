@@ -180,13 +180,9 @@ function tomarOIntercambiar () {
     caido.entregarFusil();
     armas.fusil = new ArmaFuego('fusil', camaraArma, camara, sonido, humo);
     conectar(armas.fusil);
-    // puede que el realista no haya llegado a tirar, o puede que sí
-    const veniaCargado = Math.random() < 0.5;
-    if (veniaCargado) armas.fusil.cargarDeUnaVez();
-    else armas.fusil.dejarDescargada();
+    armas.fusil.cargarDeUnaVez();      // el realista no llegó a tirar
     cambiarLarga('fusil');
-    hud.mostrarAviso(veniaCargado ? 'Fusil tomado · cargado' : 'Fusil tomado · descargado',
-      veniaCargado ? 'bien' : 'malo');
+    hud.mostrarAviso('Fusil con bayoneta · cargado', 'bien');
     return;
   }
   cambiarLarga(armaLarga === 'fusil' ? 'tercerola' : 'fusil');

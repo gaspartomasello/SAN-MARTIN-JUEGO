@@ -31,8 +31,8 @@ Lo que ya funciona:
 - **HUD diegético**: el estado del arma se lee en el modelo —martillo y rastrillo—, los
   cartuchos se cuentan abriendo la cartuchera y la salud es una viñeta, no una barra.
 - **Tres armas y un premio**: tercerola, sable corvo y pistolón de arzón, todas cargadas
-  al empezar; el fusil con bayoneta se le saca a un caído con `G` —cargado o descargado,
-  según haya llegado a tirar— y da más alcance en el acero.
+  al empezar; el fusil con bayoneta se le saca cargado a un caído con `G` y da más
+  alcance en el acero.
 - **Posturas**: de pie, agachado y cuerpo a tierra — y tirado **no se puede recargar**,
   porque no entra la baqueta.
 - **Dos bandos**: granaderos de azul a tu lado y realistas de blanco enfrente, que se

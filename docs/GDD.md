@@ -78,7 +78,7 @@ Guardarse el tiro para el momento justo es la decisión que se repite mil veces.
 | Sable corvo | — | — | Principal cuerpo a cuerpo. Hoja de curva profunda, guarda en cruz, pomo en gancho: el de San Martín. |
 | Tercerola (carabina de chispa) | 1 | 6,5 s | Único tiro a distancia propio del granadero. |
 | Pistolón de arzón | 1 | 3,1 s | El tiro de emergencia. Inútil más allá de diez metros. |
-| Fusil de chispa con bayoneta | 1 | 7,7 s | **Premio**: se le saca a un realista caído con `G`, y viene cargado o descargado según haya llegado a tirar o no. Más alcance y más daño en el cuerpo a cuerpo, más lento de cargar. |
+| Fusil de chispa con bayoneta | 1 | 7,7 s | **Premio**: se le saca cargado a un realista caído con `G`. Más alcance y más daño en el cuerpo a cuerpo, más lento de cargar. |
 | Cañón de a 4 (2 piezas) | metralla | escena guionada | Set piece: dar vuelta los cañones tomados contra las embarcaciones. |
 
 **El golpe corto (`F`).** Cada arma larga pega con lo que tiene: la tercerola de
