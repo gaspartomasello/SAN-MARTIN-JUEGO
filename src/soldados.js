@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Figura } from './figura.js';
 import { Caballo } from './caballo.js';
+import { sacarDeCaja, RADIO_HOMBRE } from './estorbos.js';
 
 // Soldados de los dos bandos. Misma anatomía, distinta casaca:
 //   granadero — casaca azul, vivos encarnados, morrión con penacho
@@ -40,11 +41,40 @@ const ATURDIDO = 1.35;      // lo que dura abierto tras una parada perfecta
 // El lancero no pelea parado: CARGA. Entra al galope, tira el lanzazo de
 // pasada, sigue de largo hasta despegarse y recién ahí vuelve grupas. Esa es
 // la mecánica entera —y es la que hizo que San Lorenzo durara quince minutos.
+// ---- QUEDARSE EN LA SILLA ----
+//
+// Antes, cualquier golpe de 3 o más te bajaba del caballo. Y como todos los
+// golpes que valía la pena dar eran de 3 o más, en la práctica eso quería
+// decir: TODO te desmonta, siempre, al cien por ciento. Un balazo, un
+// bayonetazo, lo que fuera.
+//
+// Está mal por dos motivos. Uno de juego: perder la montura es lo más caro que
+// te puede pasar en este juego y no puede ser un trámite; si es automático,
+// pelear a caballo se vuelve una cuenta regresiva y no una decisión. Y uno
+// histórico: San Martín cruzó el campo montado, aguantó la descarga y lo bajó
+// UNA cosa. No fue la mosquetería. Fue la metralla.
+//
+// Así que agarrarse a la silla pasa a ser una tirada, y cada arma tiene la
+// suya. Lo que se lee en esta tabla es una jerarquía: la bala te tira poco
+// —te pega, no te empuja—, la bayoneta desde abajo te busca la pierna y el
+// estribo, el asta del lancero te levanta de la silla porque para eso se
+// inventó, y la metralla no pregunta.
+export const VOLTEO = {
+  bala: 0.20,
+  bayoneta: 0.34,
+  lanza: 0.58,
+  metralla: 1
+};
+
+// Lo que resta un jinete de oficio. San Martín no era un recluta arriba de un
+// caballo: era comandante de caballería. Con esto, un balazo lo baja una vez
+// cada trece; a un lancero de la tropa, una de cada cinco.
+export const OFICIO = 0.62;
+
 const LANZA_ALCANCE = 3.6;      // 2,70 m de asta más el brazo desde la silla
 const LANZA_ENRISTRE = 15;      // a esta distancia baja el asta: el aviso largo
 const LANZA_AVISO = 5.4;        // y a esta se echa atrás: el aviso corto
 const PASADA = 1.5;             // segundos de seguir de largo antes de volver
-const DESMONTE = 3;             // daño de un golpe que te tira de la silla
 const CAIDA_JINETE = 14;        // lo que cuesta el golpe contra el suelo
 
 export class Soldado {
@@ -84,6 +114,12 @@ export class Soldado {
     this._grito = false;
     this._v = new THREE.Vector3();
     this._d = new THREE.Vector3();
+
+    // Estorbos. Antes el soldado era un fantasma: cruzaba las tapias y se
+    // metía adentro del compañero. Ahora ocupa lugar como todo el mundo.
+    this.colisiones = op.colisiones || null;
+    this.orden = Soldado.proximoOrden++;     // para resolver cada par una sola vez
+    this._n = { x: 0, z: 0 };
 
     this.cubiertas = op.cubiertas || null;   // parapetos del campo, ya filtrados
     this.cubierta = null;                   // a dónde va corriendo
@@ -210,14 +246,14 @@ export class Soldado {
 
   cabeza () { return this._v.set(this.pos.x, this.pos.y + this.fig.alturaOjo, this.pos.z); }
 
-  recibir (dano, dir) {
+  // volteo: probabilidad de que este golpe lo saque de la silla (0 si el arma
+  // no puede). Si la tirada sale, no hay daño: rueda, se levanta y sigue a pie
+  // con lo que le quede. Un lancero derribado vale mucho más vivo que borrado
+  // del campo. Si la tirada NO sale, el golpe entra como cualquier otro: la
+  // bayoneta que no te voltea, te hiere.
+  recibir (dano, dir, volteo = 0) {
     if (!this.vivo) return false;
-    // A caballo el golpe fuerte NO mata: voltea. El jinete rueda, se levanta
-    // y sigue a pie con lo que le quede. Así quedó San Martín debajo de su
-    // caballo en la barranca, y así terminan peleando a pie los lanceros a los
-    // que la infantería alcanza. Un lancero derribado vale mucho más vivo que
-    // borrado del campo.
-    if (this.montado && dano >= DESMONTE) { this.desmontar(true); return false; }
+    if (this.montado && volteo > 0 && Math.random() < volteo) { this.desmontar(true); return false; }
     this.vida -= dano;
     if (this.vida <= 0) {
       this.vivo = false;
@@ -481,8 +517,47 @@ export class Soldado {
       }
     }
 
+    this._chocar();
     this.andando = andando;
     this.fig.actualizar(dt, andando, this.ritmo);
+  }
+
+  // Contra el decorado. Igual que el jugador y que el caballo: se lo saca de
+  // la caja por la cara más cercana y sigue caminando pegado a la pared. Sólo
+  // cuentan las cajas que le llegan por arriba de la rodilla —un cordón de 30
+  // cm no es un obstáculo para un hombre, es un escalón.
+  _chocar () {
+    if (!this.colisiones) return;
+    for (const caja of this.colisiones) {
+      if (caja.max.y < 0.35) continue;
+      const e = sacarDeCaja(this.pos, RADIO_HOMBRE, caja, this._n);
+      if (e <= 0) continue;
+
+      // Y DESLIZA. Sin esto un hombre que camina de frente contra una tapia se
+      // queda apretado contra ella para siempre: la IA le vuelve a apuntar al
+      // mismo destino cuadro tras cuadro y no tiene con qué rodearla. Lo que
+      // se le empujó para atrás se le devuelve de costado.
+      //
+      // Y el costado se elige POR LA TAPIA, no por hacia dónde mira. El primer
+      // intento usaba el rumbo del hombre y temblaba: al correrse un centímetro
+      // el rumbo giraba, el costado se daba vuelta y volvía al punto de
+      // partida. Se pasó cinco segundos vibrando contra el mismo ladrillo.
+      //
+      // Ahora rodea por la punta que tiene más cerca, que además es lo que
+      // haría cualquiera. Es una decisión estable —la punta más cercana no
+      // cambia porque él se corra— y de yapa reparte a la tropa: los de la
+      // izquierda salen por izquierda y los de la derecha por derecha.
+      let tx, tz;
+      if (Math.abs(this._n.z) > Math.abs(this._n.x)) {
+        tx = (caja.max.x - this.pos.x) < (this.pos.x - caja.min.x) ? 1 : -1;
+        tz = 0;
+      } else {
+        tx = 0;
+        tz = (caja.max.z - this.pos.z) < (this.pos.z - caja.min.z) ? 1 : -1;
+      }
+      this.pos.x += tx * e * 0.9;
+      this.pos.z += tz * e * 0.9;
+    }
   }
 
   // ------------------------------------------------------- la carga a lanza
@@ -671,3 +746,9 @@ export class Soldado {
     if (this.monta) { this.monta.quitar(); this.monta = null; }
   }
 }
+
+// Un número por hombre, y nunca se repite. Sirve para que la separación
+// resuelva cada par UNA vez y para que el desempate sea siempre igual: dos
+// hombres exactamente encima se abren siempre para el mismo lado en vez de
+// temblar.
+Soldado.proximoOrden = 0;

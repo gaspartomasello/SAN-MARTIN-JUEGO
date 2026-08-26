@@ -6,13 +6,14 @@ import { Sonido } from './audio.js';
 import { Jugador } from './jugador.js';
 import { ArmaFuego } from './armas.js';
 import { Sable } from './sable.js';
-import { Soldado } from './soldados.js';
+import { Soldado, VOLTEO, OFICIO } from './soldados.js';
 import { Caballo } from './caballo.js';
 import { Canon } from './canon.js';
 import { ActoCabral } from './acto.js';
 import { PasadaArma } from './pasadaArma.js';
 import { PasadaVelocidad } from './pasadaVelocidad.js';
 import { Lejania } from './lejania.js';
+import { Rejilla, separar, RADIO_HOMBRE, RADIO_CABALLO } from './estorbos.js';
 import { Hud } from './hud.js';
 
 // ---------------------------------------------------------------------------
@@ -68,6 +69,37 @@ function repartirLejania () {
     if (c.jinete) continue;                       // lo manda su jinete
     if (jugador.monta === c) { c.lejos = false; continue; }
     c.lejos = Math.hypot(c.pos.x - ojo.x, c.pos.z - ojo.z) > LOD_CERCA;
+  }
+}
+
+// LOS BOTS OCUPAN LUGAR.
+//
+// La separación se hace en una pasada aparte, DESPUÉS de que todos se movieron.
+// Si se hiciera adentro de cada uno, el primero de la lista empujaría a los
+// demás y el último no empujaría a nadie: el orden del array se volvería una
+// ventaja. Así, todos ceden la mitad.
+//
+// Y el caballo empuja, pero no se deja empujar. Un escuadrón de caballería que
+// se frena porque le pusieron infantes adelante no es caballería. El hombre se
+// aparta —o lo ensartan—, el caballo pasa.
+const rejilla = new Rejilla(2);
+const _emp = { x: 0, z: 0 };
+
+function apretujar () {
+  separar(soldados, rejilla, RADIO_HOMBRE);
+  for (const c of caballos) {
+    if (!c.vivo) continue;
+    const r = RADIO_CABALLO + RADIO_HOMBRE;
+    rejilla.cerca(c.pos.x, c.pos.z, s => {
+      if (!s.vivo || s.montado) return;
+      const dx = s.pos.x - c.pos.x, dz = s.pos.z - c.pos.z;
+      const q = dx * dx + dz * dz;
+      if (q >= r * r) return;
+      const l = Math.sqrt(q) || 0.001;
+      const e = r - l;
+      s.pos.x += (dx / l) * e;
+      s.pos.z += (dz / l) * e;
+    });
   }
 }
 
@@ -159,6 +191,30 @@ function voltear (aviso) {
   c.andar = 3;                 // el caballo se dispara sin jinete
   hud.mostrarAviso(aviso || '¡Te voltearon!', 'malo');
   return true;
+}
+
+// A SAN MARTÍN CUESTA BAJARLO.
+//
+// Cada golpe que puede voltearte tira los dados una vez. La probabilidad sale
+// de la tabla VOLTEO —el arma manda— y se le resta el oficio del jinete. Un
+// balazo lo baja una de cada trece veces; un lancero, una de cada cinco.
+//
+// Y hay una segunda cuenta, que es la que hace que esto no sea una lotería
+// suelta: EL AGARRE. Cada golpe que aguantás te afloja de la silla, y el
+// siguiente te encuentra peor agarrado. Si te dejan en paz unos segundos, te
+// recomponés. O sea que no hay un tiro que te baje: hay una acumulación, y la
+// respuesta correcta a que te tambaleen es salir de ahí, no seguir cargando.
+function intentarVoltear (base, aviso) {
+  if (!montado()) return false;
+  const riesgo = base * (1 - OFICIO * jugador.agarre);
+  if (Math.random() < riesgo) return voltear(aviso);
+  // aguantó. Se nota: la cámara se sacude fuerte y el agarre se afloja.
+  jugador.agarre = Math.max(0, jugador.agarre - 0.26);
+  jugador.sacudir(0.45 + (1 - jugador.agarre) * 0.35);
+  sonido.golpeRecibido();
+  if (jugador.agarre < 0.45) hud.mostrarAviso('¡Te vas de la silla!', 'malo');
+  else hud.mostrarAviso('Te tambaleaste', 'malo');
+  return false;
 }
 
 // daño que hace una bala de plomo y una bayoneta al jugador
@@ -273,7 +329,7 @@ function resolverDisparo (origen, dir, dispersion) {
   if (soldado) {
     sonido.impactoCarne();
     humo.soltar(g.point, d, { cantidad: 3, vida: 2.5, empuje: 1.4, radio: 0.1, opacidad: 0.35, claro: 0 });
-    if (soldado.recibir(2, d)) hud.mostrarAviso('Realista abatido', 'bien');
+    if (soldado.recibir(2, d, VOLTEO.bala)) hud.mostrarAviso('Realista abatido', 'bien');
   } else if (raiz.userData.blanco) {
     sonido.impactoMadera();
     hud.mostrarAviso(`Blanco a ${Math.round(g.distance)} m`, 'bien');
@@ -303,7 +359,7 @@ function resolverGolpe (alcance, dano, nombre) {
   const g = enemigoAlFrente(alcance);
   if (!g) return;
   sonido.impactoCarne();
-  if (g.soldado.recibir(dano, g.frente)) hud.mostrarAviso(nombre, 'bien');
+  if (g.soldado.recibir(dano, g.frente, VOLTEO.bayoneta)) hud.mostrarAviso(nombre, 'bien');
 }
 
 // El sablazo choca contra el acero si el realista está en guardia. Ahí está
@@ -322,7 +378,10 @@ sable.alGolpear = () => {
   // Desde el caballo el sable no corta con el brazo: corta con la velocidad.
   const filo = montado() ? jugador.monta.filoPorVelocidad : 1;
   const dano = Math.round((remate ? DANO_REMATE : DANO_SABLE) * filo);
-  if (g.soldado.recibir(dano, g.frente)) {
+  // el sable desde arriba también puede bajarlo de la silla, y a la velocidad
+  // del galope más: es el mismo principio del lanzazo con menos asta
+  const vuelca = montado() ? Math.min(VOLTEO.lanza, VOLTEO.bayoneta * filo) : VOLTEO.bayoneta;
+  if (g.soldado.recibir(dano, g.frente, vuelca)) {
     hud.mostrarAviso(remate ? '¡Rematado!' : (filo > 2 ? '¡Lo llevó puesto!' : 'A sablazos'), 'bien');
   }
 };
@@ -433,7 +492,7 @@ function soltarSoldado (bando, op = {}) {
     // los granaderos de a pie forman a los costados del jugador
     pos = new THREE.Vector3(jugador.pos.x + (Math.random() - 0.5) * 16, 0, 2 + Math.random() * 6);
   }
-  const sop = { cubiertas: parapetos };
+  const sop = { cubiertas: parapetos, colisiones: mundo.colisiones };
   // El caballo sólo se le da a un granadero. Los españoles desembarcaron 250
   // infantes y dos cañones: ni una montura en toda la fuerza.
   if (op.montado && bando === 'granadero') {
@@ -454,15 +513,18 @@ function soltarSoldado (bando, op = {}) {
       if (Math.random() < punteria) {
         // montado sos un blanco más grande, pero buena parte se la come el caballo
         if (montado() && Math.random() < 0.45) {
-          jugador.monta.recibir(2);
+          // La bala que se come el caballo lo lastima, pero hacen falta seis:
+          // el que lo voltea de una es el tarro de metralla, y así tiene que
+          // ser, porque de ahí sale el acto.
+          jugador.monta.recibir(1);
           jugador.sacudir(0.3);
           sonido.impactoCarne();
           hud.mostrarAviso('¡Le dieron al caballo!', 'malo');
         } else if (montado()) {
-          // una bala de plomo arriba de un caballo no te hiere: te tira
+          // la bala te hiere igual; que además te baje de la silla es otra
+          // cuenta, y una que rara vez sale
           jugador.recibir(DANO_BALA, dir);
-          sonido.golpeRecibido();
-          voltear('¡Te bajaron de un balazo!');
+          intentarVoltear(VOLTEO.bala, '¡Te bajaron de un balazo!');
         } else {
           jugador.recibir(DANO_BALA, dir);
           sonido.golpeRecibido();
@@ -473,7 +535,7 @@ function soltarSoldado (bando, op = {}) {
       }
     } else if (objetivo.soldado) {
       const punteria = Math.max(0.03, (0.5 - dist / 120 - oc * 0.45) * (quien.rodilla ? 1.35 : 1));
-      if (Math.random() < punteria) objetivo.soldado.recibir(2, dir);
+      if (Math.random() < punteria) objetivo.soldado.recibir(2, dir, VOLTEO.bala);
     }
   };
 
@@ -503,18 +565,24 @@ function soltarSoldado (bando, op = {}) {
         return;
       }
       jugador.recibir(DANO_BAYONETA, frente);
-      sonido.golpeRecibido();
-      // desde abajo la bayoneta te busca la pierna y la silla: te voltea
-      if (montado()) voltear('¡Te sacaron de la silla!');
-      else hud.mostrarAviso(quien.esRealista ? '¡Bayonetazo!' : '¡Golpe!', 'malo');
+      // desde abajo la bayoneta te busca la pierna y el estribo: es lo que
+      // mejor te tira, pero tampoco alcanza sola
+      if (montado()) intentarVoltear(quien.lancero ? VOLTEO.lanza : VOLTEO.bayoneta, '¡Te sacaron de la silla!');
+      else {
+        sonido.golpeRecibido();
+        hud.mostrarAviso(quien.esRealista ? '¡Bayonetazo!' : '¡Golpe!', 'malo');
+      }
     } else if (objetivo.soldado) {
       const o = objetivo.soldado;
       // El lanzazo del granadero mata de una: el asta llega antes que la
       // bayoneta y ese metro de diferencia es toda la batalla.
       // Contra un jinete, en cambio, la bayoneta no busca matar: busca
       // voltearlo. Es el único recurso que le queda a la infantería.
-      if (quien.lancero) o.recibir(3);
-      else o.recibir(o.montado ? 3 : 1);
+      if (quien.lancero) o.recibir(3, null, VOLTEO.lanza);
+      // La bayoneta contra un jinete ya no lo baja siempre. Y si no lo baja,
+      // lo hiere: antes el golpe se perdía entero cuando el desmonte no
+      // salía, y un infante contra un lancero se quedaba sin recurso.
+      else o.recibir(1, null, VOLTEO.bayoneta);
     }
   };
 
@@ -573,7 +641,7 @@ function resolverMetralla (canon) {
     const g = canon.fuerzaSobre(s.pos);
     if (g < 0.28) continue;
     if (s.montado) s.monta.recibir(Math.round(METRALLA_CABALLO * g));
-    else if (Math.random() < g) s.recibir(3);
+    else if (Math.random() < g) s.recibir(3, null, VOLTEO.metralla);
   }
 }
 
@@ -862,6 +930,7 @@ function cuadro () {
     }
   }
 
+  apretujar();
   pintarLejania();
 
   // las piezas: buscan blanco, se orientan, ceban y disparan
@@ -901,7 +970,7 @@ function cuadro () {
   escenaArma.visible = jugador.atrapado <= 0;
   pasadaArma.dibujar(quiereApuntar ? 1 : 0);
   const info = {
-    calls: mundoInfo.calls + pasadaArma.ultimaInfo.calls + 1 + (embalado > 0 ? 1 : 0),
+    calls: mundoInfo.calls + pasadaArma.ultimaInfo.calls + 2,   // los dos blits de pantalla completa
     triangles: mundoInfo.tris + pasadaArma.ultimaInfo.tris
   };
   ultimoInfo = info;   // render.info se reinicia en cada render(); esta es la suma real
@@ -937,8 +1006,8 @@ ponerCaballo();
 ponerCanones();
 cuadro();
 
-window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado, lejania,
-  lod: m => { LOD_CERCA = m; },
+window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado, lejania, pasadaVel,
+  lod: m => { LOD_CERCA = m; }, separarAhora: apretujar, VOLTEO, OFICIO, METRALLA_CABALLO,
   get caballo () { return caballo; }, caballos, canones, acto,
   montarODesmontar, voltear, ponerCanones,
   // para probar escalas a mano desde la consola: juego.formar(20, 30)

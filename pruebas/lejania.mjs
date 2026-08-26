@@ -61,7 +61,8 @@ const r = await pag.evaluate(async () => {
   blanco.alDisparar = null;
   const A = j.soltarSoldado('realista', { pos: new T.Vector3(-3, 0, -80) });
   const B = j.soltarSoldado('realista', { pos: new T.Vector3(3, 0, -80) });
-  for (const s of [A, B]) { s.alDisparar = null; s.recarga = 0.4; }
+  for (const s of [A, B]) { s.alDisparar = null; s.recarga = 0.4; s.colisiones = []; }
+  blanco.colisiones = [];   // acá se compara IA con IA, no quién se tropezó con qué
   A.ponerLejos(false); B.ponerLejos(true);
   let tiros = { a: 0, b: 0 };
   A.alDisparar = () => tiros.a++; B.alDisparar = () => tiros.b++;

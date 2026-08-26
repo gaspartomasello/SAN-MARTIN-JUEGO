@@ -47,7 +47,12 @@ const r = await pag.evaluate(() => {
   };
   const frente = correr(0, 0);
   out.push(['—', 'de frente sin saltar', JSON.stringify(frente)]);
-  ok('de frente la tapia frena', frente.z > -11 && frente.vel < 6);
+  // La tapia PARA, no FRENA. Son dos cosas distintas: no la puede atravesar,
+  // pero tampoco lo puede dejar clavado en medio del campo.
+  ok('la tapia no se atraviesa', frente.z > -11.9, `quedó en z=${frente.z}`);
+  ok('pero no lo deja clavado', frente.vel > 1.5, `quedó a ${frente.vel} m/s`);
+  ok('el golpe de frente se siente', frente.golpeo);
+  ok('y no le baja el andar', frente.andar === 'a galope', frente.andar);
 
   const refilon = correr(0.95, 0);
   out.push(['—', 'de refilón', JSON.stringify(refilon)]);
@@ -136,11 +141,17 @@ const r = await pag.evaluate(() => {
   ok('al paso no hace polvo', j.humo.vivas < conGalope, `quedaron ${j.humo.vivas}`);
 
   // ---------- 4. el desmonte ----------
+  //
+  // La regla cambió: ya no desmonta el DAÑO, desmonta el ARMA. Cada golpe trae
+  // su probabilidad y sin ella no te baja nadie, por fuerte que pegue.
   const l2 = j.soltarSoldado('granadero', { montado: true });
-  l2.recibir(1);
+  l2.vida = 9999;
+  l2.recibir(1, null, 0);
   ok('un raspón no desmonta', l2.montado === true);
-  l2.recibir(99);
-  ok('el golpe fuerte voltea, no mata', l2.montado === false && l2.vivo);
+  l2.recibir(99, null, 0);
+  ok('ni un golpe fuerte sin arma que voltee', l2.montado === true, `vida ${l2.vida}`);
+  l2.recibir(2, null, 1);
+  ok('el arma que voltea, voltea; y no mata', l2.montado === false && l2.vivo);
   ok('queda tirado un rato', l2.tirado > 0);
   ok('las piernas se cierran al caer', l2.fig.montura === false);
 

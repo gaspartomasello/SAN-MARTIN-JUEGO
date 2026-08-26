@@ -87,6 +87,12 @@ function cieloDomo () {
         vec3 c = h < 0.16
           ? mix(uBajo, uMedio, smoothstep(-0.2, 0.16, h))
           : mix(uMedio, uAlto, smoothstep(0.16, 0.62, h));
+        // Este cielo se pinta a mano y a propósito NO pasa por el mapeo de
+        // tonos: los tres colores están elegidos a ojo contra la pantalla, ya
+        // en el espacio de la pantalla. Meterlos por ACES los levantaría y el
+        // amanecer se volvería mediodía. Lo que sí importa es que salga IGUAL
+        // vaya el mundo derecho al lienzo o pase por el desenfoque de
+        // velocidad, y de eso se ocupa la bandera del target (pasadaVelocidad.js).
         gl_FragColor = vec4(c, 1.0);
       }`
   });

@@ -63,6 +63,11 @@ export class PasadaArma {
       format: THREE.RGBAFormat,
       depthBuffer: true
     });
+    // el arma también se dibujaba a un target sin mapeo de tonos ni sRGB, o
+    // sea que venía saliendo apagada desde siempre y nadie tenía con qué
+    // compararla. Misma bandera, mismo arreglo. Ver pasadaVelocidad.js.
+    this.destino.isXRRenderTarget = true;
+    this.destino.texture.colorSpace = THREE.SRGBColorSpace;
 
     this.material = new THREE.ShaderMaterial({
       uniforms: {

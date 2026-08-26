@@ -20,6 +20,22 @@ const VS = `
   void main () { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
 `;
 
+// OJO CON LA LUZ —acá estuvo el bug del «al galope se oscurece».
+//
+// three.js trata un render target DISTINTO que el lienzo, y a propósito:
+// contra el lienzo aplica el mapeo de tonos y el paso a sRGB, y sube el color
+// de la niebla ya en sRGB; contra un target no aplica nada y sube la niebla en
+// lineal, esperando que la cuenta la termine el que compone. Resultado: el
+// mundo salía **26 % más oscuro** en cuanto empezabas a galopar —medido, en
+// `pruebas/luzgalope.mjs`— porque recién ahí se encendía la pasada.
+//
+// Terminar la cuenta a mano en este shader no alcanza: la niebla se mezclaría
+// en lineal en vez de en el espacio de pantalla, y con esta niebla —de 20 a
+// 175 m, o sea casi todo el campo— la imagen se lava entera.
+//
+// La solución es decirle a three.js la verdad: este target ES la pantalla. Con
+// eso el mundo se dibuja adentro exactamente igual que afuera y este shader no
+// tiene que corregir nada, sólo estirar.
 const FS = `
   uniform sampler2D uTex;
   uniform float uFuerza;
@@ -31,14 +47,19 @@ const FS = `
     // el centro queda limpio y el estirado crece hacia los bordes
     float mascara = smoothstep(0.16, 0.78, length(d));
     float f = uFuerza * mascara;
-    if (f < 0.001) { gl_FragColor = texture2D(uTex, vUv); return; }
 
-    vec3 c = vec3(0.0);
-    for (int i = 0; i < 8; i++) {
-      float t = float(i) / 7.0;
-      c += texture2D(uTex, vUv - d * f * t).rgb;
+    vec3 c;
+    if (f < 0.001) {
+      c = texture2D(uTex, vUv).rgb;
+    } else {
+      c = vec3(0.0);
+      for (int i = 0; i < 8; i++) {
+        float t = float(i) / 7.0;
+        c += texture2D(uTex, vUv - d * f * t).rgb;
+      }
+      c *= 0.125;
     }
-    gl_FragColor = vec4(c * 0.125, 1.0);
+    gl_FragColor = vec4(c, 1.0);
   }
 `;
 
@@ -56,6 +77,13 @@ export class PasadaVelocidad {
       format: THREE.RGBAFormat,
       depthBuffer: true
     });
+    // ESTO ES LO QUE ARREGLA LA LUZ. three.js tiene una rama para «este target
+    // es la superficie final» —la usa para XR— y con ella aplica el mapeo de
+    // tonos, escribe en sRGB y sube la niebla en sRGB, igual que contra el
+    // lienzo. Ocho bits alcanzan porque acá ya guardamos color de pantalla,
+    // no color lineal.
+    this.destino.isXRRenderTarget = true;
+    this.destino.texture.colorSpace = THREE.SRGBColorSpace;
 
     this.material = new THREE.ShaderMaterial({
       uniforms: {
@@ -107,14 +135,18 @@ export class PasadaVelocidad {
       this.material.uniforms.uCentro.value.set(0.5, 0.5);
     }
 
-    if (this.material.uniforms.uFuerza.value <= 0.0025) {
-      this.render.setRenderTarget(null);
-      this.render.render(this.escena, this.camara);
-      this.ultimaInfo.calls = this.render.info.render.calls;
-      this.ultimaInfo.tris = this.render.info.render.triangles;
-      return;
-    }
-
+    // UNA SOLA RAMA, SIEMPRE.
+    //
+    // Antes esto tenía un atajo: sin velocidad, el mundo iba derecho a la
+    // pantalla y se ahorraba la pasada. El atajo costaba caro: three.js sube
+    // el color de la niebla en sRGB cuando dibuja contra el lienzo y en lineal
+    // cuando dibuja contra un target —lo hace a propósito, porque la niebla se
+    // mezcla después del mapeo de tonos—, así que las dos ramas NO daban el
+    // mismo píxel. Al montar y embalar, la imagen cambiaba de luz. Eso era lo
+    // que se veía como «al galope se oscurece».
+    //
+    // Un blit de pantalla completa por cuadro es barato; que la luz del juego
+    // dependa de si vas al galope no lo es. Una rama sola y se terminó.
     this.render.setRenderTarget(this.destino);
     this.render.clear();
     this.render.render(this.escena, this.camara);

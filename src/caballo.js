@@ -397,21 +397,33 @@ export class Caballo {
         this.pos.z = cz + nz * RADIO;
       }
 
+      // EL CABALLO NO SE CLAVA. NUNCA.
+      //
+      // Antes, si el golpe venía bastante de frente, se le partía la velocidad
+      // al medio y se le bajaba el andar. Un caballo que se frena en seco
+      // contra una tapia mata la dinámica del juego: venís al galope, rozás una
+      // esquina y quedás parado en medio del campo con doscientos cincuenta
+      // fusiles enfrente. Lo que hace un caballo de verdad contra una pared es
+      // RASPARLA Y SEGUIR.
+      //
+      // Así que ahora hay un solo camino: siempre desliza. Venir de frente
+      // sigue costando —cuesta velocidad y cuesta un giro brusco—, pero no
+      // cuesta la carrera.
       const frente = Math.max(0, -(fx * nx + fz * nz));
-      if (frente > 0.72) {
-        this.vel *= 0.5;
-        this.andar = Math.max(0, this.andar - 1);
-        this.golpeo = true;
-      } else {
-        // deslizar: el rumbo se acomoda a la pared y la carrera apenas se raspa
-        this.vel *= 1 - frente * 0.30;
-        let tx = -nz, tz = nx;
-        if (tx * fx + tz * fz < 0) { tx = -tx; tz = -tz; }
-        const rumboPared = Math.atan2(-tx, -tz);
-        let dif = rumboPared - this.rumbo;
-        dif = Math.atan2(Math.sin(dif), Math.cos(dif));
-        this.rumbo += dif * 0.55;
-      }
+      if (frente > 0.72) this.golpeo = true;     // se oye y se siente; no frena
+
+      // el precio, con piso: una tapia nunca te puede dejar por debajo del paso
+      const piso = Math.min(this.vel, ANDARES[1].vel * 0.85);
+      this.vel = Math.max(this.vel * (1 - frente * 0.42), piso);
+
+      // y el rumbo se acomoda a la pared. De frente el giro es más decidido: si
+      // no, se queda rascando el mismo ladrillo hasta que lo maten.
+      let tx = -nz, tz = nx;
+      if (tx * fx + tz * fz < 0) { tx = -tx; tz = -tz; }
+      const rumboPared = Math.atan2(-tx, -tz);
+      let dif = rumboPared - this.rumbo;
+      dif = Math.atan2(Math.sin(dif), Math.cos(dif));
+      this.rumbo += dif * (0.55 + frente * 0.40);
     }
     this.pos.x = Math.max(-60, Math.min(60, this.pos.x));
     this.pos.z = Math.max(-105, Math.min(20, this.pos.z));

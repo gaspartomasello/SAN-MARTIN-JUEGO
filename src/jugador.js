@@ -33,6 +33,9 @@ export class Jugador {
     this.pos = new THREE.Vector3(0, POSTURAS.pie.altura, 4);
     this.vel = new THREE.Vector3();
     this.yaw = 0;
+    // Cuánto te queda de agarre en la silla. Cada golpe aguantado lo baja; si
+    // te dejan tranquilo, vuelve. Ver intentarVoltear() en main.js.
+    this.agarre = 1;
     this.pitch = 0;
 
     this.monta = null;          // caballo si vas montado
@@ -195,6 +198,9 @@ export class Jugador {
       this._aplicarCamara(dt, 0);
       return;
     }
+
+    // el agarre se recompone en unos seis segundos sin que te toquen
+    this.agarre = Math.min(1, this.agarre + dt * 0.17);
 
     // --- vida: se recupera sola si te dejan en paz, como en Call of Duty ---
     this.tSinDano += dt;

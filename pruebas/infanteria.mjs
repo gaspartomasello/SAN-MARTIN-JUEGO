@@ -75,6 +75,7 @@ const r = await pag.evaluate(() => {
   c.recarga = 0; c.tCubierta = 0;
   // una tapia a 6 m del soldado, del lado del jugador
   c.cubiertas = [{ x: 0, z: -33, r: 1.2 }];
+  c.colisiones = [];        // acá se mide buscar cubierta, no chocarse el decorado
   c.estado = 'avanzar';
   c.actualizar(1 / 60, j.jugador, j.soldados);
   ok('elige el parapeto', c.estado === 'correr' && c.motivo === 'cubierta', `${c.estado}/${c.motivo}`);
