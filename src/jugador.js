@@ -37,7 +37,6 @@ export class Jugador {
 
     this.monta = null;          // caballo si vas montado
     this.inclinaMonta = 0;      // el envión del galope, aparte del retroceso
-    this.balanceoMonta = 0;
     this.rapidezMonta = 0;
     this.postura = 'pie';
     this.altura = POSTURAS.pie.altura;
@@ -136,7 +135,6 @@ export class Jugador {
     this.velY = 0;
     this.vel.set(0, 0, 0);
     this.inclinaMonta = 0;
-    this.balanceoMonta = 0;
     this.rapidezMonta = 0;
     return true;
   }
@@ -202,15 +200,13 @@ export class Jugador {
       //    van al mismo compás. Es lo que más vende la sensación de ir arriba
       //    de un animal y no de un vehículo.
       this.bob = c.paso;
-      this.balanceoMonta = this.balanceoMonta || 0;
 
-      // 3. Se inclina para adentro de la curva. Un jinete no dobla plano: se
-      //    va con el caballo. Cuanto más rápido, más se tumba.
-      const banco = -(c.giroReal || 0) * (0.16 + rapido * 0.30);
-      this.balanceoMonta += (banco - this.balanceoMonta) * Math.min(1, 5 * dt);
-      this.balanceo += (this.balanceoMonta - this.balanceo) * Math.min(1, 9 * dt);
+      // 3. La cámara NO se inclina en las curvas. Se probó y molestaba: el
+      //    horizonte tumbado pelea con la mira y con la lectura del campo, y
+      //    la sensación de velocidad ya la dan el campo abierto y la zancada.
+      this.balanceo += (0 - this.balanceo) * Math.min(1, 6 * dt);
 
-      // 4. Y la cabeza se va apenas para atrás con el envión. Va en su propio
+      // 4. La cabeza se va apenas para atrás con el envión. Va en su propio
       //    campo porque retroPitch lo apaga el retroceso del arma cada cuadro.
       this.inclinaMonta += (-rapido * 0.050 - this.inclinaMonta) * Math.min(1, 3 * dt);
 

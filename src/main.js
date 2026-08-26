@@ -9,6 +9,7 @@ import { Sable } from './sable.js';
 import { Soldado } from './soldados.js';
 import { Caballo } from './caballo.js';
 import { PasadaArma } from './pasadaArma.js';
+import { PasadaVelocidad } from './pasadaVelocidad.js';
 import { Hud } from './hud.js';
 
 // ---------------------------------------------------------------------------
@@ -51,6 +52,7 @@ const sonido = new Sonido();
 const hud = new Hud();
 const jugador = new Jugador(camara, mundo.colisiones);
 const pasadaArma = new PasadaArma(render, escenaArma, camaraArma);
+const pasadaVel = new PasadaVelocidad(render, escena, camara);
 
 const entorno = entornoIluminacion(render);
 escena.environment = entorno;
@@ -353,6 +355,19 @@ function cambiarArma (cual) {
 }
 
 // --------------------------- soldados ---------------------------
+//
+// Los parapetos: las cajas de colisión que llegan a la cintura pero no tapan
+// la vista. Una tapia de tres metros no es cubierta, es una pared; un barril
+// de medio metro tampoco. Se calculan UNA vez, no cada cuadro.
+const parapetos = mundo.colisiones
+  .filter(c => c.max.y > 0.55 && c.max.y < 1.55)
+  .map(c => ({
+    x: (c.min.x + c.max.x) / 2,
+    z: (c.min.z + c.max.z) / 2,
+    r: Math.max(c.max.x - c.min.x, c.max.z - c.min.z) / 2
+  }))
+  .filter(p => p.r < 6);
+
 function soltarSoldado (bando, op = {}) {
   let pos;
   if (bando === 'realista') {
@@ -366,7 +381,7 @@ function soltarSoldado (bando, op = {}) {
     // los granaderos de a pie forman a los costados del jugador
     pos = new THREE.Vector3(jugador.pos.x + (Math.random() - 0.5) * 16, 0, 2 + Math.random() * 6);
   }
-  const sop = {};
+  const sop = { cubiertas: parapetos };
   // El caballo sólo se le da a un granadero. Los españoles desembarcaron 250
   // infantes y dos cañones: ni una montura en toda la fuerza.
   if (op.montado && bando === 'granadero') {
@@ -380,7 +395,9 @@ function soltarSoldado (bando, op = {}) {
     const dist = origen.distanceTo(objetivo.pos);
     if (objetivo.jugador) {
       // agachado sos menos blanco; tirado, casi nada
-      const punteria = Math.max(0.02, (0.6 - dist / 110 - oc * 0.45) * jugador.cfgPostura.blanco);
+      // hincado apunta mejor: es lo que compra el aviso que te dio al hincarse
+      const pulso = quien.rodilla ? 1.35 : 1;
+      const punteria = Math.max(0.02, (0.6 - dist / 110 - oc * 0.45) * jugador.cfgPostura.blanco * pulso);
       if (Math.random() < punteria) {
         // montado sos un blanco más grande, pero buena parte se la come el caballo
         if (montado() && Math.random() < 0.45) {
@@ -402,7 +419,7 @@ function soltarSoldado (bando, op = {}) {
         jugador.sacudir(0.12);
       }
     } else if (objetivo.soldado) {
-      const punteria = Math.max(0.03, 0.5 - dist / 120 - oc * 0.45);
+      const punteria = Math.max(0.03, (0.5 - dist / 120 - oc * 0.45) * (quien.rodilla ? 1.35 : 1));
       if (Math.random() < punteria) objetivo.soldado.recibir(2, dir);
     }
   };
@@ -621,6 +638,7 @@ addEventListener('resize', () => {
   camaraArma.updateProjectionMatrix();
   render.setSize(innerWidth, innerHeight);
   pasadaArma.redimensionar(innerWidth, innerHeight);
+  pasadaVel.redimensionar(innerWidth, innerHeight);
 });
 
 // --------------------------- bucle ---------------------------
@@ -719,16 +737,17 @@ function cuadro () {
     }
   }
 
-  // el aire en la cara: sube con la velocidad del caballo y se apaga a pie
-  sonido.viento(montado() ? Math.max(0, (jugador.monta.vel - 2.4) / 7.8) : 0);
-
   luzBoca.intensity = Math.max(0, luzBoca.intensity - dt * 260);
 
-  render.render(escena, camara);
-  const mundoInfo = { calls: render.info.render.calls, tris: render.info.render.triangles };
+  // El mundo pasa por el desenfoque de velocidad; apuntando se apaga, que es
+  // cuando menos falta hace y más molesta.
+  const embalado = montado() && !quiereApuntar
+    ? Math.max(0, (jugador.monta.vel - 4.2) / 6) : 0;
+  pasadaVel.dibujar(Math.min(1, embalado), montado() ? jugador.monta.rumbo : null);
+  const mundoInfo = { calls: pasadaVel.ultimaInfo.calls, tris: pasadaVel.ultimaInfo.tris };
   pasadaArma.dibujar(quiereApuntar ? 1 : 0);
   const info = {
-    calls: mundoInfo.calls + pasadaArma.ultimaInfo.calls + 1,
+    calls: mundoInfo.calls + pasadaArma.ultimaInfo.calls + 1 + (embalado > 0 ? 1 : 0),
     triangles: mundoInfo.tris + pasadaArma.ultimaInfo.tris
   };
   ultimoInfo = info;   // render.info se reinicia en cada render(); esta es la suma real

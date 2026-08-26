@@ -10,9 +10,21 @@ import { Caballo } from './caballo.js';
 // si la nube tapa, pierden de vista y caminan a donde vieron por última vez.
 
 const VEL = 1.85;
+const VEL_CARRERA = 4.3;        // a la carrera, con el fusil corto y bajo
 const ALCANCE_TIRO = 62;
 const ALCANCE_ACERO = 1.9;
 const RECARGA = 12.5;
+
+// ---- carrera, parapeto y rodilla ----
+//
+// Un soldado con el fusil descargado y el enemigo a menos de 16 m no se queda
+// a recargar: se le va encima a la bayoneta. Y uno con el fusil cargado no
+// dispara parado en medio del campo si tiene una tapia a mano.
+const CARGA_BAYONETA = 16;
+const CUBIERTA_BUSCAR = 24;     // radio en el que mira si hay parapeto
+const CUBIERTA_MINIMA = 6;      // no se parapeta encima del enemigo
+const CUBIERTA_LLEGADA = 1.1;
+const RODILLA_SUELTA = 0.42;    // probabilidad de hincarla a campo abierto
 
 // Ritmo de la estocada. El AVISO es sagrado: es la ventana en la que el
 // jugador ve venir el golpe. Sin esto, parar es lotería.
@@ -71,6 +83,13 @@ export class Soldado {
     this._grito = false;
     this._v = new THREE.Vector3();
     this._d = new THREE.Vector3();
+
+    this.cubiertas = op.cubiertas || null;   // parapetos del campo, ya filtrados
+    this.cubierta = null;                   // a dónde va corriendo
+    this.motivo = null;                     // 'cubierta' o 'carga'
+    this.rodilla = false;                   // rodilla en tierra: va a disparar
+    this.tCubierta = 0;                     // para no re-buscar parapeto cada cuadro
+    this.ritmo = 1;                         // 1 marcha, 2,3 carrera
 
     this.monta = null;
     this.tPasada = 0;
@@ -140,7 +159,7 @@ export class Soldado {
   get pos () { return this.malla.position; }
   get esRealista () { return this.bando === 'realista'; }
 
-  cabeza () { return this._v.set(this.pos.x, this.pos.y + 1.6, this.pos.z); }
+  cabeza () { return this._v.set(this.pos.x, this.pos.y + this.fig.alturaOjo, this.pos.z); }
 
   recibir (dano, dir) {
     if (!this.vivo) return false;
@@ -157,6 +176,7 @@ export class Soldado {
       this.caida = 0;
       this.avisando = false;
       this.sonido.grito();
+      if (this.rodilla) { this.rodilla = false; this.fig.rodilla = false; }
       // el muerto se cae de la silla y el caballo se dispara sin jinete
       if (this.monta) this.desmontar();
       return true;
@@ -189,18 +209,31 @@ export class Soldado {
     return true;
   }
 
-  // el enemigo vivo más cercano del otro bando; para los realistas, el jugador
-  // también cuenta
+  // El enemigo vivo más cercano del otro bando; para los realistas, el jugador
+  // también cuenta.
+  //
+  // La distancia se mide SOBRE EL PISO, no en tres dimensiones. Parece un
+  // detalle y no lo es: jugador.pos.y está a la altura del ojo (1,68 m) y el
+  // soldado tiene los pies en 0, así que la distancia 3D nunca bajaba de 1,68.
+  // Con ALCANCE_ACERO en 1,9 eso dejaba el alcance real de la bayoneta en 89
+  // centímetros —el enemigo tenía que meterse casi adentro tuyo para poder
+  // usarla— y es buena parte de por qué el cuerpo a cuerpo casi no aparecía.
+  // Un hombre parado a dos metros está a dos metros, no a dos y medio.
+  _distancia (p) {
+    const dx = p.x - this.pos.x, dz = p.z - this.pos.z;
+    return Math.sqrt(dx * dx + dz * dz);
+  }
+
   _elegirObjetivo (jugador, soldados) {
     let mejor = null;
     let mejorD = Infinity;
     if (this.esRealista && jugador.vivo) {
-      mejorD = this.pos.distanceTo(jugador.pos);
+      mejorD = this._distancia(jugador.pos);
       mejor = { pos: jugador.pos, jugador: true };
     }
     for (const s of soldados) {
       if (s === this || !s.vivo || s.bando === this.bando) continue;
-      const d = this.pos.distanceTo(s.pos);
+      const d = this._distancia(s.pos);
       if (d < mejorD) { mejorD = d; mejor = { pos: s.pos, soldado: s }; }
     }
     this.objetivo = mejor;
@@ -260,6 +293,8 @@ export class Soldado {
     this.malla.rotation.y = Math.atan2(hacia.x, hacia.z) + Math.PI;
 
     this.recarga = Math.max(0, this.recarga - dt);
+    this.tCubierta = Math.max(0, this.tCubierta - dt);
+    this.ritmo = 1;
     this.t += dt;
     if (this.tirado > 0) {
       // recién caído del caballo: tirado en el pasto, sin guardia
@@ -280,13 +315,29 @@ export class Soldado {
 
     switch (this.estado) {
       case 'avanzar': {
+        this._parar();
         if (dist < ALCANCE_ACERO) { this._entrarAcero(); break; }
-        if (this.teVe && dist < ALCANCE_TIRO && this.recarga <= 0) {
-          this.estado = 'apuntar'; this.t = 0;
-          this.fig.poner('apuntar');
+
+        // Fusil descargado y el enemigo encima: no se queda a recargar bajo
+        // fuego. Baja el arma y se le va a la carrera con la bayoneta puesta.
+        if (this.teVe && this.recarga > 0 && dist < CARGA_BAYONETA) {
+          this.estado = 'correr'; this.motivo = 'carga'; this.cubierta = null;
           this.sonido.grito();
           break;
         }
+
+        if (this.teVe && dist < ALCANCE_TIRO && this.recarga <= 0) {
+          // ¿hay una tapia, un carro, un barril? Nadie descarga parado en
+          // medio del campo si tiene dónde apoyarse.
+          const cub = this._buscarCubierta(objetivo, dist);
+          if (cub) {
+            this.cubierta = cub; this.estado = 'correr'; this.motivo = 'cubierta';
+            break;
+          }
+          this._encarar(Math.random() < RODILLA_SUELTA);
+          break;
+        }
+
         this.fig.poner('marcha');
         if (distDestino > 0.6) {
           this.pos.x += hacia.x * VEL * dt;
@@ -295,9 +346,41 @@ export class Soldado {
         }
         break;
       }
+
+      // A la carrera. Dos motivos y dos finales distintos: el que va al
+      // parapeto llega y se hinca; el que va a la bayoneta llega y ensarta.
+      case 'correr': {
+        this._dePie();
+        if (dist < ALCANCE_ACERO) { this._entrarAcero(); break; }
+        this.fig.poner('correr');
+        let bx, bz;
+        if (this.motivo === 'cubierta' && this.cubierta) { bx = this.cubierta.x; bz = this.cubierta.z; }
+        else { bx = destino.x; bz = destino.z; }
+        const dx = bx - this.pos.x, dz = bz - this.pos.z;
+        const d = Math.hypot(dx, dz);
+        this.malla.rotation.y = Math.atan2(dx / (d || 1), dz / (d || 1)) + Math.PI;
+        if (d > (this.motivo === 'cubierta' ? CUBIERTA_LLEGADA : 0.6)) {
+          this.pos.x += (dx / (d || 1)) * VEL_CARRERA * dt;
+          this.pos.z += (dz / (d || 1)) * VEL_CARRERA * dt;
+          andando = true;
+          this.ritmo = 2.3;
+        } else if (this.motivo === 'cubierta') {
+          // llegó al parapeto: rodilla en tierra y a apuntar por encima
+          this.malla.rotation.y = Math.atan2(hacia.x, hacia.z) + Math.PI;
+          this._encarar(true);
+        } else {
+          this.estado = 'avanzar';
+        }
+        // si mientras corre se le acabó el motivo, vuelve a la marcha
+        if (this.motivo === 'cubierta' && this.recarga > 0) { this.estado = 'avanzar'; this.cubierta = null; }
+        break;
+      }
       case 'apuntar': {
+        // encima tuyo no se queda encarando: baja el fusil y cruza el acero
+        if (dist < ALCANCE_ACERO) { this._entrarAcero(); break; }
         this.fig.poner('apuntar');
-        if (this.t > 1.5) {
+        // de rodillas apunta más despacio y con más cuidado
+        if (this.t > (this.rodilla ? 1.9 : 1.5)) {
           this._descargar();
           this.estado = 'recargar';
           this.recarga = RECARGA;
@@ -308,7 +391,8 @@ export class Soldado {
       case 'recargar': {
         this.fig.poner('recargar');
         if (dist < ALCANCE_ACERO) { this._entrarAcero(); break; }
-        if (this.t > 2.5) { this.estado = 'avanzar'; this.fig.poner('marcha'); }
+        // se recarga donde se disparó: si se hincó, sigue hincado
+        if (this.t > 2.5) { this._parar(); this.estado = 'avanzar'; this.fig.poner('marcha'); }
         break;
       }
       case 'acero': {
@@ -323,7 +407,7 @@ export class Soldado {
       }
     }
 
-    this.fig.actualizar(dt, andando);
+    this.fig.actualizar(dt, andando, this.ritmo);
   }
 
   // ------------------------------------------------------- la carga a lanza
@@ -401,7 +485,57 @@ export class Soldado {
     if (!c.vivo) this.desmontar(true);
   }
 
+  // ponerse de pie, sin más
+  _dePie () {
+    if (this.rodilla) { this.rodilla = false; this.fig.rodilla = false; }
+  }
+
+  // ponerse de pie Y soltar el parapeto. OJO: no llamar a esto desde 'correr',
+  // que ahí el destino todavía hace falta —borrarlo dejaba al soldado
+  // corriendo al enemigo en vez de a la tapia.
+  _parar () {
+    this._dePie();
+    this.cubierta = null;
+    this.motivo = null;
+  }
+
+  // encarar el fusil, de pie o con la rodilla en tierra
+  _encarar (deRodillas) {
+    this.estado = 'apuntar';
+    this.t = 0;
+    this.rodilla = !!deRodillas;
+    this.fig.rodilla = this.rodilla;
+    this.fig.poner('apuntar');
+    this.sonido.grito();
+  }
+
+  // El parapeto más conveniente: cerca mío, no encima del enemigo, y que no me
+  // haga retroceder. Se busca cada segundo y medio, no cada cuadro.
+  _buscarCubierta (objetivo, dist) {
+    if (!this.cubiertas || !this.cubiertas.length) return null;
+    if (this.tCubierta > 0) return null;
+    this.tCubierta = 1.5;
+    let mejor = null, mejorPunto = null, mejorPuntaje = Infinity;
+    for (const c of this.cubiertas) {
+      const dMio = Math.hypot(c.x - this.pos.x, c.z - this.pos.z);
+      if (dMio > CUBIERTA_BUSCAR || dMio < 1.2) continue;
+      const dEnemigo = Math.hypot(c.x - objetivo.x, c.z - objetivo.z);
+      if (dEnemigo < CUBIERTA_MINIMA) continue;
+      // el puesto va del lado del parapeto que da la espalda al enemigo
+      const nx = (c.x - objetivo.x) / (dEnemigo || 1);
+      const nz = (c.z - objetivo.z) / (dEnemigo || 1);
+      const px = c.x + nx * (c.r + 0.45);
+      const pz = c.z + nz * (c.r + 0.45);
+      // caminar hacia atrás para taparse no sirve: se penaliza alejarse
+      const acerca = Math.hypot(px - objetivo.x, pz - objetivo.z) - dist;
+      const puntaje = Math.hypot(px - this.pos.x, pz - this.pos.z) + Math.max(0, acerca) * 1.4;
+      if (puntaje < mejorPuntaje) { mejorPuntaje = puntaje; mejor = c; mejorPunto = { x: px, z: pz }; }
+    }
+    return mejor ? mejorPunto : null;
+  }
+
   _entrarAcero () {
+    this._parar();
     this.estado = 'acero';
     this.t = 0;
     this.tAcero = 0;
@@ -449,7 +583,7 @@ export class Soldado {
   }
 
   _descargar () {
-    const origen = new THREE.Vector3(this.pos.x, this.pos.y + 1.38, this.pos.z);
+    const origen = new THREE.Vector3(this.pos.x, this.pos.y + (this.rodilla ? 1.02 : 1.38), this.pos.z);
     const dir = new THREE.Vector3().subVectors(this.objetivo.pos, origen).normalize();
     this.sonido.disparo();
     this.humo.soltar(origen.clone().addScaledVector(dir, 0.9), dir,

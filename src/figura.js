@@ -352,6 +352,14 @@ const POSES = {
     poloD: [1, -0.5, -0.4], poloI: [-1, -0.4, 0.2],
     torso: [0, 0, 0], cabeza: [0, 0, 0]
   },
+  // A LA CARRERA: el fusil se lleva corto y bajo, no terciado sobre el pecho.
+  // Un hombre que corre con la bayoneta al frente se ve distinto de uno que
+  // marcha, y esa diferencia es la que avisa que se te viene encima.
+  correr: {
+    manoD: [0.21, 0.05, -0.24], dir: [-0.16, 0.30, -0.94], agarre: 0.44,
+    poloD: [1, -0.6, -0.2], poloI: [-0.9, -0.6, 0.2],
+    torso: [0.16, -0.30, 0], cabeza: [-0.10, 0.24, 0]
+  },
   // encarado: culata en el hombro, cuerpo perfilado, cara sobre la caja
   apuntar: {
     manoD: [0.15, 0.43, -0.29], dir: [0, 0.02, -1], agarre: 0.46, roll: -0.10,
@@ -444,6 +452,7 @@ export class Figura {
     this.h = h;
     this.bando = bando;
     this.montura = false;        // true: piernas a horcajadas, sin paso
+    this.rodilla = false;        // true: rodilla derecha en tierra, postura de tiro
 
     const taller = new Taller();
     vestir(taller, h, c, piel, pelo);
@@ -488,6 +497,9 @@ export class Figura {
   }
 
   poner (nombre) { if (POSES[nombre]) this.pose = nombre; }
+
+  // altura del ojo sobre los pies: baja al hincar la rodilla
+  get alturaOjo () { return (this.rodilla ? 1.22 : 1.60) * this.raiz.scale.y; }
 
   ocultarArma (v) { this.arma.visible = !v; }
 
@@ -567,7 +579,7 @@ export class Figura {
     this.arma.quaternion.copy(qMano.invert()).multiply(qArma);
   }
 
-  actualizar (dt, andando) {
+  actualizar (dt, andando, ritmo) {
     const p = POSES[this.pose] || POSES.marcha;
     const c = this.cur;
     const k = 1 - Math.exp(-10 * dt);
@@ -585,6 +597,24 @@ export class Figura {
 
     // paso: la cadera manda, la rodilla sólo dobla hacia atrás
     const kp = 1 - Math.exp(-9 * dt);
+    if (this.rodilla) {
+      // RODILLA EN TIERRA. La derecha apoya en el suelo, la izquierda queda
+      // levantada adelante con el pie plano y la cadera baja de 0,92 a 0,52 m.
+      // Es la postura de tiro reglamentaria y acá cumple dos funciones: afina
+      // la puntería y —sobre todo— AVISA. Un soldado que hinca la rodilla te
+      // está diciendo que va a disparar, y te lo dice desde lejos.
+      const h = this.h;
+      h.musloD.rotation.x += (-0.35 - h.musloD.rotation.x) * kp;
+      h.rodillaD.rotation.x += (-1.07 - h.rodillaD.rotation.x) * kp;
+      h.musloI.rotation.x += (1.21 - h.musloI.rotation.x) * kp;
+      h.rodillaI.rotation.x += (-1.21 - h.rodillaI.rotation.x) * kp;
+      h.musloD.rotation.z += (0.10 - h.musloD.rotation.z) * kp;
+      h.musloI.rotation.z += (-0.14 - h.musloI.rotation.z) * kp;
+      h.cadera.position.y += (0.52 - h.cadera.position.y) * kp;
+      h.cadera.rotation.z += (0 - h.cadera.rotation.z) * kp;
+      this._armar();
+      return;
+    }
     if (this.montura) {
       // a horcajadas: muslos abiertos y adelantados, rodilla doblada, pies en
       // los estribos. No hay paso que valga arriba de un caballo.
@@ -601,13 +631,16 @@ export class Figura {
       return;
     }
     if (andando) {
-      this.paso += dt * 6.6;
+      // el ritmo lo pone quien llama: 1 es marcha, 2,3 es carrera
+      const r = ritmo || 1;
+      this.paso += dt * 6.6 * r;
+      const amp = Math.min(1.5, r);
       const s = Math.sin(this.paso);
-      this.h.musloI.rotation.x = s * 0.52;
-      this.h.musloD.rotation.x = -s * 0.52;
-      this.h.rodillaI.rotation.x = -Math.max(0, -Math.sin(this.paso - 0.7)) * 0.95;
-      this.h.rodillaD.rotation.x = -Math.max(0, Math.sin(this.paso - 0.7)) * 0.95;
-      this.h.cadera.position.y = CADERA + Math.abs(s) * 0.028;
+      this.h.musloI.rotation.x = s * 0.52 * amp;
+      this.h.musloD.rotation.x = -s * 0.52 * amp;
+      this.h.rodillaI.rotation.x = -Math.max(0, -Math.sin(this.paso - 0.7)) * 0.95 * amp;
+      this.h.rodillaD.rotation.x = -Math.max(0, Math.sin(this.paso - 0.7)) * 0.95 * amp;
+      this.h.cadera.position.y = CADERA + Math.abs(s) * 0.028 * amp;
       this.h.cadera.rotation.z = s * 0.035;
       this.h.musloI.rotation.z += (0 - this.h.musloI.rotation.z) * kp;
       this.h.musloD.rotation.z += (0 - this.h.musloD.rotation.z) * kp;

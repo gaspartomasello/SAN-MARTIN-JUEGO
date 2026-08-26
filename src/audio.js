@@ -130,36 +130,6 @@ export class Sonido {
     this._tono(150, 70, 0.16, 0.34, 'sine');
     this._ruido(0.14, 0.14, 'lowpass', 700, 1);
   }
-  // EL VIENTO DEL GALOPE.
-  //
-  // Un lazo de ruido que no se apaga nunca: lo que cambia con la velocidad es
-  // el volumen y el filtro. Al paso es un susurro grave; a galope se abre
-  // arriba y te tapa media batalla, que es justamente lo que hace el aire a
-  // 37 km/h contra la cara.
-  viento (nivel) {
-    if (!this.ctx) return;
-    const v = Math.max(0, Math.min(1, nivel || 0));
-    if (!this._viento) {
-      const largo = 2;
-      const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * largo, this.ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      let x = 0;
-      for (let i = 0; i < d.length; i++) { x = x * 0.90 + (Math.random() * 2 - 1) * 0.10; d[i] = x * 3.2; }
-      const src = this.ctx.createBufferSource();
-      src.buffer = buf; src.loop = true;
-      const filtro = this.ctx.createBiquadFilter();
-      filtro.type = 'bandpass'; filtro.frequency.value = 300; filtro.Q.value = 0.7;
-      const g = this.ctx.createGain();
-      g.gain.value = 0;
-      src.connect(filtro).connect(g).connect(this.master);
-      src.start();
-      this._viento = { g, filtro };
-    }
-    const t = this.t;
-    this._viento.g.gain.setTargetAtTime(v * v * 0.34, t, 0.18);
-    this._viento.filtro.frequency.setTargetAtTime(240 + v * 1500, t, 0.25);
-  }
-
   golpeRecibido () { if (this.ctx) { this._tono(90, 45, 0.35, 0.6, 'sine'); this.aturdir(1.6); } }
   grito () { if (this.ctx) { this._tono(320, 140, 0.4, 0.22, 'sawtooth'); this._ruido(0.35, 0.2, 'bandpass', 800, 1.2); } }
 

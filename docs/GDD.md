@@ -470,14 +470,71 @@ el caballo— para que el galope tenga una personalidad y no cuatro:
 2. **Sube y baja con la ZANCADA**, no con un vaivén cualquiera: la cámara toma
    el mismo reloj que mueve las patas. Es lo que más vende que vas arriba de un
    animal y no de un vehículo.
-3. **Se tumba para adentro de la curva.** El caballo publica su giro efectivo
-   (`giroReal`, rad/s) y la cámara se inclina con él, más cuanto más rápido.
-4. **La cabeza se va atrás** con el envión, en su propio campo para que no la
+3. **La cabeza se va atrás** con el envión, en su propio campo para que no la
    apague el retroceso del arma.
+4. **El desenfoque radial**: el mundo se estira hacia afuera desde el punto al
+   que vas. El centro queda nítido y los bordes se van en rayas.
 
-Y dos capas más: el **viento** —un lazo de ruido cuyo volumen y filtro suben con
-la velocidad; a galope te tapa media batalla, como el aire a 37 km/h contra la
-cara— y el **túnel**, una viñeta que se cierra pasado el trote.
+Y el **túnel**, una viñeta que se cierra pasado el trote.
+
+**Dos cosas que se probaron y se sacaron.** La cámara se inclinaba en las
+curvas —un jinete se va con el caballo— pero el horizonte tumbado peleaba con
+la mira y con la lectura del campo. Y había un viento en los oídos que subía
+con la velocidad: sobraba, tapaba la batalla sin agregar nada. La velocidad se
+cuenta con la imagen, no con el oído.
+
+**El desenfoque de velocidad** (`pasadaVelocidad.js`). El centro del estirado
+**no es el centro de la pantalla**: es la dirección de marcha del caballo
+proyectada a pantalla. Arriba de un caballo el mouse mira libre, así que si vas
+al galope mirando de costado las rayas convergen fuera del cuadro —que es
+exactamente lo que ve un jinete—. Se apaga al apuntar, que es cuando menos
+falta hace y más molesta. Cuesta una pasada de pantalla completa y **sólo se
+paga cuando hay velocidad**: por debajo del umbral el mundo se dibuja derecho a
+la pantalla, como siempre.
+
+### La infantería: carrera, parapeto y rodilla
+
+Tres cosas que valen para los dos bandos y que cambian cómo se lee el campo de
+lejos. La silueta dice lo que el hombre va a hacer.
+
+**A la carrera (4,3 m/s contra 1,85 de marcha).** Un soldado con el fusil
+descargado y el enemigo a menos de 16 metros no se queda a recargar bajo
+fuego: baja el arma, la toma corta y se le va encima a la bayoneta. La pose de
+carrera es distinta de la de marcha —el fusil va bajo y al frente, no terciado
+sobre el pecho— justamente para que se note desde lejos que eso que viene no
+viene caminando.
+
+**El parapeto.** Nadie descarga parado en medio del campo si tiene una tapia, un
+carro o un barril a mano. Los parapetos se calculan **una sola vez** al arrancar:
+las cajas de colisión que llegan a la cintura (0,55 a 1,55 m) y no son paredes
+enteras. El soldado elige el más conveniente por un puntaje que suma la
+distancia que tiene que correr y **penaliza alejarse del enemigo** —taparse
+caminando para atrás no es cubrirse, es huir— y se pone del lado que le da la
+espalda al enemigo. Busca cada segundo y medio, no cada cuadro.
+
+**La rodilla en tierra.** La derecha apoya en el suelo, la izquierda queda
+adelante con el pie plano, la cadera baja de 0,92 a 0,52 m. Cumple dos
+funciones y la segunda importa más que la primera:
+
+- Afina la puntería: **un 35 % más de acierto**.
+- **AVISA.** Un soldado que hinca la rodilla te está diciendo que va a
+  disparar, y te lo dice desde lejos. Tarda 1,9 s en soltar el tiro en vez de
+  1,5: ese medio segundo es tuyo.
+
+Hincado el fusil sale desde 1,02 m en vez de 1,38, y la cabeza baja con él —así
+que también es más difícil de acertar—. Se hinca siempre al llegar a un
+parapeto y un 42 % de las veces a campo abierto. Se recarga hincado, y se pone
+de pie para cruzar el acero.
+
+### Las distancias se miden sobre el piso
+
+Un error que estuvo mucho tiempo y explicaba bastante. La distancia entre un
+soldado y su blanco se medía en tres dimensiones, pero `jugador.pos.y` está a
+la altura del ojo (1,68 m) y el soldado tiene los pies en cero: la distancia 3D
+nunca bajaba de 1,68. Con `ALCANCE_ACERO` en 1,90 eso dejaba el alcance real de
+la bayoneta en **89 centímetros** —el enemigo tenía que meterse casi adentro
+tuyo para poder usarla—, y es buena parte de por qué el cuerpo a cuerpo casi no
+aparecía. Un hombre parado a dos metros está a dos metros, no a dos y medio.
 
 ### La tez de la tropa
 
