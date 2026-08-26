@@ -801,6 +801,90 @@ el mismo**. Con la lejanía hecha, el campo pasó de 6 granaderos y 10 realistas
 a **20 y 34**, y el paso de refuerzos se acortó para que ese campo llegue a
 llenarse. La pinza de 120 es un modo aparte, no el ritmo de todos los días.
 
+### La pinza (Fase 8) — «El clarín»
+
+Es lo que ganó la batalla, y es una idea, no una carga.
+
+Los realistas desembarcaron de noche y subieron de la barranca hacia el convento
+con 250 infantes y dos piezas, convencidos de que enfrente no había nadie. San
+Martín tenía 120 granaderos escondidos **detrás** del convento de San Carlos,
+partidos en dos columnas de sesenta. A un toque de clarín las dos salieron cada
+una por un costado y se cerraron sobre los dos flancos al mismo tiempo.
+
+La batalla duró quince minutos.
+
+De eso hay que poder jugar tres cosas, y ninguna es apretar un botón de atacar:
+
+1. **La espera.** Estás formado, en silencio, sin que te vean. Todavía no pasó
+   nada y ya ganaste, si nadie se mueve antes de tiempo.
+2. **El toque.** Una sola señal y ciento veinte hombres arrancan juntos.
+3. **El mando.** Tu columna te sigue **a vos**. No a un punto del mapa: a vos.
+   Sesenta hombres van a donde vayas, y si los llevás mal, se pierden.
+
+`juego.formarPinza()` la arma; la tecla **T** toca el clarín.
+
+#### La formación, y por qué hacía falta un sistema nuevo
+
+Sesenta lanceros con la IA de siempre no son una columna: son sesenta tipos a
+caballo que eligieron cada uno su enemigo. Así que mientras la columna está
+formada, cada hombre tiene una **plaza** —su sitio, colgado del eje de marcha
+del que va adelante— y marchar le gana a atacar. La columna se rompe cuando la
+rompe el que la manda, o cuando el enemigo está a menos de 26 m; ahí se les
+devuelve la iniciativa y vuelve a mandar la caballería que ya sabíamos hacer.
+
+Cuatro de frente, 2,6 m entre hombre y hombre, 3,4 m entre fila y fila. Un
+escuadrón en columna es angosto a propósito: así cabe por el costado del
+convento sin desbordarse a la vista.
+
+El andar no sale de la distancia al enemigo sino de **la distancia a su propio
+sitio**. El piso lo pone el que va adelante —si el jefe galopa, todos galopan,
+aunque estén en su lugar— y el que se quedó atrás aprieta un escalón hasta
+alcanzar. Con eso la columna se estira y se junta como se estira y se junta una
+de verdad, sin coreografía.
+
+#### Se dobla al trote
+
+Al galope un caballo necesita dieciséis metros para girar y al trote menos de
+tres. Eso ya estaba en el juego —es lo que obliga al lancero a volver grupas
+despacio— y acá se cobra solo: una columna que toma las curvas a galope tendido
+se estira setenta metros y llega al choque hecha una hilera de tipos sueltos.
+Así que en las vueltas afloja al trote y suelta el galope recién en la recta,
+que es exactamente lo que hace la caballería de verdad. Medido: veinte hombres
+llegan al campo con 21 m de fondo sobre 17 nominales.
+
+#### Dos bichos que costaron la maniobra
+
+**El mundo terminaba en el frente del convento.** El tope de `z` era 20 y la
+formación va en z=54: los ciento veinte nacían aplastados contra el portón. El
+mundo tenía que llegar más atrás que el convento o la maniobra no cabía donde
+ocurrió.
+
+**Y el caballo vibraba contra la tapia.** El mismo bicho que ya habíamos
+arreglado en los soldados: elegir el costado por el que rodear según hacia dónde
+mira el que choca no sirve, porque cuando el golpe es de frente el producto da
+cero, el costado se sortea de nuevo cada cuadro y el animal se queda temblando
+contra el mismo ladrillo. Se rodea por **la punta más cercana**, que no cambia
+porque uno se corra.
+
+#### El presupuesto, ahora con garantía
+
+El peor caso del juego no es la batalla: es **darte vuelta y mirar tu propia
+columna**. Sesenta jinetes apilados en cincuenta metros, todos dentro del corte
+de distancia: 1.765 llamadas de dibujo.
+
+Un corte por distancia es una esperanza, no un presupuesto. Así que hay un techo
+duro: **26 hombres articulados como mucho**, los más cercanos, y el resto pasa a
+la lejanía esté a la distancia que esté. Y los más cercanos son, justamente, los
+únicos a los que les vas a ver un codo. Con eso el peor caso queda en 778
+llamadas y no depende de dónde mires.
+
+| Momento | Hombres | Llamadas |
+|---|---|---|
+| formada, mirando la columna de frente | 374 | **778** |
+| la carga, con las dos columnas en el campo | 374 | **781** |
+
+---
+
 ### El duelo (Fase 2)
 
 Dos formas de ganar un intercambio, y ninguna es apretar el botón de tajo.

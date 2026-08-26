@@ -354,8 +354,9 @@ export class Jugador {
   _mover (dx, dz) {
     this.pos.x += dx;
     this.pos.z += dz;
-    this.pos.x = Math.max(-60, Math.min(60, this.pos.x));
-    this.pos.z = Math.max(-105, Math.min(20, this.pos.z));
+    // el mismo mundo que el caballo: la pinza se forma detrás del convento
+    this.pos.x = Math.max(-62, Math.min(62, this.pos.x));
+    this.pos.z = Math.max(-105, Math.min(78, this.pos.z));
 
     // Se resuelve empujando al jugador fuera de la caja, no deshaciendo el
     // movimiento: deshacerlo es lo que hacía vibrar la pantalla al quedar

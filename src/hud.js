@@ -151,6 +151,12 @@ export class Hud {
     else if (datos.vendando > 0) txt += ' · <span class="mal">vendando…</span>';
     if (datos.postura === 'cuerpo a tierra') txt += ' · <span class="mal">no se puede cargar tirado</span>';
     txt += `<br>realistas ${datos.enemigos} · granaderos ${datos.aliados} · vendas ${datos.vendas}`;
+    // Tu columna. Mientras esté formada es un número que no querés ver bajar:
+    // son sesenta hombres que te siguen a vos y a nadie más.
+    if (datos.columna) {
+      txt += `<br><b>tu columna ${datos.columna.tuya}</b> · la otra ${datos.columna.otra}`;
+      if (datos.columna.esperando) txt += ' · <span class="bien">[T] el clarín</span>';
+    }
     this.estado.innerHTML = txt;
 
     // --- depuración ---

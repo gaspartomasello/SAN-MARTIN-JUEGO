@@ -135,6 +135,11 @@ export class Soldado {
     this._lejos = false;
     this.andando = false;
 
+    // Su lugar en la columna, si va formado. Mientras esté puesto, este hombre
+    // no elige blanco ni carga: marcha. Lo escribe la Pinza cada cuadro.
+    this.plaza = null;
+    this.andarColumna = 0;
+
     this.monta = null;
     this.tPasada = 0;
     this.tirado = 0;          // > 0: en el suelo tras la caída, sin defensa
@@ -356,7 +361,11 @@ export class Soldado {
         if (this.teVe) this.ultimoVisto.copy(obj);
         destino = this.teVe ? obj : this.ultimoVisto;
       }
-      this._cargarALanza(dt, this.objetivo ? dist : Infinity, destino);
+      // FORMADO manda sobre todo lo demás. Un escuadrón que rompe la formación
+      // porque cada uno vio un enemigo distinto no es un escuadrón: son sesenta
+      // tipos a caballo. La columna se rompe cuando la rompe el que la manda.
+      if (this.plaza) this._marchar(dt, this.plaza, this.andarColumna);
+      else this._cargarALanza(dt, this.objetivo ? dist : Infinity, destino);
       this.fig.actualizar(dt, false);
       return;
     }
@@ -558,6 +567,35 @@ export class Soldado {
       this.pos.x += tx * e * 0.9;
       this.pos.z += tz * e * 0.9;
     }
+  }
+
+  // ---------------------------------------------------------- ir formado
+  //
+  // No es cargar: es MARCHAR A UN PUNTO. La diferencia está en el andar, que no
+  // sale de la distancia al enemigo sino de la distancia a su propio lugar en
+  // la columna. El piso lo pone el que va adelante —si el jefe galopa, todos
+  // galopan, aunque estén en su sitio— y el que se quedó atrás aprieta un
+  // escalón hasta alcanzar. Con eso la columna se estira y se junta como se
+  // estira y se junta una de verdad, sin que nadie tenga que coreografiarla.
+  _marchar (dt, destino, andarBase) {
+    const c = this.monta;
+    const dx = destino.x - c.pos.x, dz = destino.z - c.pos.z;
+    const d = Math.hypot(dx, dz);
+    const mando = {};
+    if (d > 0.8) mando.hacia = Math.atan2(dx, dz) + Math.PI;
+
+    const rezagado = d > 15 ? 1 : 0;
+    c.andar = Math.min(3, Math.max(0, andarBase) + rezagado);
+    if (d < 1.1 && andarBase <= 0) c.andar = 0;
+
+    this.estado = 'formado';
+    this.avisando = false;
+    this.fig.poner('lanzaAlto');
+    if (c.puedeSaltar && c.obstaculoAdelante(c.vel * 0.55 + 2.5)) mando.saltar = true;
+    c.actualizar(dt, mando);
+    c.actualizado = true;
+    this._sentar();
+    if (!c.vivo) this.desmontar(true);
   }
 
   // ------------------------------------------------------- la carga a lanza

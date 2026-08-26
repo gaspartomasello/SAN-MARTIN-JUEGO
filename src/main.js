@@ -14,6 +14,7 @@ import { PasadaArma } from './pasadaArma.js';
 import { PasadaVelocidad } from './pasadaVelocidad.js';
 import { Lejania } from './lejania.js';
 import { Rejilla, separar, RADIO_HOMBRE, RADIO_CABALLO } from './estorbos.js';
+import { Pinza, PLAZA_OESTE, PLAZA_ESTE } from './pinza.js';
 import { Hud } from './hud.js';
 
 // ---------------------------------------------------------------------------
@@ -60,11 +61,33 @@ const lejania = new Lejania(escena, 320);
 
 // Se reparte ANTES de mover a nadie —el que está lejos no arma el cuerpo— y se
 // pinta DESPUÉS, cuando las posiciones del cuadro ya están puestas.
+// Cuántos hombres se arman hueso por hueso, como mucho. La distancia sola no
+// alcanza como presupuesto: el peor caso del juego es darte vuelta y mirar tu
+// propia columna, sesenta jinetes apilados en cincuenta metros, y ahí un corte
+// por distancia deja pasar a todos —medido: 1.765 llamadas—. Un techo duro
+// convierte el presupuesto en una garantía en vez de una esperanza: los más
+// cercanos van articulados y el resto pasa a la lejanía, esté a la distancia
+// que esté. Y los más cercanos son, justamente, los únicos a los que les vas a
+// ver un codo.
+const CERCA_MAX = 26;
+const _candidatos = [];
+
 function repartirLejania () {
   const ojo = jugador.pos;
+  _candidatos.length = 0;
   for (const s of soldados) {
-    s.ponerLejos(Math.hypot(s.pos.x - ojo.x, s.pos.z - ojo.z) > LOD_CERCA);
+    const d = Math.hypot(s.pos.x - ojo.x, s.pos.z - ojo.z);
+    if (d > LOD_CERCA) { s.ponerLejos(true); continue; }
+    _candidatos.push(s);
+    s._dLod = d;
   }
+  if (_candidatos.length > CERCA_MAX) {
+    _candidatos.sort((a, b) => a._dLod - b._dLod);
+    for (let i = 0; i < _candidatos.length; i++) _candidatos[i].ponerLejos(i >= CERCA_MAX);
+  } else {
+    for (const s of _candidatos) s.ponerLejos(false);
+  }
+
   for (const c of caballos) {
     if (c.jinete) continue;                       // lo manda su jinete
     if (jugador.monta === c) { c.lejos = false; continue; }
@@ -101,6 +124,78 @@ function apretujar () {
       s.pos.z += (dz / l) * e;
     });
   }
+}
+
+// ---------------------------- LA PINZA ----------------------------
+//
+// La maniobra del 3 de febrero, jugable. Se arma con `juego.formarPinza()` y
+// se larga con la tecla T —el clarín—. Los números por defecto son los de
+// verdad: dos columnas de 60 y 250 realistas subiendo de la barranca. Están
+// medidos (pruebas/lejania.mjs): 370 hombres, 99 llamadas de dibujo. Si en tu
+// máquina va pesado, se le pasan otros: formarPinza(30, 120).
+const pinza = new Pinza();
+pinza.alTocar = () => {
+  sonido.clarin();
+  hud.mostrarAviso('¡A LA CARGA!', 'bien');
+  hud.decir('El clarín. Ciento veinte hombres salen a la vez por los dos costados.', 5);
+};
+
+function formarPinza (porColumna = 60, realistas = 250) {
+  soltarTodo();
+  pinza.desarmar();
+
+  // el desembarco: la infantería realista sube de la barranca hacia el convento
+  for (let k = 0; k < realistas; k++) {
+    const fila = Math.floor(k / 42);
+    soltarSoldado('realista', {
+      pos: new THREE.Vector3(-32 + (k % 42) * 1.55, 0, -66 - fila * 3.2)
+    });
+  }
+  ponerCanones();
+
+  // las dos columnas, escondidas detrás del convento
+  for (const [col, plaza] of [[pinza.oeste, PLAZA_OESTE], [pinza.este, PLAZA_ESTE]]) {
+    for (let k = 0; k < porColumna; k++) {
+      const lat = ((k % 4) - 1.5) * 2.6;
+      const atras = Math.floor(k / 4) * 3.4;
+      const s = soltarSoldado('granadero', { montado: true,
+        pos: new THREE.Vector3(plaza.x + lat, 0, plaza.z + atras) });
+      if (!s.monta) continue;
+      col.hombres.push(s);
+    }
+  }
+  // la columna del este la manda su propio jefe; la del oeste la mandás vos
+  pinza.este.jefe = pinza.este.hombres[0] || null;
+  pinza.oeste.jefe = null;
+  pinza.viva = true;
+
+  // y vos vas a la cabeza de la del oeste, montado, en el punto del que cuelga
+  // la formación: los sesenta se plantan detrás tuyo
+  if (!montado()) {
+    const c = nuevoCaballo(new THREE.Vector3(PLAZA_OESTE.x, 0, PLAZA_OESTE.z), PLAZA_OESTE.rumbo);
+    caballo = c;
+    jugador.montar(c);
+  }
+  jugador.monta.pos.set(PLAZA_OESTE.x, 0, PLAZA_OESTE.z);
+  jugador.monta.rumbo = PLAZA_OESTE.rumbo;
+  jugador.monta.andar = 0;
+  jugador.monta.vel = 0;
+  jugador.pos.set(PLAZA_OESTE.x, jugador.pos.y, PLAZA_OESTE.z);
+  jugador.yaw = PLAZA_OESTE.rumbo;
+  for (const c of pinza.columnas) c.plantar();
+  combate = false;                 // acá no llegan refuerzos sueltos: es LA batalla
+
+  hud.mostrarAviso('Tu columna está formada · [T] toca el clarín', 'bien');
+  hud.decir('Sesenta granaderos detrás tuyo, y todavía no te vieron.', 6);
+  return { oeste: pinza.oeste.hombres.length, este: pinza.este.hombres.length, realistas };
+}
+
+function soltarTodo () {
+  for (const s of soldados) s.quitar();
+  soldados.length = 0;
+  for (const c of caballos) if (jugador.monta !== c) c.quitar();
+  caballos.length = 0;
+  if (jugador.monta) caballos.push(jugador.monta);
 }
 
 function pintarLejania () {
@@ -721,6 +816,13 @@ addEventListener('keydown', ev => {
     case 'Digit1': cambiarArma('larga'); break;
     case 'Digit2': cambiarArma('sable'); break;
     case 'Digit3': cambiarArma('pistolon'); break;
+    // EL CLARÍN. Una sola tecla, una sola vez, y salen los ciento veinte.
+    case 'KeyT': {
+      if (pinza.sonando) pinza.tocar();
+      else if (pinza.viva) hud.mostrarAviso('El clarín ya sonó', 'malo');
+      else hud.mostrarAviso('No hay columna formada', 'malo');
+      break;
+    }
     case 'KeyB': hud.verCartuchera(); break;
     case 'KeyV': if (jugador.vendar()) hud.mostrarAviso('Vendando', 'bien'); break;
     case 'KeyO':
@@ -930,6 +1032,7 @@ function cuadro () {
     }
   }
 
+  pinza.actualizar(dt, jugador, soldados.filter(s => s.esRealista));
   apretujar();
   pintarLejania();
 
@@ -994,6 +1097,9 @@ function cuadro () {
     vendando: Math.max(0, jugador.vendando),
     enemigos: vivosDe('realista'),
     aliados: vivosDe('granadero'),
+    columna: pinza.viva
+      ? { tuya: pinza.oeste.montados, otra: pinza.este.montados, esperando: pinza.sonando }
+      : null,
     humoLocal: humo.densidadEn(jugador.pos),
     presion,
     nubes: humo.vivas,
@@ -1008,6 +1114,7 @@ cuadro();
 
 window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado, lejania, pasadaVel,
   lod: m => { LOD_CERCA = m; }, separarAhora: apretujar, VOLTEO, OFICIO, METRALLA_CABALLO,
+  pinza, formarPinza, tocarClarin: () => pinza.tocar(),
   get caballo () { return caballo; }, caballos, canones, acto,
   montarODesmontar, voltear, ponerCanones,
   // para probar escalas a mano desde la consola: juego.formar(20, 30)

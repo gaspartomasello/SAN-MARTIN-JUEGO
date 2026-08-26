@@ -416,17 +416,31 @@ export class Caballo {
       const piso = Math.min(this.vel, ANDARES[1].vel * 0.85);
       this.vel = Math.max(this.vel * (1 - frente * 0.42), piso);
 
-      // y el rumbo se acomoda a la pared. De frente el giro es más decidido: si
-      // no, se queda rascando el mismo ladrillo hasta que lo maten.
-      let tx = -nz, tz = nx;
-      if (tx * fx + tz * fz < 0) { tx = -tx; tz = -tz; }
+      // Y EL RUMBO SE ACOMODA A LA PARED, rodeándola por la punta que tiene más
+      // cerca. Elegir el costado por hacia dónde mira el caballo no sirve:
+      // cuando el golpe es de frente el producto da cero, el costado se sortea
+      // de nuevo cada cuadro y el animal queda vibrando contra el mismo
+      // ladrillo. La punta más cercana, en cambio, no cambia porque él se
+      // corra: es una decisión y se sostiene.
+      let tx, tz;
+      if (Math.abs(nz) > Math.abs(nx)) {
+        tx = (c.max.x - this.pos.x) < (this.pos.x - c.min.x) ? 1 : -1;
+        tz = 0;
+      } else {
+        tx = 0;
+        tz = (c.max.z - this.pos.z) < (this.pos.z - c.min.z) ? 1 : -1;
+      }
       const rumboPared = Math.atan2(-tx, -tz);
       let dif = rumboPared - this.rumbo;
       dif = Math.atan2(Math.sin(dif), Math.cos(dif));
       this.rumbo += dif * (0.55 + frente * 0.40);
     }
-    this.pos.x = Math.max(-60, Math.min(60, this.pos.x));
-    this.pos.z = Math.max(-105, Math.min(20, this.pos.z));
+    // Los bordes del mundo. El techo de z era 20 —el frente del convento— y eso
+    // alcanzaba mientras todo pasaba en el campo. Pero la pinza se forma DETRÁS
+    // del convento, que llega hasta z=66, así que el mundo tiene que llegar más
+    // atrás que el convento o la maniobra no cabe donde ocurrió.
+    this.pos.x = Math.max(-62, Math.min(62, this.pos.x));
+    this.pos.z = Math.max(-105, Math.min(78, this.pos.z));
   }
 
   // Galope transversal: las cuatro patas con desfases distintos. La amplitud

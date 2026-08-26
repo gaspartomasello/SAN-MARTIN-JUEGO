@@ -148,6 +148,53 @@ export class Sonido {
   metralla () { if (this.ctx) { this._ruido(0.45, 0.34, 'highpass', 2100, 1.6); this._tono(900, 260, 0.3, 0.14, 'sawtooth'); } }
 
   golpeRecibido () { if (this.ctx) { this._tono(90, 45, 0.35, 0.6, 'sine'); this.aturdir(1.6); } }
+  // EL CLARÍN. El que le da el nombre al juego.
+  //
+  // Un clarín de caballería no tiene pistones: sólo puede dar las notas de la
+  // serie armónica de su tubo, y por eso todos los toques de la época están
+  // hechos con las mismas cuatro o cinco notas. Acá va sol–do–mi–sol, que es
+  // el esqueleto del toque de carga, con el sol de arriba sostenido al final.
+  //
+  // El timbre se arma con la fundamental más tres armónicos: un clarín es casi
+  // una onda cuadrada con la boca metálica, así que el tercer y quinto armónico
+  // pesan mucho. Un poco de vibrato al final y el aire de la caña abajo.
+  clarin () {
+    if (!this.ctx) return;
+    const t0 = this.t;
+    // sol, do, mi, sol — la última larga, que es la que arranca a los caballos
+    const notas = [[392, 0.16], [523.25, 0.16], [659.25, 0.16], [784, 0.62]];
+    let t = t0 + 0.02;
+    for (const [f, dur] of notas) {
+      for (const [mult, peso] of [[1, 0.20], [2, 0.13], [3, 0.09], [5, 0.035]]) {
+        const o = this.ctx.createOscillator();
+        o.type = mult === 1 ? 'square' : 'sawtooth';
+        o.frequency.setValueAtTime(f * mult, t);
+        // el clarinero no afina perfecto: la nota entra un pelo baja y sube
+        o.frequency.setValueAtTime(f * mult * 0.988, t);
+        o.frequency.linearRampToValueAtTime(f * mult, t + 0.05);
+        if (dur > 0.4) {
+          // vibrato en la nota larga
+          const lfo = this.ctx.createOscillator();
+          const prof = this.ctx.createGain();
+          lfo.frequency.value = 5.4;
+          prof.gain.value = f * mult * 0.008;
+          lfo.connect(prof); prof.connect(o.frequency);
+          lfo.start(t + 0.18); lfo.stop(t + dur);
+        }
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(peso, t + 0.022);
+        g.gain.setValueAtTime(peso, t + dur * 0.72);
+        g.gain.exponentialRampToValueAtTime(0.0008, t + dur + 0.05);
+        const f2 = this.ctx.createBiquadFilter();
+        f2.type = 'lowpass'; f2.frequency.value = 3400; f2.Q.value = 0.8;
+        o.connect(f2); f2.connect(g); g.connect(this.master);
+        o.start(t); o.stop(t + dur + 0.08);
+      }
+      t += dur;
+    }
+  }
+
   grito () { if (this.ctx) { this._tono(320, 140, 0.4, 0.22, 'sawtooth'); this._ruido(0.35, 0.2, 'bandpass', 800, 1.2); } }
 
   // sordera momentánea: filtro pasabajos que se abre de a poco
