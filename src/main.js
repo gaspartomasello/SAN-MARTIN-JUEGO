@@ -9,6 +9,7 @@ import { Sable } from './sable.js';
 import { Soldado } from './soldados.js';
 import { Caballo } from './caballo.js';
 import { Canon } from './canon.js';
+import { ActoCabral } from './acto.js';
 import { PasadaArma } from './pasadaArma.js';
 import { PasadaVelocidad } from './pasadaVelocidad.js';
 import { Hud } from './hud.js';
@@ -403,6 +404,7 @@ function soltarSoldado (bando, op = {}) {
     const oc = humo.oclusion(origen, objetivo.pos);
     const dist = origen.distanceTo(objetivo.pos);
     if (objetivo.jugador) {
+      if (jugador.atrapado > 0) return;
       // agachado sos menos blanco; tirado, casi nada
       // hincado apunta mejor: es lo que compra el aviso que te dio al hincarse
       const pulso = quien.rodilla ? 1.35 : 1;
@@ -435,6 +437,9 @@ function soltarSoldado (bando, op = {}) {
 
   s.alGolpear = (quien, objetivo) => {
     if (objetivo.jugador) {
+      // Durante el acto no te pueden rematar. No es piedad: es que la historia
+      // dice que no te remataron, y el jugador no puede defenderse.
+      if (jugador.atrapado > 0) { jugador.sacudir(0.3); return; }
       const frente = new THREE.Vector3().subVectors(jugador.pos, quien.pos).normalize();
       // ¿venías cubriendo? Y sobre todo: ¿desde hace cuánto?
       const parada = conSable() ? sable.recibir() : false;
@@ -540,6 +545,12 @@ function metrallaEncima () {
   return peor;
 }
 
+// --------------------------- el acto Cabral ---------------------------
+const acto = new ActoCabral({
+  escena, humo, sonido, jugador, soldados, hud,
+  get parapetos () { return parapetos; }
+});
+
 function limpiarCampo () {
   for (const s of soldados) s.quitar();
   soldados.length = 0;
@@ -560,6 +571,9 @@ addEventListener('keydown', ev => {
   if (ev.code === 'Escape') return;
   teclas.add(ev.code);
   if (ev.repeat) return;
+  // Bajo el caballo no hay tecla que sirva. El espacio se registra igual —el
+  // acto lee el forcejeo de aquí— pero no dispara ninguna acción.
+  if (jugador.atrapado > 0) { if (ev.code === 'Space') ev.preventDefault(); return; }
   switch (ev.code) {
     case 'KeyR': {
       const a = armaActual();
@@ -755,14 +769,22 @@ function cuadro () {
       if (caballo === c) caballo = null;
     }
   }
-  // si te matan el caballo, te vas al suelo con el golpe puesto
+  // Si te matan el caballo te vas al suelo. Y la PRIMERA vez que pasa estando
+  // montado no te levantás: la pierna queda debajo. Ahí arranca el acto. No es
+  // un guion aparte —es la consecuencia de la mecánica que ya existía—.
   if (jugador.monta && !jugador.monta.vivo) {
-    jugador.desmontar();
-    jugador.recibir(CAIDA, new THREE.Vector3(0, 0, 1));
-    jugador.sacudir(0.9);
-    sonido.golpeRecibido();
-    hud.mostrarAviso('¡Te mataron el caballo!', 'malo');
+    const c = jugador.monta;
+    if (acto.puedeArrancar(c)) {
+      acto.arrancar(c);
+    } else {
+      jugador.desmontar();
+      jugador.recibir(CAIDA, new THREE.Vector3(0, 0, 1));
+      jugador.sacudir(0.9);
+      sonido.golpeRecibido();
+      hud.mostrarAviso('¡Te mataron el caballo!', 'malo');
+    }
   }
+  acto.actualizar(dt, teclas);
 
   jugador.actualizar(dt, teclas, quiereApuntar, arma ? arma.cargando : false);
 
@@ -827,6 +849,8 @@ function cuadro () {
     ? Math.max(0, (jugador.monta.vel - 4.2) / 6) : 0;
   pasadaVel.dibujar(Math.min(1, embalado), montado() ? jugador.monta.rumbo : null);
   const mundoInfo = { calls: pasadaVel.ultimaInfo.calls, tris: pasadaVel.ultimaInfo.tris };
+  // debajo del caballo no se sostiene nada: la capa del arma se apaga
+  escenaArma.visible = jugador.atrapado <= 0;
   pasadaArma.dibujar(quiereApuntar ? 1 : 0);
   const info = {
     calls: mundoInfo.calls + pasadaArma.ultimaInfo.calls + 1 + (embalado > 0 ? 1 : 0),
@@ -842,9 +866,11 @@ function cuadro () {
     estadoArma: arma ? arma.etiquetaEstado : 'en mano',
     postura: montado() ? jugador.monta.nombreAndar : p.nombre,
     rapidez: montado() ? jugador.monta.vel : 0,
-    puedeTomarFusil: !armas.fusil && !!caidoConFusil(),
+    puedeTomarFusil: jugador.atrapado <= 0 && !armas.fusil && !!caidoConFusil(),
     remate: sable.tRemate,
     metralla: metrallaEncima(),
+    atrapado: jugador.atrapado,
+    forcejeo: acto.forcejeo,
     vida: jugador.vida,
     regenerando: jugador.tSinDano > 4.5 && jugador.vida < 100,
     vendas: jugador.vendas,
@@ -864,7 +890,8 @@ ponerCanones();
 cuadro();
 
 window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado,
-  get caballo () { return caballo; }, caballos, canones, montarODesmontar, voltear, ponerCanones,
+  get caballo () { return caballo; }, caballos, canones, acto,
+  montarODesmontar, voltear, ponerCanones,
   // para probar escalas a mano desde la consola: juego.formar(20, 30)
   formar (lanceros = 10, realistas = 10) {
     for (let i = 0; i < lanceros; i++) soltarSoldado('granadero', { montado: true });

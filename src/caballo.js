@@ -224,9 +224,13 @@ export class Caballo {
       const e = 1 - Math.pow(1 - this.caida, 3);
       this.vel = Math.max(0, this.vel - dt * 9);
       this.alto = Math.max(0, this.alto - dt * 6);
-      this.raiz.rotation.z = e * 1.5 * this.lado;
-      this.raiz.rotation.x = e * 0.18;
-      this.raiz.position.y = this.alto - e * 0.42;
+      // poseFija: alguien le puso la pose a mano —el que lo levantó de encima
+      // de una pierna, por ejemplo— y el desplome no se la puede volver a pisar
+      if (!this.poseFija) {
+        this.raiz.rotation.z = e * 1.5 * this.lado;
+        this.raiz.rotation.x = e * 0.18;
+        this.raiz.position.y = this.alto - e * 0.42;
+      }
       if (this.caida >= 1) this.tMuerto += dt;
       this._avanzar(dt);
       return;

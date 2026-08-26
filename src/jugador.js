@@ -38,6 +38,11 @@ export class Jugador {
     this.monta = null;          // caballo si vas montado
     this.inclinaMonta = 0;      // el envión del galope, aparte del retroceso
     this.rapidezMonta = 0;
+    // ---- atrapado bajo el caballo: el único momento en que no podés hacer nada
+    this.atrapado = 0;
+    this.caidoEn = null;
+    this.yawAtrapado = 0;
+    this.pitchAtrapado = -0.08;
     this.postura = 'pie';
     this.altura = POSTURAS.pie.altura;
     this.pies = 0;           // altura del suelo bajo los pies
@@ -101,6 +106,8 @@ export class Jugador {
     this.vendando = 0;
     this.tSinDano = 99;
     this.monta = null;          // se vuelve a formar a pie
+    this.atrapado = 0;
+    this.caidoEn = null;
     this.postura = 'pie';
     this.pies = 0; this.velY = 0; this.enElAire = false;
     this.vel.set(0, 0, 0);
@@ -136,6 +143,40 @@ export class Jugador {
     this.vel.set(0, 0, 0);
     this.inclinaMonta = 0;
     this.rapidezMonta = 0;
+    return true;
+  }
+
+  // El caballo cae encima. Queda tirado mirando hacia donde venía.
+  atrapar (x, z, rumbo) {
+    this.atrapado = 0.001;
+    this.caidoEn = { x, z };
+    this.yawAtrapado = rumbo;
+    this.yaw = rumbo;
+    this.pitch = -0.08;
+    this.pitchAtrapado = -0.02;
+    this.monta = null;
+    this.postura = 'pie';
+    this.velY = 0;
+    this.enElAire = false;
+    this.trauma = Math.max(this.trauma, 1.0);
+  }
+
+  // a dónde mira el que está en el suelo: lo pone el acto en cada tiempo
+  mirarA (x, z, altoDelBlanco) {
+    if (!this.caidoEn) return;
+    const dx = x - this.caidoEn.x, dz = z - this.caidoEn.z;
+    this.yawAtrapado = Math.atan2(-dx, -dz);
+    // el ángulo real hacia el pecho del que está parado ahí
+    const d = Math.hypot(dx, dz);
+    const alto = (altoDelBlanco === undefined ? 1.25 : altoDelBlanco) - this.altura;
+    this.pitchAtrapado = Math.max(-0.15, Math.min(0.52, Math.atan2(alto, Math.max(0.6, d))));
+  }
+
+  liberar () {
+    if (!this.atrapado) return false;
+    this.atrapado = 0;
+    this.caidoEn = null;
+    this.balanceo = 0;
     return true;
   }
 
@@ -212,6 +253,46 @@ export class Jugador {
 
       this.rapidezMonta = rapido;
       this._aplicarCamara(dt, 1.4 + rapido * 4.2);
+      return;
+    }
+
+    // ---- ATRAPADO BAJO EL CABALLO ----
+    //
+    // Es el único momento del juego en que el jugador no puede hacer nada, y
+    // eso es a propósito. La pierna está debajo de media tonelada de animal
+    // muerto; no hay tecla que sirva. Lo único que queda es mirar —y ni
+    // siquiera mirar del todo, porque tirado de costado no se da vuelta la
+    // cabeza—. Toda la fuerza de lo que viene después depende de que acá el
+    // jugador esté genuinamente indefenso.
+    if (this.atrapado > 0) {
+      this.atrapado += dt;
+      this.pos.x = this.caidoEn.x;
+      this.pos.z = this.caidoEn.z;
+      this.pies = 0;
+      this.altura = 0.62;                      // la cabeza contra el pasto
+      this.pos.y = this.altura;
+      this.vel.set(0, 0, 0);
+      // El campo de visión se cierra: tirado de costado no se gira la cabeza
+      // más de un cuarto. Y si lo que importa está muy afuera del centro, la
+      // cabeza se va sola para allá —despacio, y se puede pelear contra eso
+      // con el mouse—. Es la única concesión: si el jugador se pierde el
+      // momento por estar mirando el pasto, el acto no existió.
+      const lim = 1.15;
+      let d = this.yaw - this.yawAtrapado;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      if (Math.abs(d) > 0.45) this.yaw -= Math.sign(d) * Math.min(Math.abs(d) - 0.45, 0.7 * dt);
+      d = this.yaw - this.yawAtrapado;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      this.yaw = this.yawAtrapado + Math.max(-lim, Math.min(lim, d));
+      // Y la cabeza se levanta: desde el pasto a un hombre parado se lo mira
+      // de abajo hacia arriba. Sin esto sólo se le ven las botas.
+      this.pitch += (this.pitchAtrapado - this.pitch) * Math.min(1, 1.6 * dt);
+      this.pitch = Math.max(-0.4, Math.min(0.55, this.pitch));
+      this.balanceo += (0.28 - this.balanceo) * Math.min(1, 3 * dt);   // tirado de costado
+      this.fov += (this.fovBase + 6 - this.fov) * Math.min(1, 2 * dt);
+      // la respiración se acelera sola: está debajo del caballo
+      this.aliento = Math.max(0, this.aliento - 6 * dt);
+      this._aplicarCamara(dt, 0);
       return;
     }
 

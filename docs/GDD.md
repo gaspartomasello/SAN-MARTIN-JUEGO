@@ -547,6 +547,86 @@ falta hace y más molesta. Cuesta una pasada de pantalla completa y **sólo se
 paga cuando hay velocidad**: por debajo del umbral el mundo se dibuja derecho a
 la pantalla, como siempre.
 
+### Los dos cañones (Fase 5)
+
+Los españoles bajaron dos piezas de campaña a la playa y alcanzaron a hacer un
+solo disparo antes del choque: metralla —un tarro lleno de perdigones— que
+volteó el caballo de San Martín. De ese disparo sale todo lo que viene después,
+así que el cañón no podía ser un adorno.
+
+**El aviso, en tres tiempos que se leen de lejos y sin HUD:**
+
+| | |
+|---|---|
+| se orienta | la boca gira despacio y te busca (0,55 rad/s: una pieza se mueve a brazo) |
+| **ceba** | la mecha humea sobre el oído — **2,1 segundos** |
+| fuego | el abanico |
+
+Con dos segundos alcanza para salirse del cono. **No para frenar el caballo.**
+Encima, si estás adentro del cono mientras ceba, la pantalla late en rojo.
+
+**El abanico** cobra por lo centrado y por lo cerca: el centro se lleva todo, el
+borde la mitad, y a ochenta metros la metralla ya es lluvia sin fuerza. No
+distingue bandos. Y se guarda para el que viene a caballo: a igualdad de
+distancia elige al jinete, porque el jinete es el peligro.
+
+**Se pueden callar.** Cada pieza tiene dos artilleros que no abandonan el
+puesto —un artillero que sale a dar bayonetazos deja la pieza muda, y la pieza
+vale más que él—. Si caen los dos, no vuelve a hablar. También se la puede
+desmontar a tiros: cinco impactos y se tumba. Silenciar los cañones es un
+objetivo táctico de verdad, no una tarea de lista.
+
+Al caballo lo voltea de una: nueve de daño contra seis de vida.
+
+### El acto Cabral (Fase 6)
+
+La metralla voltea el caballo, que cae con la pierna aprisionada debajo. Un
+soldado español se le viene encima con la bayoneta. Y entonces llega el
+sargento **Juan Bautista Cabral** —correntino, afrodescendiente, hijo de
+esclavos— que lo cubre, mata al que iba a matarlo, levanta el caballo para
+sacarle la pierna, y recibe él las heridas de las que muere.
+
+> *Muero contento, hemos batido al enemigo.*
+
+**La decisión de diseño más importante del juego está acá, y es esta: el
+jugador no puede hacer nada.**
+
+Todo el resto es agencia — elegís el andar, medís la distancia, parás la
+estocada. Acá no. La pierna está debajo de media tonelada de animal muerto y no
+hay tecla que sirva. Hay una barra de forcejeo en el espacio: sube mientras
+apretás, se topa en 0,82 y se vuelve a caer. **Nunca llega.** No es un desafío
+mal calibrado: es una respuesta honesta a «¿puedo hacer algo?». No.
+
+Era tentador darle al jugador un botón que lo salve, y habría sido una mentira.
+Lo salvó otro. Un hombre al que la historia escolar recuerda por una frase y
+casi nunca por su cara, su color ni su nombre completo. La única forma de que
+eso se sienta es que el jugador esté genuinamente indefenso y tenga que mirar.
+
+**No es un guion aparte: es la consecuencia de mecánicas que ya existían.** El
+acto arranca la primera vez que te matan el caballo estando montado, que ya era
+una cosa que pasaba. Al español no hay que guionarlo —camina hacia vos porque
+sos lo más cercano que tiene enfrente y estás en el suelo—. A Cabral tampoco:
+un granadero con el fusil descargado y un español a doce metros **corre a la
+bayoneta**, que es la misma regla de la Fase 4.5. Los tiempos del acto salen de
+cuánto tardan las piernas en llegar con las velocidades que ya tiene el juego;
+si el guion se adelantara a las piernas, se vería el truco.
+
+Lo único que se les toca: al español se le saca la capacidad de rematarte
+—porque la historia dice que no llegó— y a Cabral no se lo deja morir antes de
+tiempo.
+
+Tres cosas más, todas por la misma razón —tirado en el pasto la cámara está a
+62 cm y desde ahí no se ve nada—:
+
+- **Nadie se te sube encima.** Se los mantiene a dos metros y medio, que es
+  donde se los ve enteros. A un metro un hombre te tapa la pantalla con el
+  calzón.
+- **La cabeza se levanta sola** para mirarle el pecho al que está parado ahí.
+  Sin eso sólo se le ven las botas.
+- **La cabeza se va sola hacia lo que importa**, despacio, y se puede pelear
+  contra eso con el mouse. Es la única concesión: si el jugador se pierde el
+  momento por estar mirando el pasto, el acto no existió.
+
 ### La infantería: carrera, parapeto y rodilla
 
 Tres cosas que valen para los dos bandos y que cambian cómo se lee el campo de

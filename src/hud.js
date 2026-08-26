@@ -18,6 +18,9 @@ export class Hud {
     this.remate = $('#remate');
     this.velocidad = $('#velocidad');
     this.metralla = $('#metralla');
+    this.frase = $('#frase');
+    this.forcejeo = $('#forcejeo');
+    this.tFrase = 0;
     this.tomar = $('#tomar');
     this.aviso = $('#aviso');
     this.estado = $('#estado');
@@ -44,6 +47,14 @@ export class Hud {
   }
 
   verCartuchera () { this.tCartuchera = 2.6; }
+
+  // Una línea sola, abajo y al centro. Es la voz del acto: no hay más HUD que
+  // esto durante los diecisiete segundos que dura.
+  decir (texto, segundos) {
+    this.frase.textContent = texto;
+    this.frase.classList.add('si');
+    this.tFrase = segundos || 3.2;
+  }
 
   destello (f) {
     this.flash.style.transition = 'none';
@@ -86,6 +97,15 @@ export class Hud {
     this.velocidad.style.opacity = Math.min(1, gal).toFixed(3);
     // el aviso de la metralla: cuanto más centrado en el cono, más fuerte
     this.metralla.style.opacity = Math.min(1, (datos.metralla || 0) * 1.4).toFixed(3);
+
+    if (this.tFrase > 0) {
+      this.tFrase -= dt;
+      if (this.tFrase <= 0) this.frase.classList.remove('si');
+    }
+    const atrapado = datos.atrapado > 0;
+    this.forcejeo.classList.toggle('si', atrapado);
+    if (atrapado) this.forcejeo.querySelector('i').style.setProperty('--f',
+      (Math.min(1, datos.forcejeo || 0) * 100).toFixed(0) + '%');
 
     this.tomar.style.opacity = datos.puedeTomarFusil ? '1' : '0';
 
