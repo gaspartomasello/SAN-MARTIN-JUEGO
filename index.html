@@ -53,6 +53,13 @@
     text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 10px rgba(0,0,0,.9);pointer-events:none;
     transition:opacity .07s linear}
   #ahora.si{opacity:1}
+  #remate{position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);opacity:0;
+    font:700 30px/1 var(--titulo,inherit);letter-spacing:.3em;color:#9BC48F;
+    text-shadow:0 2px 18px rgba(0,0,0,.75);text-align:center;pointer-events:none;
+    transition:opacity .08s}
+  #remate.si{opacity:1}
+  #remate small{display:block;font-size:14px;letter-spacing:.22em;opacity:.85;margin-top:6px;
+    font-weight:400}
   #ahora small{display:block;font-size:15px;letter-spacing:.22em;opacity:.85;margin-top:6px;
     color:var(--hueso)}
 
@@ -139,6 +146,7 @@
   <div id="aliento"><i></i></div>
   <div id="cartuchera"><div class="n">0</div><div class="t">cartuchos</div></div>
   <div id="ahora">¡AHORA!<small>click izquierdo</small></div>
+  <div id="remate">¡REMATE!<small>click izquierdo</small></div>
   <div id="tomar"><b>[G]</b> tomar el fusil con bayoneta</div>
   <div id="aviso"></div>
   <div id="vida">
@@ -167,6 +175,11 @@
     <p class="sub">Cuartel del Retiro, diciembre de 1812. Arrancás con las armas cargadas y tenés
       un tiro. Después, <strong>apretá R y hacé click cuando se encienda ¡AHORA!</strong> — acertar
       los tres tiempos es la diferencia entre volver a tirar o comerte una bayoneta.</p>
+    <p><strong>Con el sable en la mano (tecla 2) el click derecho cubre.</strong> El realista avisa
+      antes de tirar la estocada: echa el acero atrás y grita. Si alzás la guardia
+      <strong>en ese instante</strong> —no antes— se la parás en seco y queda abierto: ahí entra el
+      remate. Cubrirse desde temprano también para, pero te cuesta aliento y él sigue en pie.
+      Y no entres de frente a un realista en guardia: te choca el acero. Rompelo con la pechada.</p>
     <div class="teclas">
       <div><kbd>W A S D</kbd><span>moverse</span></div>
       <div><kbd>Shift</kbd><span>correr</span></div>
@@ -174,9 +187,9 @@
       <div><kbd>C</kbd><span>agacharse</span></div>
       <div><kbd>Z</kbd><span>cuerpo a tierra</span></div>
       <div><kbd>Click izq.</kbd><span>disparar · marcar el tiempo</span></div>
-      <div><kbd>Click der.</kbd><span>apuntar por el cañón</span></div>
+      <div><kbd>Click der.</kbd><span>apuntar · <b>cubrirse</b> con el sable</span></div>
       <div><kbd>R</kbd><span>cargar el arma (una apretada)</span></div>
-      <div><kbd>F</kbd><span>culatazo / bayonetazo</span></div>
+      <div><kbd>F</kbd><span>culatazo / bayonetazo · <b>pechada</b></span></div>
       <div><kbd>1 / 2 / 3</kbd><span>arma larga · sable · pistolón</span></div>
       <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
       <div><kbd>B</kbd><span>revisar la cartuchera</span></div>

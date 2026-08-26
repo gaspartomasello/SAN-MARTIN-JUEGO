@@ -15,6 +15,7 @@ export class Hud {
     this.cartuchera = $('#cartuchera');
     this.cartucheraN = $('#cartuchera .n');
     this.ahora = $('#ahora');
+    this.remate = $('#remate');
     this.tomar = $('#tomar');
     this.aviso = $('#aviso');
     this.estado = $('#estado');
@@ -75,6 +76,9 @@ export class Hud {
       this.paso.style.opacity = '0';
       this.ahora.classList.remove('si');
     }
+
+    // ventana del remate abierta tras una parada perfecta
+    this.remate.classList.toggle('si', datos.remate > 0);
 
     this.tomar.style.opacity = datos.puedeTomarFusil ? '1' : '0';
 

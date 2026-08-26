@@ -344,6 +344,31 @@ perfilarse para encarar —hombro izquierdo adelante— sin que el fusil se vaya
 Poses actuales: `marcha` (armas terciadas), `apuntar`, `recargar`, `guardia`, `cargar` y
 `estocada`. Las tres últimas son el ciclo del cuerpo a cuerpo.
 
+### El duelo (Fase 2)
+
+Dos formas de ganar un intercambio, y ninguna es apretar el botón de tajo.
+
+**La paciente.** El realista en guardia **para el sablazo**: entrarle de frente sólo hace
+sonar el acero. Hay que esperar el aviso. Alzar la guardia (click derecho con el sable en
+mano) dentro de los **180 ms** del golpe es una **parada perfecta**: no te toca, no te
+cuesta aliento, y lo deja aturdido 1,35 s. Se abre entonces la ventana del **remate** —
+0,95 s— y ese tajo pasa por encima de cualquier guardia.
+
+**La agresiva.** La **pechada** (`F` con el sable) no hiere: le rompe la guardia, lo empuja
+setenta centímetros y lo deja abierto. Cuesta 18 de aliento.
+
+Cubrirse tarde también sirve, pero se paga: **26 de aliento** y el envión igual te saca un
+18 % del daño. Y aguantar el sable en alto drena **11 de aliento por segundo**, así que no
+se puede jugar el duelo entero con el botón derecho apretado — sin aliento la guardia se
+cae sola. Ése es el freno que impide que el sistema degenere en turtling.
+
+| Número | Valor | Por qué |
+|---|---|---|
+| Ventana de parada | **180 ms** | Lo que separa "leí el golpe" de "aposté". Es el número que no se toca sin volver a probarlo. |
+| Aviso del enemigo | 550 ms | Tiene que ser más largo que la ventana: si no, parar es reflejo y no lectura. |
+| Ventana de remate | 950 ms | Suficiente para reaccionar, corta para que no sea gratis. |
+| Aturdimiento | 1,35 s | Lo que tarda en volver a cubrirse. |
+
 ### La telegrafía del acero
 
 El realista no clava la bayoneta de la nada. El ciclo es **guardia → aviso → estocada →

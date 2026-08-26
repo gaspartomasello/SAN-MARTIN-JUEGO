@@ -50,6 +50,18 @@ function geometriaHoja ({ largo = 0.82, curva = 0.95, anchoBase = 0.044,
   return geo;
 }
 
+// El duelo en tres números. La ventana de parada es lo único que no se toca
+// sin volver a probarlo: 180 ms es lo que separa "leí el golpe" de "aposté".
+export const VENTANA_PARADA = 0.18;
+export const VENTANA_REMATE = 0.95;
+
+// Guardia: la hoja cruzada arriba a la izquierda, de plano contra la cámara y
+// lejos del ojo. Los ángulos NO son a ojo — salen de alinear la dirección de la
+// hoja (0, 0.457, −0.889 en el espacio del sable) con (−0.45, 0.88, −0.15) y su
+// cara plana con la cámara. Si se toca la geometría de la hoja, hay que rehacer
+// la cuenta, no tantear.
+const POSE_GUARDIA = { p: [0.42, -0.42, -1.00], r: [1.437, -0.007, 1.639] };
+
 export class Sable {
   constructor (camaraArma, sonido) {
     this.camara = camaraArma;
@@ -127,6 +139,33 @@ export class Sable {
     this.manoLocal = new THREE.Vector3(0, -0.02, 0.06);
 
     this.zurdo = false;      // los tajos alternan de lado, como el cuchillo del Counter
+
+    // duelo
+    this.guardia = false;
+    this.tGuardia = 0;       // desde que se alzó: si es poco, la parada es perfecta
+    this.tRemate = 0;        // ventana abierta para el remate
+    this.tParada = -1;       // animación del choque
+    this.perfecta = false;
+    this.remate = false;
+  }
+
+  alzarGuardia () {
+    if (this.guardado || this.guardia || this.t >= 0) return false;
+    this.guardia = true;
+    this.tGuardia = 0;
+    return true;
+  }
+
+  bajarGuardia () { this.guardia = false; }
+
+  // Llega un golpe. Devuelve 'perfecta', 'bloqueo' o false si estabas abierto.
+  // La perfecta no cuesta aliento y abre la ventana del remate.
+  recibir () {
+    if (!this.guardia || this.guardado) return false;
+    this.perfecta = this.tGuardia <= VENTANA_PARADA;
+    this.tParada = 0;
+    if (this.perfecta) this.tRemate = VENTANA_REMATE;
+    return this.perfecta ? 'perfecta' : 'bloqueo';
   }
 
   _acomodarBrazo () {
@@ -140,26 +179,47 @@ export class Sable {
   }
 
   sacar () { this.guardado = false; this.grupo.visible = true; this.brazo.visible = true; }
-  guardar () { this.guardado = true; this.grupo.visible = false; this.brazo.visible = false; this.t = -1; }
+  guardar () {
+    this.guardado = true; this.grupo.visible = false; this.brazo.visible = false;
+    this.t = -1; this.guardia = false; this.tRemate = 0; this.tParada = -1;
+  }
 
+  // Devuelve true si salió el remate. El remate sólo existe si venís de una
+  // parada perfecta: es más lento y más ancho, y se ve que es otra cosa.
   tajo () {
-    if (this.guardado || this.t >= 0) return;
+    if (this.guardado || this.t >= 0) return false;
+    this.remate = this.tRemate > 0;
     this.t = 0;
     this.golpeo = false;
-    this.zurdo = !this.zurdo;        // un tajo va de ida y el siguiente de vuelta
-    this.duracion = this.zurdo ? 0.46 : 0.52;
+    this.guardia = false;
+    if (this.remate) {
+      this.tRemate = 0;
+      this.duracion = 0.60;
+    } else {
+      this.zurdo = !this.zurdo;      // un tajo va de ida y el siguiente de vuelta
+      this.duracion = this.zurdo ? 0.46 : 0.52;
+    }
     this.sonido.sable();
+    return this.remate;
   }
 
   actualizar (dt) {
     if (this.guardado) return;
     const k = 1 - Math.exp(-14 * dt);
+    if (this.guardia) this.tGuardia += dt;
+    if (this.tRemate > 0) this.tRemate = Math.max(0, this.tRemate - dt);
+    if (this.tParada >= 0) this.tParada += dt;
+
     if (this.t >= 0) {
       this.t += dt;
       const u = this.t / this.duracion;
       if (u < 1) {
         const e = Math.sin(Math.min(1, u * 1.15) * Math.PI);
-        if (this.zurdo) {
+        if (this.remate) {
+          // remate: entra de arriba, de punta a punta. Es el golpe que cobra.
+          this.grupo.position.set(0.22 - e * 0.5, -0.12 + e * 0.30, -0.58 - e * 0.16);
+          this.grupo.rotation.set(0.02 - e * 1.15, -0.42 + e * 1.05, 0.26 + e * 2.25);
+        } else if (this.zurdo) {
           // revés: entra de abajo a la izquierda y sale arriba a la derecha
           this.grupo.position.set(0.22 - e * 0.4, -0.14 - e * 0.04, -0.58 - e * 0.1);
           this.grupo.rotation.set(0.02 + e * 0.6, -0.42 - e * 1.1, 0.26 - e * 1.5);
@@ -168,7 +228,7 @@ export class Sable {
           this.grupo.position.set(0.22 - e * 0.46, -0.12 + e * 0.1, -0.58 - e * 0.06);
           this.grupo.rotation.set(0.02 - e * 0.45, -0.42 + e * 1.35, 0.26 + e * 1.85);
         }
-        if (!this.golpeo && u > 0.3 && u < 0.58) {
+        if (!this.golpeo && u > (this.remate ? 0.34 : 0.3) && u < 0.62) {
           this.golpeo = true;
           if (this.alGolpear) this.alGolpear();
         }
@@ -176,7 +236,32 @@ export class Sable {
         return;
       }
       this.t = -1;
+      this.remate = false;
     }
+
+    // choque de aceros: el sable salta hacia afuera, más si fue perfecta
+    if (this.tParada >= 0 && this.tParada < 0.22) {
+      const e = Math.sin((this.tParada / 0.22) * Math.PI) * (this.perfecta ? 1 : 0.55);
+      const b = POSE_GUARDIA;
+      this.grupo.position.set(b.p[0] - e * 0.15, b.p[1] + e * 0.09, b.p[2] + e * 0.05);
+      this.grupo.rotation.set(b.r[0] + e * 0.30, b.r[1] - e * 0.50, b.r[2] + e * 0.65);
+      this._acomodarBrazo();
+      return;
+    }
+    if (this.tParada >= 0.22) this.tParada = -1;
+
+    if (this.guardia) {
+      // en guardia: la hoja cruzada delante de la cara, tapando el frente
+      const g = this.grupo;
+      g.position.lerp(this._vg || (this._vg = new THREE.Vector3(...POSE_GUARDIA.p)), 1 - Math.exp(-24 * dt));
+      const kg = 1 - Math.exp(-24 * dt);
+      g.rotation.x += (POSE_GUARDIA.r[0] - g.rotation.x) * kg;
+      g.rotation.y += (POSE_GUARDIA.r[1] - g.rotation.y) * kg;
+      g.rotation.z += (POSE_GUARDIA.r[2] - g.rotation.z) * kg;
+      this._acomodarBrazo();
+      return;
+    }
+
     this.grupo.position.lerp(this.reposo.p, k);
     this.grupo.rotation.x += (this.reposo.r.x - this.grupo.rotation.x) * k;
     this.grupo.rotation.y += (this.reposo.r.y - this.grupo.rotation.y) * k;

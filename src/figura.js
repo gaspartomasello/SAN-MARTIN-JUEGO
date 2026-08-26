@@ -348,6 +348,13 @@ const POSES = {
     poloD: [1, 0.2, 0.5], poloI: [-0.6, -0.3, 0.3],
     torso: [-0.10, -0.70, 0], cabeza: [-0.05, 0.50, 0]
   },
+  // parado en seco: el fusil se le va afuera y queda abierto de par en par.
+  // Es la recompensa de la parada perfecta y tiene que verse desde lejos.
+  aturdido: {
+    manoD: [0.38, 0.14, 0.10], dir: [0.72, 0.62, -0.32], agarre: 0.30,
+    poloD: [1.2, -0.4, 0.4], poloI: [-1, -0.7, -0.3],
+    torso: [-0.22, 0.34, 0.18], cabeza: [-0.24, -0.20, 0]
+  },
   // el acero sale disparado: brazo casi estirado del todo
   estocada: {
     manoD: [0.05, 0.25, -0.47], dir: [0.02, -0.05, -1], agarre: 0.40,

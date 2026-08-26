@@ -68,6 +68,12 @@ let ultimoInfo = { calls: 0, triangles: 0 };
 // daño que hace una bala de plomo y una bayoneta al jugador
 const DANO_BALA = 52;
 const DANO_BAYONETA = 34;
+const DANO_SABLE = 2;
+const DANO_REMATE = 4;          // el remate mata de una: es lo que paga la parada
+const GUARDIA_GASTO = 11;       // aliento por segundo aguantando el sable en alto
+const BLOQUEO_GASTO = 26;       // lo que cuesta parar tarde
+const PECHADA_GASTO = 18;
+const PECHADA_ALCANCE = 2.2;
 
 // --------------------------- armas ---------------------------
 const sable = new Sable(camaraArma, sonido);
@@ -148,22 +154,70 @@ function resolverDisparo (origen, dir, dispersion) {
 }
 
 // --------------------------- arma blanca ---------------------------
-function resolverGolpe (alcance, dano, nombre) {
+// Busca al realista más cercano dentro del cono de adelante.
+function enemigoAlFrente (alcance, cono = 0.5) {
   const frente = new THREE.Vector3();
   camara.getWorldDirection(frente);
+  let mejor = null, mejorD = Infinity;
   for (const s of soldados) {
     if (!s.vivo || !s.esRealista) continue;
     const hacia = new THREE.Vector3().subVectors(s.cabeza(), camara.position);
     const dist = hacia.length();
-    if (dist > alcance) continue;
+    if (dist > alcance || dist >= mejorD) continue;
     hacia.normalize();
-    if (hacia.dot(frente) < 0.5) continue;
-    sonido.impactoCarne();
-    if (s.recibir(dano, frente)) hud.mostrarAviso(nombre, 'bien');
+    if (hacia.dot(frente) < cono) continue;
+    mejor = s; mejorD = dist;
+  }
+  return mejor ? { soldado: mejor, frente } : null;
+}
+
+function resolverGolpe (alcance, dano, nombre) {
+  const g = enemigoAlFrente(alcance);
+  if (!g) return;
+  sonido.impactoCarne();
+  if (g.soldado.recibir(dano, g.frente)) hud.mostrarAviso(nombre, 'bien');
+}
+
+// El sablazo choca contra el acero si el realista está en guardia. Ahí está
+// la lección del duelo: no se entra de frente, se espera el aviso.
+sable.alGolpear = () => {
+  const remate = sable.remate;
+  const g = enemigoAlFrente(2.4);
+  if (!g) return;
+  if (g.soldado.cubierto && !remate) {
+    sonido.choque();
+    jugador.sacudir(0.16);
+    hud.mostrarAviso('Paró el sablazo', 'malo');
     return;
   }
+  sonido.impactoCarne();
+  const dano = remate ? DANO_REMATE : DANO_SABLE;
+  if (g.soldado.recibir(dano, g.frente)) {
+    hud.mostrarAviso(remate ? '¡Rematado!' : 'A sablazos', 'bien');
+  }
+};
+
+// --------------------------- el duelo ---------------------------
+// Verdadero cuando el sable está en la mano: ahí el click derecho deja de
+// apuntar y pasa a cubrir.
+function conSable () { return !armaActual() && !sable.guardado; }
+
+function pechada () {
+  if (!conSable() || jugador.aliento < PECHADA_GASTO + 4) {
+    if (conSable()) hud.mostrarAviso('Sin aliento', 'malo');
+    return;
+  }
+  jugador.aliento -= PECHADA_GASTO;
+  sonido.pechada();
+  jugador.sacudir(0.2);
+  const g = enemigoAlFrente(PECHADA_ALCANCE, 0.35);
+  if (!g) return;
+  // la pechada no hiere: rompe la guardia y lo deja abierto
+  g.soldado.aturdir(0.9);
+  const empuje = new THREE.Vector3(g.frente.x, 0, g.frente.z).normalize();
+  g.soldado.pos.addScaledVector(empuje, 0.7);
+  hud.mostrarAviso('¡Pechada! Quedó abierto', 'bien');
 }
-sable.alGolpear = () => resolverGolpe(2.4, 2, 'A sablazos');
 
 // --------------------------- tomar el fusil ---------------------------
 function caidoConFusil () {
@@ -253,6 +307,25 @@ function soltarSoldado (bando) {
   s.alGolpear = (quien, objetivo) => {
     if (objetivo.jugador) {
       const frente = new THREE.Vector3().subVectors(jugador.pos, quien.pos).normalize();
+      // ¿venías cubriendo? Y sobre todo: ¿desde hace cuánto?
+      const parada = conSable() ? sable.recibir() : false;
+      if (parada === 'perfecta') {
+        sonido.parada();
+        jugador.sacudir(0.22);
+        quien.aturdir();
+        hud.mostrarAviso('¡PARADA! Rematalo', 'bien');
+        return;
+      }
+      if (parada === 'bloqueo') {
+        sonido.choque();
+        jugador.sacudir(0.34);
+        jugador.aliento = Math.max(0, jugador.aliento - BLOQUEO_GASTO);
+        // el acero no entra, pero el envión sí
+        jugador.recibir(Math.round(DANO_BAYONETA * 0.18), frente);
+        if (jugador.aliento <= 0) { sable.bajarGuardia(); hud.mostrarAviso('Te desarmó la guardia', 'malo'); }
+        else hud.mostrarAviso('Paraste tarde', 'malo');
+        return;
+      }
       jugador.recibir(DANO_BAYONETA, frente);
       sonido.golpeRecibido();
       hud.mostrarAviso(quien.esRealista ? '¡Bayonetazo!' : '¡Golpe!', 'malo');
@@ -299,7 +372,7 @@ addEventListener('keydown', ev => {
     case 'KeyZ': jugador.alternarPostura('tierra'); break;
     case 'KeyF': {
       const a = armaActual();
-      if (a) a.puntazo(); else sable.tajo();
+      if (a) a.puntazo(); else pechada();
       break;
     }
     case 'KeyG': tomarOIntercambiar(); break;
@@ -343,9 +416,12 @@ addEventListener('mousedown', ev => {
     if (a) a.gatillo();
     else sable.tajo();
   }
-  if (ev.button === 2) apuntando = true;
+  if (ev.button === 2) {
+    if (conSable()) sable.alzarGuardia();
+    else apuntando = true;
+  }
 });
-addEventListener('mouseup', ev => { if (ev.button === 2) apuntando = false; });
+addEventListener('mouseup', ev => { if (ev.button === 2) { apuntando = false; sable.bajarGuardia(); } });
 addEventListener('contextmenu', ev => ev.preventDefault());
 addEventListener('mousemove', ev => {
   if (!bloqueado) return;
@@ -375,6 +451,7 @@ document.addEventListener('pointerlockchange', () => {
   if (!bloqueado) {
     teclas.clear();
     apuntando = false;
+    sable.bajarGuardia();
     tSoltado = performance.now();
     if (empezado) mostrarPausa(true);
   } else {
@@ -392,6 +469,7 @@ pantallaPausa.addEventListener('click', pedirMouse);
 function soltarMouse () {
   teclas.clear();
   apuntando = false;
+  sable.bajarGuardia();
   document.body.style.cursor = 'default';
   if (document.pointerLockElement) document.exitPointerLock();
 }
@@ -446,6 +524,15 @@ function cuadro () {
   armas.tercerola.actualizar(dt, ctx);
   armas.pistolon.actualizar(dt, ctx);
   if (armas.fusil) armas.fusil.actualizar(dt, ctx);
+  // Aguantar el sable en alto cansa. Sin aliento la guardia se cae sola, que
+  // es lo que impide jugar todo el duelo con el botón derecho apretado.
+  if (sable.guardia) {
+    jugador.aliento = Math.max(0, jugador.aliento - GUARDIA_GASTO * dt);
+    if (jugador.aliento <= 0) {
+      sable.bajarGuardia();
+      hud.mostrarAviso('Se te cayó la guardia', 'malo');
+    }
+  }
   sable.actualizar(dt);
   humo.actualizar(dt);
   fuego.actualizar(dt);
@@ -492,6 +579,7 @@ function cuadro () {
     estadoArma: arma ? arma.etiquetaEstado : 'en mano',
     postura: p.nombre,
     puedeTomarFusil: !armas.fusil && !!caidoConFusil(),
+    remate: sable.tRemate,
     vida: jugador.vida,
     regenerando: jugador.tSinDano > 4.5 && jugador.vida < 100,
     vendas: jugador.vendas,
@@ -508,6 +596,6 @@ function cuadro () {
 }
 cuadro();
 
-window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, render, soltarSoldado,
+window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado,
   get info () { return ultimoInfo; },
   get arma () { return armaActual(); } };

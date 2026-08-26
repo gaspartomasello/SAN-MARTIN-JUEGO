@@ -19,6 +19,7 @@ const ACERO_GUARDIA = 0.75;
 const ACERO_AVISO = 0.55;
 const ACERO_SALIDA = 0.20;
 const ACERO_VUELTA = 0.45;
+const ATURDIDO = 1.35;      // lo que dura abierto tras una parada perfecta
 
 export class Soldado {
   constructor (escena, humo, sonido, pos, bando) {
@@ -48,6 +49,7 @@ export class Soldado {
 
     this.tAcero = 0;
     this.avisando = false;   // true durante el AVISO: la ventana de parada
+    this.aturdido = 0;       // > 0: parado en seco, abierto y sin guardia
     this._pego = false;
     this._grito = false;
     this._v = new THREE.Vector3();
@@ -70,6 +72,23 @@ export class Soldado {
       return true;
     }
     return false;
+  }
+
+  // ¿está cubierto? En guardia el acero para el sablazo; en el aviso, en la
+  // estocada o aturdido, no. Ahí es donde hay que pegarle.
+  get cubierto () {
+    return this.vivo && this.aturdido <= 0 && this.estado === 'acero' &&
+      !this.avisando && this.tAcero < ACERO_GUARDIA;
+  }
+
+  // parado en seco: se le corta el golpe y queda abierto
+  aturdir (seg) {
+    if (!this.vivo) return;
+    this.aturdido = Math.max(this.aturdido, seg || ATURDIDO);
+    this.avisando = false;
+    this._pego = true;          // el golpe que venía ya no sale
+    this.fig.poner('aturdido');
+    this.sonido.grito();
   }
 
   entregarFusil () {
@@ -126,6 +145,14 @@ export class Soldado {
     this.recarga = Math.max(0, this.recarga - dt);
     this.t += dt;
     let andando = false;
+
+    if (this.aturdido > 0) {
+      this.aturdido -= dt;
+      this.fig.poner('aturdido');
+      this.fig.actualizar(dt, false);
+      if (this.aturdido <= 0 && this.estado === 'acero') this._entrarAcero();
+      return;
+    }
 
     switch (this.estado) {
       case 'avanzar': {

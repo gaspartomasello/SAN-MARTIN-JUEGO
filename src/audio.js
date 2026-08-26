@@ -107,6 +107,29 @@ export class Sonido {
   impactoMadera () { if (this.ctx) { this._tono(300, 120, 0.12, 0.3, 'square'); this._ruido(0.1, 0.2, 'lowpass', 1400, 1); } }
   impactoCarne () { if (this.ctx) { this._tono(120, 60, 0.2, 0.4, 'sine'); this._ruido(0.16, 0.3, 'lowpass', 900, 1); } }
   sable () { if (this.ctx) this._ruido(0.18, 0.3, 'bandpass', 3200, 2.2); }
+
+  // acero contra acero: dos parciales disonantes y una cola corta
+  choque () {
+    if (!this.ctx) return;
+    this._tono(2400, 1700, 0.28, 0.16, 'triangle');
+    this._tono(3350, 2600, 0.22, 0.10, 'square');
+    this._ruido(0.09, 0.18, 'highpass', 4200, 1.6);
+  }
+
+  // parada perfecta: el mismo choque pero limpio y con campana arriba
+  parada () {
+    if (!this.ctx) return;
+    this._tono(3100, 2350, 0.45, 0.20, 'triangle');
+    this._tono(4650, 4200, 0.55, 0.10, 'sine');
+    this._ruido(0.07, 0.12, 'highpass', 6000, 1.2);
+  }
+
+  // pechada: golpe sordo de hombro, sin metal
+  pechada () {
+    if (!this.ctx) return;
+    this._tono(150, 70, 0.16, 0.34, 'sine');
+    this._ruido(0.14, 0.14, 'lowpass', 700, 1);
+  }
   golpeRecibido () { if (this.ctx) { this._tono(90, 45, 0.35, 0.6, 'sine'); this.aturdir(1.6); } }
   grito () { if (this.ctx) { this._tono(320, 140, 0.4, 0.22, 'sawtooth'); this._ruido(0.35, 0.2, 'bandpass', 800, 1.2); } }
 
