@@ -29,7 +29,7 @@ const FS = `
   void main () {
     vec2 d = vUv - uCentro;
     // el centro queda limpio y el estirado crece hacia los bordes
-    float mascara = smoothstep(0.11, 0.62, length(d));
+    float mascara = smoothstep(0.16, 0.78, length(d));
     float f = uFuerza * mascara;
     if (f < 0.001) { gl_FragColor = texture2D(uTex, vUv); return; }
 
@@ -75,6 +75,7 @@ export class PasadaVelocidad {
     this.escenaQuad.add(quad);
     this.camaraQuad = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     this._v = new THREE.Vector3();
+    this._m = new THREE.Vector3();
     this.ultimaInfo = { calls: 0, tris: 0 };
   }
 
@@ -82,24 +83,31 @@ export class PasadaVelocidad {
 
   // objetivo: 0 a 1. rumbo: hacia dónde se mueve el cuerpo (o null: al frente)
   dibujar (objetivo, rumbo) {
-    this.fuerza += (objetivo * 0.048 - this.fuerza) * 0.14;
-    const activo = this.fuerza > 0.0025;
+    this.fuerza += (objetivo * 0.030 - this.fuerza) * 0.14;
     this.material.uniforms.uFuerza.value = this.fuerza;
 
     if (rumbo !== undefined && rumbo !== null) {
       // proyectar la dirección de marcha a pantalla
-      this._v.set(-Math.sin(rumbo), 0, -Math.cos(rumbo))
-        .add(this.camara.position).project(this.camara);
+      this._v.set(-Math.sin(rumbo), 0, -Math.cos(rumbo));
+      // Cuánto de esa dirección estás mirando. Si mirás para el costado el
+      // centro del estirado se va del cuadro y TODO queda lejos del centro, o
+      // sea todo borroso: eso quedaba exagerado. Así que el efecto se apaga a
+      // medida que la vista se aparta de la marcha, y sólo pega de lleno
+      // cuando mirás para donde vas.
+      this.camara.getWorldDirection(this._m);
+      const mira = Math.max(0, this._v.dot(this._m));
+      this.material.uniforms.uFuerza.value = this.fuerza * mira * mira;
+
+      this._v.add(this.camara.position).project(this.camara);
       const u = this.material.uniforms.uCentro.value;
-      // si va para atrás de la cámara, la proyección se da vuelta: se ancla
       const x = isFinite(this._v.x) ? this._v.x * 0.5 + 0.5 : 0.5;
       const y = isFinite(this._v.y) ? this._v.y * 0.5 + 0.5 : 0.5;
-      u.set(Math.max(-0.6, Math.min(1.6, x)), Math.max(-0.6, Math.min(1.6, y)));
+      u.set(Math.max(-0.25, Math.min(1.25, x)), Math.max(-0.25, Math.min(1.25, y)));
     } else {
       this.material.uniforms.uCentro.value.set(0.5, 0.5);
     }
 
-    if (!activo) {
+    if (this.material.uniforms.uFuerza.value <= 0.0025) {
       this.render.setRenderTarget(null);
       this.render.render(this.escena, this.camara);
       this.ultimaInfo.calls = this.render.info.render.calls;

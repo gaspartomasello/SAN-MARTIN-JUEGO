@@ -31,6 +31,19 @@ const r = await pag.evaluate(() => {
   ok('corre más rápido que la marcha', velMax > 3.4, `${velMax.toFixed(1)} m/s`);
   ok('la carrera termina en el acero', a.estado === 'acero' || estados.has('acero'));
 
+  // el bayonetazo de la carga: pega al llegar, sin plantarse ni avisar
+  limpiar();
+  const ch = j.soltarSoldado('realista');
+  ch.malla.position.set(0, 0, -12);
+  ch.recarga = 30;
+  let golpes = 0, tPrimero = -1;
+  ch.alGolpear = () => { golpes++; if (tPrimero < 0) tPrimero = i / 60; };
+  var i = 0;
+  for (i = 0; i < 60 * 6; i++) ch.actualizar(1 / 60, j.jugador, j.soldados);
+  ok('la carga pega al llegar', golpes > 0, `${golpes} golpes, el primero a los ${tPrimero.toFixed(2)} s`);
+  // corriendo a 4,3 m/s desde 12 m, el toque cae a 2,5 m: unos 2,2 s
+  ok('pega sin frenar a avisar', tPrimero > 0 && tPrimero < 3.0, `${tPrimero.toFixed(2)} s`);
+
   // ---------- 2. rodilla en tierra ----------
   limpiar();
   const b = j.soltarSoldado('realista');

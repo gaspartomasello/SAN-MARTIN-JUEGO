@@ -439,6 +439,57 @@ jinete.
 siempre el mismo) y queda 45 segundos, lo mismo que el cuerpo de un hombre. El
 campo se llena parejo.
 
+### El lugar (Fase 4)
+
+Hasta acá el campo era un polígono de tiro: una pared de cal, unos blancos y
+pasto. Ahora es San Lorenzo, y el eje de la batalla ya estaba bien puesto sin
+querer:
+
+```
+  +Z   convento de San Carlos, su iglesia y su huerta   ← de acá salís vos
+   0   el campo abierto: acá se decide en quince minutos
+ -85   la barranca: el suelo se cae nueve metros
+-100   el río Paraná y la escuadra española fondeada
+```
+
+Los realistas vienen desde −Z **porque desembarcaron en la barranca**. Vos
+salís desde +Z **porque los granaderos esperaron escondidos detrás del
+convento**. El campo abierto del medio es el que cruzaron las dos columnas de
+sesenta hombres.
+
+**El convento** no es escenografía de fondo: es el accidente táctico de la
+batalla. Detrás de esa mole se escondieron ciento veinte jinetes sin que la
+infantería española los viera. Tiene su iglesia con techo a dos aguas, la tapia
+de la huerta que cierra los flancos, el portón al medio y —lo que más
+importa— la **espadaña**, el campanario que se ve desde todo el campo y le dice
+al jugador dónde está parado.
+
+**La barranca** se cae nueve metros en quince, con un perfil en S: arranca
+suave, se desbarranca y vuelve a aplanar. Abajo está el Paraná y **seis buques
+fondeados** de los que bajaron los doscientos cincuenta. El borde frena: no se
+puede caminar al vacío. El suelo del campo termina justo ahí —un plano infinito
+taparía la cuesta y el río— y el pasto tampoco crece sobre el agua.
+
+### El presupuesto de dibujo, por fin cumplido
+
+El GDD pedía 120 llamadas y el campo vacío gastaba 313. **Ahora gasta 99.**
+
+Lo que lo arregló no fue quitar cosas: fue **fundirlas**. Todo el parque —once
+hileras de sacos, cuatro carretas con sus radios, seis barriles con sus aros,
+cuatro tapiales: unas doscientas mallas sueltas— es escenografía QUIETA. Nada
+de eso se mueve nunca. Va fundido en una sola malla con color por vértice: **una
+llamada de dibujo para todo el parque**. El convento, sesenta cajas, otra. La
+escuadra, otra. La arboleda pasó a instanciada: dos llamadas para siete
+árboles en vez de catorce.
+
+La contrapartida de fundir es que las cajas de colisión ya no se pueden sacar de
+los objetos: hay que escribirlas a mano. Vale la pena tres a uno.
+
+Ahora **lo caro es la tropa, no el escenario**, que es el lugar correcto donde
+estar. El siguiente paso para los 120 granaderos de verdad es el mismo truco un
+escalón más arriba: un hombre a cuarenta metros no necesita quince mallas
+articuladas, necesita una sola horneada.
+
 ### La polvareda y la cámara del galope
 
 **La polvareda sale por el mismo sistema que el humo de pólvora**, así que
@@ -473,7 +524,11 @@ el caballo— para que el galope tenga una personalidad y no cuatro:
 3. **La cabeza se va atrás** con el envión, en su propio campo para que no la
    apague el retroceso del arma.
 4. **El desenfoque radial**: el mundo se estira hacia afuera desde el punto al
-   que vas. El centro queda nítido y los bordes se van en rayas.
+   que vas. El centro queda nítido y los bordes se van en rayas. Es sutil a
+   propósito, y **se apaga a medida que la vista se aparta de la marcha**: si
+   mirás para el costado el centro del estirado se va del cuadro y todo quedaba
+   lejos del centro, o sea todo borroso. Ahora sólo pega de lleno cuando mirás
+   para donde vas.
 
 Y el **túnel**, una viñeta que se cierra pasado el trote.
 
@@ -503,6 +558,12 @@ fuego: baja el arma, la toma corta y se le va encima a la bayoneta. La pose de
 carrera es distinta de la de marcha —el fusil va bajo y al frente, no terciado
 sobre el pecho— justamente para que se note desde lejos que eso que viene no
 viene caminando.
+
+**El bayonetazo de la carga no se avisa.** El que viene corriendo no frena, se
+planta y recién entonces tira la estocada: el golpe lo pone el impulso, y con
+llegar alcanza. Después sí se cruza el acero y empieza el duelo normal, con su
+aviso y su ventana de parada. Pero el primer golpe de una carga no se avisa,
+porque una carga no se avisa.
 
 **El parapeto.** Nadie descarga parado en medio del campo si tiene una tapia, un
 carro o un barril a mano. Los parapetos se calculan **una sola vez** al arrancar:
@@ -549,12 +610,12 @@ siena oscuro y está escrita en el código (`PIEL_CABRAL`), lista para la Fase 6
 Los números reales de San Lorenzo son 120 granaderos en dos columnas de 60 y
 250 realistas de infantería con dos cañones. Medido (`pruebas/escala.mjs`):
 
-| Campo | Hombres | Caballos | Llamadas de dibujo |
-|---|---|---|---|
-| vacío | 0 | 1 | 313 |
-| 20 lanceros | 20 | 21 | 572 |
-| 40 lanceros | 40 | 41 | 899 |
-| 90 lanceros + 60 a pie | 150 | 91 | **2.786** |
+| Campo | Hombres | Caballos | Antes | **Después de la Fase 4** |
+|---|---|---|---|---|
+| vacío | 0 | 1 | 313 | **99** |
+| 20 lanceros | 20 | 21 | 572 | **360** |
+| 40 lanceros | 40 | 41 | 899 | **594** |
+| 90 lanceros + 60 a pie | 150 | 91 | 2.786 | **2.267** |
 
 La simulación no es el problema: 150 hombres y 91 caballos cuestan 1,9 ms de
 CPU por cuadro. El problema es que **cada hombre son ~11 llamadas de dibujo y

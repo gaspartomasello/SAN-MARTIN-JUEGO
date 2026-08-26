@@ -21,6 +21,7 @@ const RECARGA = 12.5;
 // a recargar: se le va encima a la bayoneta. Y uno con el fusil cargado no
 // dispara parado en medio del campo si tiene una tapia a mano.
 const CARGA_BAYONETA = 16;
+const CARGA_TOQUE = 2.5;        // a esta distancia el que viene corriendo ya ensartó
 const CUBIERTA_BUSCAR = 24;     // radio en el que mira si hay parapeto
 const CUBIERTA_MINIMA = 6;      // no se parapeta encima del enemigo
 const CUBIERTA_LLEGADA = 1.1;
@@ -351,6 +352,20 @@ export class Soldado {
       // parapeto llega y se hinca; el que va a la bayoneta llega y ensarta.
       case 'correr': {
         this._dePie();
+        // EL BAYONETAZO DE LA CARGA.
+        //
+        // El que viene corriendo con la bayoneta puesta no frena, se planta y
+        // recién entonces tira la estocada: el golpe lo pone el impulso. Con
+        // llegar alcanza. Después sí se cruza el acero y empieza el duelo
+        // normal, con su aviso y su ventana de parada —pero el primer golpe de
+        // una carga no se avisa, porque una carga no se avisa.
+        if (this.motivo === 'carga' && dist < CARGA_TOQUE) {
+          if (this.alGolpear) this.alGolpear(this, this.objetivo);
+          this.fig.poner('estocada');
+          this._entrarAcero();
+          this._pego = true;          // no repite el golpe al entrar en guardia
+          break;
+        }
         if (dist < ALCANCE_ACERO) { this._entrarAcero(); break; }
         this.fig.poner('correr');
         let bx, bz;

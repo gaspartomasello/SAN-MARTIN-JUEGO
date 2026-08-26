@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { construirSanLorenzo, Horno, MAT } from './sanlorenzo.js';
 
 // Cuartel del Retiro, amanecer. Sol rasante, pasto seco de verano, cal blanca.
 // Nada de fotorrealismo: paleta corta y formas simples, como un óleo de batalla.
@@ -216,10 +217,13 @@ export function construirMundo (escena) {
   escena.add(new THREE.HemisphereLight(0xbcd2e8, 0x8a7a52, 0.55));
 
   // --- suelo ---
+  // El suelo llega hasta el borde de la barranca y no más: de ahí para allá
+  // manda la cuesta y abajo está el río. Un plano infinito taparía las dos.
   const suelo = new THREE.Mesh(
-    new THREE.PlaneGeometry(400, 400, 1, 1),
+    new THREE.PlaneGeometry(400, 290, 1, 1),
     new THREE.MeshStandardMaterial({ map: tierraTextura(), roughness: 1 })
   );
+  suelo.position.z = 61;
   suelo.rotation.x = -Math.PI / 2;
   suelo.receiveShadow = true;
   escena.add(suelo);
@@ -227,114 +231,88 @@ export function construirMundo (escena) {
   const colisiones = [];
   const blancos = [];
 
-  // --- pared de cal del cuartel, detrás de la línea de tiro ---
+  // --- el lugar: convento, barranca y Paraná ---
+  //
+  // El eje de la batalla ya estaba bien puesto: los realistas vienen desde -Z
+  // porque desembarcaron en la barranca, y vos salís desde +Z porque los
+  // granaderos esperaron escondidos detrás del convento de San Carlos.
   const cal = new THREE.MeshStandardMaterial({ color: PALETA.cal, roughness: 0.92 });
-  const pared = new THREE.Mesh(new THREE.BoxGeometry(46, 4.2, 0.7), cal);
-  pared.position.set(0, 2.1, 9);
-  pared.castShadow = true; pared.receiveShadow = true;
-  escena.add(pared);
-  colisiones.push(new THREE.Box3().setFromObject(pared));
-
-  const teja = new THREE.Mesh(new THREE.BoxGeometry(47, 0.34, 1.3),
-    new THREE.MeshStandardMaterial({ color: 0x9c5a3c, roughness: 0.9 }));
-  teja.position.set(0, 4.35, 9);
-  teja.castShadow = true;
-  escena.add(teja);
-
-  // muros laterales, para que el campo tenga forma
-  for (const s of [-1, 1]) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 3.4, 34), cal);
-    m.position.set(s * 23, 1.7, -8);
-    m.castShadow = true; m.receiveShadow = true;
-    escena.add(m);
-    colisiones.push(new THREE.Box3().setFromObject(m));
-  }
+  construirSanLorenzo(escena, colisiones);
 
   // --- cobertura: sacos, carretas, barriles, tapiales ---
-  const sacoMat = new THREE.MeshStandardMaterial({ color: 0x8f855f, roughness: 1 });
+  //
+  // Doscientas mallas sueltas costaban doscientas llamadas de dibujo cuando
+  // el jugador miraba campo abajo. Es toda escenografía QUIETA —nada de esto
+  // se mueve nunca— así que va fundida en una sola malla: una llamada para
+  // todo el parque. Las cajas de colisión se calculan a mano, que es la
+  // contrapartida de fundir: ya no se pueden sacar de los objetos.
+  const parque = new Horno();
+  const SACO = 0x8f855f;
+  const MADERA_C = 0x6b543a, MADERA_O = 0x4a3a28, CAL_C = 0xe8e2d2;
+  const meterCaja = (x0, z0, x1, z1, alto) => colisiones.push(new THREE.Box3(
+    new THREE.Vector3(Math.min(x0, x1), 0, Math.min(z0, z1)),
+    new THREE.Vector3(Math.max(x0, x1), alto, Math.max(z0, z1))));
+
   for (const [px, pz, largo] of [[-8, -6, 5], [7.5, -10, 4], [0, -18, 6], [-13, -22, 4],
     [12, -20, 5], [-4, -30, 5], [9, -34, 4], [-15, -38, 5], [3, -46, 6], [-9, -52, 4], [14, -50, 4]]) {
-    const grupo = new THREE.Group();
-    for (let i = 0; i < largo; i++) {
+    for (let k = 0; k < largo; k++) {
       for (let f = 0; f < 2; f++) {
-        const s = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.42, 0.62), sacoMat);
-        s.position.set(i * 1.02 - largo * 0.5, 0.21 + f * 0.42, f * 0.1 + (Math.random() - 0.5) * 0.06);
-        s.rotation.y = (Math.random() - 0.5) * 0.12;
-        s.castShadow = true; s.receiveShadow = true;
-        grupo.add(s);
+        parque.caja(px + (k - (largo - 1) / 2) * 1.02, 0.21 + f * 0.42,
+          pz + f * 0.1 + (Math.random() - 0.5) * 0.06, 1.05, 0.42, 0.62,
+          f ? SACO : 0x847a56, (Math.random() - 0.5) * 0.12);
       }
     }
-    grupo.position.set(px, 0, pz);
-    escena.add(grupo);
-    colisiones.push(new THREE.Box3().setFromObject(grupo));
+    const semi = (largo - 1) * 0.51 + 0.55;
+    meterCaja(px - semi, pz - 0.45, px + semi, pz + 0.55, 0.84);
   }
 
   // carretas de la intendencia: cobertura alta, de las que tapan de verdad
-  const maderaMat = new THREE.MeshStandardMaterial({ color: PALETA.madera, roughness: 0.95 });
-  const llantaMat = new THREE.MeshStandardMaterial({ color: PALETA.maderaOsc, roughness: 0.95 });
+  const ruedaGeo = new THREE.TorusGeometry(0.66, 0.1, 6, 14);
   for (const [px, pz, giro] of [[-11, -14, 0.4], [10, -27, -0.7], [-6, -42, 1.1], [16, -40, 0.2]]) {
-    const carreta = new THREE.Group();
-    const caja = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.62, 2.5), maderaMat);
-    caja.position.y = 1.05;
-    carreta.add(caja);
-    const piso = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 2.6), llantaMat);
-    piso.position.y = 0.74;
-    carreta.add(piso);
+    const co = Math.cos(giro), si = Math.sin(giro);
+    const local = (lx, lz) => [px + lx * co + lz * si, pz - lx * si + lz * co];
+    let [cx, cz] = local(0, 0);
+    parque.caja(cx, 1.05, cz, 1.7, 0.62, 2.5, MADERA_C, giro);
+    parque.caja(cx, 0.74, cz, 1.8, 0.12, 2.6, MADERA_O, giro);
     for (const sx of [-1, 1]) {
-      const rueda = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.1, 6, 16), llantaMat);
-      rueda.position.set(sx * 0.95, 0.66, 0.35);
-      rueda.rotation.y = Math.PI / 2;          // el eje de la rueda va a lo ancho
-      carreta.add(rueda);
+      const [rx, rz] = local(sx * 0.95, 0.35);
+      parque.pieza(ruedaGeo, [rx, 0.66, rz], [0, Math.PI / 2 + giro, 0], null, MADERA_O);
       for (let r = 0; r < 6; r++) {
-        const rayo2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.24, 0.05), llantaMat);
-        rayo2.position.set(sx * 0.95, 0.66, 0.35);
-        rayo2.rotation.set(0, Math.PI / 2, (r / 6) * Math.PI);
-        carreta.add(rayo2);
+        parque.caja(rx, 0.66, rz, 0.05, 1.24, 0.05, MADERA_O, 0);
+        const ult = parque.piezas[parque.piezas.length - 1];
+        ult.m.compose(new THREE.Vector3(rx, 0.66, rz),
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI / 2 + giro, (r / 6) * Math.PI)),
+          new THREE.Vector3(1, 1, 1));
       }
     }
-    const eje = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.11, 0.11), llantaMat);
-    eje.position.set(0, 0.66, 0.35);
-    carreta.add(eje);
-    for (const sx of [-0.55, 0.55]) {          // varas hacia adelante
-      const vara = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 1.9), maderaMat);
-      vara.position.set(sx, 0.8, -2.0);
-      vara.rotation.x = 0.12;
-      carreta.add(vara);
+    const [ex, ez] = local(0, 0.35);
+    parque.caja(ex, 0.66, ez, 2.0, 0.11, 0.11, MADERA_O, giro);
+    for (const sx of [-0.55, 0.55]) {
+      const [vx, vz] = local(sx, -2.0);
+      parque.caja(vx, 0.8, vz, 0.09, 0.09, 1.9, MADERA_C, giro);
     }
-    carreta.position.set(px, 0, pz);
-    carreta.rotation.y = giro;
-    carreta.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    escena.add(carreta);
-    const caj = new THREE.Box3().setFromObject(carreta);
-    caj.max.y = Math.min(caj.max.y, 1.4);      // las varas no frenan al jugador
-    colisiones.push(caj);
+    meterCaja(px - 1.6, pz - 1.6, px + 1.6, pz + 1.6, 1.4);
   }
 
   // barriles de pólvora
+  const barrilGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.86, 10);
+  const aroGeo = new THREE.TorusGeometry(0.35, 0.025, 5, 10);
   for (const [px, pz] of [[5, -8], [5.9, -8.6], [-16, -30], [-15.2, -30.7], [2, -56], [11, -12]]) {
-    const barril = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.86, 10), maderaMat);
-    barril.position.set(px, 0.43, pz);
-    barril.castShadow = true; barril.receiveShadow = true;
-    escena.add(barril);
-    for (const y of [0.62, 0.24]) {
-      const aro = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.025, 5, 12), llantaMat);
-      aro.position.set(px, y, pz);
-      aro.rotation.x = Math.PI / 2;
-      escena.add(aro);
-    }
-    colisiones.push(new THREE.Box3().setFromObject(barril));
+    parque.pieza(barrilGeo, [px, 0.43, pz], null, null, MADERA_C);
+    for (const y of [0.62, 0.24]) parque.pieza(aroGeo, [px, y, pz], [Math.PI / 2, 0, 0], null, MADERA_O);
+    meterCaja(px - 0.34, pz - 0.34, px + 0.34, pz + 0.34, 0.86);
   }
 
   // tapiales de adobe sueltos, a media altura
   for (const [px, pz, ancho, giro] of [[-19, -12, 4.5, 0.2], [17, -16, 3.5, -0.3],
     [-2, -36, 5, 0.6], [13, -58, 4, -0.15]]) {
-    const tapial = new THREE.Mesh(new THREE.BoxGeometry(ancho, 1.25, 0.55), cal);
-    tapial.position.set(px, 0.62, pz);
-    tapial.rotation.y = giro;
-    tapial.castShadow = true; tapial.receiveShadow = true;
-    escena.add(tapial);
-    colisiones.push(new THREE.Box3().setFromObject(tapial));
+    parque.caja(px, 0.62, pz, ancho, 1.25, 0.55, CAL_C, giro);
+    const ex2 = Math.abs(ancho / 2 * Math.cos(giro)) + Math.abs(0.275 * Math.sin(giro));
+    const ez2 = Math.abs(ancho / 2 * Math.sin(giro)) + Math.abs(0.275 * Math.cos(giro));
+    meterCaja(px - ex2, pz - ez2, px + ex2, pz + ez2, 1.25);
   }
+
+  escena.add(parque.cocinar(MAT()));
 
   // --- blancos a distancias reales de fusil de chispa ---
   for (const [x, z] of [[-6, -20], [-2, -20], [2, -20], [6, -20],
@@ -378,7 +356,8 @@ export function construirMundo (escena) {
   const e = new THREE.Vector3();
   const p = new THREE.Vector3();
   for (let i = 0; i < 2600; i++) {
-    p.set((Math.random() - 0.5) * 120, 0, -Math.random() * 110 + 8);
+    // el pasto termina en el borde de la barranca: no crece sobre el Paraná
+    p.set((Math.random() - 0.5) * 120, 0, -Math.random() * 92 + 8);
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI);
     const s = 0.6 + Math.random() * 0.9;
     e.set(s, s * (0.7 + Math.random() * 0.8), s);
@@ -397,18 +376,27 @@ export function construirMundo (escena) {
     [-8, -60, 0.6, 5.0, 3.2], [22, -66, 0.5, 4.4, 2.7], [-24, -48, 0.45, 3.8, 2.4],
     [7, -72, 0.55, 4.8, 3.0]
   ];
-  for (const [x, z, radio, alto, copaR] of arboles) {
-    const tronco = new THREE.Mesh(new THREE.CylinderGeometry(radio * 0.6, radio, alto, 7), cortezaMat);
-    tronco.position.set(x, alto / 2, z);
-    tronco.castShadow = true; tronco.receiveShadow = true;
-    escena.add(tronco);
-    const copa = new THREE.Mesh(new THREE.SphereGeometry(copaR, 10, 8), follajeMat);
-    copa.position.set(x, alto + copaR * 0.42, z);
-    copa.scale.set(1.3, 0.8, 1.2);
-    copa.castShadow = true;
-    escena.add(copa);
-    colisiones.push(new THREE.Box3().setFromObject(tronco));
-  }
+  // Instanciada: siete árboles con dos llamadas de dibujo en vez de catorce.
+  // El tronco base mide 1 de radio y 1 de alto, y cada instancia lo escala.
+  const troncos = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.6, 1, 1, 7), cortezaMat, arboles.length);
+  const copas = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(1, 10, 8), follajeMat, arboles.length);
+  troncos.castShadow = copas.castShadow = true;
+  troncos.receiveShadow = true;
+  const _m = new THREE.Matrix4();
+  const _q = new THREE.Quaternion();
+  arboles.forEach(([x, z, radio, alto, copaR], i) => {
+    _m.compose(new THREE.Vector3(x, alto / 2, z), _q, new THREE.Vector3(radio, alto, radio));
+    troncos.setMatrixAt(i, _m);
+    _m.compose(new THREE.Vector3(x, alto + copaR * 0.42, z), _q,
+      new THREE.Vector3(copaR * 1.3, copaR * 0.8, copaR * 1.2));
+    copas.setMatrixAt(i, _m);
+    colisiones.push(new THREE.Box3(
+      new THREE.Vector3(x - radio, 0, z - radio), new THREE.Vector3(x + radio, alto, z + radio)));
+  });
+  escena.add(troncos);
+  escena.add(copas);
 
   const niebla = capasDeNiebla(escena);
 
