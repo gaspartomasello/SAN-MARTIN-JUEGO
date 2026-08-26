@@ -1,0 +1,534 @@
+import * as THREE from 'three';
+
+// Figura de soldado con esqueleto.
+//
+// Dos cosas importantes acá:
+//
+// 1. FRENTE = -Z. El soldado gira con atan2(x,z)+PI, así que su cara mira
+//    hacia -Z. Todo lo que va adelante (visera, chapa, nariz, caño) tiene z
+//    negativo; la mochila va en +Z.
+//
+// 2. Las piezas se FUNDEN. Un granadero decente lleva unas cuarenta piezas
+//    y cuarenta mallas por soldado nos comen el presupuesto de draw calls.
+//    Cada pieza se cocina dentro del hueso que la mueve, con el color metido
+//    en los vértices: quedan ~12 mallas por soldado en vez de cuarenta, con
+//    dos materiales compartidos por todo el ejército.
+
+export const TELA = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.93 });
+export const METAL = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.36, metalness: 0.85 });
+
+// ---------------------------------------------------------------- el horno
+
+class Taller {
+  constructor () { this.lotes = new Map(); }
+
+  // geo se clona siempre: la misma geometría puede ir a diez lugares
+  add (hueso, geo, color, { p, r, s, metal = false } = {}) {
+    const t = new THREE.Object3D();
+    if (p) t.position.set(p[0], p[1], p[2]);
+    if (r) t.rotation.set(r[0], r[1], r[2]);
+    if (s !== undefined) Array.isArray(s) ? t.scale.set(s[0], s[1], s[2]) : t.scale.setScalar(s);
+    t.updateMatrix();
+
+    const clave = hueso.uuid + (metal ? '·m' : '·t');
+    let lote = this.lotes.get(clave);
+    if (!lote) { lote = { hueso, metal, piezas: [] }; this.lotes.set(clave, lote); }
+    lote.piezas.push({ geo, color: new THREE.Color(color), m: t.matrix.clone() });
+    return this;
+  }
+
+  cocinar () {
+    const mallas = [];
+    for (const { hueso, metal, piezas } of this.lotes.values()) {
+      const pos = [], nor = [], col = [];
+      for (const pz of piezas) {
+        const g = pz.geo.index ? pz.geo.toNonIndexed() : pz.geo.clone();
+        g.applyMatrix4(pz.m);
+        const ap = g.attributes.position, an = g.attributes.normal;
+        for (let i = 0; i < ap.count; i++) {
+          pos.push(ap.getX(i), ap.getY(i), ap.getZ(i));
+          nor.push(an.getX(i), an.getY(i), an.getZ(i));
+          col.push(pz.color.r, pz.color.g, pz.color.b);
+        }
+        g.dispose();
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      geo.computeBoundingSphere();
+      const malla = new THREE.Mesh(geo, metal ? METAL : TELA);
+      malla.castShadow = true;
+      hueso.add(malla);
+      mallas.push(malla);
+    }
+    this.lotes.clear();
+    return mallas;
+  }
+}
+
+// ------------------------------------------------------------- geometrías
+
+const cil = (rt, rb, h, seg = 8) => new THREE.CylinderGeometry(rt, rb, h, seg);
+const caja = (x, y, z) => new THREE.BoxGeometry(x, y, z);
+const bola = (r, seg = 8) => new THREE.SphereGeometry(r, seg, Math.max(4, seg - 2));
+
+// Una correa que abraza el cuerpo: aro achatado como el torso, listo para
+// inclinarlo y cruzarlo en el pecho.
+function correa (radio = 0.2, grosor = 0.023) {
+  const g = new THREE.TorusGeometry(radio, grosor, 4, 16);
+  g.rotateX(Math.PI / 2);
+  g.scale(1, 1, 0.68);
+  return g;
+}
+
+// ------------------------------------------------------------------ pinta
+
+const PINTA = {
+  granadero: {
+    // el peto va azul como la casaca: si va blanco, las correas blancas
+    // desaparecen y el granadero pierde la cruz del pecho
+    casaca: 0x24365e, vivo: 0x8f2126, forro: 0x24365e,
+    correa: 0xeee7d5,
+    calzon: 0xe0dac6, pierna: 0x191a1e, bota: 0x141417,
+    morrion: true, penacho: 0x8f2126, mochila: false
+  },
+  realista: {
+    casaca: 0xdedac9, vivo: 0x8f2126, forro: 0xd0c8ae,
+    // sobre casaca blanca las correas blancas no se ven: cuero de ante
+    correa: 0x6a5539,
+    calzon: 0x6e6a60, pierna: 0x6e6a60, bota: 0x1b1b1e,
+    morrion: false, penacho: 0x8f2126, mochila: true
+  }
+};
+
+const PIELES = [0xb08059, 0xa2724d, 0xc09068, 0x96663f, 0xb98d68];
+const PELOS = [0x2a1f18, 0x3d2c1e, 0x1c1512, 0x4a3624];
+
+const NEGRO = 0x17181b;
+const LATON = 0xc69b54;
+const HIERRO = 0x555a61;
+const MADERA = 0x50402b;
+const CUERO = 0x3a2d20;
+const LIENZO = 0x9a9076;
+const MANTA = 0x7c7566;
+
+// ---------------------------------------------------------------- esqueleto
+
+// Medidas en metros, con los pies en y=0.
+const CADERA = 0.92;
+const MUSLO = 0.45;
+const PANTORRILLA = 0.40;
+const HOMBRO = 0.44;   // relativo a la cadera
+const BRAZO = 0.30;
+const ANTEBRAZO = 0.28;
+
+function esqueleto () {
+  const raiz = new THREE.Group();
+  const h = {};
+
+  h.cadera = new THREE.Group(); h.cadera.position.y = CADERA; raiz.add(h.cadera);
+  h.torso = new THREE.Group(); h.cadera.add(h.torso);
+  h.cabeza = new THREE.Group(); h.cabeza.position.y = HOMBRO + 0.10; h.torso.add(h.cabeza);
+
+  for (const [lado, s] of [['I', -1], ['D', 1]]) {
+    const hombro = new THREE.Group();
+    hombro.position.set(s * 0.205, HOMBRO, 0);
+    h.torso.add(hombro);
+    const codo = new THREE.Group();
+    codo.position.y = -BRAZO;
+    hombro.add(codo);
+    const mano = new THREE.Group();
+    mano.position.y = -ANTEBRAZO;
+    codo.add(mano);
+    if (lado === 'D') { h.arma = new THREE.Group(); mano.add(h.arma); }
+    h['hombro' + lado] = hombro; h['codo' + lado] = codo; h['mano' + lado] = mano;
+
+    const muslo = new THREE.Group();
+    muslo.position.set(s * 0.105, -0.02, 0);
+    h.cadera.add(muslo);
+    const rodilla = new THREE.Group();
+    rodilla.position.y = -MUSLO;
+    muslo.add(rodilla);
+    h['muslo' + lado] = muslo; h['rodilla' + lado] = rodilla;
+  }
+  return { raiz, h };
+}
+
+// -------------------------------------------------------------------- ropa
+
+function vestir (taller, h, c, piel, pelo) {
+  // ---- cadera: faldón, cinturón, cartuchera, morral
+  taller.add(h.cadera, cil(0.172, 0.198, 0.26, 10), c.casaca, { p: [0, -0.11, 0], s: [1, 1, 0.74] });
+  taller.add(h.cadera, correa(0.182, 0.026), NEGRO, { p: [0, 0.02, 0] });
+  taller.add(h.cadera, caja(0.05, 0.05, 0.012), LATON, { p: [0, 0.02, -0.132], metal: true });
+  // cartuchera atrás a la derecha
+  taller.add(h.cadera, caja(0.17, 0.12, 0.085), CUERO, { p: [0.10, -0.06, 0.13], r: [0, -0.3, 0] });
+  // morral de lienzo colgando del costado izquierdo, como en la referencia
+  taller.add(h.cadera, caja(0.155, 0.13, 0.075), LIENZO, { p: [-0.125, -0.11, -0.095], r: [0.1, 0.35, 0] });
+  taller.add(h.cadera, caja(0.155, 0.04, 0.08), CUERO, { p: [-0.125, -0.05, -0.097], r: [0.1, 0.35, 0] });
+
+  // ---- torso
+  taller.add(h.torso, cil(0.185, 0.156, 0.50, 10), c.casaca, { p: [0, 0.25, 0], s: [1, 1, 0.70] });
+  // solapas: el paño del frente y los vivos que lo bordean
+  taller.add(h.torso, caja(0.20, 0.42, 0.03), c.forro, { p: [0, 0.26, -0.122] });
+  for (const s of [-1, 1]) {
+    taller.add(h.torso, caja(0.036, 0.42, 0.038), c.vivo, { p: [s * 0.098, 0.26, -0.122] });
+  }
+  for (let i = 0; i < 5; i++) {
+    const y = 0.09 + i * 0.085;
+    for (const s of [-1, 1]) taller.add(h.torso, bola(0.011, 6), LATON, { p: [s * 0.048, y, -0.136], metal: true });
+  }
+  // cuello alto
+  taller.add(h.torso, cil(0.102, 0.112, 0.11, 10), c.vivo, { p: [0, HOMBRO + 0.06, 0], s: [1, 1, 0.86] });
+
+  // Correas cruzadas. Van como tablas que atraviesan el cuerpo y asoman un
+  // centímetro por delante y por detrás: así la cruz se lee desde los cuatro
+  // costados, que es lo que un aro achatado no consigue.
+  for (const s of [-1, 1]) {
+    taller.add(h.torso, caja(0.064, 0.52, 0.272), c.correa, { p: [0, 0.27, 0], r: [0, 0, s * 0.60] });
+  }
+  taller.add(h.torso, caja(0.08, 0.075, 0.02), LATON, { p: [0, 0.29, -0.145], metal: true });
+  // faja a la cintura
+  taller.add(h.torso, correa(0.166, 0.028), c.forro, { p: [0, 0.045, 0] });
+
+  if (c.mochila) {
+    taller.add(h.torso, caja(0.28, 0.28, 0.14), CUERO, { p: [0, 0.30, 0.185] });
+    taller.add(h.torso, caja(0.15, 0.11, 0.06), CUERO, { p: [0, 0.24, 0.26] });
+    taller.add(h.torso, cil(0.052, 0.052, 0.36, 7), MANTA, { p: [0, 0.46, 0.17], r: [0, 0, Math.PI / 2] });
+  }
+
+  // ---- cabeza
+  taller.add(h.cabeza, cil(0.06, 0.068, 0.13, 8), piel, { p: [0, 0.02, 0] });
+  taller.add(h.cabeza, bola(0.105, 10), piel, { p: [0, 0.155, 0], s: [0.98, 1.14, 1.05] });
+  // pelo: casquete corrido hacia atrás, que la cara quede libre
+  taller.add(h.cabeza, bola(0.101, 10), pelo, { p: [0, 0.162, 0.022], s: [1.03, 1.08, 1.02] });
+  taller.add(h.cabeza, caja(0.028, 0.035, 0.035), piel, { p: [0, 0.148, -0.103] });          // nariz
+  taller.add(h.cabeza, caja(0.082, 0.02, 0.028), pelo, { p: [0, 0.116, -0.099] });           // bigote
+  for (const s of [-1, 1]) {
+    taller.add(h.cabeza, bola(0.013, 6), 0x27211c, { p: [s * 0.037, 0.175, -0.092] });
+    taller.add(h.cabeza, caja(0.02, 0.07, 0.055), pelo, { p: [s * 0.094, 0.15, -0.012] });   // patillas
+  }
+
+  if (c.morrion) {
+    // morrión: alto pero no descomunal. Es la silueta que se lee a cien metros.
+    taller.add(h.cabeza, cil(0.126, 0.117, 0.30, 12), NEGRO, { p: [0, 0.415, 0] });
+    taller.add(h.cabeza, cil(0.122, 0.122, 0.026, 12), NEGRO, { p: [0, 0.272, 0] });
+    taller.add(h.cabeza, caja(0.21, 0.015, 0.10), NEGRO, { p: [0, 0.265, -0.10], r: [0.26, 0, 0] });
+    taller.add(h.cabeza, caja(0.088, 0.10, 0.018), LATON, { p: [0, 0.40, -0.118], metal: true });
+    // cordones
+    for (const y of [0.33, 0.49]) {
+      taller.add(h.cabeza, correa(0.124, 0.008), c.correa, { p: [0, y, 0], r: [0, 0, 0.09], s: [1, 1, 1.42] });
+    }
+    // carrilleras de escamas
+    for (const s of [-1, 1]) {
+      taller.add(h.cabeza, caja(0.016, 0.115, 0.045), LATON, { p: [s * 0.101, 0.20, -0.018], r: [0, 0, s * 0.13], metal: true });
+      taller.add(h.cabeza, bola(0.022, 6), LATON, { p: [s * 0.122, 0.29, -0.01], metal: true });
+    }
+    // pompón y penacho encarnado
+    taller.add(h.cabeza, bola(0.052, 8), c.penacho, { p: [0, 0.573, -0.03], s: [1, 0.9, 1] });
+    taller.add(h.cabeza, cil(0.012, 0.038, 0.185, 7), c.penacho, { p: [0, 0.685, -0.035] });
+  } else {
+    // sombrero redondo de ala ancha: copa baja, no galera
+    taller.add(h.cabeza, cil(0.232, 0.232, 0.02, 16), NEGRO, { p: [0, 0.268, -0.005], s: [1, 1, 1.04] });
+    taller.add(h.cabeza, cil(0.126, 0.142, 0.14, 14), NEGRO, { p: [0, 0.345, 0] });
+    taller.add(h.cabeza, cil(0.132, 0.132, 0.028, 14), 0x0b0b0d, { p: [0, 0.288, 0] });
+    // escarapela roja al costado izquierdo
+    taller.add(h.cabeza, cil(0.042, 0.042, 0.012, 10), c.vivo, { p: [-0.138, 0.335, -0.045], r: [0, 0, Math.PI / 2] });
+    taller.add(h.cabeza, cil(0.018, 0.018, 0.016, 8), 0xe8e2d2, { p: [-0.142, 0.335, -0.045], r: [0, 0, Math.PI / 2] });
+  }
+
+  // ---- brazos
+  for (const [lado, s] of [['I', -1], ['D', 1]]) {
+    const hombro = h['hombro' + lado], codo = h['codo' + lado];
+    taller.add(hombro, cil(0.062, 0.051, BRAZO, 8), c.casaca, { p: [0, -BRAZO / 2, 0] });
+    taller.add(hombro, bola(0.064, 8), c.casaca, { p: [0, -0.005, 0] });
+    if (c.morrion) {
+      // charretera con fleco: el granadero la lleva, el de línea no
+      taller.add(hombro, caja(0.085, 0.026, 0.11), c.vivo, { p: [s * 0.028, 0.036, 0], r: [0, 0, s * 0.22] });
+      taller.add(hombro, cil(0.038, 0.042, 0.075, 7), c.vivo, { p: [s * 0.058, -0.018, 0] });
+    } else {
+      taller.add(hombro, caja(0.078, 0.024, 0.10), c.vivo, { p: [s * 0.024, 0.032, 0], r: [0, 0, s * 0.22] });
+    }
+    taller.add(codo, cil(0.051, 0.044, ANTEBRAZO, 8), c.casaca, { p: [0, -ANTEBRAZO / 2, 0] });
+    taller.add(codo, cil(0.055, 0.055, 0.07, 8), c.vivo, { p: [0, -ANTEBRAZO + 0.032, 0] });
+    // la mano se cuece dentro del antebrazo: la muñeca no gira sola en
+    // ninguna pose, y así son dos llamadas de dibujo menos por soldado
+    taller.add(codo, bola(0.046, 7), piel, { p: [0, -ANTEBRAZO - 0.028, 0], s: [0.85, 1.05, 1] });
+  }
+
+  // ---- piernas
+  for (const lado of ['I', 'D']) {
+    const muslo = h['muslo' + lado], rodilla = h['rodilla' + lado];
+    taller.add(muslo, cil(0.088, 0.072, MUSLO, 8), c.calzon, { p: [0, -MUSLO / 2, 0] });
+    taller.add(rodilla, cil(0.073, 0.056, PANTORRILLA, 8), c.pierna, { p: [0, -PANTORRILLA / 2, 0] });
+    if (c.morrion) {
+      // vuelta de la bota
+      taller.add(rodilla, cil(0.079, 0.079, 0.055, 8), c.bota, { p: [0, -0.028, 0] });
+    }
+    taller.add(rodilla, caja(0.10, 0.08, 0.24), c.bota, { p: [0, -PANTORRILLA - 0.005, -0.032] });
+  }
+}
+
+// ------------------------------------------------------------------- armas
+
+function fusilRealista (taller, mano) {
+  taller.add(mano, cil(0.017, 0.017, 1.14, 7), HIERRO, { p: [0, 0, -0.40], r: [Math.PI / 2, 0, 0], metal: true });
+  taller.add(mano, caja(0.048, 0.062, 1.02), MADERA, { p: [0, -0.022, -0.16] });
+  taller.add(mano, caja(0.058, 0.11, 0.24), MADERA, { p: [0, -0.045, 0.28], r: [-0.16, 0, 0] });
+  taller.add(mano, caja(0.05, 0.075, 0.07), HIERRO, { p: [0.02, 0.012, 0.06], metal: true });
+  for (const z of [-0.30, -0.62]) {
+    taller.add(mano, caja(0.055, 0.028, 0.03), LATON, { p: [0, -0.032, z], metal: true });
+  }
+  // bayoneta: 42 cm de acero, la razón de la tecla F
+  taller.add(mano, cil(0.005, 0.011, 0.42, 5), HIERRO, { p: [0.028, 0.028, -1.15], r: [Math.PI / 2, 0, 0], metal: true });
+  taller.add(mano, cil(0.024, 0.024, 0.07, 7), HIERRO, { p: [0.02, 0.018, -0.93], r: [Math.PI / 2, 0, 0], metal: true });
+}
+
+function tercerolaGranadero (taller, mano) {
+  taller.add(mano, cil(0.016, 0.016, 0.78, 7), HIERRO, { p: [0, 0, -0.26], r: [Math.PI / 2, 0, 0], metal: true });
+  taller.add(mano, caja(0.046, 0.058, 0.70), MADERA, { p: [0, -0.02, -0.06] });
+  taller.add(mano, caja(0.055, 0.10, 0.22), MADERA, { p: [0, -0.042, 0.26], r: [-0.16, 0, 0] });
+  taller.add(mano, caja(0.048, 0.072, 0.065), HIERRO, { p: [0.02, 0.012, 0.08], metal: true });
+}
+
+function sableAlCinto (taller, cadera) {
+  const g = new THREE.Group();
+  taller.add(cadera, cil(0.024, 0.03, 0.68, 7), 0x2c2f34, { p: [-0.19, -0.30, 0.10], r: [0.30, 0, -0.16], metal: true });
+  taller.add(cadera, cil(0.03, 0.03, 0.06, 7), LATON, { p: [-0.175, 0.01, 0.05], r: [0.30, 0, -0.16], metal: true });
+  taller.add(cadera, caja(0.02, 0.10, 0.055), CUERO, { p: [-0.17, -0.03, 0.02] });
+  return g;
+}
+
+// -------------------------------------------------------------------- pose
+//
+// Las poses NO se escriben en ángulos de hombro y codo: así es imposible
+// dejar las dos manos sobre el arma. Se escribe dónde va la mano derecha,
+// hacia dónde mira el caño y a qué altura lo agarra la izquierda; el brazo
+// lo resuelve una cinemática inversa de dos huesos.
+//
+// Las medidas van en el espacio de la CADERA (origen en la cintura, y hacia
+// arriba, frente en -Z). Así el torso puede perfilarse sin arrastrar el arma:
+// el soldado se pone de costado y el fusil sigue apuntando adelante.
+
+const HOMBRO_L = { D: new THREE.Vector3(0.215, HOMBRO, 0), I: new THREE.Vector3(-0.215, HOMBRO, 0) };
+const ALCANCE = (BRAZO + ANTEBRAZO) * 0.985;
+const suj = (v, a, b) => Math.max(a, Math.min(b, v));
+
+const POSES = {
+  // armas terciadas: cruzada sobre el pecho, las dos manos puestas. Es la
+  // silueta de una tropa que viene a buscarte, y se lee de frente.
+  marcha: {
+    manoD: [0.17, 0.13, -0.17], dir: [-0.40, 0.87, -0.28], agarre: 0.42,
+    poloD: [1, -0.5, -0.4], poloI: [-1, -0.4, 0.2],
+    torso: [0, 0, 0], cabeza: [0, 0, 0]
+  },
+  // encarado: culata en el hombro, cuerpo perfilado, cara sobre la caja
+  apuntar: {
+    manoD: [0.15, 0.43, -0.29], dir: [0, 0.02, -1], agarre: 0.46, roll: -0.10,
+    poloD: [0.9, 0.75, 0.25], poloI: [-0.7, -0.9, 0.1],
+    torso: [0, -0.62, 0], cabeza: [0.13, 0.34, 0]
+  },
+  // caño arriba, la izquierda trabajando la baqueta en la boca
+  recargar: {
+    manoD: [0.13, 0.09, -0.23], dir: [0.08, 0.99, -0.10], agarre: 0.62,
+    poloD: [0.9, -0.6, -0.2], poloI: [-0.8, 0.2, -0.4],
+    torso: [0.12, 0.30, 0], cabeza: [0.28, 0.18, 0]
+  },
+  // en guardia: bayoneta al frente a la altura del pecho, cuerpo de costado
+  guardia: {
+    manoD: [0.22, 0.26, -0.08], dir: [-0.28, 0.10, -0.95], agarre: 0.44,
+    poloD: [1, -0.3, 0.3], poloI: [-0.7, -0.7, 0],
+    torso: [0.04, -0.55, 0], cabeza: [0, 0.42, 0]
+  },
+  // EL AVISO: acero echado atrás y arriba, cuerpo enroscado. Medio segundo
+  // largo en el que el jugador ve exactamente lo que se le viene.
+  cargar: {
+    manoD: [0.30, 0.36, 0.20], dir: [-0.30, 0.80, -0.52], agarre: 0.40,
+    poloD: [1, 0.2, 0.5], poloI: [-0.6, -0.3, 0.3],
+    torso: [-0.10, -0.70, 0], cabeza: [-0.05, 0.50, 0]
+  },
+  // el acero sale disparado: brazo casi estirado del todo
+  estocada: {
+    manoD: [0.05, 0.25, -0.47], dir: [0.02, -0.05, -1], agarre: 0.40,
+    poloD: [0.8, -0.1, 0.2], poloI: [-0.6, -0.6, 0],
+    torso: [0.10, 0.12, 0], cabeza: [0.08, 0, 0]
+  }
+};
+
+const V = () => new THREE.Vector3();
+
+export class Figura {
+  constructor (bando, semilla = Math.random()) {
+    const c = PINTA[bando] || PINTA.realista;
+    const piel = PIELES[Math.floor(semilla * PIELES.length) % PIELES.length];
+    const pelo = PELOS[Math.floor(semilla * 977) % PELOS.length];
+
+    const { raiz, h } = esqueleto();
+    this.raiz = raiz;
+    this.h = h;
+    this.bando = bando;
+
+    const taller = new Taller();
+    vestir(taller, h, c, piel, pelo);
+    if (c.morrion) { tercerolaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
+    else fusilRealista(taller, h.arma);
+    this.mallas = taller.cocinar();
+    this.arma = h.arma;
+
+    // nadie es idéntico al de al lado: estatura y ancho varían un poco
+    const alto = 0.955 + (semilla * 7919 % 1) * 0.09;
+    raiz.scale.set(alto * 0.99, alto, alto * 0.99);
+
+    this.paso = semilla * 6.283;
+    this.pose = 'marcha';
+
+    // estado interpolado
+    this.cur = {
+      manoD: V(), dir: V(), poloD: V(), poloI: V(),
+      torso: V(), cabeza: V(), agarre: 0.4, roll: 0
+    };
+    const p = POSES.marcha;
+    this.cur.manoD.fromArray(p.manoD);
+    this.cur.dir.fromArray(p.dir).normalize();
+    this.cur.poloD.fromArray(p.poloD);
+    this.cur.poloI.fromArray(p.poloI);
+    this.cur.agarre = p.agarre;
+
+    // temporales, para no ensuciar el recolector cada cuadro
+    this._t = { a: V(), b: V(), e: V(), u: V(), v: V(), n: V(), y: V(), z: V(), x: V(), s: V() };
+    this._m = new THREE.Matrix4();
+    this._q = new THREE.Quaternion();
+    this._qT = new THREE.Quaternion();
+    this._qD = new THREE.Quaternion();
+    this._qHD = new THREE.Quaternion();
+    this._blancoI = V();
+
+    this._armar();
+  }
+
+  poner (nombre) { if (POSES[nombre]) this.pose = nombre; }
+
+  ocultarArma (v) { this.arma.visible = !v; }
+
+  // ---- cinemática inversa de dos huesos, resuelta en espacio de cadera.
+  // Devuelve la rotación del hombro en ese espacio para poder colgarle el arma.
+  _brazo (lado, blanco, polo, qTorso, salida) {
+    const t = this._t;
+    const hombro = this.h['hombro' + lado], codo = this.h['codo' + lado];
+    const S = t.s.copy(HOMBRO_L[lado]).applyQuaternion(qTorso);
+
+    const dv = t.a.copy(blanco).sub(S);
+    let d = dv.length();
+    if (d < 1e-4) { dv.set(0, -1, 0); d = 1e-4; }
+    const dir = dv.divideScalar(d);
+    d = suj(d, Math.abs(BRAZO - ANTEBRAZO) + 0.03, ALCANCE);
+
+    const A = Math.acos(suj((BRAZO * BRAZO + d * d - ANTEBRAZO * ANTEBRAZO) / (2 * BRAZO * d), -1, 1));
+    const perp = t.b.copy(polo).addScaledVector(dir, -polo.dot(dir));
+    if (perp.lengthSq() < 1e-6) perp.set(0, 0, 1).addScaledVector(dir, -dir.z);
+    perp.normalize();
+
+    const u = t.u.copy(dir).multiplyScalar(Math.cos(A)).addScaledVector(perp, Math.sin(A));
+    const E = t.e.copy(S).addScaledVector(u, BRAZO);
+    const v = t.v.copy(blanco).sub(E);
+    if (v.lengthSq() < 1e-8) v.copy(u); else v.normalize();
+
+    const n = t.n.crossVectors(u, v);
+    if (n.lengthSq() < 1e-8) n.set(1, 0, 0).addScaledVector(u, -u.x).normalize(); else n.normalize();
+
+    const yA = t.y.copy(u).negate();
+    const zA = t.z.crossVectors(n, yA);
+    this._m.makeBasis(n, yA, zA);
+    const Q = this._q.setFromRotationMatrix(this._m);      // hombro en espacio cadera
+    if (salida) salida.copy(Q);
+    hombro.quaternion.copy(qTorso).invert().multiply(Q);
+    codo.rotation.set(Math.acos(suj(u.dot(v), -1, 1)), 0, 0);
+  }
+
+  // punto del arma que la izquierda alcanza sin descoyuntarse
+  _agarreI (manoD, dir, agarre, qTorso) {
+    const t = this._t;
+    const S = t.s.copy(HOMBRO_L.I).applyQuaternion(qTorso);
+    const w = t.a.copy(manoD).sub(S);
+    // |manoD + k·dir − S| = ALCANCE
+    const b = w.dot(dir);
+    const disc = b * b - (w.lengthSq() - ALCANCE * ALCANCE);
+    let k = agarre;
+    if (disc > 0) k = Math.min(agarre, Math.max(0.10, -b + Math.sqrt(disc)));
+    else k = 0.16;
+    return t.b.copy(manoD).addScaledVector(dir, k);
+  }
+
+  _armar () {
+    const c = this.cur;
+    const h = this.h;
+    h.torso.rotation.set(c.torso.x, c.torso.y, c.torso.z);
+    h.cabeza.rotation.set(c.cabeza.x, c.cabeza.y, c.cabeza.z);
+    const qTorso = this._qT.setFromEuler(h.torso.rotation);
+
+    this._brazo('D', c.manoD, c.poloD, qTorso, this._qHD);
+    this._blancoI.copy(this._agarreI(c.manoD, c.dir, c.agarre, qTorso));
+    this._brazo('I', this._blancoI, c.poloI, qTorso);
+
+    // orientar el arma: el caño mira a dir, con el alza arriba
+    const t = this._t;
+    const zA = t.z.copy(c.dir).negate();
+    const up = t.x.set(0, 1, 0);
+    if (Math.abs(up.dot(zA)) > 0.985) up.set(0, 0, c.dir.y > 0 ? 1 : -1);
+    if (c.roll) up.applyAxisAngle(c.dir, c.roll);
+    up.addScaledVector(zA, -up.dot(zA)).normalize();
+    const xA = t.n.crossVectors(up, zA);
+    this._m.makeBasis(xA, up, zA);
+    const qArma = this._q.setFromRotationMatrix(this._m);
+    // el arma cuelga de la mano: hay que descontar hombro y codo
+    const qMano = this._qD.copy(this._qHD).multiply(h.codoD.quaternion);
+    this.arma.quaternion.copy(qMano.invert()).multiply(qArma);
+  }
+
+  actualizar (dt, andando) {
+    const p = POSES[this.pose] || POSES.marcha;
+    const c = this.cur;
+    const k = 1 - Math.exp(-10 * dt);
+
+    c.manoD.lerp(this._t.a.fromArray(p.manoD), k);
+    c.dir.lerp(this._t.b.fromArray(p.dir).normalize(), k).normalize();
+    c.poloD.lerp(this._t.a.fromArray(p.poloD), k);
+    c.poloI.lerp(this._t.b.fromArray(p.poloI), k);
+    c.torso.lerp(this._t.a.fromArray(p.torso), k);
+    c.cabeza.lerp(this._t.b.fromArray(p.cabeza || [0, 0, 0]), k);
+    c.agarre += (p.agarre - c.agarre) * k;
+    c.roll += ((p.roll || 0) - c.roll) * k;
+
+    // paso: la cadera manda, la rodilla sólo dobla hacia atrás
+    const kp = 1 - Math.exp(-9 * dt);
+    if (andando) {
+      this.paso += dt * 6.6;
+      const s = Math.sin(this.paso);
+      this.h.musloI.rotation.x = s * 0.52;
+      this.h.musloD.rotation.x = -s * 0.52;
+      this.h.rodillaI.rotation.x = -Math.max(0, -Math.sin(this.paso - 0.7)) * 0.95;
+      this.h.rodillaD.rotation.x = -Math.max(0, Math.sin(this.paso - 0.7)) * 0.95;
+      this.h.cadera.position.y = CADERA + Math.abs(s) * 0.028;
+      this.h.cadera.rotation.z = s * 0.035;
+    } else {
+      for (const n of ['musloI', 'musloD', 'rodillaI', 'rodillaD']) {
+        this.h[n].rotation.x += (0 - this.h[n].rotation.x) * kp;
+      }
+      this.h.cadera.position.y += (CADERA - this.h.cadera.position.y) * kp;
+      this.h.cadera.rotation.z += (0 - this.h.cadera.rotation.z) * kp;
+    }
+
+    this._armar();
+  }
+
+  // se desploma de costado, no de cara: queda mejor sobre el pasto
+  desplomar (e) {
+    this.raiz.rotation.z = e * 1.35;
+    this.raiz.rotation.x = e * 0.35;
+    this.h.torso.rotation.x = e * 0.4;
+    this.h.musloI.rotation.x = e * 0.5;
+    this.h.musloD.rotation.x = e * 0.25;
+    this.h.rodillaI.rotation.x = -e * 0.8;
+  }
+}

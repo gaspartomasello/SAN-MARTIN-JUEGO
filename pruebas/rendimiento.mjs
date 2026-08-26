@@ -10,8 +10,9 @@ await pag.waitForTimeout(1200);
 await pag.click('#empezar');
 await pag.waitForTimeout(1500);
 await pag.evaluate(() => {
-  for (let i = 0; i < 6; i++) window.juego.soltarRealista();
-  const t = window.juego.tercerola;
+  const j = window.juego;
+  for (let i = 0; i < 6; i++) j.soltarSoldado('realista');
+  const t = j.armas.tercerola;
   for (let k = 0; k < 3; k++) {
     t.polvora = t.bala = t.cebado = t.amartillada = true;
     t.gatillo();
@@ -19,20 +20,17 @@ await pag.evaluate(() => {
   }
 });
 await pag.waitForTimeout(2500);
-const d = await pag.evaluate(() => {
-  const r = window.juego;
-  const info = window.juego.escena.__info || null;
-  return { nubes: r.humo.vivas, enemigos: r.enemigos.length };
-});
-const info = await pag.evaluate(() => {
-  const c = document.querySelector('#depurar');
-  return document.querySelector('#estado').textContent;
-});
-// leer render.info a través de la consola de depuración del juego
 await pag.keyboard.press('F3');
-await pag.waitForTimeout(700);
+await pag.waitForTimeout(800);
 const dep = await pag.evaluate(() => document.querySelector('#depurar').innerText);
-console.log('estado:', info.replace(/\n/g, ' | '));
+const d = await pag.evaluate(() => ({
+  nubes: window.juego.humo.vivas,
+  soldados: window.juego.soldados.length,
+  mallas: window.juego.soldados.reduce((n, s) => n + s.fig.mallas.length, 0),
+  draws: window.juego.render.info.render.calls,
+  tris: window.juego.render.info.render.triangles,
+  geos: window.juego.render.info.memory.geometries
+}));
 console.log('depuración:\n' + dep);
 console.log('mundo:', JSON.stringify(d));
 console.log(errs.length ? 'ERRORES: ' + errs.join(' / ') : 'sin errores de consola');

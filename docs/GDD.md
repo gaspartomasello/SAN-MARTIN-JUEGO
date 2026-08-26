@@ -314,6 +314,49 @@ fallas de percusión reales, sin vendajes, sin recarga rápida).
 - **Audio:** al reventar un cañón cerca, filtro pasabajos a 800 Hz + acúfeno durante 4 s
   (Web Audio API, `BiquadFilterNode`). Es de las cosas más baratas y más efectivas del juego.
 
+### Los soldados
+
+Cada soldado es una **figura con esqueleto**, no un montón de cajas apiladas
+(`src/figura.js`). Once huesos: cadera, torso, cabeza, y hombro/codo por brazo y
+muslo/rodilla por pierna. El frente de la figura es **−Z**, porque el soldado se orienta
+con `atan2(x,z) + π`.
+
+Dos decisiones que vale la pena no reabrir:
+
+**Las piezas se funden.** Un granadero decente lleva unas cuarenta piezas —morrión,
+chapa, cordones, carrilleras, penacho, charreteras, bocamangas, correas cruzadas,
+cartuchera, morral, botas—. Cuarenta mallas por soldado se comen el presupuesto. Al
+construirlo, cada pieza se cuece dentro del hueso que la mueve, con el color metido en
+los vértices, y quedan **15 mallas por soldado** con dos materiales compartidos por todo
+el ejército: paño y metal. Medido: 15 llamadas de dibujo y 2.364 triángulos por hombre,
+menos llamadas que el modelo de cajas que reemplazó.
+
+**Las poses se escriben con las manos, no con los ángulos.** Una pose no dice "hombro a
+1,02 rad": dice *dónde va la mano derecha, hacia dónde mira el caño y a qué altura lo
+agarra la izquierda*. Una cinemática inversa de dos huesos resuelve hombro y codo, y la
+mano izquierda se ubica sobre el arma en el punto más lejano que el brazo alcanza. Sin
+esto es imposible dejar las dos manos puestas sobre el fusil, y cada pose nueva sale de
+tantear ángulos a ciegas.
+
+Las medidas de la pose van en **espacio de cadera**, no de torso. Así el soldado puede
+perfilarse para encarar —hombro izquierdo adelante— sin que el fusil se vaya con él.
+
+Poses actuales: `marcha` (armas terciadas), `apuntar`, `recargar`, `guardia`, `cargar` y
+`estocada`. Las tres últimas son el ciclo del cuerpo a cuerpo.
+
+### La telegrafía del acero
+
+El realista no clava la bayoneta de la nada. El ciclo es **guardia → aviso → estocada →
+vuelta a la guardia**, y el aviso dura **0,55 s** en los que la figura echa el cuerpo
+atrás, sube la bayoneta bien afuera del eje y grita. Es visible de frente, que es el único
+ángulo desde el que el jugador lo mira.
+
+`Soldado.avisando` es `true` exactamente durante esa ventana: es el enganche del que va a
+colgar la parada perfecta de la Fase 2. Sin telegrafía, parar es lotería y el duelo entero
+no sirve.
+
+---
+
 ### Dirección de arte
 
 Amanecer del 3 de febrero: sol rasante desde el este sobre el Paraná, niebla de río,
@@ -338,6 +381,8 @@ Da identidad y salva rendimiento al mismo tiempo.
   más la grilla 2D de densidad 64×64 compartida con la IA.
 - **Presupuesto:** ≤ 120 draw calls, ≤ 1,5 M triángulos, una direccional con 2 cascadas de
   sombra, AO horneado (nada de SSAO), post-proceso en un solo pase.
+  **Hoy no se cumple:** 304 llamadas con el campo vacío y 394 con seis soldados. Lo caro
+  es el escenario, no la tropa. Se arregla en la Fase 4 con instancias y LOD, no antes.
 - **Animación:** GLTF con esqueleto. La animación de recarga es la más importante del
   juego — hay que hacerla a mano, no sale de una biblioteca genérica.
 - **Guardado:** `localStorage`. Un jugador, sin red.
@@ -383,6 +428,10 @@ y no cuatro meses después.
 |---|---|---|
 | 1 | Campo de tiro: controlador FPS, recarga de 7 pasos con 3 timings, un arma, un enemigo, humo | **¿Recargar es divertido?** |
 | 2 | Duelo: sable vs. bayoneta, guardia, parada perfecta, riposte, 3 enemigos | ¿El melee aguanta 20 minutos? |
+
+La figura con esqueleto y la telegrafía del aviso (§12) son la parte de la Fase 2 que ya
+está hecha: sin brazos articulados no hay golpe que leer, y sin golpe que leer no hay
+parada. Falta la mitad del jugador — guardia, parada perfecta, riposte y pechada.
 | 3 | Escenario: convento, barranca, río, amanecer, post-proceso | ¿Se ve como una pintura o como un demo? |
 | 4 | Multitud, moral, órdenes, carga montada | ¿Se siente una batalla o un pasillo? |
 | 5 | Acto 4 (Cabral) + epílogo del pino | ¿Emociona? |

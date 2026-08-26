@@ -63,6 +63,7 @@ escena.add(luzBoca);
 const rayo = new THREE.Raycaster();
 rayo.far = 220;
 const soldados = [];
+let ultimoInfo = { calls: 0, triangles: 0 };
 
 // daño que hace una bala de plomo y una bayoneta al jugador
 const DANO_BALA = 52;
@@ -481,6 +482,7 @@ function cuadro () {
     calls: mundoInfo.calls + pasadaArma.ultimaInfo.calls + 1,
     triangles: mundoInfo.tris + pasadaArma.ultimaInfo.tris
   };
+  ultimoInfo = info;   // render.info se reinicia en cada render(); esta es la suma real
 
   hud.actualizar(crudo, {
     paso: arma ? arma.infoPaso() : null,
@@ -506,5 +508,6 @@ function cuadro () {
 }
 cuadro();
 
-window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, soltarSoldado,
+window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, render, soltarSoldado,
+  get info () { return ultimoInfo; },
   get arma () { return armaActual(); } };
