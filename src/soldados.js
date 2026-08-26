@@ -70,6 +70,7 @@ export class Soldado {
     this._pego = false;
     this._grito = false;
     this._v = new THREE.Vector3();
+    this._d = new THREE.Vector3();
 
     this.monta = null;
     this.tPasada = 0;
@@ -216,6 +217,32 @@ export class Soldado {
     }
 
     const dist = this._elegirObjetivo(jugador, soldados);
+
+    // EL JINETE SE ACTUALIZA SIEMPRE, haya blanco o no.
+    //
+    // Esto estaba mal y se veía feo: la salida temprana por «no hay a quién
+    // atacar» se comía la rama montada, así que el hombre dejaba de sentarse
+    // en la silla mientras el bucle principal seguía moviéndole el caballo. El
+    // caballo se iba solo y el jinete quedaba flotando en el aire hasta que
+    // apareciera un enemigo y volviera a engancharse de un salto. Pasaba cada
+    // vez que el campo quedaba limpio —entre tanda y tanda de realistas, o
+    // justo después de que un lanzazo matara al último—, que es exactamente
+    // cuando más se nota. El asiento no puede depender de que haya enemigos.
+    if (this.montado) {
+      this.t += dt;
+      if (this.aturdido > 0) this.aturdido -= dt;
+      let destino = null;
+      if (this.objetivo) {
+        const obj = this._d.set(this.objetivo.pos.x, 0, this.objetivo.pos.z);
+        this.teVe = this.humo.oclusion(this.pos, this.objetivo.pos) < 0.55 && dist < 95;
+        if (this.teVe) this.ultimoVisto.copy(obj);
+        destino = this.teVe ? obj : this.ultimoVisto;
+      }
+      this._cargarALanza(dt, this.objetivo ? dist : Infinity, destino);
+      this.fig.actualizar(dt, false);
+      return;
+    }
+
     if (!this.objetivo) { this.estado = 'avanzar'; this.fig.actualizar(dt, false); return; }
 
     const objetivo = new THREE.Vector3(this.objetivo.pos.x, 0, this.objetivo.pos.z);
@@ -229,14 +256,6 @@ export class Soldado {
     const hacia = new THREE.Vector3().subVectors(destino, mio);
     const distDestino = hacia.length();
     if (distDestino > 0.001) hacia.normalize();
-
-    if (this.montado) {
-      this.t += dt;
-      if (this.aturdido > 0) this.aturdido -= dt;
-      this._cargarALanza(dt, dist, destino);
-      this.fig.actualizar(dt, false);
-      return;
-    }
 
     this.malla.rotation.y = Math.atan2(hacia.x, hacia.z) + Math.PI;
 
@@ -319,9 +338,27 @@ export class Soldado {
   _cargarALanza (dt, dist, destino) {
     const c = this.monta;
     this.tPasada = Math.max(0, this.tPasada - dt);
+    const mando = {};
+
+    if (!destino) {
+      // Nadie a quien cargar: baja el asta al hombro y afloja hasta el paso.
+      // Lo importante no es la pose, es que este camino TAMBIÉN termina
+      // moviendo el caballo y sentando al jinete encima.
+      this.estado = 'esperar';
+      c.andar = Math.max(0, Math.min(c.andar, 1));
+      this.avisando = false;
+      this.fig.poner('lanzaAlto');
+      if (c.puedeSaltar && c.obstaculoAdelante(c.vel * 0.55 + 2.5)) mando.saltar = true;
+      c.actualizar(dt, mando);
+      c.actualizado = true;
+      this._sentar();
+      if (!c.vivo) this.desmontar(true);
+      return;
+    }
 
     const rumboA = Math.atan2(destino.x - c.pos.x, destino.z - c.pos.z) + Math.PI;
-    const mando = {};
+
+    if (this.estado === 'esperar') { this.estado = 'cargar'; this._pego = false; this._grito = false; }
 
     if (this.estado === 'pasada') {
       c.andar = 3;                       // seguir de largo, despegarse

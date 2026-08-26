@@ -74,6 +74,10 @@ const montado = () => !!jugador.monta && jugador.monta.vivo;
 function nuevoCaballo (pos, rumbo) {
   const c = new Caballo(escena, mundo.colisiones, pos);
   c.rumbo = rumbo || 0;
+  // Los cascos levantan tierra por el MISMO sistema que el humo de pólvora,
+  // así que la polvareda de una carga tapa la vista de verdad —la tuya y la
+  // de la IA— y no es sólo un adorno.
+  c.humo = humo;
   caballos.push(c);
   return c;
 }
@@ -715,6 +719,9 @@ function cuadro () {
     }
   }
 
+  // el aire en la cara: sube con la velocidad del caballo y se apaga a pie
+  sonido.viento(montado() ? Math.max(0, (jugador.monta.vel - 2.4) / 7.8) : 0);
+
   luzBoca.intensity = Math.max(0, luzBoca.intensity - dt * 260);
 
   render.render(escena, camara);
@@ -733,6 +740,7 @@ function cuadro () {
     nombreArma: arma ? arma.nombre : 'Sable corvo',
     estadoArma: arma ? arma.etiquetaEstado : 'en mano',
     postura: montado() ? jugador.monta.nombreAndar : p.nombre,
+    rapidez: montado() ? jugador.monta.vel : 0,
     puedeTomarFusil: !armas.fusil && !!caidoConFusil(),
     remate: sable.tRemate,
     vida: jugador.vida,

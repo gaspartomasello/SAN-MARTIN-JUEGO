@@ -62,6 +62,11 @@ const r = await pag.evaluate(() => {
   c.colisiones = j.escena ? c.colisiones : c.colisiones;
   const antes = j.soldados.length;
   const l = j.soltarSoldado('granadero', { montado: true });
+  // posiciones fijas: el spawn de lanceros es aleatorio y la prueba no puede
+  // depender de dónde cayó
+  l.monta.pos.set(0, 0, 0); l.monta.rumbo = 0; l.monta.vel = 0; l.monta.andar = 0;
+  l.monta.colisiones = [];   // acá se mide la carga, no el choque contra el decorado
+  l._sentar();
   ok('el lancero nace montado', l.montado === true);
   ok('lleva lanza', l.lancero === true);
   ok('el caballo entró a la lista', j.caballos.includes(l.monta));
@@ -72,11 +77,15 @@ const r = await pag.evaluate(() => {
   // para que la carga no elija otro blanco a mitad de camino.
   for (const s of j.soldados) if (s.esRealista) s.vivo = false;
   const enemigo = j.soltarSoldado('realista');
-  enemigo.malla.position.set(l.malla.position.x, 0, l.malla.position.z - 45);
+  enemigo.malla.position.set(0, 0, -45);
+  // se le quita el fusil: a 45 m un realista bien puede matar al lancero antes
+  // de que llegue —está bien que pueda— pero acá se mide la carga, no el tiro
+  enemigo.alDisparar = null;
+  enemigo.recarga = 999;
   let pegó = false, distMin = 999, andares = new Set();
   const golpeOriginal = l.alGolpear;
   l.alGolpear = (q, o) => { pegó = true; if (golpeOriginal) golpeOriginal(q, o); };
-  for (let i = 0; i < 60 * 22; i++) {
+  for (let i = 0; i < 60 * 16; i++) {
     l.actualizar(1 / 60, j.jugador, j.soldados);
     if (enemigo.vivo) enemigo.actualizar(1 / 60, j.jugador, j.soldados);
     if (l.monta) andares.add(l.monta.nombreAndar);
@@ -93,6 +102,38 @@ const r = await pag.evaluate(() => {
   ok('no lleva lanza', esp.lancero === false);
   const suelto = j.caballos.find(c => c.vivo && !c.montado);
   ok('un realista no puede montar ni un caballo suelto', suelto ? esp.montar(suelto) === false : true);
+
+  // ---------- 3 ter. el jinete NO se despega del caballo ----------
+  //
+  // El bug: sin enemigos vivos el jinete dejaba de sentarse y el caballo se
+  // iba galopando solo. Se reproduce dejando el campo sin un solo realista.
+  for (const s of j.soldados) if (s.esRealista) s.vivo = false;
+  const solo = j.soltarSoldado('granadero', { montado: true });
+  solo.monta.andar = 3; solo.monta.vel = 10.2;
+  let despegue = 0;
+  for (let i = 0; i < 60 * 6; i++) {
+    solo.actualizar(1 / 60, j.jugador, j.soldados);
+    if (!solo.monta) break;
+    const dx = solo.malla.position.x - solo.monta.pos.x;
+    const dz = solo.malla.position.z - solo.monta.pos.z;
+    despegue = Math.max(despegue, Math.hypot(dx, dz));
+  }
+  ok('sin enemigos el jinete sigue en la silla', despegue < 0.05, `se despegó ${despegue.toFixed(2)} m`);
+  ok('y el caballo aflojó en vez de dispararse', solo.monta && solo.monta.andar <= 1, solo.monta && solo.monta.nombreAndar);
+
+  // ---------- 3 quater. la polvareda ----------
+  // se apaga todo lo demás para que el polvo medido sea el de este caballo
+  for (const s of j.soldados) if (s !== solo) s.vivo = false;
+  for (const n of j.humo.nubes) n.viva = false;
+  j.humo.actualizar(1 / 60);
+  const nubes0 = j.humo.vivas;
+  solo.monta.andar = 3; solo.monta.vel = 10.2;
+  for (let i = 0; i < 60 * 2; i++) { solo.monta.actualizar(1 / 60, {}); j.humo.actualizar(1 / 60); }
+  const conGalope = j.humo.vivas;
+  ok('al galope los cascos levantan tierra', conGalope > nubes0 + 3, `${nubes0} → ${conGalope} nubes`);
+  solo.monta.vel = 1.2; solo.monta.andar = 1;
+  for (let i = 0; i < 60 * 6; i++) { solo.monta.actualizar(1 / 60, {}); j.humo.actualizar(1 / 60); }
+  ok('al paso no hace polvo', j.humo.vivas < conGalope, `quedaron ${j.humo.vivas}`);
 
   // ---------- 4. el desmonte ----------
   const l2 = j.soltarSoldado('granadero', { montado: true });

@@ -165,6 +165,9 @@ export class Caballo {
     this.alCaer = null;
     this.jinete = null;        // el Soldado que lo monta, si lo monta uno
     this.golpeo = false;       // chocó de frente en este cuadro
+    this.giroReal = 0;         // rad/s de giro efectivo: la cámara se inclina con esto
+    this.humo = null;          // si se lo enchufan, los cascos levantan tierra
+    this.tPolvo = 0;
 
     // pose de reposo: sin esto el cuello cuelga hacia abajo hasta el primer cuadro
     h.cuello.rotation.x = 2.30;
@@ -242,6 +245,7 @@ export class Caballo {
     this.vel += Math.max(-k * dt, Math.min(k * dt, objetivo - this.vel));
 
     // el radio de giro se abre con la velocidad: es la mecánica del acto 3
+    const rumboAntes = this.rumbo;
     const t = Math.min(1, this.vel / ANDARES[3].vel);
     const giro = THREE.MathUtils.lerp(ANDARES[0].giro, ANDARES[3].giro, t);
     // en el aire el caballo casi no corrige: el salto se apunta ANTES de batir
@@ -264,15 +268,67 @@ export class Caballo {
         this.velY = 0;
         this.enElAire = false;
         this.vel *= 0.93;
+        // el aterrizaje revienta un golpe de tierra bajo los cascos
+        if (this.humo && this.vel > 2) {
+          this._pol = this._pol || new THREE.Vector3();
+          this._dirPol = this._dirPol || new THREE.Vector3();
+          this._pol.set(this.pos.x, 0.10, this.pos.z);
+          this._dirPol.set(0, 0.8, 0);
+          this.humo.soltar(this._pol, this._dirPol, {
+            cantidad: 6, vida: 4.5, empuje: 1.8, radio: 0.4,
+            opacidad: 0.30, claro: 0.55, tierra: 1
+          });
+        }
         if (this.alCaer) this.alCaer(this);
       }
     }
+
+    let dg = this.rumbo - rumboAntes;
+    dg = Math.atan2(Math.sin(dg), Math.cos(dg));
+    this.giroReal = dt > 0 ? dg / dt : 0;
 
     this.pos.x += -Math.sin(this.rumbo) * this.vel * dt;
     this.pos.z += -Math.cos(this.rumbo) * this.vel * dt;
     this._chocar();
     this._avanzar(dt);
     this._andarPatas(dt);
+    this._polvareda(dt);
+  }
+
+  // LA POLVAREDA.
+  //
+  // No es decoración: sale por el MISMO sistema que el humo de pólvora, así
+  // que entra en la grilla de densidad que consultan el jugador y la IA para
+  // ver. Una carga de caballería se tapa a sí misma, y eso es exactamente lo
+  // que pasaba en un campo seco de febrero. Levanta desde el trote —al paso un
+  // caballo no hace polvo— y la cantidad sale de la velocidad.
+  _polvareda (dt) {
+    if (!this.humo || this.vel < 2.6 || this.alto > 0.2) return;
+    this.tPolvo -= dt;
+    if (this.tPolvo > 0) return;
+    const fuerza = Math.min(1, (this.vel - 2.6) / 7.6);
+    // El pozo de nubes es de 700 y lo comparte con la pólvora, que es una
+    // mecánica —tapa la línea de tiro de la IA— y no puede quedarse sin lugar.
+    // Una bocanada cada metro y medio, grande y de vida corta, alcanza para
+    // que la estela se lea sin comerse el presupuesto.
+    this.tPolvo = 0.20 - fuerza * 0.07;
+    const atras = 0.55;
+    const px = this.pos.x + Math.sin(this.rumbo) * atras;
+    const pz = this.pos.z + Math.cos(this.rumbo) * atras;
+    this._pol = this._pol || new THREE.Vector3();
+    this._dirPol = this._dirPol || new THREE.Vector3();
+    this._pol.set(px, 0.12, pz);
+    // la tierra sale para atrás y hacia arriba, siguiendo la estela
+    this._dirPol.set(Math.sin(this.rumbo) * 0.7, 0.55, Math.cos(this.rumbo) * 0.7);
+    this.humo.soltar(this._pol, this._dirPol, {
+      cantidad: 1,
+      vida: 2.2 + fuerza * 1.6,
+      empuje: 0.7 + fuerza * 1.5,
+      radio: 0.32 + fuerza * 0.30,
+      opacidad: 0.26 + fuerza * 0.30,
+      claro: 0.55,
+      tierra: 1
+    });
   }
 
   _avanzar () {

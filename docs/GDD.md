@@ -439,6 +439,46 @@ jinete.
 siempre el mismo) y queda 45 segundos, lo mismo que el cuerpo de un hombre. El
 campo se llena parejo.
 
+### La polvareda y la cámara del galope
+
+**La polvareda sale por el mismo sistema que el humo de pólvora**, así que
+entra en la grilla de densidad que consultan el jugador *y* la IA para ver. Una
+carga de caballería se tapa a sí misma, que es lo que pasaba en un campo seco
+de febrero. Levanta **desde el trote** —al paso un caballo no hace polvo— y la
+cantidad sale de la velocidad. El aterrizaje de un salto revienta su propio
+golpe de tierra.
+
+Dos decisiones que no son de comodidad:
+
+- **La tierra es ocre y la pólvora es gris.** Se pintan con colores distintos
+  (`uTierra` contra `uClaro`/`uOscuro`) porque en el campo se distinguen a
+  simple vista y confundirlas sería mentir sobre qué te está tapando.
+- **La tierra tapa un 62 % menos que la pólvora.** El humo de una descarga es
+  mucho más espeso que el polvo de un casco. Con el mismo peso, una carga se
+  cegaba a sí misma y no llegaba nunca: medido, el lancero se plantaba a 10,6 m
+  del enemigo y daba vueltas. Con el peso corregido llega a 0,4 m.
+
+El pozo de nubes es de 700 y lo comparte con la pólvora, que es una mecánica.
+Por eso la polvareda es una bocanada grande cada metro y medio y no un chorro:
+cinco caballos al galope sostienen ~115 nubes, no 231.
+
+**La cámara a galope.** Cuatro cosas atadas a una sola variable —cuán rápido va
+el caballo— para que el galope tenga una personalidad y no cuatro:
+
+1. **El campo se abre**, no linealmente: `fovBase + 15·rapidez^1,6`. Casi no se
+   nota al paso y se dispara a galope.
+2. **Sube y baja con la ZANCADA**, no con un vaivén cualquiera: la cámara toma
+   el mismo reloj que mueve las patas. Es lo que más vende que vas arriba de un
+   animal y no de un vehículo.
+3. **Se tumba para adentro de la curva.** El caballo publica su giro efectivo
+   (`giroReal`, rad/s) y la cámara se inclina con él, más cuanto más rápido.
+4. **La cabeza se va atrás** con el envión, en su propio campo para que no la
+   apague el retroceso del arma.
+
+Y dos capas más: el **viento** —un lazo de ruido cuyo volumen y filtro suben con
+la velocidad; a galope te tapa media batalla, como el aire a 37 km/h contra la
+cara— y el **túnel**, una viñeta que se cierra pasado el trote.
+
 ### La tez de la tropa
 
 El Regimiento de Granaderos a Caballo se nutrió de libertos y morenos. El

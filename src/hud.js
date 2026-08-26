@@ -16,6 +16,7 @@ export class Hud {
     this.cartucheraN = $('#cartuchera .n');
     this.ahora = $('#ahora');
     this.remate = $('#remate');
+    this.velocidad = $('#velocidad');
     this.tomar = $('#tomar');
     this.aviso = $('#aviso');
     this.estado = $('#estado');
@@ -79,6 +80,9 @@ export class Hud {
 
     // ventana del remate abierta tras una parada perfecta
     this.remate.classList.toggle('si', datos.remate > 0);
+    // el túnel del galope: no se enciende hasta pasado el trote
+    const gal = Math.max(0, ((datos.rapidez || 0) - 4.2) / 6);
+    this.velocidad.style.opacity = Math.min(1, gal).toFixed(3);
 
     this.tomar.style.opacity = datos.puedeTomarFusil ? '1' : '0';
 

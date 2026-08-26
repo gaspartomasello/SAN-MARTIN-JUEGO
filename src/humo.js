@@ -34,12 +34,15 @@ const VS = `
   attribute float aAlfa;
   attribute float aTinte;
   attribute float aGiro;
+  attribute float aTierra;
   varying float vAlfa;
   varying float vTinte;
+  varying float vTierra;
   varying vec2 vUv;
   void main () {
     vAlfa = aAlfa;
     vTinte = aTinte;
+    vTierra = aTierra;
     float c = cos(aGiro), s = sin(aGiro);
     vec2 p = mat2(c, -s, s, c) * position.xy;
     vUv = uv;
@@ -54,13 +57,19 @@ const FS = `
   uniform sampler2D uTex;
   uniform vec3 uClaro;
   uniform vec3 uOscuro;
+  uniform vec3 uTierra;
   varying float vAlfa;
   varying float vTinte;
+  varying float vTierra;
   varying vec2 vUv;
   void main () {
     float a = texture2D(uTex, vUv).a * vAlfa;
     if (a < 0.004) discard;
-    gl_FragColor = vec4(mix(uOscuro, uClaro, vTinte), a);
+    // La pólvora es gris y la tierra es ocre. Son dos cosas distintas y en un
+    // campo seco se distinguen a simple vista: por eso la polvareda no se
+    // pinta con la misma paleta que el humo de las descargas.
+    vec3 col = mix(mix(uOscuro, uClaro, vTinte), uTierra, vTierra);
+    gl_FragColor = vec4(col, a);
   }
 `;
 
@@ -75,15 +84,18 @@ export class Humo {
     this.alfa = new THREE.InstancedBufferAttribute(new Float32Array(MAX), 1);
     this.tinte = new THREE.InstancedBufferAttribute(new Float32Array(MAX), 1);
     this.giro = new THREE.InstancedBufferAttribute(new Float32Array(MAX), 1);
+    this.tierra = new THREE.InstancedBufferAttribute(new Float32Array(MAX), 1);
     inst.setAttribute('aAlfa', this.alfa);
     inst.setAttribute('aTinte', this.tinte);
     inst.setAttribute('aGiro', this.giro);
+    inst.setAttribute('aTierra', this.tierra);
 
     const mat = new THREE.ShaderMaterial({
       uniforms: {
         uTex: { value: textura() },
         uClaro: { value: new THREE.Color(0xd9d5cb) },
-        uOscuro: { value: new THREE.Color(0x4c4f52) }
+        uOscuro: { value: new THREE.Color(0x4c4f52) },
+        uTierra: { value: new THREE.Color(0xc0a878) }
       },
       vertexShader: VS,
       fragmentShader: FS,
@@ -99,7 +111,7 @@ export class Humo {
 
     this.nubes = new Array(MAX);
     for (let i = 0; i < MAX; i++) {
-      this.nubes[i] = { viva: false, pos: new THREE.Vector3(), vel: new THREE.Vector3(), t: 0, vida: 1, r0: 1, r1: 3, op: 0.5, tinte: 0.5, giro: 0, dgiro: 0 };
+      this.nubes[i] = { viva: false, pos: new THREE.Vector3(), vel: new THREE.Vector3(), t: 0, vida: 1, r0: 1, r1: 3, op: 0.5, tinte: 0.5, tierra: 0, giro: 0, dgiro: 0 };
     }
     this.cursor = 0;
     this.viento = new THREE.Vector3(0.38, 0.05, 0.2);
@@ -141,6 +153,7 @@ export class Humo {
       n.r1 = n.r0 * (3.4 + Math.random() * 2.6);
       n.op = (o.opacidad || 0.5) * (0.6 + Math.random() * 0.7);
       n.tinte = Math.random() * 0.45 + (o.claro === undefined ? 0.4 : o.claro);
+      n.tierra = o.tierra || 0;
       n.giro = Math.random() * Math.PI * 2;
       n.dgiro = (Math.random() - 0.5) * 0.5;
     }
@@ -176,14 +189,21 @@ export class Humo {
       this.malla.setMatrixAt(i, this._m);
       this.alfa.array[i] = a;
       this.tinte.array[i] = n.tinte;
+      this.tierra.array[i] = n.tierra;
       this.giro.array[i] = n.giro;
 
-      this._sembrar(n.pos, r, a);
+      // La tierra tapa MENOS que la pólvora. No es un ajuste de comodidad: el
+      // humo de una descarga es dos veces más espeso que el polvo que levanta
+      // un casco, y si pesaran igual una carga de caballería se cegaría a sí
+      // misma y no llegaría nunca. Se dibuja entera; lo que baja es cuánto
+      // cuenta para ver.
+      this._sembrar(n.pos, r, a * (1 - n.tierra * 0.62));
     }
     this.vivas = vivas;
     this.malla.instanceMatrix.needsUpdate = true;
     this.alfa.needsUpdate = true;
     this.tinte.needsUpdate = true;
+    this.tierra.needsUpdate = true;
     this.giro.needsUpdate = true;
   }
 

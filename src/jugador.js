@@ -36,6 +36,9 @@ export class Jugador {
     this.pitch = 0;
 
     this.monta = null;          // caballo si vas montado
+    this.inclinaMonta = 0;      // el envión del galope, aparte del retroceso
+    this.balanceoMonta = 0;
+    this.rapidezMonta = 0;
     this.postura = 'pie';
     this.altura = POSTURAS.pie.altura;
     this.pies = 0;           // altura del suelo bajo los pies
@@ -132,6 +135,9 @@ export class Jugador {
     this.pies = 0;
     this.velY = 0;
     this.vel.set(0, 0, 0);
+    this.inclinaMonta = 0;
+    this.balanceoMonta = 0;
+    this.rapidezMonta = 0;
     return true;
   }
 
@@ -178,11 +184,38 @@ export class Jugador {
       this.vel.set(-Math.sin(c.rumbo) * c.vel, 0, -Math.cos(c.rumbo) * c.vel);
       this.tSinCorrer += dt;
       if (this.tSinCorrer > 0.7) this.aliento = Math.min(100, this.aliento + 14 * dt);
-      // el trote sacude bastante más que caminar: por eso no se puede cargar
-      this.bob += dt * (2.2 + c.vel * 1.5);
-      this.balanceo += (0 - this.balanceo) * Math.min(1, 6 * dt);
-      this.fov = apuntando ? this.fovApuntado : this.fovBase + Math.min(9, c.vel * 0.9);
-      this._aplicarCamara(dt, Math.min(3.2, c.vel * 0.55));
+
+      // ---- LA CÁMARA A GALOPE ----
+      //
+      // La velocidad no se ve: se siente. Cuatro cosas a la vez, todas atadas
+      // a la misma variable —cuán rápido va el caballo— para que suban juntas
+      // y el galope tenga una sola personalidad.
+      const rapido = Math.min(1, c.vel / 10.2);
+
+      // 1. El campo se abre. No lineal: casi no se nota al paso y se dispara a
+      //    galope, que es cuando querés sentir que se te viene el mundo encima.
+      this.fov = apuntando ? this.fovApuntado
+        : this.fovBase + 15 * Math.pow(rapido, 1.6);
+
+      // 2. La cámara sube y baja CON LA ZANCADA, no con un vaivén cualquiera.
+      //    Se toma el mismo reloj que mueve las patas, así el ojo y los cascos
+      //    van al mismo compás. Es lo que más vende la sensación de ir arriba
+      //    de un animal y no de un vehículo.
+      this.bob = c.paso;
+      this.balanceoMonta = this.balanceoMonta || 0;
+
+      // 3. Se inclina para adentro de la curva. Un jinete no dobla plano: se
+      //    va con el caballo. Cuanto más rápido, más se tumba.
+      const banco = -(c.giroReal || 0) * (0.16 + rapido * 0.30);
+      this.balanceoMonta += (banco - this.balanceoMonta) * Math.min(1, 5 * dt);
+      this.balanceo += (this.balanceoMonta - this.balanceo) * Math.min(1, 9 * dt);
+
+      // 4. Y la cabeza se va apenas para atrás con el envión. Va en su propio
+      //    campo porque retroPitch lo apaga el retroceso del arma cada cuadro.
+      this.inclinaMonta += (-rapido * 0.050 - this.inclinaMonta) * Math.min(1, 3 * dt);
+
+      this.rapidezMonta = rapido;
+      this._aplicarCamara(dt, 1.4 + rapido * 4.2);
       return;
     }
 
@@ -325,8 +358,11 @@ export class Jugador {
     const sy = (Math.sin(t * 53.1) + Math.sin(t * 83.3) * 0.5) * s * 0.055;
     const sz = Math.sin(t * 39.7) * s * 0.045;
 
-    const bobY = Math.sin(this.bob * 2) * 0.032 * Math.min(1, rapidez / 4);
-    const bobX = Math.cos(this.bob) * 0.022 * Math.min(1, rapidez / 4);
+    // montado el paso es más largo y más brusco que caminando
+    const jinete = !!(this.monta && this.monta.vivo);
+    const amp = jinete ? Math.min(1, rapidez / 5.6) : Math.min(1, rapidez / 4);
+    const bobY = Math.sin(this.bob * 2) * (jinete ? 0.072 : 0.032) * amp;
+    const bobX = Math.cos(this.bob) * (jinete ? 0.040 : 0.022) * amp;
 
     // la respiración se acelera con poco aliento y con poca vida
     const falta = Math.max(1 - this.aliento / 100, 1 - this.vida / this.vidaMax);
@@ -337,7 +373,7 @@ export class Jugador {
     this.camara.position.set(this.pos.x + bobX * 0.4, this.pos.y + bobY + resp, this.pos.z);
     this.camara.rotation.set(0, 0, 0);
     this.camara.rotateY(this.yaw + sy);
-    this.camara.rotateX(this.pitch + sx + this.retroPitch);
+    this.camara.rotateX(this.pitch + sx + this.retroPitch + this.inclinaMonta);
     this.camara.rotateZ(this.balanceo + sz + bobX * 0.5);
 
     this.camara.fov += (this.fov - this.camara.fov) * Math.min(1, 9 * dt);
