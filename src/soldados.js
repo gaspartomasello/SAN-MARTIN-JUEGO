@@ -82,7 +82,15 @@ export class Soldado {
 
   get montado () { return !!this.monta && this.monta.vivo; }
 
+  // OJO: los realistas NO montan, nunca, bajo ninguna opción.
+  //
+  // No es un balance: es el hecho del que cuelga toda la batalla. La fuerza de
+  // desembarco española eran 250 infantes con dos cañones y ni un caballo, y
+  // por eso 120 granaderos les cayeron encima antes de que pudieran formar el
+  // cuadro. Si el realista pudiera montar, San Lorenzo dejaría de ser San
+  // Lorenzo. Queda cerrado acá para que no se cuele por una opción mal pasada.
   montar (caballo) {
+    if (this.esRealista) return false;
     if (!caballo || !caballo.vivo) return false;
     this.monta = caballo;
     caballo.montado = true;

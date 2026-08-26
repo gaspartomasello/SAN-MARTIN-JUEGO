@@ -416,6 +416,13 @@ dobla.
 El asta llega **un metro antes** que la bayoneta, y ese metro es toda la
 batalla. El lanzazo mata de una.
 
+**Los realistas no montan. Nunca.** No es balance: es el hecho del que cuelga
+toda la batalla. La fuerza de desembarco española eran 250 infantes con dos
+cañones ligeros y ni un caballo, y por eso 120 granaderos les cayeron encima
+antes de que pudieran formar el cuadro. Está cerrado por código —`montar()`
+rechaza a un realista aunque le pongan un caballo suelto delante— y hay una
+prueba que lo vigila, para que no se cuele nunca por una opción mal pasada.
+
 **El desmonte.** Regla única para los dos bandos: *a caballo, un golpe fuerte
 no mata — voltea*. El jinete rueda, queda 1,6 s tirado sin guardia y se levanta
 a pie con lo que le quede. Al jugador lo voltea un balazo o un bayonetazo desde

@@ -85,6 +85,15 @@ const r = await pag.evaluate(() => {
   ok('el lancero llega y ensarta', pegó, `distancia mínima ${distMin.toFixed(1)} m`);
   out.push(['—', 'andares usados en la carga', [...andares].join(', ')]);
 
+  // ---------- 3 bis. los españoles no tienen caballos ----------
+  const caballosAntes = j.caballos.length;
+  const esp = j.soltarSoldado('realista', { montado: true });
+  ok('un realista no nace montado', esp.montado === false && !esp.monta);
+  ok('no se le fabrica caballo', j.caballos.length === caballosAntes);
+  ok('no lleva lanza', esp.lancero === false);
+  const suelto = j.caballos.find(c => c.vivo && !c.montado);
+  ok('un realista no puede montar ni un caballo suelto', suelto ? esp.montar(suelto) === false : true);
+
   // ---------- 4. el desmonte ----------
   const l2 = j.soltarSoldado('granadero', { montado: true });
   l2.recibir(1);

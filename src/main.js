@@ -363,7 +363,9 @@ function soltarSoldado (bando, op = {}) {
     pos = new THREE.Vector3(jugador.pos.x + (Math.random() - 0.5) * 16, 0, 2 + Math.random() * 6);
   }
   const sop = {};
-  if (op.montado) {
+  // El caballo sólo se le da a un granadero. Los españoles desembarcaron 250
+  // infantes y dos cañones: ni una montura en toda la fuerza.
+  if (op.montado && bando === 'granadero') {
     sop.caballo = nuevoCaballo(pos.clone(), Math.atan2(-pos.x, -pos.z) + Math.PI);
   }
   if (op.tez) sop.tez = op.tez;
