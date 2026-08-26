@@ -66,12 +66,33 @@ rayo.far = 220;
 const soldados = [];
 let ultimoInfo = { calls: 0, triangles: 0 };
 let caballo = null;
+// Todos los caballos del campo: el del jugador, los de los lanceros y los que
+// quedaron sueltos. El bucle actualiza los que nadie actualizó ya.
+const caballos = [];
 const montado = () => !!jugador.monta && jugador.monta.vivo;
 
+function nuevoCaballo (pos, rumbo) {
+  const c = new Caballo(escena, mundo.colisiones, pos);
+  c.rumbo = rumbo || 0;
+  caballos.push(c);
+  return c;
+}
+
 function ponerCaballo () {
-  if (caballo) caballo.quitar();
-  caballo = new Caballo(escena, mundo.colisiones, new THREE.Vector3(2.6, 0, 2.0));
-  caballo.rumbo = Math.PI;
+  if (caballo) { caballo.quitar(); const i = caballos.indexOf(caballo); if (i >= 0) caballos.splice(i, 1); }
+  caballo = nuevoCaballo(new THREE.Vector3(2.6, 0, 2.0), Math.PI);
+}
+
+// El caballo suelto más cercano. Si a un lancero le voltearon el jinete, su
+// caballo queda ahí y se puede tomar: en el campo sobran caballos sin dueño.
+function caballoCerca (metros) {
+  let mejor = null, mejorD = metros;
+  for (const c of caballos) {
+    if (!c.vivo || c.montado) continue;
+    const d = c.pos.distanceTo(jugador.pos);
+    if (d < mejorD) { mejor = c; mejorD = d; }
+  }
+  return mejor;
 }
 
 function montarODesmontar () {
@@ -80,10 +101,25 @@ function montarODesmontar () {
     hud.mostrarAviso('Pie a tierra', 'bien');
     return;
   }
-  if (!caballo || !caballo.vivo) { hud.mostrarAviso('No hay caballo', 'malo'); return; }
-  if (caballo.pos.distanceTo(jugador.pos) > 3.2) { hud.mostrarAviso('El caballo está lejos', 'malo'); return; }
-  jugador.montar(caballo);
-  hud.mostrarAviso('A caballo · W sube el andar, S lo baja', 'bien');
+  const c = caballoCerca(3.6);
+  if (!c) { hud.mostrarAviso('No hay caballo cerca', 'malo'); return; }
+  caballo = c;
+  jugador.montar(c);
+  hud.mostrarAviso('A caballo · W sube el andar, S lo baja · Espacio salta', 'bien');
+}
+
+// Te sacan de la silla. Vale la misma regla para vos que para la tropa: un
+// golpe fuerte te voltea aunque no te mate, y el suelo cobra aparte.
+function voltear (aviso) {
+  if (!montado()) return false;
+  const c = jugador.monta;
+  jugador.desmontar();
+  jugador.recibir(CAIDA, new THREE.Vector3(0, 0, 1));
+  jugador.sacudir(0.9);
+  sonido.golpeRecibido();
+  c.andar = 3;                 // el caballo se dispara sin jinete
+  hud.mostrarAviso(aviso || '¡Te voltearon!', 'malo');
+  return true;
 }
 
 // daño que hace una bala de plomo y una bayoneta al jugador
@@ -96,6 +132,19 @@ const BLOQUEO_GASTO = 26;       // lo que cuesta parar tarde
 const PECHADA_GASTO = 18;
 const PECHADA_ALCANCE = 2.2;
 const ALCANCE_MONTADO = 3.3;    // desde arriba llegás más lejos
+const CAIDA = 16;               // lo que cuesta pegar contra el suelo
+// Cuánta gente aguanta el campo a la vez. NO es un número inventado: sale de
+// medir (pruebas/escala.mjs). Cada hombre cuesta ~11 llamadas de dibujo y cada
+// caballo ~9, y el escenario ya se lleva 313 con el campo vacío. Con estos
+// topes el peor caso ronda las 600 llamadas.
+//   20 lanceros            →   572
+//   40 lanceros            →   899
+//   90 lanceros + 60 a pie → 2.786   ← acá no lo corre nadie
+// Los 120 granaderos de verdad entran recién con niveles de detalle: un hombre
+// lejano no necesita quince mallas articuladas, necesita una sola. Eso es Fase 4.
+const ALIADOS_MAX = 6;
+const ENEMIGOS_MAX = 10;
+const MONTADOS = 0.66;          // qué proporción de granaderos sale a caballo
 
 // --------------------------- armas ---------------------------
 const sable = new Sable(camaraArma, sonido);
@@ -154,6 +203,7 @@ function resolverDisparo (origen, dir, dispersion) {
   const candidatos = [];
   for (const s of soldados) if (s.vivo && s.esRealista) candidatos.push(s.malla);
   for (const b of mundo.blancos) candidatos.push(b);
+  // un caballo es un blanco enorme: si se cruza, se lo come él
   const golpes = rayo.intersectObjects(candidatos, true);
 
   const g = golpes[0];
@@ -299,15 +349,25 @@ function cambiarArma (cual) {
 }
 
 // --------------------------- soldados ---------------------------
-function soltarSoldado (bando) {
+function soltarSoldado (bando, op = {}) {
   let pos;
   if (bando === 'realista') {
     pos = new THREE.Vector3((Math.random() - 0.5) * 26, 0, -58 - Math.random() * 22);
+  } else if (op.montado) {
+    // Los lanceros no forman al lado tuyo: salen de los flancos, como salieron
+    // los granaderos de atrás del convento. Necesitan cancha para embalar.
+    const lado = Math.random() < 0.5 ? -1 : 1;
+    pos = new THREE.Vector3(lado * (24 + Math.random() * 10), 0, -6 - Math.random() * 26);
   } else {
-    // los granaderos forman a los costados del jugador
+    // los granaderos de a pie forman a los costados del jugador
     pos = new THREE.Vector3(jugador.pos.x + (Math.random() - 0.5) * 16, 0, 2 + Math.random() * 6);
   }
-  const s = new Soldado(escena, humo, sonido, pos, bando);
+  const sop = {};
+  if (op.montado) {
+    sop.caballo = nuevoCaballo(pos.clone(), Math.atan2(-pos.x, -pos.z) + Math.PI);
+  }
+  if (op.tez) sop.tez = op.tez;
+  const s = new Soldado(escena, humo, sonido, pos, bando, sop);
 
   s.alDisparar = (quien, origen, dir, objetivo) => {
     const oc = humo.oclusion(origen, objetivo.pos);
@@ -322,6 +382,11 @@ function soltarSoldado (bando) {
           jugador.sacudir(0.3);
           sonido.impactoCarne();
           hud.mostrarAviso('¡Le dieron al caballo!', 'malo');
+        } else if (montado()) {
+          // una bala de plomo arriba de un caballo no te hiere: te tira
+          jugador.recibir(DANO_BALA, dir);
+          sonido.golpeRecibido();
+          voltear('¡Te bajaron de un balazo!');
         } else {
           jugador.recibir(DANO_BALA, dir);
           sonido.golpeRecibido();
@@ -360,9 +425,17 @@ function soltarSoldado (bando) {
       }
       jugador.recibir(DANO_BAYONETA, frente);
       sonido.golpeRecibido();
-      hud.mostrarAviso(quien.esRealista ? '¡Bayonetazo!' : '¡Golpe!', 'malo');
+      // desde abajo la bayoneta te busca la pierna y la silla: te voltea
+      if (montado()) voltear('¡Te sacaron de la silla!');
+      else hud.mostrarAviso(quien.esRealista ? '¡Bayonetazo!' : '¡Golpe!', 'malo');
     } else if (objetivo.soldado) {
-      objetivo.soldado.recibir(1);
+      const o = objetivo.soldado;
+      // El lanzazo del granadero mata de una: el asta llega antes que la
+      // bayoneta y ese metro de diferencia es toda la batalla.
+      // Contra un jinete, en cambio, la bayoneta no busca matar: busca
+      // voltearlo. Es el único recurso que le queda a la infantería.
+      if (quien.lancero) o.recibir(3);
+      else o.recibir(o.montado ? 3 : 1);
     }
   };
 
@@ -373,6 +446,11 @@ function soltarSoldado (bando) {
 function limpiarCampo () {
   for (const s of soldados) s.quitar();
   soldados.length = 0;
+  for (let i = caballos.length - 1; i >= 0; i--) {
+    if (caballos[i] === caballo) continue;
+    caballos[i].quitar();
+    caballos.splice(i, 1);
+  }
 }
 
 const vivosDe = bando => soldados.filter(s => s.vivo && s.bando === bando).length;
@@ -394,6 +472,14 @@ addEventListener('keydown', ev => {
       break;
     }
     case 'Space': {
+      // A caballo el espacio no salta a vos: bate al caballo. Y no batís
+      // parado —hace falta trote— porque un caballo tampoco salta parado.
+      if (montado()) {
+        const c = jugador.monta;
+        if (c.saltar()) { jugador.sacudir(0.25); }
+        else hud.mostrarAviso(c.vel < 2.2 ? 'Falta carrera para saltar' : 'Todavía no', 'malo');
+        break;
+      }
       ev.preventDefault();
       if (jugador.saltar()) { const a = armaActual(); if (a) a.soltarCarga(); }
       break;
@@ -554,20 +640,30 @@ function cuadro () {
   const arma = armaActual();
   const quiereApuntar = apuntando && !!arma && !arma.cargando && arma.tGolpe < 0;
 
-  if (caballo) {
+  // Los caballos con jinete los mueve su jinete; los demás —el tuyo y los que
+  // quedaron sueltos— los mueve el bucle. El cadáver dura 45 s, lo mismo que
+  // el de un hombre, y recién ahí se lo lleva el campo.
+  for (let i = caballos.length - 1; i >= 0; i--) {
+    const c = caballos[i];
+    if (c.actualizado) { c.actualizado = false; continue; }
     const mando = { girar: 0 };
-    if (montado()) {
+    if (jugador.monta === c) {
       mando.girar = (teclas.has('KeyD') ? 1 : 0) - (teclas.has('KeyA') ? 1 : 0);
     }
-    caballo.actualizar(dt, mando);
-    // si te matan el caballo, te vas al suelo con el golpe puesto
-    if (!caballo.vivo && jugador.monta) {
-      jugador.desmontar();
-      jugador.recibir(18, new THREE.Vector3(0, 0, 1));
-      jugador.sacudir(0.9);
-      sonido.golpeRecibido();
-      hud.mostrarAviso('¡Te voltearon el caballo!', 'malo');
+    c.actualizar(dt, mando);
+    if (!c.vivo && c.tMuerto > 45) {
+      c.quitar();
+      caballos.splice(i, 1);
+      if (caballo === c) caballo = null;
     }
+  }
+  // si te matan el caballo, te vas al suelo con el golpe puesto
+  if (jugador.monta && !jugador.monta.vivo) {
+    jugador.desmontar();
+    jugador.recibir(CAIDA, new THREE.Vector3(0, 0, 1));
+    jugador.sacudir(0.9);
+    sonido.golpeRecibido();
+    hud.mostrarAviso('¡Te mataron el caballo!', 'malo');
   }
 
   jugador.actualizar(dt, teclas, quiereApuntar, arma ? arma.cargando : false);
@@ -604,13 +700,15 @@ function cuadro () {
 
   if (combate && jugador.vivo) {
     tProxima -= dt;
-    if (tProxima <= 0 && vivosDe('realista') < 5) {
+    if (tProxima <= 0 && vivosDe('realista') < ENEMIGOS_MAX) {
       soltarSoldado('realista');
       tProxima = 6 + Math.random() * 5;
     }
     tAliado -= dt;
-    if (tAliado <= 0 && vivosDe('granadero') < 3) {
-      soltarSoldado('granadero');
+    if (tAliado <= 0 && vivosDe('granadero') < ALIADOS_MAX) {
+      // dos de cada tres granaderos van montados con lanza: era un regimiento
+      // de caballería, no de infantería
+      soltarSoldado('granadero', { montado: Math.random() < MONTADOS });
       tAliado = 9 + Math.random() * 6;
     }
   }
@@ -653,6 +751,12 @@ ponerCaballo();
 cuadro();
 
 window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado,
-  get caballo () { return caballo; }, montarODesmontar,
+  get caballo () { return caballo; }, caballos, montarODesmontar, voltear,
+  // para probar escalas a mano desde la consola: juego.formar(20, 30)
+  formar (lanceros = 10, realistas = 10) {
+    for (let i = 0; i < lanceros; i++) soltarSoldado('granadero', { montado: true });
+    for (let i = 0; i < realistas; i++) soltarSoldado('realista');
+    return { hombres: soldados.length, caballos: caballos.length };
+  },
   get info () { return ultimoInfo; },
   get arma () { return armaActual(); } };

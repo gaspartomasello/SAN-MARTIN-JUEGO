@@ -40,6 +40,16 @@ const ACEL = 3.4;
 const FRENO = 5.2;
 const RADIO = 0.95;
 
+// Salto. Un caballo no salta parado: necesita batida, y lo que gana en altura
+// lo saca de la carrera que trae. Por eso el impulso sale de la velocidad y por
+// eso GRAVEDAD es alta —el salto tiene que ser corto y decidido, no un vuelo.
+const SALTO_MINIMO = 2.2;      // m/s: de trote para arriba
+const SALTO_BASE = 3.9;
+const SALTO_POR_VEL = 0.20;
+const GRAVEDAD = 16;
+const SALTO_ESPERA = 0.45;     // no se encadenan saltos
+const PANZA = 0.55;            // lo que el caballo recoge las patas al saltar
+
 function esqueleto () {
   const raiz = new THREE.Group();
   const h = {};
@@ -145,6 +155,16 @@ export class Caballo {
     this.vivo = true;
     this.montado = false;
     this.caida = 0;
+    this.alto = 0;             // altura sobre el pasto: 0 salvo en el salto
+    this.velY = 0;
+    this.enElAire = false;
+    this.tSalto = 0;
+    this.tMuerto = 0;          // el cadáver dura lo mismo que el de un hombre
+    this.lado = Math.random() < 0.5 ? 1 : -1;   // para qué costado se desploma
+    this.alSaltar = null;
+    this.alCaer = null;
+    this.jinete = null;        // el Soldado que lo monta, si lo monta uno
+    this.golpeo = false;       // chocó de frente en este cuadro
 
     // pose de reposo: sin esto el cuello cuelga hacia abajo hasta el primer cuadro
     h.cuello.rotation.x = 2.30;
@@ -165,24 +185,56 @@ export class Caballo {
   subirAndar () { if (this.vivo) this.andar = Math.min(ANDARES.length - 1, this.andar + 1); }
   bajarAndar () { this.andar = Math.max(0, this.andar - 1); }
 
+  // ¿puede saltar ahora? Hace falta batida: parado o al paso, no.
+  get puedeSaltar () { return this.vivo && !this.enElAire && this.tSalto <= 0 && this.vel >= SALTO_MINIMO; }
+
+  // El salto. Cuanto más rápido venís, más alto y más lejos: es lo que
+  // convierte una tapia en una decisión y no en un freno.
+  saltar () {
+    if (!this.puedeSaltar) return false;
+    this.velY = SALTO_BASE + this.vel * SALTO_POR_VEL;
+    this.enElAire = true;
+    this.tSalto = SALTO_ESPERA;
+    if (this.alSaltar) this.alSaltar(this);
+    return true;
+  }
+
   recibir (dano) {
     if (!this.vivo) return false;
     this.vida -= dano;
-    if (this.vida <= 0) { this.vivo = false; this.caida = 0; this.andar = 0; return true; }
+    if (this.vida <= 0) {
+      this.vivo = false;
+      this.caida = 0;
+      this.andar = 0;
+      this.enElAire = false;
+      this.velY = 0;
+      return true;
+    }
     return false;
   }
 
   actualizar (dt, mando) {
     if (!this.vivo) {
+      // Se desploma para un costado —el que le tocó— y se queda ahí. El
+      // cadáver dura lo mismo que el de un hombre: el campo se llena parejo.
       this.caida = Math.min(1, this.caida + dt * 2.2);
       const e = 1 - Math.pow(1 - this.caida, 3);
       this.vel = Math.max(0, this.vel - dt * 9);
-      this.raiz.rotation.z = e * 1.5;
-      this.raiz.position.y = -e * 0.42;
+      this.alto = Math.max(0, this.alto - dt * 6);
+      this.raiz.rotation.z = e * 1.5 * this.lado;
+      this.raiz.rotation.x = e * 0.18;
+      this.raiz.position.y = this.alto - e * 0.42;
+      if (this.caida >= 1) this.tMuerto += dt;
       this._avanzar(dt);
       return;
     }
 
+    this.tSalto = Math.max(0, this.tSalto - dt);
+    // sin jinete el caballo dispara unos metros y después afloja solo
+    if (!this.montado) {
+      this.tSuelto = (this.tSuelto || 0) + dt;
+      if (this.tSuelto > 2.2) { this.tSuelto = 0; this.andar = Math.max(0, this.andar - 1); }
+    } else this.tSuelto = 0;
     const a = ANDARES[this.andar];
     // acelerar cuesta; frenar cuesta más todavía. No se dobla en seco.
     const objetivo = a.vel;
@@ -192,7 +244,29 @@ export class Caballo {
     // el radio de giro se abre con la velocidad: es la mecánica del acto 3
     const t = Math.min(1, this.vel / ANDARES[3].vel);
     const giro = THREE.MathUtils.lerp(ANDARES[0].giro, ANDARES[3].giro, t);
-    if (mando.girar) this.rumbo -= mando.girar * giro * dt;
+    // en el aire el caballo casi no corrige: el salto se apunta ANTES de batir
+    const mando_giro = this.enElAire ? 0.25 : 1;
+    if (mando.girar) this.rumbo -= mando.girar * giro * mando_giro * dt;
+    // la IA no pulsa teclas: pide un rumbo y el caballo lo busca a su ritmo
+    if (mando.hacia !== undefined) {
+      let d = mando.hacia - this.rumbo;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      this.rumbo += Math.max(-giro * mando_giro * dt, Math.min(giro * mando_giro * dt, d));
+    }
+    if (mando.saltar) this.saltar();
+
+    // vuelo: sube, cae y aterriza perdiendo un poco de carrera
+    if (this.enElAire) {
+      this.velY -= GRAVEDAD * dt;
+      this.alto += this.velY * dt;
+      if (this.alto <= 0) {
+        this.alto = 0;
+        this.velY = 0;
+        this.enElAire = false;
+        this.vel *= 0.93;
+        if (this.alCaer) this.alCaer(this);
+      }
+    }
 
     this.pos.x += -Math.sin(this.rumbo) * this.vel * dt;
     this.pos.z += -Math.cos(this.rumbo) * this.vel * dt;
@@ -204,22 +278,71 @@ export class Caballo {
   _avanzar () {
     this.raiz.position.x = this.pos.x;
     this.raiz.position.z = this.pos.z;
+    if (this.vivo) this.raiz.position.y = this.alto;
     this.raiz.rotation.y = this.rumbo;
   }
 
-  // el caballo rebota contra los obstáculos y pierde impulso
+  // ¿Hay algo saltable a `metros` de la nariz? La IA lo consulta para batir a
+  // tiempo; el jugador lo tiene a la vista y decide solo.
+  obstaculoAdelante (metros = 5) {
+    const fx = -Math.sin(this.rumbo), fz = -Math.cos(this.rumbo);
+    for (let d = 1.2; d <= metros; d += 0.8) {
+      const x = this.pos.x + fx * d, z = this.pos.z + fz * d;
+      for (const c of this.colisiones) {
+        if (c.max.y < 0.5 || c.max.y > 1.45) continue;    // muy bajo o intocable
+        if (x > c.min.x - 0.6 && x < c.max.x + 0.6 && z > c.min.z - 0.6 && z < c.max.z + 0.6) return d;
+      }
+    }
+    return 0;
+  }
+
+  // Contra un obstáculo el caballo NO se planta: roza y sigue. Sólo el choque
+  // de frente le cuesta la carrera, y lo que salta lo pasa de largo.
+  //
+  // La diferencia la hace `frente`: 1 es de lleno contra la pared, 0 es
+  // pasarle raspando. De refilón se desliza por la tangente sin perder casi
+  // nada; de lleno pierde la mitad y baja un andar.
   _chocar () {
+    const fx = -Math.sin(this.rumbo), fz = -Math.cos(this.rumbo);
     for (const c of this.colisiones) {
+      // por encima del obstáculo: lo está saltando, pasa limpio
+      if (this.alto + PANZA >= c.max.y) continue;
       const cx = Math.max(c.min.x, Math.min(this.pos.x, c.max.x));
       const cz = Math.max(c.min.z, Math.min(this.pos.z, c.max.z));
       const dx = this.pos.x - cx, dz = this.pos.z - cz;
       const d2 = dx * dx + dz * dz;
       if (d2 >= RADIO * RADIO || c.max.y < 0.5) continue;
-      const d = Math.sqrt(d2) || 0.0001;
-      this.pos.x = cx + (dx / d) * RADIO;
-      this.pos.z = cz + (dz / d) * RADIO;
-      this.vel *= 0.55;
-      this.andar = Math.max(0, this.andar - 1);
+      let nx, nz;
+      if (d2 < 1e-6) {
+        // quedó adentro de la caja: se lo saca por la cara más próxima
+        const ix = Math.min(this.pos.x - c.min.x, c.max.x - this.pos.x);
+        const iz = Math.min(this.pos.z - c.min.z, c.max.z - this.pos.z);
+        if (ix < iz) { nx = this.pos.x - c.min.x < c.max.x - this.pos.x ? -1 : 1; nz = 0; }
+        else { nx = 0; nz = this.pos.z - c.min.z < c.max.z - this.pos.z ? -1 : 1; }
+        this.pos.x = (nx < 0 ? c.min.x : nx > 0 ? c.max.x : this.pos.x) + nx * RADIO;
+        this.pos.z = (nz < 0 ? c.min.z : nz > 0 ? c.max.z : this.pos.z) + nz * RADIO;
+      } else {
+        const d = Math.sqrt(d2);
+        nx = dx / d; nz = dz / d;
+        this.pos.x = cx + nx * RADIO;
+        this.pos.z = cz + nz * RADIO;
+      }
+
+      const frente = Math.max(0, -(fx * nx + fz * nz));
+      if (frente > 0.72) {
+        this.vel *= 0.5;
+        this.andar = Math.max(0, this.andar - 1);
+        this.golpeo = true;
+      } else {
+        // deslizar: el rumbo se acomoda a la pared y la carrera apenas se raspa
+        this.vel *= 1 - frente * 0.30;
+        let tx = -nz, tz = nx;
+        if (tx * fx + tz * fz < 0) { tx = -tx; tz = -tz; }
+        const rumboPared = Math.atan2(-tx, -tz);
+        let dif = rumboPared - this.rumbo;
+        dif = Math.atan2(Math.sin(dif), Math.cos(dif));
+        this.rumbo += dif * 0.55;
+      }
     }
     this.pos.x = Math.max(-60, Math.min(60, this.pos.x));
     this.pos.z = Math.max(-105, Math.min(20, this.pos.z));
@@ -229,6 +352,27 @@ export class Caballo {
   // y la cadencia salen de la velocidad, así el andar nunca desentona.
   _andarPatas (dt) {
     const v = this.vel;
+    if (this.enElAire) {
+      // en el aire recoge las manos y estira los cuartos traseros; el cuello
+      // se tiende hacia adelante. Es la silueta clásica del salto.
+      const k = 1 - Math.exp(-14 * dt);
+      const subiendo = this.velY > 0;
+      for (const n of ['DI', 'DD']) {
+        this.h['alto' + n].rotation.x += ((subiendo ? -1.15 : -0.35) - this.h['alto' + n].rotation.x) * k;
+        this.h['bajo' + n].rotation.x += (-1.5 - this.h['bajo' + n].rotation.x) * k;
+      }
+      for (const n of ['TI', 'TD']) {
+        this.h['alto' + n].rotation.x += ((subiendo ? 0.55 : 0.95) - this.h['alto' + n].rotation.x) * k;
+        this.h['bajo' + n].rotation.x += (-0.35 - this.h['bajo' + n].rotation.x) * k;
+      }
+      this.h.cuerpo.rotation.x += ((subiendo ? -0.22 : 0.16) - this.h.cuerpo.rotation.x) * k;
+      this.h.cuello.rotation.x += ((2.30 - 0.30) - this.h.cuello.rotation.x) * k;
+      this.h.cabeza.rotation.x += (-1.315 - this.h.cabeza.rotation.x) * k;
+      this.h.cola.rotation.x += (-0.60 - this.h.cola.rotation.x) * k;
+      this.h.cuerpo.position.y = LOMO;
+      this.paso += dt * (1.7 + v * 0.62);
+      return;
+    }
     const cad = 1.7 + v * 0.62;
     this.paso += dt * cad;
     const amp = Math.min(0.75, 0.16 + v * 0.075);

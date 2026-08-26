@@ -102,7 +102,16 @@ const PINTA = {
   }
 };
 
-const PIELES = [0xb08059, 0xa2724d, 0xc09068, 0x96663f, 0xb98d68];
+// Tez. El Regimiento de Granaderos a Caballo se nutrió de libertos y morenos;
+// el sargento Juan Bautista Cabral, hijo de esclavos, era uno de ellos. Una
+// tropa toda blanca sería una mentira, así que la paleta va de trigueño a
+// chocolate y la reparte el azar.
+export const PIELES = [
+  0xb08059, 0xa2724d, 0xc09068, 0x96663f, 0xb98d68,
+  0x7d5433, 0x66422a, 0x53341f, 0x452a18
+];
+// la de Cabral no se sortea: siena oscuro, y va escrita
+export const PIEL_CABRAL = 0x4e3020;
 const PELOS = [0x2a1f18, 0x3d2c1e, 0x1c1512, 0x4a3624];
 
 const NEGRO = 0x17181b;
@@ -292,6 +301,26 @@ function tercerolaGranadero (taller, mano) {
   taller.add(mano, caja(0.048, 0.072, 0.065), HIERRO, { p: [0.02, 0.012, 0.08], metal: true });
 }
 
+// La lanza del granadero montado. Va tomada cerca del regatón con la derecha
+// y el asta sale hacia adelante: por eso mide 2,70 m y por eso llega antes que
+// cualquier bayoneta. La banderola no es adorno —marca el largo del asta a
+// simple vista, que es la información que el jugador necesita para medir la
+// distancia de la pasada.
+function lanzaGranadero (taller, mano) {
+  const LARGO = 2.70;
+  const PUNTA = -2.15;                 // el asta va sobre -Z, como el caño
+  taller.add(mano, cil(0.017, 0.021, LARGO, 6), 0x6b4c2c, { p: [0, 0, PUNTA + LARGO / 2], r: [Math.PI / 2, 0, 0] });
+  taller.add(mano, cil(0.024, 0.024, 0.05, 7), LATON, { p: [0, 0, 0.53], r: [Math.PI / 2, 0, 0], metal: true });  // regatón
+  // moharra: hoja de acero de 24 cm con cubo
+  taller.add(mano, cil(0.002, 0.026, 0.24, 4), HIERRO, { p: [0, 0, PUNTA - 0.12], r: [Math.PI / 2, 0, 0], metal: true });
+  taller.add(mano, cil(0.026, 0.022, 0.10, 7), HIERRO, { p: [0, 0, PUNTA + 0.05], r: [Math.PI / 2, 0, 0], metal: true });
+  // banderola celeste y blanca, plegada sobre el asta
+  taller.add(mano, caja(0.004, 0.115, 0.30), 0x8fb8dd, { p: [0.017, 0.06, PUNTA + 0.30] });
+  taller.add(mano, caja(0.004, 0.115, 0.30), 0xf2efe4, { p: [0.017, -0.055, PUNTA + 0.30] });
+  // manopla de cuero donde apoya la mano
+  taller.add(mano, cil(0.028, 0.028, 0.14, 7), CUERO, { p: [0, 0, 0.16], r: [Math.PI / 2, 0, 0] });
+}
+
 function sableAlCinto (taller, cadera) {
   const g = new THREE.Group();
   taller.add(cadera, cil(0.024, 0.03, 0.68, 7), 0x2c2f34, { p: [-0.19, -0.30, 0.10], r: [0.30, 0, -0.16], metal: true });
@@ -355,6 +384,43 @@ const POSES = {
     poloD: [1.2, -0.4, 0.4], poloI: [-1, -0.7, -0.3],
     torso: [-0.22, 0.34, 0.18], cabeza: [-0.24, -0.20, 0]
   },
+  // ---- a caballo ----
+  //
+  // La lanza no se lleva con las dos manos: la derecha la sujeta contra el
+  // costado y la izquierda va a las riendas. Por eso estas poses traen manoI
+  // explícita —el brazo izquierdo se despega del arma— en vez de dejar que la
+  // izquierda busque el asta.
+  //
+  // En ristre: asta calzada bajo la axila, punta apenas por debajo del pecho
+  // del enemigo. Es la silueta que hay que ver venir de lejos.
+  enristre: {
+    manoD: [0.26, 0.20, 0.06], dir: [-0.06, -0.05, -1], agarre: 0.30,
+    manoI: [-0.26, 0.10, -0.30],
+    poloD: [1, -0.4, 0.5], poloI: [-1, -0.5, 0.2],
+    torso: [0.06, -0.30, 0], cabeza: [-0.04, 0.26, 0]
+  },
+  // EL AVISO del lancero: el brazo se echa atrás y la punta sube. Dura lo
+  // mismo que el de la bayoneta, porque la regla del aviso no se negocia.
+  lanzaAviso: {
+    manoD: [0.34, 0.30, 0.26], dir: [-0.16, 0.16, -0.97], agarre: 0.28,
+    manoI: [-0.28, 0.06, -0.26],
+    poloD: [1, 0.1, 0.5], poloI: [-1, -0.5, 0.2],
+    torso: [-0.06, -0.52, 0], cabeza: [-0.02, 0.44, 0]
+  },
+  // el lanzazo: el asta sale disparada al frente y el cuerpo la sigue
+  lanzazo: {
+    manoD: [0.16, 0.24, -0.30], dir: [0.03, -0.10, -0.99], agarre: 0.26,
+    manoI: [-0.24, 0.02, -0.34],
+    poloD: [0.9, -0.2, 0.3], poloI: [-1, -0.6, 0.1],
+    torso: [0.10, 0.06, 0], cabeza: [0.06, 0, 0]
+  },
+  // al trote, sin nadie cerca: el asta va vertical apoyada en el estribo
+  lanzaAlto: {
+    manoD: [0.27, 0.10, 0.02], dir: [-0.12, 0.98, -0.14], agarre: 0.30,
+    manoI: [-0.26, 0.12, -0.30],
+    poloD: [1, -0.5, 0.3], poloI: [-1, -0.5, 0.2],
+    torso: [0, -0.06, 0], cabeza: [0, 0.06, 0]
+  },
   // el acero sale disparado: brazo casi estirado del todo
   estocada: {
     manoD: [0.05, 0.25, -0.47], dir: [0.02, -0.05, -1], agarre: 0.40,
@@ -366,19 +432,23 @@ const POSES = {
 const V = () => new THREE.Vector3();
 
 export class Figura {
-  constructor (bando, semilla = Math.random()) {
+  // op.tez  — color de piel fijo (Cabral, por ejemplo); si no, lo sortea
+  // op.arma — 'lanza' para el granadero montado; si no, el arma del bando
+  constructor (bando, semilla = Math.random(), op = {}) {
     const c = PINTA[bando] || PINTA.realista;
-    const piel = PIELES[Math.floor(semilla * PIELES.length) % PIELES.length];
+    const piel = op.tez || PIELES[Math.floor(semilla * PIELES.length) % PIELES.length];
     const pelo = PELOS[Math.floor(semilla * 977) % PELOS.length];
 
     const { raiz, h } = esqueleto();
     this.raiz = raiz;
     this.h = h;
     this.bando = bando;
+    this.montura = false;        // true: piernas a horcajadas, sin paso
 
     const taller = new Taller();
     vestir(taller, h, c, piel, pelo);
-    if (c.morrion) { tercerolaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
+    if (op.arma === 'lanza') { lanzaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
+    else if (c.morrion) { tercerolaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
     else fusilRealista(taller, h.arma);
     this.mallas = taller.cocinar();
     this.arma = h.arma;
@@ -393,7 +463,10 @@ export class Figura {
     // estado interpolado
     this.cur = {
       manoD: V(), dir: V(), poloD: V(), poloI: V(),
-      torso: V(), cabeza: V(), agarre: 0.4, roll: 0
+      torso: V(), cabeza: V(), agarre: 0.4, roll: 0,
+      // manoI sólo manda cuando la pose la trae (lanza, riendas). libreI es la
+      // mezcla: 0 = la izquierda va al asta, 1 = va a donde diga la pose.
+      manoI: V(-0.26, 0.10, -0.30), libreI: 0
     };
     const p = POSES.marcha;
     this.cur.manoD.fromArray(p.manoD);
@@ -476,6 +549,7 @@ export class Figura {
 
     this._brazo('D', c.manoD, c.poloD, qTorso, this._qHD);
     this._blancoI.copy(this._agarreI(c.manoD, c.dir, c.agarre, qTorso));
+    if (c.libreI > 0.001) this._blancoI.lerp(c.manoI, c.libreI);
     this._brazo('I', this._blancoI, c.poloI, qTorso);
 
     // orientar el arma: el caño mira a dir, con el alza arriba
@@ -506,9 +580,26 @@ export class Figura {
     c.cabeza.lerp(this._t.b.fromArray(p.cabeza || [0, 0, 0]), k);
     c.agarre += (p.agarre - c.agarre) * k;
     c.roll += ((p.roll || 0) - c.roll) * k;
+    if (p.manoI) { c.manoI.lerp(this._t.a.fromArray(p.manoI), k); c.libreI += (1 - c.libreI) * k; }
+    else c.libreI += (0 - c.libreI) * k;
 
     // paso: la cadera manda, la rodilla sólo dobla hacia atrás
     const kp = 1 - Math.exp(-9 * dt);
+    if (this.montura) {
+      // a horcajadas: muslos abiertos y adelantados, rodilla doblada, pies en
+      // los estribos. No hay paso que valga arriba de un caballo.
+      const h = this.h;
+      h.musloI.rotation.x += (-0.62 - h.musloI.rotation.x) * kp;
+      h.musloD.rotation.x += (-0.62 - h.musloD.rotation.x) * kp;
+      h.musloI.rotation.z += (-0.34 - h.musloI.rotation.z) * kp;
+      h.musloD.rotation.z += (0.34 - h.musloD.rotation.z) * kp;
+      h.rodillaI.rotation.x += (-0.86 - h.rodillaI.rotation.x) * kp;
+      h.rodillaD.rotation.x += (-0.86 - h.rodillaD.rotation.x) * kp;
+      h.cadera.position.y += (CADERA - h.cadera.position.y) * kp;
+      h.cadera.rotation.z += (0 - h.cadera.rotation.z) * kp;
+      this._armar();
+      return;
+    }
     if (andando) {
       this.paso += dt * 6.6;
       const s = Math.sin(this.paso);
@@ -518,10 +609,15 @@ export class Figura {
       this.h.rodillaD.rotation.x = -Math.max(0, Math.sin(this.paso - 0.7)) * 0.95;
       this.h.cadera.position.y = CADERA + Math.abs(s) * 0.028;
       this.h.cadera.rotation.z = s * 0.035;
+      this.h.musloI.rotation.z += (0 - this.h.musloI.rotation.z) * kp;
+      this.h.musloD.rotation.z += (0 - this.h.musloD.rotation.z) * kp;
     } else {
       for (const n of ['musloI', 'musloD', 'rodillaI', 'rodillaD']) {
         this.h[n].rotation.x += (0 - this.h[n].rotation.x) * kp;
       }
+      // y las piernas se cierran: el que se bajó del caballo camina normal
+      this.h.musloI.rotation.z += (0 - this.h.musloI.rotation.z) * kp;
+      this.h.musloD.rotation.z += (0 - this.h.musloD.rotation.z) * kp;
       this.h.cadera.position.y += (CADERA - this.h.cadera.position.y) * kp;
       this.h.cadera.rotation.z += (0 - this.h.cadera.rotation.z) * kp;
     }

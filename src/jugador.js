@@ -169,9 +169,12 @@ export class Jugador {
       const c = this.monta;
       this.pos.x = c.pos.x;
       this.pos.z = c.pos.z;
-      this.pies = 0;
+      this.pies = c.alto;
       this.altura = c.altura + 0.88;
-      this.pos.y = this.altura;
+      this.pos.y = c.alto + this.altura;
+      // el aterrizaje se siente: el salto no es gratis
+      if (this._enVuelo && !c.enElAire) this.sacudir(Math.min(0.55, 0.20 + c.vel * 0.03));
+      this._enVuelo = c.enElAire;
       this.vel.set(-Math.sin(c.rumbo) * c.vel, 0, -Math.cos(c.rumbo) * c.vel);
       this.tSinCorrer += dt;
       if (this.tSinCorrer > 0.7) this.aliento = Math.min(100, this.aliento + 14 * dt);

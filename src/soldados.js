@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Figura } from './figura.js';
+import { Caballo } from './caballo.js';
 
 // Soldados de los dos bandos. Misma anatomía, distinta casaca:
 //   granadero — casaca azul, vivos encarnados, morrión con penacho
@@ -21,14 +22,30 @@ const ACERO_SALIDA = 0.20;
 const ACERO_VUELTA = 0.45;
 const ATURDIDO = 1.35;      // lo que dura abierto tras una parada perfecta
 
+// ---- caballería ----
+//
+// El lancero no pelea parado: CARGA. Entra al galope, tira el lanzazo de
+// pasada, sigue de largo hasta despegarse y recién ahí vuelve grupas. Esa es
+// la mecánica entera —y es la que hizo que San Lorenzo durara quince minutos.
+const LANZA_ALCANCE = 3.6;      // 2,70 m de asta más el brazo desde la silla
+const LANZA_ENRISTRE = 15;      // a esta distancia baja el asta: el aviso largo
+const LANZA_AVISO = 5.4;        // y a esta se echa atrás: el aviso corto
+const PASADA = 1.5;             // segundos de seguir de largo antes de volver
+const DESMONTE = 3;             // daño de un golpe que te tira de la silla
+const CAIDA_JINETE = 14;        // lo que cuesta el golpe contra el suelo
+
 export class Soldado {
-  constructor (escena, humo, sonido, pos, bando) {
+  // op.tez      — color de piel fijo (Cabral)
+  // op.caballo  — lo monta desde el arranque; si trae caballo, va con lanza
+  constructor (escena, humo, sonido, pos, bando, op = {}) {
     this.escena = escena;
     this.humo = humo;
     this.sonido = sonido;
     this.bando = bando || 'realista';
+    this.lancero = !!op.caballo && this.bando === 'granadero';
 
-    this.fig = new Figura(this.bando, Math.random());
+    this.fig = new Figura(this.bando, Math.random(),
+      { tez: op.tez, arma: this.lancero ? 'lanza' : null });
     // la malla exterior lleva el rumbo; la figura de adentro, el desplome
     this.malla = new THREE.Group();
     this.malla.add(this.fig.raiz);
@@ -53,6 +70,62 @@ export class Soldado {
     this._pego = false;
     this._grito = false;
     this._v = new THREE.Vector3();
+
+    this.monta = null;
+    this.tPasada = 0;
+    this.tirado = 0;          // > 0: en el suelo tras la caída, sin defensa
+    this.alDesmontar = null;
+    if (op.caballo) this.montar(op.caballo);
+  }
+
+  // ---------------------------------------------------------- caballería
+
+  get montado () { return !!this.monta && this.monta.vivo; }
+
+  montar (caballo) {
+    if (!caballo || !caballo.vivo) return false;
+    this.monta = caballo;
+    caballo.montado = true;
+    caballo.jinete = this;
+    caballo.rumbo = this.malla.rotation.y;
+    caballo.pos.set(this.pos.x, 0, this.pos.z);
+    this.fig.montura = true;
+    this.estado = 'cargar';
+    this._sentar();
+    return true;
+  }
+
+  // Bajarse: por voluntad, porque le mataron el caballo o porque lo voltearon.
+  // En los dos últimos casos toca el suelo con el golpe puesto.
+  desmontar (golpe) {
+    if (!this.monta) return false;
+    const c = this.monta;
+    c.montado = false;
+    c.jinete = null;
+    this.monta = null;
+    this.fig.montura = false;
+    // cae al costado del caballo, no encima
+    this.malla.position.set(c.pos.x - Math.cos(c.rumbo) * 1.1, 0, c.pos.z + Math.sin(c.rumbo) * 1.1);
+    this.estado = 'avanzar';
+    if (golpe) {
+      // El porrazo cuesta, pero NO mata: el que cae de la silla se levanta.
+      // Si el suelo pudiera matarlo, voltear sería lo mismo que abatir y se
+      // perdería lo mejor —el lancero derribado que sigue peleando a pie.
+      this.tirado = 1.6;
+      this.aturdido = Math.max(this.aturdido, 1.6);
+      this.fig.poner('aturdido');
+      this.vida = Math.max(1, this.vida - (golpe === true ? 1 : golpe));
+    }
+    if (this.alDesmontar) this.alDesmontar(this);
+    return true;
+  }
+
+  // el jinete va sentado en la silla y gira con el caballo
+  _sentar () {
+    const c = this.monta;
+    const asiento = c.altura - 0.92 * this.fig.raiz.scale.y;
+    this.malla.position.set(c.pos.x, c.alto + asiento, c.pos.z);
+    this.malla.rotation.y = c.rumbo;
   }
 
   get pos () { return this.malla.position; }
@@ -62,6 +135,12 @@ export class Soldado {
 
   recibir (dano, dir) {
     if (!this.vivo) return false;
+    // A caballo el golpe fuerte NO mata: voltea. El jinete rueda, se levanta
+    // y sigue a pie con lo que le quede. Así quedó San Martín debajo de su
+    // caballo en la barranca, y así terminan peleando a pie los lanceros a los
+    // que la infantería alcanza. Un lancero derribado vale mucho más vivo que
+    // borrado del campo.
+    if (this.montado && dano >= DESMONTE) { this.desmontar(true); return false; }
     this.vida -= dano;
     if (this.vida <= 0) {
       this.vivo = false;
@@ -69,6 +148,8 @@ export class Soldado {
       this.caida = 0;
       this.avisando = false;
       this.sonido.grito();
+      // el muerto se cae de la silla y el caballo se dispara sin jinete
+      if (this.monta) this.desmontar();
       return true;
     }
     return false;
@@ -77,6 +158,7 @@ export class Soldado {
   // ¿está cubierto? En guardia el acero para el sablazo; en el aviso, en la
   // estocada o aturdido, no. Ahí es donde hay que pegarle.
   get cubierto () {
+    if (this.montado) return this.aturdido <= 0 && !this.avisando && this.estado !== 'pasada';
     return this.vivo && this.aturdido <= 0 && this.estado === 'acero' &&
       !this.avisando && this.tAcero < ACERO_GUARDIA;
   }
@@ -140,10 +222,25 @@ export class Soldado {
     const distDestino = hacia.length();
     if (distDestino > 0.001) hacia.normalize();
 
+    if (this.montado) {
+      this.t += dt;
+      if (this.aturdido > 0) this.aturdido -= dt;
+      this._cargarALanza(dt, dist, destino);
+      this.fig.actualizar(dt, false);
+      return;
+    }
+
     this.malla.rotation.y = Math.atan2(hacia.x, hacia.z) + Math.PI;
 
     this.recarga = Math.max(0, this.recarga - dt);
     this.t += dt;
+    if (this.tirado > 0) {
+      // recién caído del caballo: tirado en el pasto, sin guardia
+      this.tirado -= dt;
+      this.fig.poner('aturdido');
+      this.fig.actualizar(dt, false);
+      return;
+    }
     let andando = false;
 
     if (this.aturdido > 0) {
@@ -202,6 +299,63 @@ export class Soldado {
     this.fig.actualizar(dt, andando);
   }
 
+  // ------------------------------------------------------- la carga a lanza
+  //
+  // Tres tiempos, y el jugador los lee por la DISTANCIA, no por un reloj:
+  //   lejos      → asta vertical, viene al galope
+  //   15 m       → baja el asta en ristre: ya te eligió
+  //   5,4 m      → la echa atrás: EL AVISO, la ventana para pararla
+  //   3,6 m      → el lanzazo, y sigue de largo
+  // Después se abre, vuelve grupas al TROTE —porque al galope no dobla— y
+  // encara de nuevo. Es una pasada de caballería, no un forcejeo.
+  _cargarALanza (dt, dist, destino) {
+    const c = this.monta;
+    this.tPasada = Math.max(0, this.tPasada - dt);
+
+    const rumboA = Math.atan2(destino.x - c.pos.x, destino.z - c.pos.z) + Math.PI;
+    const mando = {};
+
+    if (this.estado === 'pasada') {
+      c.andar = 3;                       // seguir de largo, despegarse
+      this.fig.poner('lanzaAlto');
+      if (this.tPasada <= 0) { this.estado = 'volver'; }
+    } else if (this.estado === 'volver') {
+      c.andar = 2;                       // al trote dobla en 2,7 m; al galope, en 16
+      mando.hacia = rumboA;
+      this.fig.poner('lanzaAlto');
+      let dif = rumboA - c.rumbo;
+      dif = Math.atan2(Math.sin(dif), Math.cos(dif));
+      if (Math.abs(dif) < 0.30) { this.estado = 'cargar'; this._pego = false; this._grito = false; }
+    } else {
+      this.estado = 'cargar';
+      mando.hacia = rumboA;
+      c.andar = dist > 8 ? 3 : 2;
+      this.avisando = false;
+      if (dist > LANZA_ENRISTRE) this.fig.poner('lanzaAlto');
+      else if (dist > LANZA_AVISO) this.fig.poner('enristre');
+      else if (dist > LANZA_ALCANCE) {
+        this.fig.poner('lanzaAviso');
+        this.avisando = true;
+        if (!this._grito) { this._grito = true; this.sonido.grito(); }
+      } else {
+        this.fig.poner('lanzazo');
+        if (!this._pego && this.aturdido <= 0) {
+          this._pego = true;
+          if (this.alGolpear) this.alGolpear(this, this.objetivo);
+        }
+        this.estado = 'pasada';
+        this.tPasada = PASADA;
+      }
+    }
+
+    // batir a tiempo: la tapia se salta, no se choca
+    if (c.puedeSaltar && c.obstaculoAdelante(c.vel * 0.55 + 2.5)) mando.saltar = true;
+    c.actualizar(dt, mando);
+    c.actualizado = true;     // que el bucle principal no lo pise
+    this._sentar();
+    if (!c.vivo) this.desmontar(true);
+  }
+
   _entrarAcero () {
     this.estado = 'acero';
     this.t = 0;
@@ -258,5 +412,8 @@ export class Soldado {
     if (this.alDisparar) this.alDisparar(this, origen, dir, this.objetivo);
   }
 
-  quitar () { this.escena.remove(this.malla); }
+  quitar () {
+    this.escena.remove(this.malla);
+    if (this.monta) { this.monta.quitar(); this.monta = null; }
+  }
 }

@@ -373,6 +373,96 @@ El caballo tiene vida propia (6 puntos) y **el 45 % del plomo que te apuntaba se
 él**. Cuando cae, te tira al suelo con 18 de daño y seguís a pie. Es la transición que
 necesita el acto 4: *Bajo el caballo*.
 
+### La caballería (Fase 3.5)
+
+El caballo solo no alcanzaba. Faltaban tres cosas y las tres cambian cómo se
+juega.
+
+**El salto (Espacio).** Antes una tapia era un freno: el caballo chocaba, perdía
+medio andar y se plantaba. Ahora una tapia es una decisión. El impulso sale de
+la carrera que traés, así que el salto no se improvisa —se apunta antes de
+batir, porque en el aire el caballo casi no corrige (25 % del giro normal).
+
+| Andar | Ápice | Aire | Largo |
+|---|---|---|---|
+| Al trote (4,6 m/s) | 0,69 m | 0,50 s | 2,8 m |
+| A galope (10,2 m/s) | 1,05 m | 0,73 s | 7,5 m |
+
+Parado no se salta. Hacen falta 2,2 m/s de batida, igual que un caballo de
+verdad.
+
+**El choque dejó de ser un freno.** La colisión ahora mira con qué ángulo
+llegaste. De frente contra una pared sigue costando la carrera —tiene que
+costarla— pero de refilón el caballo *roza y sigue*: se desliza por la tangente
+y no pierde ni el andar. Medido: entrando a 0,95 rad contra la misma tapia,
+antes quedaba al trote a 4,6 m/s; ahora sale a galope a 10,2 m/s.
+
+**Los lanceros.** Dos de cada tres granaderos salen montados con lanza de
+2,70 m. No pelean parados: **cargan**. Y el jugador lee la carga por la
+DISTANCIA, no por un reloj:
+
+| Distancia | Qué hace | Qué significa |
+|---|---|---|
+| > 15 m | asta vertical, al galope | viene, pero no te eligió |
+| 15 m | baja el asta en ristre | te eligió |
+| 5,4 m | la echa atrás y grita | **EL AVISO** — la ventana para pararla |
+| 3,6 m | el lanzazo, y sigue de largo | |
+
+Después se abre 1,5 s, vuelve grupas **al trote** —porque al galope necesita
+16 m de radio y al trote 2,7— y encara de nuevo. El lancero enseña con el
+cuerpo la misma lección que el jugador tiene que aprender: al galope no se
+dobla.
+
+El asta llega **un metro antes** que la bayoneta, y ese metro es toda la
+batalla. El lanzazo mata de una.
+
+**El desmonte.** Regla única para los dos bandos: *a caballo, un golpe fuerte
+no mata — voltea*. El jinete rueda, queda 1,6 s tirado sin guardia y se levanta
+a pie con lo que le quede. Al jugador lo voltea un balazo o un bayonetazo desde
+abajo; a los lanceros los voltea la bayoneta, que es el único recurso que le
+queda a la infantería española contra ellos. El suelo cobra 16 puntos y nunca
+mata: si el porrazo pudiera matar, voltear sería lo mismo que abatir y se
+perdería lo mejor —el lancero derribado que sigue peleando.
+
+Un caballo sin dueño trota unos metros y afloja solo, un andar cada 2,2 s. Se
+puede montar cualquiera que quede suelto: en el campo sobran caballos sin
+jinete.
+
+**El cadáver.** El caballo muerto se desploma para un costado (sorteado, no
+siempre el mismo) y queda 45 segundos, lo mismo que el cuerpo de un hombre. El
+campo se llena parejo.
+
+### La tez de la tropa
+
+El Regimiento de Granaderos a Caballo se nutrió de libertos y morenos. El
+sargento **Juan Bautista Cabral**, hijo de esclavos, era uno de ellos. Una
+tropa toda blanca sería una mentira, así que la paleta va de trigueño a
+chocolate —nueve tonos— y la reparte el azar. La de Cabral no se sortea: es
+siena oscuro y está escrita en el código (`PIEL_CABRAL`), lista para la Fase 6.
+
+### Cuánta gente entra en el campo
+
+Los números reales de San Lorenzo son 120 granaderos en dos columnas de 60 y
+250 realistas de infantería con dos cañones. Medido (`pruebas/escala.mjs`):
+
+| Campo | Hombres | Caballos | Llamadas de dibujo |
+|---|---|---|---|
+| vacío | 0 | 1 | 313 |
+| 20 lanceros | 20 | 21 | 572 |
+| 40 lanceros | 40 | 41 | 899 |
+| 90 lanceros + 60 a pie | 150 | 91 | **2.786** |
+
+La simulación no es el problema: 150 hombres y 91 caballos cuestan 1,9 ms de
+CPU por cuadro. El problema es que **cada hombre son ~11 llamadas de dibujo y
+cada caballo ~9**, porque cada hueso lleva su propia malla para poder
+articularse.
+
+Por eso hoy el campo está topado en 6 granaderos y 10 realistas: el peor caso
+ronda las 600 llamadas. Los 120 de verdad entran recién con **niveles de
+detalle** —un hombre a 40 metros no necesita quince mallas articuladas,
+necesita una sola horneada— y eso es Fase 4. Para probar a mano:
+`juego.formar(20, 30)` desde la consola.
+
 ### El duelo (Fase 2)
 
 Dos formas de ganar un intercambio, y ninguna es apretar el botón de tajo.

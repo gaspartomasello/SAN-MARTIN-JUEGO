@@ -13,6 +13,7 @@ const r = await pag.evaluate(() => {
 
   // cuánto tarda en llegar a cada andar desde parado
   const c = j.caballo;
+  c.montado = true;   // acá se mide física de andar, no el caballo suelto
   // se le sacan los obstáculos: acá se miden los números del andar, no el choque
   c.colisiones = [];
   const libre = () => { c.pos.set(0, 0, 0); c.rumbo = 0; };
