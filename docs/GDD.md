@@ -344,6 +344,35 @@ perfilarse para encarar —hombro izquierdo adelante— sin que el fusil se vaya
 Poses actuales: `marcha` (armas terciadas), `apuntar`, `recargar`, `guardia`, `cargar` y
 `estocada`. Las tres últimas son el ciclo del cuerpo a cuerpo.
 
+### El caballo (Fase 3)
+
+`src/caballo.js`. Se construye con el mismo horno que los soldados —piezas fundidas por
+hueso, color en los vértices—: un caballo entero cuesta **8 llamadas de dibujo**.
+
+Lo que hace distinto al caballo no es que corra más: es que **no puede frenar ni doblar en
+seco**. Ahí está toda la carga del acto 3.
+
+| Andar | Velocidad | Arranca en | Radio de giro |
+|---|---|---|---|
+| Al paso | 1,9 m/s | 0,53 s | **0,85 m** |
+| Al trote | 4,6 m/s | 1,30 s | 2,69 m |
+| A galope | 10,2 m/s | 2,87 s | **16,45 m** |
+
+Veinte veces más radio entre el paso y el galope. Y frenar desde el galope cuesta **1,93 s
+y 9,9 metros**. Elegís la línea antes de entrar, no en el medio: eso es cargar.
+
+`W` sube el andar y `S` lo baja (no se acelera reteniendo, se cambia de andar), `A`/`D`
+doblan y el mouse mira libre — el jinete no mira siempre para donde va el caballo.
+
+**El sable desde arriba corta por la velocidad, no por el brazo:** ×1 parado, ×1,9 al
+trote, **×3 a galope**. Y el alcance sube de 2,4 a 3,3 m. Pero al trote o más rápido **no
+se puede cargar** un arma de avancarga —la baqueta no entra— y la dispersión casi se
+duplica. El caballo te da choque y alcance; te quita el fuego.
+
+El caballo tiene vida propia (6 puntos) y **el 45 % del plomo que te apuntaba se lo come
+él**. Cuando cae, te tira al suelo con 18 de daño y seguís a pie. Es la transición que
+necesita el acto 4: *Bajo el caballo*.
+
 ### El duelo (Fase 2)
 
 Dos formas de ganar un intercambio, y ninguna es apretar el botón de tajo.
@@ -457,10 +486,11 @@ y no cuatro meses después.
 La figura con esqueleto y la telegrafía del aviso (§12) son la parte de la Fase 2 que ya
 está hecha: sin brazos articulados no hay golpe que leer, y sin golpe que leer no hay
 parada. Falta la mitad del jugador — guardia, parada perfecta, riposte y pechada.
-| 3 | Escenario: convento, barranca, río, amanecer, post-proceso | ¿Se ve como una pintura o como un demo? |
-| 4 | Multitud, moral, órdenes, carga montada | ¿Se siente una batalla o un pasillo? |
-| 5 | Acto 4 (Cabral) + epílogo del pino | ¿Emociona? |
-| 6 | Audio, dificultades, modo Recreación, accesibilidad, pulido | ¿Está terminado? |
+| 3 | **El caballo**: andares, radio de giro, filo por velocidad, monta y caída | ¿El choque se siente? |
+| 4 | Escenario: convento, barranca, río, amanecer, post-proceso | ¿Se ve como una pintura o como un demo? |
+| 5 | Multitud, moral, órdenes | ¿Se siente una batalla o un pasillo? |
+| 6 | Acto 4 (Cabral) + epílogo del pino | ¿Emociona? |
+| 7 | Audio, dificultades, modo Recreación, accesibilidad, pulido | ¿Está terminado? |
 
 ---
 

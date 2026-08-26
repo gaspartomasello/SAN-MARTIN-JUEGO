@@ -1,0 +1,252 @@
+import * as THREE from 'three';
+import { Taller, cil, caja, bola } from './figura.js';
+
+// El caballo del acto 3. Se construye con el mismo horno que los soldados
+// —piezas fundidas por hueso, color en los vértices— así que un caballo entero
+// cuesta 9 llamadas de dibujo.
+//
+// Frente = −Z, igual que los soldados.
+//
+// Lo que hace al caballo distinto de un jugador a pie no es la velocidad: es
+// que NO PUEDE FRENAR NI DOBLAR EN SECO. Al galope el radio de giro se abre y
+// el acero cobra el triple. Toda la carga del acto 3 sale de esa tensión.
+
+const PELAJE = 0x54392a;
+const PELAJE_CLARO = 0x6b4a34;
+const CRIN = 0x1d1712;
+const CASCO = 0x2b2723;
+const BLANCO = 0xd8d2c4;
+const CUERO = 0x3a2c1e;
+const MANTA = 0x24365e;      // mandil de granadero
+const VIVO = 0x8f2126;
+const LATON = 0xc69b54;
+const HIERRO_ESTRIBO = 0x6d727a;
+
+// medidas, en metros
+const LOMO = 1.05;           // altura del centro del barril
+const PATA_ALTA = 0.55;
+const PATA_BAJA = 0.45;
+const CUELLO = 0.72;
+
+// andares: la W sube de uno y la S baja
+export const ANDARES = [
+  { nombre: 'parado', vel: 0,    giro: 2.6 },
+  { nombre: 'al paso', vel: 1.9, giro: 2.1 },
+  { nombre: 'al trote', vel: 4.6, giro: 1.35 },
+  { nombre: 'a galope', vel: 10.2, giro: 0.62 }
+];
+
+const ACEL = 3.4;
+const FRENO = 5.2;
+const RADIO = 0.95;
+
+function esqueleto () {
+  const raiz = new THREE.Group();
+  const h = {};
+  h.cuerpo = new THREE.Group(); h.cuerpo.position.y = LOMO; raiz.add(h.cuerpo);
+  h.cuello = new THREE.Group(); h.cuello.position.set(0, 0.24, -0.60); h.cuerpo.add(h.cuello);
+  h.cabeza = new THREE.Group(); h.cabeza.position.y = -CUELLO; h.cuello.add(h.cabeza);
+  h.cola = new THREE.Group(); h.cola.position.set(0, 0.20, 0.72); h.cuerpo.add(h.cola);
+  for (const [n, x, z] of [['DI', -0.23, -0.46], ['DD', 0.23, -0.46], ['TI', -0.25, 0.54], ['TD', 0.25, 0.54]]) {
+    const alto = new THREE.Group();
+    alto.position.set(x, -0.02, z);
+    h.cuerpo.add(alto);
+    const bajo = new THREE.Group();
+    bajo.position.y = -PATA_ALTA;
+    alto.add(bajo);
+    h['alto' + n] = alto; h['bajo' + n] = bajo;
+  }
+  return { raiz, h };
+}
+
+function vestir (taller, h) {
+  const c = h.cuerpo;
+  // barril: un cilindro tumbado, más ancho en las costillas que en la grupa
+  taller.add(c, cil(0.34, 0.30, 1.42, 12), PELAJE, { p: [0, 0, 0.04], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.86] });
+  taller.add(c, bola(0.33, 10), PELAJE, { p: [0, 0.02, -0.62], s: [1, 1.02, 0.8] });    // pecho
+  taller.add(c, bola(0.32, 10), PELAJE, { p: [0, 0.10, 0.66], s: [1, 1, 0.85] });       // grupa
+  taller.add(c, cil(0.19, 0.26, 0.30, 10), PELAJE_CLARO, { p: [0, -0.24, -0.30], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.7] });
+
+  // montura: mandil de granadero, silla y estribos
+  taller.add(c, caja(0.78, 0.03, 0.86), MANTA, { p: [0, 0.31, 0.10] });
+  taller.add(c, caja(0.80, 0.035, 0.10), VIVO, { p: [0, 0.312, 0.51] });
+  taller.add(c, caja(0.80, 0.035, 0.10), VIVO, { p: [0, 0.312, -0.31] });
+  taller.add(c, cil(0.20, 0.26, 0.16, 10), CUERO, { p: [0, 0.38, 0.06], s: [1.05, 1, 1.5] });
+  taller.add(c, caja(0.13, 0.10, 0.16), CUERO, { p: [0, 0.44, -0.16] });                 // borrén delantero
+  taller.add(c, caja(0.15, 0.09, 0.14), CUERO, { p: [0, 0.42, 0.30] });                  // borrén trasero
+  for (const s of [-1, 1]) {
+    taller.add(c, caja(0.02, 0.30, 0.03), CUERO, { p: [s * 0.34, 0.20, 0.04] });
+    taller.add(c, caja(0.09, 0.10, 0.03), HIERRO_ESTRIBO, { p: [s * 0.34, 0.03, 0.04], metal: true });
+  }
+  // cincha
+  taller.add(c, caja(0.72, 0.06, 0.09), 0xbdb49c, { p: [0, -0.03, -0.02], s: [1, 5.5, 1] });
+
+  // cuello y crin
+  taller.add(h.cuello, cil(0.145, 0.215, CUELLO, 10), PELAJE, { p: [0, -CUELLO / 2, 0], s: [0.82, 1, 1] });
+  taller.add(h.cuello, caja(0.055, CUELLO * 0.96, 0.15), CRIN, { p: [0, -CUELLO / 2, -0.10] });
+  taller.add(h.cuello, caja(0.05, 0.14, 0.12), CRIN, { p: [0, -CUELLO - 0.04, -0.08] });   // tupé
+
+  // Cabeza. Se dibuja a lo largo de −Y como si fuera un miembro: así el hueso
+  // la apunta solo y no hay que componer tres rotaciones a ojo.
+  const k = h.cabeza;
+  taller.add(k, cil(0.10, 0.135, 0.34, 9), PELAJE, { p: [0, -0.17, 0], s: [0.82, 1, 1] });
+  taller.add(k, bola(0.092, 8), PELAJE, { p: [0, -0.35, -0.01], s: [0.85, 0.9, 1] });      // hocico
+  taller.add(k, caja(0.05, 0.30, 0.03), BLANCO, { p: [0, -0.22, -0.098] });                // lucero
+  taller.add(k, bola(0.075, 8), PELAJE, { p: [0, -0.02, 0.02], s: [1, 0.9, 1.1] });        // testuz
+  for (const s2 of [-1, 1]) {
+    taller.add(k, bola(0.03, 6), 0x171310, { p: [s2 * 0.088, -0.10, -0.045] });            // ojo
+    taller.add(k, cil(0.006, 0.03, 0.11, 6), PELAJE, { p: [s2 * 0.055, 0.09, 0.03], r: [-0.25, 0, s2 * 0.26] });
+    taller.add(k, bola(0.022, 6), 0x120e0b, { p: [s2 * 0.035, -0.40, -0.045] });           // ollares
+  }
+  // cabezada
+  taller.add(k, caja(0.19, 0.03, 0.03), CUERO, { p: [0, -0.29, -0.02], s: [1, 1, 3.4] });
+  taller.add(k, caja(0.19, 0.03, 0.03), CUERO, { p: [0, -0.09, -0.02], s: [1, 1, 3.4] });
+  taller.add(k, caja(0.03, 0.24, 0.03), CUERO, { p: [-0.085, -0.19, -0.02], s: [1, 1, 3.2] });
+  taller.add(k, caja(0.03, 0.24, 0.03), CUERO, { p: [0.085, -0.19, -0.02], s: [1, 1, 3.2] });
+
+  // Riendas: cuelgan del cuerpo, no de la cabeza. Van de las manos del jinete
+  // al bocado, y como la cabeza casi no se mueve, el empalme no se nota.
+  for (const s2 of [-1, 1]) {
+    taller.add(c, cil(0.012, 0.012, 0.96, 5), CUERO, { p: [s2 * 0.145, 0.585, -0.63], r: [-1.20, 0, 0] });
+  }
+
+  // cola: larga y colgando, se levanta sola al galope
+  taller.add(h.cola, cil(0.055, 0.12, 0.80, 8), CRIN, { p: [0, -0.38, 0.09], r: [-0.22, 0, 0] });
+  taller.add(h.cola, bola(0.10, 7), CRIN, { p: [0, -0.06, 0.03], s: [0.8, 1, 0.9] });
+
+  // patas: las de adelante más finas, las de atrás con garrón
+  for (const n of ['DI', 'DD', 'TI', 'TD']) {
+    const alto = h['alto' + n], bajo = h['bajo' + n];
+    const trasera = n[0] === 'T';
+    taller.add(alto, cil(trasera ? 0.15 : 0.115, 0.075, PATA_ALTA, 8), PELAJE,
+      { p: [0, -PATA_ALTA / 2, 0], s: [1, 1, trasera ? 1.35 : 1] });
+    taller.add(bajo, cil(0.062, 0.048, PATA_BAJA, 8), CRIN, { p: [0, -PATA_BAJA / 2, 0] });
+    taller.add(bajo, cil(0.07, 0.075, 0.09, 8), CASCO, { p: [0, -PATA_BAJA - 0.03, 0] });
+  }
+}
+
+export class Caballo {
+  constructor (escena, colisiones, pos) {
+    const { raiz, h } = esqueleto();
+    const taller = new Taller();
+    vestir(taller, h);
+    this.mallas = taller.cocinar();
+    this.raiz = raiz;
+    this.h = h;
+    this.escena = escena;
+    this.colisiones = colisiones;
+
+    this.pos = new THREE.Vector3().copy(pos || new THREE.Vector3());
+    this.rumbo = 0;              // hacia dónde mira el caballo (no el jinete)
+    this.vel = 0;
+    this.andar = 0;
+    this.paso = 0;
+    this.vida = 6;
+    this.vivo = true;
+    this.montado = false;
+    this.caida = 0;
+
+    // pose de reposo: sin esto el cuello cuelga hacia abajo hasta el primer cuadro
+    h.cuello.rotation.x = 2.30;
+    h.cabeza.rotation.x = -1.315;
+    h.cola.rotation.x = 0.10;
+
+    raiz.position.copy(this.pos);
+    escena.add(raiz);
+  }
+
+  get altura () { return LOMO + 0.34; }        // altura del asiento
+  get nombreAndar () { return ANDARES[this.andar].nombre; }
+  get rapidez () { return this.vel; }
+
+  // el sablazo desde el caballo cobra por la velocidad, no por el brazo
+  get filoPorVelocidad () { return 1 + Math.min(2, this.vel / 5); }
+
+  subirAndar () { if (this.vivo) this.andar = Math.min(ANDARES.length - 1, this.andar + 1); }
+  bajarAndar () { this.andar = Math.max(0, this.andar - 1); }
+
+  recibir (dano) {
+    if (!this.vivo) return false;
+    this.vida -= dano;
+    if (this.vida <= 0) { this.vivo = false; this.caida = 0; this.andar = 0; return true; }
+    return false;
+  }
+
+  actualizar (dt, mando) {
+    if (!this.vivo) {
+      this.caida = Math.min(1, this.caida + dt * 2.2);
+      const e = 1 - Math.pow(1 - this.caida, 3);
+      this.vel = Math.max(0, this.vel - dt * 9);
+      this.raiz.rotation.z = e * 1.5;
+      this.raiz.position.y = -e * 0.42;
+      this._avanzar(dt);
+      return;
+    }
+
+    const a = ANDARES[this.andar];
+    // acelerar cuesta; frenar cuesta más todavía. No se dobla en seco.
+    const objetivo = a.vel;
+    const k = objetivo > this.vel ? ACEL : FRENO;
+    this.vel += Math.max(-k * dt, Math.min(k * dt, objetivo - this.vel));
+
+    // el radio de giro se abre con la velocidad: es la mecánica del acto 3
+    const t = Math.min(1, this.vel / ANDARES[3].vel);
+    const giro = THREE.MathUtils.lerp(ANDARES[0].giro, ANDARES[3].giro, t);
+    if (mando.girar) this.rumbo -= mando.girar * giro * dt;
+
+    this.pos.x += -Math.sin(this.rumbo) * this.vel * dt;
+    this.pos.z += -Math.cos(this.rumbo) * this.vel * dt;
+    this._chocar();
+    this._avanzar(dt);
+    this._andarPatas(dt);
+  }
+
+  _avanzar () {
+    this.raiz.position.x = this.pos.x;
+    this.raiz.position.z = this.pos.z;
+    this.raiz.rotation.y = this.rumbo;
+  }
+
+  // el caballo rebota contra los obstáculos y pierde impulso
+  _chocar () {
+    for (const c of this.colisiones) {
+      const cx = Math.max(c.min.x, Math.min(this.pos.x, c.max.x));
+      const cz = Math.max(c.min.z, Math.min(this.pos.z, c.max.z));
+      const dx = this.pos.x - cx, dz = this.pos.z - cz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= RADIO * RADIO || c.max.y < 0.5) continue;
+      const d = Math.sqrt(d2) || 0.0001;
+      this.pos.x = cx + (dx / d) * RADIO;
+      this.pos.z = cz + (dz / d) * RADIO;
+      this.vel *= 0.55;
+      this.andar = Math.max(0, this.andar - 1);
+    }
+    this.pos.x = Math.max(-60, Math.min(60, this.pos.x));
+    this.pos.z = Math.max(-105, Math.min(20, this.pos.z));
+  }
+
+  // Galope transversal: las cuatro patas con desfases distintos. La amplitud
+  // y la cadencia salen de la velocidad, así el andar nunca desentona.
+  _andarPatas (dt) {
+    const v = this.vel;
+    const cad = 1.7 + v * 0.62;
+    this.paso += dt * cad;
+    const amp = Math.min(0.75, 0.16 + v * 0.075);
+    const fases = { DI: 0, DD: 0.16, TI: 0.52, TD: 0.68 };
+    for (const n of ['DI', 'DD', 'TI', 'TD']) {
+      const f = (this.paso + fases[n] * Math.PI * 2) % (Math.PI * 2);
+      const s = Math.sin(f);
+      this.h['alto' + n].rotation.x = s * amp;
+      this.h['bajo' + n].rotation.x = -Math.max(0, Math.sin(f - 0.9)) * amp * 1.25;
+    }
+    // el cuerpo se hunde y se estira, y el cuello bombea al galope
+    const brinco = Math.min(1, v / ANDARES[3].vel);
+    this.h.cuerpo.position.y = LOMO + Math.sin(this.paso * 2) * 0.05 * brinco;
+    this.h.cuerpo.rotation.x = Math.sin(this.paso * 2 + 0.7) * 0.07 * brinco;
+    this.h.cuello.rotation.x = 2.30 + Math.sin(this.paso * 2 - 0.4) * 0.16 * brinco;
+    this.h.cabeza.rotation.x = -1.315 - Math.sin(this.paso * 2 - 0.4) * 0.10 * brinco;
+    this.h.cola.rotation.x = 0.10 - brinco * 0.50;
+  }
+
+  quitar () { this.escena.remove(this.raiz); }
+}

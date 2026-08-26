@@ -110,7 +110,8 @@
   #portada{position:fixed;inset:0;z-index:20;background:#0F141A;display:flex;align-items:center;
     justify-content:center;padding:32px}
   #portada.oculto{display:none}
-  .caja{max-width:660px;width:100%}
+  /* la portada crece cuando se suman fases: que nunca deje el botón afuera */
+  .caja{max-width:660px;width:100%;max-height:calc(100vh - 64px);overflow-y:auto}
   .franja{display:flex;height:5px;width:132px;margin-bottom:30px}
   .franja i{flex:1}
   .franja i:nth-child(1){background:var(--azul)}
@@ -170,16 +171,19 @@
 <div id="portada">
   <div class="caja">
     <div class="franja"><i></i><i></i><i></i></div>
-    <div class="eyebrow">Fase 1 · prototipo jugable</div>
+    <div class="eyebrow">Fases 1 a 3 · prototipo jugable</div>
     <h1>El campo de tiro</h1>
-    <p class="sub">Cuartel del Retiro, diciembre de 1812. Arrancás con las armas cargadas y tenés
-      un tiro. Después, <strong>apretá R y hacé click cuando se encienda ¡AHORA!</strong> — acertar
-      los tres tiempos es la diferencia entre volver a tirar o comerte una bayoneta.</p>
-    <p><strong>Con el sable en la mano (tecla 2) el click derecho cubre.</strong> El realista avisa
-      antes de tirar la estocada: echa el acero atrás y grita. Si alzás la guardia
-      <strong>en ese instante</strong> —no antes— se la parás en seco y queda abierto: ahí entra el
-      remate. Cubrirse desde temprano también para, pero te cuesta aliento y él sigue en pie.
-      Y no entres de frente a un realista en guardia: te choca el acero. Rompelo con la pechada.</p>
+    <p class="sub">Cuartel del Retiro, diciembre de 1812. Tres cosas que no se parecen a un
+      shooter moderno, y las tres se aprenden acá.</p>
+    <p><b>Cargar.</b> Apretá <kbd>R</kbd> y hacé click cuando se encienda ¡AHORA! Acertar los tres
+      tiempos es la diferencia entre volver a tirar o comerte una bayoneta.</p>
+    <p><b>El sable</b> (tecla <kbd>2</kbd>): click derecho cubre. El realista <em>avisa</em> antes
+      de la estocada — echa el acero atrás y grita. Cubrirte <em>en ese instante</em> se la para en
+      seco y lo deja abierto para el remate. No le entres de frente a uno en guardia: te choca
+      el acero. Rompelo con la pechada (<kbd>F</kbd>).</p>
+    <p><b>El caballo</b> (<kbd>H</kbd> para montar): arriba no se camina. <kbd>W</kbd> sube el andar
+      y <kbd>S</kbd> lo baja. Al galope el sable corta el triple, pero necesitás diez metros para
+      frenar y dieciséis para dar la vuelta. La línea se elige antes de entrar.</p>
     <div class="teclas">
       <div><kbd>W A S D</kbd><span>moverse</span></div>
       <div><kbd>Shift</kbd><span>correr</span></div>
@@ -191,6 +195,8 @@
       <div><kbd>R</kbd><span>cargar el arma (una apretada)</span></div>
       <div><kbd>F</kbd><span>culatazo / bayonetazo · <b>pechada</b></span></div>
       <div><kbd>1 / 2 / 3</kbd><span>arma larga · sable · pistolón</span></div>
+      <div><kbd>H</kbd><span>montar / bajarse del caballo</span></div>
+      <div><kbd>W / S</kbd><span>a caballo: subir y bajar el andar</span></div>
       <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
       <div><kbd>B</kbd><span>revisar la cartuchera</span></div>
       <div><kbd>V</kbd><span>vendarse (cura rápido)</span></div>

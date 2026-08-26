@@ -7,6 +7,7 @@ import { Jugador } from './jugador.js';
 import { ArmaFuego } from './armas.js';
 import { Sable } from './sable.js';
 import { Soldado } from './soldados.js';
+import { Caballo } from './caballo.js';
 import { PasadaArma } from './pasadaArma.js';
 import { Hud } from './hud.js';
 
@@ -64,6 +65,26 @@ const rayo = new THREE.Raycaster();
 rayo.far = 220;
 const soldados = [];
 let ultimoInfo = { calls: 0, triangles: 0 };
+let caballo = null;
+const montado = () => !!jugador.monta && jugador.monta.vivo;
+
+function ponerCaballo () {
+  if (caballo) caballo.quitar();
+  caballo = new Caballo(escena, mundo.colisiones, new THREE.Vector3(2.6, 0, 2.0));
+  caballo.rumbo = Math.PI;
+}
+
+function montarODesmontar () {
+  if (montado()) {
+    jugador.desmontar();
+    hud.mostrarAviso('Pie a tierra', 'bien');
+    return;
+  }
+  if (!caballo || !caballo.vivo) { hud.mostrarAviso('No hay caballo', 'malo'); return; }
+  if (caballo.pos.distanceTo(jugador.pos) > 3.2) { hud.mostrarAviso('El caballo está lejos', 'malo'); return; }
+  jugador.montar(caballo);
+  hud.mostrarAviso('A caballo · W sube el andar, S lo baja', 'bien');
+}
 
 // daño que hace una bala de plomo y una bayoneta al jugador
 const DANO_BALA = 52;
@@ -74,6 +95,7 @@ const GUARDIA_GASTO = 11;       // aliento por segundo aguantando el sable en al
 const BLOQUEO_GASTO = 26;       // lo que cuesta parar tarde
 const PECHADA_GASTO = 18;
 const PECHADA_ALCANCE = 2.2;
+const ALCANCE_MONTADO = 3.3;    // desde arriba llegás más lejos
 
 // --------------------------- armas ---------------------------
 const sable = new Sable(camaraArma, sonido);
@@ -182,7 +204,7 @@ function resolverGolpe (alcance, dano, nombre) {
 // la lección del duelo: no se entra de frente, se espera el aviso.
 sable.alGolpear = () => {
   const remate = sable.remate;
-  const g = enemigoAlFrente(2.4);
+  const g = enemigoAlFrente(montado() ? ALCANCE_MONTADO : 2.4);
   if (!g) return;
   if (g.soldado.cubierto && !remate) {
     sonido.choque();
@@ -191,9 +213,11 @@ sable.alGolpear = () => {
     return;
   }
   sonido.impactoCarne();
-  const dano = remate ? DANO_REMATE : DANO_SABLE;
+  // Desde el caballo el sable no corta con el brazo: corta con la velocidad.
+  const filo = montado() ? jugador.monta.filoPorVelocidad : 1;
+  const dano = Math.round((remate ? DANO_REMATE : DANO_SABLE) * filo);
   if (g.soldado.recibir(dano, g.frente)) {
-    hud.mostrarAviso(remate ? '¡Rematado!' : 'A sablazos', 'bien');
+    hud.mostrarAviso(remate ? '¡Rematado!' : (filo > 2 ? '¡Lo llevó puesto!' : 'A sablazos'), 'bien');
   }
 };
 
@@ -292,9 +316,17 @@ function soltarSoldado (bando) {
       // agachado sos menos blanco; tirado, casi nada
       const punteria = Math.max(0.02, (0.6 - dist / 110 - oc * 0.45) * jugador.cfgPostura.blanco);
       if (Math.random() < punteria) {
-        jugador.recibir(DANO_BALA, dir);
-        sonido.golpeRecibido();
-        hud.mostrarAviso('¡Te dieron!', 'malo');
+        // montado sos un blanco más grande, pero buena parte se la come el caballo
+        if (montado() && Math.random() < 0.45) {
+          jugador.monta.recibir(2);
+          jugador.sacudir(0.3);
+          sonido.impactoCarne();
+          hud.mostrarAviso('¡Le dieron al caballo!', 'malo');
+        } else {
+          jugador.recibir(DANO_BALA, dir);
+          sonido.golpeRecibido();
+          hud.mostrarAviso('¡Te dieron!', 'malo');
+        }
       } else {
         jugador.sacudir(0.12);
       }
@@ -375,6 +407,9 @@ addEventListener('keydown', ev => {
       if (a) a.puntazo(); else pechada();
       break;
     }
+    case 'KeyH': montarODesmontar(); break;
+    case 'KeyW': if (montado()) jugador.monta.subirAndar(); break;
+    case 'KeyS': if (montado()) jugador.monta.bajarAndar(); break;
     case 'KeyG': tomarOIntercambiar(); break;
     case 'Digit1': cambiarArma('larga'); break;
     case 'Digit2': cambiarArma('sable'); break;
@@ -397,6 +432,7 @@ addEventListener('keydown', ev => {
         armas.pistolon.cargarDeUnaVez();
         if (armas.fusil) armas.fusil.cargarDeUnaVez();
         cartuchos = 24;
+        ponerCaballo();
         hud.mostrarAviso('En pie', 'bien');
       }
       break;
@@ -517,10 +553,29 @@ function cuadro () {
 
   const arma = armaActual();
   const quiereApuntar = apuntando && !!arma && !arma.cargando && arma.tGolpe < 0;
+
+  if (caballo) {
+    const mando = { girar: 0 };
+    if (montado()) {
+      mando.girar = (teclas.has('KeyD') ? 1 : 0) - (teclas.has('KeyA') ? 1 : 0);
+    }
+    caballo.actualizar(dt, mando);
+    // si te matan el caballo, te vas al suelo con el golpe puesto
+    if (!caballo.vivo && jugador.monta) {
+      jugador.desmontar();
+      jugador.recibir(18, new THREE.Vector3(0, 0, 1));
+      jugador.sacudir(0.9);
+      sonido.golpeRecibido();
+      hud.mostrarAviso('¡Te voltearon el caballo!', 'malo');
+    }
+  }
+
   jugador.actualizar(dt, teclas, quiereApuntar, arma ? arma.cargando : false);
 
   const p = jugador.cfgPostura;
-  const ctx = { apuntando, presion, penalCarga: p.penalCarga, dispersion: p.dispersion };
+  // A caballo no se carga: al trote la baqueta no entra. Al paso, con dificultad.
+  const penalMonta = montado() ? (jugador.monta.vel > 3 ? 0 : 2.4) : 1;
+  const ctx = { apuntando, presion, penalCarga: p.penalCarga * penalMonta, dispersion: p.dispersion * (montado() ? 1.9 : 1) };
   armas.tercerola.actualizar(dt, ctx);
   armas.pistolon.actualizar(dt, ctx);
   if (armas.fusil) armas.fusil.actualizar(dt, ctx);
@@ -577,7 +632,7 @@ function cuadro () {
     cartuchos,
     nombreArma: arma ? arma.nombre : 'Sable corvo',
     estadoArma: arma ? arma.etiquetaEstado : 'en mano',
-    postura: p.nombre,
+    postura: montado() ? jugador.monta.nombreAndar : p.nombre,
     puedeTomarFusil: !armas.fusil && !!caidoConFusil(),
     remate: sable.tRemate,
     vida: jugador.vida,
@@ -594,8 +649,10 @@ function cuadro () {
     tris: info.triangles
   });
 }
+ponerCaballo();
 cuadro();
 
 window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado,
+  get caballo () { return caballo; }, montarODesmontar,
   get info () { return ultimoInfo; },
   get arma () { return armaActual(); } };

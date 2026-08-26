@@ -19,7 +19,7 @@ export const METAL = new THREE.MeshStandardMaterial({ vertexColors: true, roughn
 
 // ---------------------------------------------------------------- el horno
 
-class Taller {
+export class Taller {
   constructor () { this.lotes = new Map(); }
 
   // geo se clona siempre: la misma geometría puede ir a diez lugares
@@ -69,9 +69,9 @@ class Taller {
 
 // ------------------------------------------------------------- geometrías
 
-const cil = (rt, rb, h, seg = 8) => new THREE.CylinderGeometry(rt, rb, h, seg);
-const caja = (x, y, z) => new THREE.BoxGeometry(x, y, z);
-const bola = (r, seg = 8) => new THREE.SphereGeometry(r, seg, Math.max(4, seg - 2));
+export const cil = (rt, rb, h, seg = 8) => new THREE.CylinderGeometry(rt, rb, h, seg);
+export const caja = (x, y, z) => new THREE.BoxGeometry(x, y, z);
+export const bola = (r, seg = 8) => new THREE.SphereGeometry(r, seg, Math.max(4, seg - 2));
 
 // Una correa que abraza el cuerpo: aro achatado como el torso, listo para
 // inclinarlo y cruzarlo en el pecho.

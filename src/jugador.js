@@ -35,6 +35,7 @@ export class Jugador {
     this.yaw = 0;
     this.pitch = 0;
 
+    this.monta = null;          // caballo si vas montado
     this.postura = 'pie';
     this.altura = POSTURAS.pie.altura;
     this.pies = 0;           // altura del suelo bajo los pies
@@ -97,6 +98,7 @@ export class Jugador {
     this.vendas = 3;
     this.vendando = 0;
     this.tSinDano = 99;
+    this.monta = null;          // se vuelve a formar a pie
     this.postura = 'pie';
     this.pies = 0; this.velY = 0; this.enElAire = false;
     this.vel.set(0, 0, 0);
@@ -107,6 +109,30 @@ export class Jugador {
     if (!this.vivo || this.enElAire) return;
     this.postura = this.postura === cual ? 'pie' : cual;
     if (this.alAviso) this.alAviso(POSTURAS[this.postura].nombre, 'bien');
+  }
+
+  montar (caballo) {
+    if (!caballo || !caballo.vivo) return false;
+    this.monta = caballo;
+    caballo.montado = true;
+    this.postura = 'pie';
+    this.velY = 0;
+    this.enElAire = false;
+    return true;
+  }
+
+  // Bajarse a un costado. Si el caballo cayó, el golpe lo pone el que llama.
+  desmontar () {
+    if (!this.monta) return false;
+    const c = this.monta;
+    c.montado = false;
+    this.monta = null;
+    this.pos.x = c.pos.x - Math.cos(c.rumbo) * 1.1;
+    this.pos.z = c.pos.z + Math.sin(c.rumbo) * 1.1;
+    this.pies = 0;
+    this.velY = 0;
+    this.vel.set(0, 0, 0);
+    return true;
   }
 
   saltar () {
@@ -136,6 +162,25 @@ export class Jugador {
       }
     } else if (this.tSinDano > REGEN_ESPERA && this.vida < this.vidaMax) {
       this.vida = Math.min(this.vidaMax, this.vida + REGEN_TASA * dt);
+    }
+
+    // --- montado: el caballo lleva el cuerpo, vos sólo mirás y peleás ---
+    if (this.monta && this.monta.vivo) {
+      const c = this.monta;
+      this.pos.x = c.pos.x;
+      this.pos.z = c.pos.z;
+      this.pies = 0;
+      this.altura = c.altura + 0.88;
+      this.pos.y = this.altura;
+      this.vel.set(-Math.sin(c.rumbo) * c.vel, 0, -Math.cos(c.rumbo) * c.vel);
+      this.tSinCorrer += dt;
+      if (this.tSinCorrer > 0.7) this.aliento = Math.min(100, this.aliento + 14 * dt);
+      // el trote sacude bastante más que caminar: por eso no se puede cargar
+      this.bob += dt * (2.2 + c.vel * 1.5);
+      this.balanceo += (0 - this.balanceo) * Math.min(1, 6 * dt);
+      this.fov = apuntando ? this.fovApuntado : this.fovBase + Math.min(9, c.vel * 0.9);
+      this._aplicarCamara(dt, Math.min(3.2, c.vel * 0.55));
+      return;
     }
 
     const adelante = (teclas.has('KeyW') ? 1 : 0) - (teclas.has('KeyS') ? 1 : 0);
