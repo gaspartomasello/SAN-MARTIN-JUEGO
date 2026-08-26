@@ -94,6 +94,11 @@ export class Soldado {
     this.puesto = null;                     // los artilleros no abandonan la pieza
     this.correa = 4.5;                      // metros que se puede alejar del puesto
 
+    // LEJANÍA: a partir de cierta distancia deja de armarse hueso por hueso
+    // y lo dibuja una instancia horneada. La IA no cambia en nada.
+    this._lejos = false;
+    this.andando = false;
+
     this.monta = null;
     this.tPasada = 0;
     this.tirado = 0;          // > 0: en el suelo tras la caída, sin defensa
@@ -152,6 +157,47 @@ export class Soldado {
   }
 
   // el jinete va sentado en la silla y gira con el caballo
+  // ---------------------------------------------------------- lejanía
+  //
+  // Quién lo dibuja: de cerca, quince mallas articuladas; de lejos, una
+  // instancia compartida con todos los que están en la misma postura. Lo
+  // decide la distancia y nada más. La IA corre igual de un lado y del otro:
+  // el que está a ochenta metros apunta, avisa, dispara y muere exactamente
+  // como el que tenés encima.
+  ponerLejos (v) {
+    this._lejos = v;
+    this.fig.lejos = v;
+    this.malla.visible = !v;
+    if (this.monta) this.monta.lejos = v;
+  }
+
+  get lejos () { return this._lejos; }
+
+  // Deja su matriz en el lote que le toca. El paso se anima alternando los dos
+  // fotogramas horneados —así caminaban los soldados hace treinta años y a
+  // esta distancia se lee igual de bien.
+  pintarLejos (lej) {
+    if (!this._lejos) return;
+    if (this.montado) {
+      const c = this.monta;
+      const p = this.fig.pose;
+      const enristre = p === 'enristre' || p === 'lanzaAviso' || p === 'lanzazo';
+      // el caballo va horneado con el jinete: una instancia, no dos
+      lej.poner('lancero', enristre ? 2 : (Math.sin(c.paso) > 0 ? 0 : 1),
+        c.pos.x, c.alto, c.pos.z, c.rumbo);
+      return;
+    }
+    const p = this.fig.pose;
+    const fase = !this.vivo ? 3
+      : this.rodilla ? 4
+      : (p === 'apuntar' || p === 'recargar') ? 5
+      : this.andando ? (Math.sin(this.fig.paso) > 0 ? 1 : 2)
+      : 0;
+    const m = this.malla;
+    lej.poner(this.bando === 'granadero' ? 'granadero' : 'realista', fase,
+      m.position.x, m.position.y, m.position.z, m.rotation.y, this.fig.raiz.scale.y);
+  }
+
   _sentar () {
     const c = this.monta;
     const asiento = c.altura - 0.92 * this.fig.raiz.scale.y;
@@ -435,6 +481,7 @@ export class Soldado {
       }
     }
 
+    this.andando = andando;
     this.fig.actualizar(dt, andando, this.ritmo);
   }
 

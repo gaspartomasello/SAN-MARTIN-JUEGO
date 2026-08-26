@@ -168,6 +168,10 @@ export class Caballo {
     this.giroReal = 0;         // rad/s de giro efectivo: la cámara se inclina con esto
     this.humo = null;          // si se lo enchufan, los cascos levantan tierra
     this.tPolvo = 0;
+    // LEJOS: las patas no se animan y la malla articulada se apaga. Lo
+    // dibuja la Lejanía —caballo y jinete horneados juntos en una sola
+    // instancia—, porque arriba de la silla el hombre no se mueve solo.
+    this.lejos = false;
 
     // pose de reposo: sin esto el cuello cuelga hacia abajo hasta el primer cuadro
     h.cuello.rotation.x = 2.30;
@@ -295,7 +299,10 @@ export class Caballo {
     this.pos.z += -Math.cos(this.rumbo) * this.vel * dt;
     this._chocar();
     this._avanzar(dt);
-    this._andarPatas(dt);
+    // a la distancia el paso lo pone la Lejanía alternando dos fotogramas;
+    // acá sólo hay que seguir contándolo para que no se corte al volver
+    if (this.lejos) this.paso += dt * (1.7 + this.vel * 0.62);
+    else this._andarPatas(dt);
     this._polvareda(dt);
   }
 
@@ -336,6 +343,8 @@ export class Caballo {
   }
 
   _avanzar () {
+    this.raiz.visible = !this.lejos;
+    if (this.lejos) return;
     this.raiz.position.x = this.pos.x;
     this.raiz.position.z = this.pos.z;
     if (this.vivo) this.raiz.position.y = this.alto;

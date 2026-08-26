@@ -702,11 +702,104 @@ CPU por cuadro. El problema es que **cada hombre son ~11 llamadas de dibujo y
 cada caballo ~9**, porque cada hueso lleva su propia malla para poder
 articularse.
 
-Por eso hoy el campo está topado en 6 granaderos y 10 realistas: el peor caso
-ronda las 600 llamadas. Los 120 de verdad entran recién con **niveles de
-detalle** —un hombre a 40 metros no necesita quince mallas articuladas,
-necesita una sola horneada— y eso es Fase 4. Para probar a mano:
+Los 120 de verdad entran recién con **niveles de detalle**. Eso es la Fase 7,
+y está hecha: ver *La lejanía*, más abajo. Para probar a mano:
 `juego.formar(20, 30)` desde la consola.
+
+### La lejanía (Fase 7)
+
+> **Un hombre a cuarenta metros no necesita quince mallas articuladas.**
+
+Es la frase que venía escrita en el presupuesto desde la Fase 4, y resultó ser
+literalmente el diseño. El problema medido era éste: 90 lanceros costaban 2.267
+llamadas de dibujo contra un presupuesto de 120. No faltaba afinar: faltaba un
+**orden de magnitud**.
+
+Y no hacía falta inventar nada, hacía falta mirar la pantalla. Un granadero a
+cuarenta metros ocupa veinte píxeles de alto. No se le ve la cara, no se le ven
+los botones, del codo sólo se ve que el brazo está o no está. Lo único que se
+lee a esa distancia es **la silueta, el color de la casaca, hacia dónde mira y
+si se mueve**. Todo lo demás se está calculando para nadie.
+
+Así que a partir de 30 metros el soldado deja de ser un esqueleto y pasa a ser
+**una instancia**: una geometría horneada de antemano, compartida por todos los
+que están en la misma postura, dibujada de una sola vez para los ciento veinte.
+
+**Ciento veinte granaderos lejanos cuestan lo mismo que uno.**
+
+#### Las posturas horneadas
+
+El horno (`src/lejania.js`) cocina, al arrancar, cada familia en las posturas
+que hace falta distinguir de lejos:
+
+| Familia | Posturas |
+|---|---|
+| granadero / realista | de pie · paso A · paso B · caído · **rodilla en tierra** · **apuntando parado** |
+| lancero | galope A · galope B · **en ristre** |
+| caballo suelto | quieto · galope A · galope B · caído |
+
+Las dos que están en negrita no son adorno, son **información de combate**. El
+que hinca la rodilla te está avisando que va a disparar, y el fusil alcanza a
+62 metros: si esa postura se perdiera de lejos, el aviso se perdería justo a la
+distancia en la que sirve. Lo mismo el lancero en ristre. La regla del juego es
+que todo golpe se avisa; la lejanía no la puede romper.
+
+El paso se anima **alternando los dos fotogramas horneados**, que es exactamente
+como caminaban los soldados de los juegos de hace treinta años, y a esa
+distancia funciona igual de bien.
+
+#### El lancero va entero
+
+Arriba de la silla el hombre no se mueve por su cuenta, así que **caballo y
+jinete se hornean juntos**: un lancero lejano es una sola instancia, no dos.
+
+#### Lo que se paga
+
+- La tez sorteada y el brillo del metal. A cuarenta metros la cara es un píxel;
+  la casaca —que es lo que distingue un bando del otro— se conserva entera.
+- Los triángulos más chicos que un píxel: ojos, botones, hebillas, bigote. El
+  horno tira todo triángulo de menos de 30 cm², y un granadero pasa de 2.760 a
+  **915 triángulos** sin que se le note nada que se pueda ver desde ahí.
+- La sombra propia. Una sombra de tres píxeles no vale una pasada de sombras.
+
+#### Lo que se gana además del dibujo
+
+El que está lejos **tampoco resuelve cinemática inversa**. La IA sigue corriendo
+entera —camina, busca parapeto, apunta, avisa, dispara, muere—, pero el cuerpo
+no se arma. Eso es la mitad del costo de simulación de un soldado, y es la
+razón por la que la simulación de 370 hombres bajó en vez de subir.
+
+La prueba que importa (`pruebas/lejania.mjs`) no mide dibujo: suelta **dos
+realistas idénticos contra el mismo blanco, uno articulado y otro horneado**, y
+verifica que recorran lo mismo y disparen lo mismo. El hombre de lejos tiene
+que ser *el mismo hombre*.
+
+#### San Lorenzo entero, medido
+
+Con los números reales de la batalla:
+
+| Campo | Hombres | Antes | **Con lejanía** |
+|---|---|---|---|
+| vacío | 0 | 313 | **93** |
+| 250 realistas | 250 | — | **95** |
+| + columna de 60 | 310 | — | **99** |
+| + columna de 60 | **370** | — | **99** |
+
+370 hombres —los 120 granaderos a caballo en dos columnas de 60 y los 250
+infantes realistas— en **99 llamadas de dibujo**, 486 mil triángulos y 1,7 ms
+de simulación por cuadro. La batalla entera entra en el presupuesto.
+
+Lo que ahora manda ya no es el dibujo sino **la simulación**, que crece con el
+cuadrado de la gente porque cada hombre busca su blanco entre todos. A 370
+todavía sobra muchísimo margen; el día que no sobre, la respuesta es una grilla
+espacial, no menos granaderos.
+
+#### Los topes suben de a poco
+
+El número que aguanta la máquina y el número que hace buena la pelea **no son
+el mismo**. Con la lejanía hecha, el campo pasó de 6 granaderos y 10 realistas
+a **20 y 34**, y el paso de refuerzos se acortó para que ese campo llegue a
+llenarse. La pinza de 120 es un modo aparte, no el ritmo de todos los días.
 
 ### El duelo (Fase 2)
 

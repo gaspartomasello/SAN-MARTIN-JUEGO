@@ -12,6 +12,7 @@ import { Canon } from './canon.js';
 import { ActoCabral } from './acto.js';
 import { PasadaArma } from './pasadaArma.js';
 import { PasadaVelocidad } from './pasadaVelocidad.js';
+import { Lejania } from './lejania.js';
 import { Hud } from './hud.js';
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,36 @@ escenaArma.add(relleno);
 const mundo = construirMundo(escena);
 const humo = new Humo(escena);
 const fuego = new Fuego(escena, camara);
+// LA LEJANÍA. Todo lo que esté más allá de LOD_CERCA deja de ser un esqueleto
+// articulado y pasa a ser una instancia horneada: ciento veinte granaderos a
+// ochenta metros cuestan lo mismo que uno. Es lo que hace posible la pinza.
+let LOD_CERCA = 30;
+const lejania = new Lejania(escena, 320);
+
+// Se reparte ANTES de mover a nadie —el que está lejos no arma el cuerpo— y se
+// pinta DESPUÉS, cuando las posiciones del cuadro ya están puestas.
+function repartirLejania () {
+  const ojo = jugador.pos;
+  for (const s of soldados) {
+    s.ponerLejos(Math.hypot(s.pos.x - ojo.x, s.pos.z - ojo.z) > LOD_CERCA);
+  }
+  for (const c of caballos) {
+    if (c.jinete) continue;                       // lo manda su jinete
+    if (jugador.monta === c) { c.lejos = false; continue; }
+    c.lejos = Math.hypot(c.pos.x - ojo.x, c.pos.z - ojo.z) > LOD_CERCA;
+  }
+}
+
+function pintarLejania () {
+  lejania.comenzar();
+  for (const s of soldados) s.pintarLejos(lejania);
+  for (const c of caballos) {
+    if (!c.lejos || c.jinete) continue;
+    const fase = !c.vivo ? 3 : (c.vel > 3 ? (Math.sin(c.paso) > 0 ? 1 : 2) : 0);
+    lejania.poner('caballo', fase, c.pos.x, c.alto, c.pos.z, c.rumbo);
+  }
+  lejania.terminar();
+}
 const sonido = new Sonido();
 const hud = new Hud();
 const jugador = new Jugador(camara, mundo.colisiones);
@@ -142,16 +173,25 @@ const PECHADA_ALCANCE = 2.2;
 const ALCANCE_MONTADO = 3.3;    // desde arriba llegás más lejos
 const CAIDA = 16;               // lo que cuesta pegar contra el suelo
 // Cuánta gente aguanta el campo a la vez. NO es un número inventado: sale de
-// medir (pruebas/escala.mjs). Cada hombre cuesta ~11 llamadas de dibujo y cada
-// caballo ~9, y el escenario ya se lleva 313 con el campo vacío. Con estos
-// topes el peor caso ronda las 600 llamadas.
-//   20 lanceros            →   572
+// medir (pruebas/escala.mjs y pruebas/lejania.mjs).
+//
+// Antes de la lejanía, cada hombre costaba ~11 llamadas de dibujo y cada
+// caballo ~9, así que el techo lo ponía el dibujo y estaba bajísimo:
+//   20 lanceros            →   572 llamadas
 //   40 lanceros            →   899
-//   90 lanceros + 60 a pie → 2.786   ← acá no lo corre nadie
-// Los 120 granaderos de verdad entran recién con niveles de detalle: un hombre
-// lejano no necesita quince mallas articuladas, necesita una sola. Eso es Fase 4.
-const ALIADOS_MAX = 6;
-const ENEMIGOS_MAX = 10;
+//   90 lanceros + 60 a pie → 2.267   ← acá no lo corre nadie
+// Con la lejanía el dibujo dejó de ser el techo. Medido, con los números
+// REALES de la batalla —120 granaderos a caballo en dos columnas de 60 y 250
+// infantes realistas—:
+//   370 hombres            →    99 llamadas, 486 mil triángulos, 1,7 ms de simulación
+// O sea: San Lorenzo entero entra en el presupuesto. Lo que ahora manda no es
+// el dibujo sino la simulación, que crece con el cuadrado de la gente porque
+// cada uno busca su blanco entre todos.
+//
+// Igual los topes suben DE A POCO y no de un salto a 120: el número que
+// aguanta la máquina y el número que hace buena la pelea no son el mismo.
+const ALIADOS_MAX = 20;
+const ENEMIGOS_MAX = 34;
 const MONTADOS = 0.66;          // qué proporción de granaderos sale a caballo
 
 // --------------------------- armas ---------------------------
@@ -380,7 +420,9 @@ const parapetos = mundo.colisiones
 
 function soltarSoldado (bando, op = {}) {
   let pos;
-  if (bando === 'realista') {
+  if (op.pos) {
+    pos = op.pos.clone();
+  } else if (bando === 'realista') {
     pos = new THREE.Vector3((Math.random() - 0.5) * 26, 0, -58 - Math.random() * 22);
   } else if (op.montado) {
     // Los lanceros no forman al lado tuyo: salen de los flancos, como salieron
@@ -752,6 +794,8 @@ function cuadro () {
   const arma = armaActual();
   const quiereApuntar = apuntando && !!arma && !arma.cargando && arma.tGolpe < 0;
 
+  repartirLejania();
+
   // Los caballos con jinete los mueve su jinete; los demás —el tuyo y los que
   // quedaron sueltos— los mueve el bucle. El cadáver dura 45 s, lo mismo que
   // el de un hombre, y recién ahí se lo lleva el campo.
@@ -818,6 +862,8 @@ function cuadro () {
     }
   }
 
+  pintarLejania();
+
   // las piezas: buscan blanco, se orientan, ceban y disparan
   if (canones.length) {
     const candidatos = [];
@@ -830,14 +876,16 @@ function cuadro () {
     tProxima -= dt;
     if (tProxima <= 0 && vivosDe('realista') < ENEMIGOS_MAX) {
       soltarSoldado('realista');
-      tProxima = 6 + Math.random() * 5;
+      // el campo se llena más rápido que antes porque ahora tiene que llenarse
+      // más: con el paso viejo, treinta y cuatro realistas tardaban cinco minutos
+      tProxima = 3 + Math.random() * 3;
     }
     tAliado -= dt;
     if (tAliado <= 0 && vivosDe('granadero') < ALIADOS_MAX) {
       // dos de cada tres granaderos van montados con lanza: era un regimiento
       // de caballería, no de infantería
       soltarSoldado('granadero', { montado: Math.random() < MONTADOS });
-      tAliado = 9 + Math.random() * 6;
+      tAliado = 4 + Math.random() * 4;
     }
   }
 
@@ -889,7 +937,8 @@ ponerCaballo();
 ponerCanones();
 cuadro();
 
-window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado,
+window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado, lejania,
+  lod: m => { LOD_CERCA = m; },
   get caballo () { return caballo; }, caballos, canones, acto,
   montarODesmontar, voltear, ponerCanones,
   // para probar escalas a mano desde la consola: juego.formar(20, 30)

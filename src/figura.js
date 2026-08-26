@@ -452,6 +452,11 @@ export class Figura {
     this.h = h;
     this.bando = bando;
     this.montura = false;        // true: piernas a horcajadas, sin paso
+    // LEJOS: el cuerpo no se arma. La IA sigue entera, pero a cuarenta
+    // metros nadie ve un codo, así que no se resuelve la cinemática: lo
+    // dibuja la Lejanía con una postura horneada. Sólo se sigue contando
+    // el paso, que es lo único que se lee desde ahí.
+    this.lejos = false;
     this.rodilla = false;        // true: rodilla derecha en tierra, postura de tiro
 
     const taller = new Taller();
@@ -580,6 +585,7 @@ export class Figura {
   }
 
   actualizar (dt, andando, ritmo) {
+    if (this.lejos) { if (andando) this.paso += dt * 6.6 * (ritmo || 1); return; }
     const p = POSES[this.pose] || POSES.marcha;
     const c = this.cur;
     const k = 1 - Math.exp(-10 * dt);
