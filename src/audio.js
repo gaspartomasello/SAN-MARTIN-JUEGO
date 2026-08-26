@@ -130,6 +130,23 @@ export class Sonido {
     this._tono(150, 70, 0.16, 0.34, 'sine');
     this._ruido(0.14, 0.14, 'lowpass', 700, 1);
   }
+  // El cañón. No es un disparo más fuerte: es otra cosa. Un golpe grave que
+  // se siente en el pecho, con la cola larga del eco sobre el río.
+  canon () {
+    if (!this.ctx) return;
+    const t = this.t;
+    this._ruido(1.4, 0.9, 'lowpass', 380, 0.7);
+    this._tono(70, 26, 1.1, 0.85, 'sine');
+    this._tono(120, 40, 0.5, 0.5, 'square');
+    // el eco contra la barranca, medio segundo después y a la mitad
+    setTimeout(() => { if (this.ctx) { this._ruido(1.1, 0.28, 'lowpass', 260, 0.7); } }, 480);
+    this.aturdir(2.6);
+    return t;
+  }
+
+  // la metralla pasando cerca: perdigones cortando el aire
+  metralla () { if (this.ctx) { this._ruido(0.45, 0.34, 'highpass', 2100, 1.6); this._tono(900, 260, 0.3, 0.14, 'sawtooth'); } }
+
   golpeRecibido () { if (this.ctx) { this._tono(90, 45, 0.35, 0.6, 'sine'); this.aturdir(1.6); } }
   grito () { if (this.ctx) { this._tono(320, 140, 0.4, 0.22, 'sawtooth'); this._ruido(0.35, 0.2, 'bandpass', 800, 1.2); } }
 

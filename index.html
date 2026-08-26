@@ -24,6 +24,11 @@
   #humo-pantalla{position:fixed;inset:0;pointer-events:none;z-index:4;background:#9AA3AB;opacity:0;
     transition:opacity .18s linear}
   /* el túnel del galope: se cierra con la velocidad del caballo */
+  /* una pieza te tiene en el cono y está cebando: dos segundos para salirte */
+  #metralla{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;
+    background:radial-gradient(ellipse 78% 74% at center,rgba(0,0,0,0) 46%,rgba(150,26,20,.62) 100%);
+    animation:pulsoMetralla .55s ease-in-out infinite}
+  @keyframes pulsoMetralla{0%,100%{filter:brightness(.75)}50%{filter:brightness(1.35)}}
   #velocidad{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0;
     background:radial-gradient(ellipse 72% 68% at center,rgba(0,0,0,0) 52%,rgba(24,20,14,.38) 100%)}
   #sangre{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;transition:opacity .5s ease;
@@ -143,6 +148,7 @@
 <div id="humo-pantalla"></div>
 <div id="vineta"></div>
 <div id="velocidad"></div>
+<div id="metralla"></div>
 <div id="sangre"></div>
 <div id="flash"></div>
 

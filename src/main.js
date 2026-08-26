@@ -8,6 +8,7 @@ import { ArmaFuego } from './armas.js';
 import { Sable } from './sable.js';
 import { Soldado } from './soldados.js';
 import { Caballo } from './caballo.js';
+import { Canon } from './canon.js';
 import { PasadaArma } from './pasadaArma.js';
 import { PasadaVelocidad } from './pasadaVelocidad.js';
 import { Hud } from './hud.js';
@@ -209,6 +210,7 @@ function resolverDisparo (origen, dir, dispersion) {
   const candidatos = [];
   for (const s of soldados) if (s.vivo && s.esRealista) candidatos.push(s.malla);
   for (const b of mundo.blancos) candidatos.push(b);
+  for (const c of canones) if (c.vivo) candidatos.push(c.malla);
   // un caballo es un blanco enorme: si se cruza, se lo come él
   const golpes = rayo.intersectObjects(candidatos, true);
 
@@ -219,6 +221,13 @@ function resolverDisparo (origen, dir, dispersion) {
   let raiz = g.object;
   while (raiz.parent && raiz.parent !== escena) raiz = raiz.parent;
 
+  const canon = canones.find(c => c.malla === raiz);
+  if (canon) {
+    sonido.impactoMadera();
+    humo.soltar(g.point, d, { cantidad: 2, vida: 2, empuje: 1, radio: 0.1, opacidad: 0.3 });
+    if (canon.recibir(1)) hud.mostrarAviso('¡Pieza desmontada!', 'bien');
+    return;
+  }
   const soldado = soldados.find(s => s.malla === raiz);
   if (soldado) {
     sonido.impactoCarne();
@@ -464,6 +473,71 @@ function soltarSoldado (bando, op = {}) {
 
   soldados.push(s);
   return s;
+}
+
+// --------------------------- artillería ---------------------------
+//
+// Las dos piezas de campaña que los españoles bajaron a la playa. Están del
+// lado de la barranca, mirando campo arriba, y son la cosa más peligrosa que
+// hay: un tarro de perdigones abre un abanico de cuarenta grados y ochenta
+// metros. Pero AVISAN —dos segundos largos de mecha encendida— y se pueden
+// callar matando a los artilleros que las sirven.
+const canones = [];
+const DANO_METRALLA = 74;
+const METRALLA_CABALLO = 9;     // al caballo lo voltea de una: son seis de vida
+
+function ponerCanones () {
+  for (const c of canones) c.quitar();
+  canones.length = 0;
+  for (const [x, z, r] of [[-13, -68, Math.PI], [11, -73, Math.PI]]) {
+    const c = new Canon(escena, humo, sonido, new THREE.Vector3(x, 0, z), r);
+    c.alDisparar = quien => resolverMetralla(quien);
+    canones.push(c);
+    // dos artilleros por pieza: mientras vivan, la pieza habla
+    for (let i = 0; i < 2; i++) {
+      const s = soltarSoldado('realista');
+      s.malla.position.set(x + (i ? 1.6 : -1.6), 0, z + 1.5);
+      s.puesto = { x: s.pos.x, z: s.pos.z };
+      c.sirvientes.push(s);
+    }
+  }
+}
+
+// El abanico de metralla. Cobra a todo el que esté adentro del cono, de los
+// dos bandos —la metralla no distingue— y castiga más al que va montado,
+// porque un caballo es un blanco enorme.
+function resolverMetralla (canon) {
+  jugador.sacudir(0.5);
+  let f = jugador.vivo ? canon.fuerzaSobre(jugador.pos) : 0;
+  if (f > 0) {
+    sonido.metralla();
+    jugador.sacudir(0.5 + f * 0.9);
+    if (montado()) {
+      // ESTE es el disparo del 3 de febrero: el que volteó el caballo.
+      jugador.monta.recibir(Math.round(METRALLA_CABALLO * f));
+      hud.mostrarAviso('¡METRALLA!', 'malo');
+    } else {
+      jugador.recibir(Math.round(DANO_METRALLA * f), new THREE.Vector3(0, 0, -1));
+      hud.mostrarAviso('¡Metralla!', 'malo');
+    }
+  }
+  for (const s of soldados) {
+    if (!s.vivo) continue;
+    const g = canon.fuerzaSobre(s.pos);
+    if (g < 0.28) continue;
+    if (s.montado) s.monta.recibir(Math.round(METRALLA_CABALLO * g));
+    else if (Math.random() < g) s.recibir(3);
+  }
+}
+
+// ¿alguna pieza me está cebando encima? Devuelve la peor.
+function metrallaEncima () {
+  let peor = 0;
+  for (const c of canones) {
+    if (!c.cebando) continue;
+    peor = Math.max(peor, c.fuerzaSobre(jugador.pos));
+  }
+  return peor;
 }
 
 function limpiarCampo () {
@@ -722,6 +796,14 @@ function cuadro () {
     }
   }
 
+  // las piezas: buscan blanco, se orientan, ceban y disparan
+  if (canones.length) {
+    const candidatos = [];
+    if (jugador.vivo) candidatos.push({ pos: jugador.pos, montado: montado() });
+    for (const s of soldados) if (s.vivo && !s.esRealista) candidatos.push({ pos: s.pos, montado: s.montado });
+    for (const c of canones) c.actualizar(dt, candidatos);
+  }
+
   if (combate && jugador.vivo) {
     tProxima -= dt;
     if (tProxima <= 0 && vivosDe('realista') < ENEMIGOS_MAX) {
@@ -762,6 +844,7 @@ function cuadro () {
     rapidez: montado() ? jugador.monta.vel : 0,
     puedeTomarFusil: !armas.fusil && !!caidoConFusil(),
     remate: sable.tRemate,
+    metralla: metrallaEncima(),
     vida: jugador.vida,
     regenerando: jugador.tSinDano > 4.5 && jugador.vida < 100,
     vendas: jugador.vendas,
@@ -777,10 +860,11 @@ function cuadro () {
   });
 }
 ponerCaballo();
+ponerCanones();
 cuadro();
 
 window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado,
-  get caballo () { return caballo; }, caballos, montarODesmontar, voltear,
+  get caballo () { return caballo; }, caballos, canones, montarODesmontar, voltear, ponerCanones,
   // para probar escalas a mano desde la consola: juego.formar(20, 30)
   formar (lanceros = 10, realistas = 10) {
     for (let i = 0; i < lanceros; i++) soltarSoldado('granadero', { montado: true });

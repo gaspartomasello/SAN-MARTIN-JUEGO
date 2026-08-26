@@ -91,6 +91,8 @@ export class Soldado {
     this.rodilla = false;                   // rodilla en tierra: va a disparar
     this.tCubierta = 0;                     // para no re-buscar parapeto cada cuadro
     this.ritmo = 1;                         // 1 marcha, 2,3 carrera
+    this.puesto = null;                     // los artilleros no abandonan la pieza
+    this.correa = 4.5;                      // metros que se puede alejar del puesto
 
     this.monta = null;
     this.tPasada = 0;
@@ -419,6 +421,17 @@ export class Soldado {
         }
         this._acero(dt);
         break;
+      }
+    }
+
+    // El que tiene puesto no lo abandona. Un artillero que sale corriendo a
+    // dar bayonetazos deja la pieza muda, y la pieza vale más que él.
+    if (this.puesto) {
+      const dx = this.pos.x - this.puesto.x, dz = this.pos.z - this.puesto.z;
+      const d = Math.hypot(dx, dz);
+      if (d > this.correa) {
+        this.pos.x = this.puesto.x + (dx / d) * this.correa;
+        this.pos.z = this.puesto.z + (dz / d) * this.correa;
       }
     }
 
