@@ -10,52 +10,33 @@ cuerpo a cuerpo, moral, la estructura de los siete actos y el acto del Sargento 
 
 ---
 
-## Estado: Fase 1 — el campo de tiro
+## Cómo abrir el juego
 
-Cada fase del proyecto existe para responder **una** pregunta. Esta responde la más
-riesgosa de todas: **¿recargar es divertido?**
-
-Lo que ya funciona:
-
-- **Carga de chispa en siete pasos** con tres momentos de tiempo (morder, baqueta,
-  amartillar). Interrumpible y **persistente**: si soltás a mitad para sacar el sable,
-  el arma queda en el paso donde estaba y ahí la retomás.
-- **Fallas de época**: fogonazo sin tiro (4 %), chispa fallida (3 %), emplome del ánima
-  cada seis disparos, y 90 ms de retardo de percusión entre el gatillo y la bala.
-- **Humo con grilla de densidad** de 2 m compartida por el render y la percepción
-  enemiga: la nube que te tapa a vos también los ciega a ellos.
-- **Balística de ánima lisa**: sin retícula, cono de 3° desde la cadera y 0,8° apuntando
-  por el cañón, un impacto en torso es una baja.
-- **Realistas** que avanzan, apuntan con aviso audible, descargan y recargan doce
-  segundos y medio; si te pierden en el humo, van a donde te vieron por última vez.
-- **HUD diegético**: el estado del arma se lee en el modelo —martillo y rastrillo—, los
-  cartuchos se cuentan abriendo la cartuchera y la salud es una viñeta, no una barra.
-- **Tres armas y un premio**: tercerola, sable corvo y pistolón de arzón, todas cargadas
-  al empezar; el fusil con bayoneta se le saca cargado a un caído con `G` y da más
-  alcance en el acero.
-- **Posturas**: de pie, agachado y cuerpo a tierra — y tirado **no se puede recargar**,
-  porque no entra la baqueta.
-- **Dos bandos**: granaderos de azul a tu lado y realistas de blanco enfrente, que se
-  eligen objetivo entre ellos y pelean sin vos.
-- **Vida que se regenera** si te cubrís, con vendaje para apurarla.
-- **Apuntado por el cañón** con desenfoque del arma salvo en el centro, fogonazo que
-  ilumina el campo y estela dibujada a la velocidad real de la bala.
-- **Cámara**: sacudida por trauma, golpe de FOV, retroceso, cabeceo y respiración.
-- **Sonido procedural** con Web Audio, sin un solo archivo de audio: el disparo deja
-  sordera momentánea con un pasabajos que se abre de a poco.
-
-Lo que **todavía no** está: el duelo completo (guardia, parada perfecta, riposte) es la
-Fase 2, el escenario del convento la Fase 3, la multitud y la moral la Fase 4.
-
-## Cómo probarlo
-
-**Camino corto — un archivo, doble clic.** Empaqueta todo (three.js incluido) en un
-`.html` autocontenido que abre desde el escritorio, sin servidor ni instalación:
+**Doble clic y listo.** El juego es **un solo archivo** `.html` autocontenido: three.js,
+el código, las texturas y el sonido van todos adentro. No hace falta servidor, ni
+instalar nada, ni internet.
 
 ```bash
 npm install
-npm run empaquetar      # genera clarin-san-lorenzo.html
+npm run empaquetar      # genera clarin-san-lorenzo.html (~1,3 MB)
 ```
+
+Después se abre con doble clic desde el escritorio. Adentro:
+
+1. Elegís uno de los **dos modos** de la portada.
+2. **Clic en la pantalla** para que el navegador entregue el mouse.
+3. **`Esc`** lo suelta y pausa la partida: aparece el cursor, nadie avanza ni te tira, y
+   con un clic volvés al combate.
+
+Anda en Chrome, Edge y Firefox de escritorio. Necesita teclado y mouse, así que en
+celular no se juega.
+
+### Los dos modos
+
+| | |
+|---|---|
+| **El clarín** — *la batalla* | 3 de febrero de 1813, cinco y media de la mañana. Ciento veinte granaderos formados **detrás** del convento en dos columnas de sesenta, y doscientos cincuenta realistas subiendo de la barranca con dos cañones sin saber que estás ahí. Vas a la cabeza de una columna: los sesenta te siguen **a vos**. Cuando quieras, tocás el clarín con **`T`** y salen las dos a la vez. |
+| **El campo de tiro** — *práctica* | Cuartel del Retiro, diciembre de 1812. Para aprender lo que no se parece a un shooter moderno: cargar en siete pasos, parar una bayoneta en el instante justo y andar a caballo sin que te maten. Con **`O`** empiezan a venir. |
 
 **Camino de desarrollo — servidor estático.** No hay build: three.js está vendorizado en
 `vendor/`, así que alcanza con servir la carpeta y recargar el navegador.
@@ -65,10 +46,38 @@ npm run servir          # o: npx serve .
 # abrir http://localhost:8099
 ```
 
-En los dos casos hay que hacer clic en **Formar** para que el navegador entregue el
-mouse. **`Esc` lo suelta y pausa la partida**: aparece el cursor, nadie avanza ni te
-tira, y con un clic volvés al combate. Anda en Chrome, Edge y Firefox de escritorio —
-necesita teclado y mouse, así que en celular no se juega.
+---
+
+## Estado
+
+Lo que **ya funciona**:
+
+- **Carga de chispa en siete pasos** con tres momentos de tiempo, interrumpible y
+  persistente, con las fallas de época: fogonazo sin tiro, chispa fallida, emplome del
+  ánima y retardo de percusión.
+- **Humo con grilla de densidad** compartida por el render y la percepción enemiga: la
+  nube que te tapa a vos también los ciega a ellos.
+- **Duelo de acero**: guardia, aviso telegrafiado, **parada perfecta** de 180 ms, remate
+  y pechada, todo pagado con aliento.
+- **El caballo**: cuatro andares, salto de tapias, radio de giro que se abre con la
+  velocidad, filo por velocidad, y una tapia nunca lo frena del todo.
+- **Caballería con lanza**: la carga en tres tiempos que se lee por la distancia, y el
+  desmonte como tirada por arma —la bala 20 %, la bayoneta 34 %, el asta 58 %, la
+  metralla 100 %—, con el oficio de jinete restando aparte.
+- **El lugar**: convento de San Carlos, barranca, el Paraná y los buques, al amanecer.
+- **Los dos cañones ligeros** con aviso de tres tiempos y metralla en abanico que no
+  distingue bandos.
+- **El acto Cabral**, que arranca la primera vez que te matan el caballo estando montado.
+- **La lejanía**: a partir de cierta distancia el soldado deja de ser un esqueleto y pasa
+  a ser una instancia horneada. Los 370 hombres de la batalla entran en 99 llamadas de
+  dibujo.
+- **La pinza**: las dos columnas de sesenta, la formación que se mantiene y se rompe sola
+  en el choque, y el clarín que las larga.
+
+Lo que **todavía no** está: **la moral**, y por lo tanto el final. Hoy la única forma de
+ganar es matar a los 250 de a uno, que es justo lo contrario de lo que pasó —la línea se
+quebró y salieron corriendo a los botes—. Después de eso: las órdenes de tropa, la
+barranca, el epílogo del pino y los modos sueltos.
 
 > Agacharse va en `C` y no en `Ctrl` a propósito: `Ctrl+W` es un atajo del navegador
 > para cerrar la pestaña y ninguna página puede bloquearlo.
