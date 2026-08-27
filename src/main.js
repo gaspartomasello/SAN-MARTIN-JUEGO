@@ -945,13 +945,19 @@ addEventListener('resize', () => {
 const reloj = new THREE.Clock();
 let fps = 60;
 
-function cuadro () {
-  requestAnimationFrame(cuadro);
-  const crudo = Math.min(0.05, reloj.getDelta());
-  // en pausa se sigue dibujando, pero el mundo no corre
-  const dt = (empezado && !bloqueado) ? 0 : crudo;
-  fps = fps * 0.92 + (1 / Math.max(crudo, 0.0001)) * 0.08;
-
+// EL MUNDO, EN UNA FUNCIÓN.
+//
+// Esto estaba adentro de cuadro(), pegado al dibujo, y por eso las pruebas
+// tenían que RECONSTRUIR el bucle a mano para poder correrlo a paso fijo. Con
+// render por software el navegador da dos o tres cuadros por segundo, así que
+// no había otra: pero una reconstrucción se desactualiza y termina probando un
+// juego que no existe. Los bichos de jinetes congelados vivían justo ahí, en la
+// diferencia entre el bucle de verdad y el que probábamos.
+//
+// Ahora el mundo es una función que se puede llamar sola, con el dt que uno
+// quiera y sin dibujar nada. La caza de fantasmas corre EL bucle, no uno
+// parecido. Ver pruebas/fantasmas.mjs.
+function simular (dt) {
   let masCerca = 999;
   for (const s of soldados) {
     if (s.vivo && s.esRealista) masCerca = Math.min(masCerca, s.pos.distanceTo(jugador.pos));
@@ -1063,6 +1069,19 @@ function cuadro () {
 
   luzBoca.intensity = Math.max(0, luzBoca.intensity - dt * 260);
 
+  return { presion, arma, quiereApuntar };
+}
+
+function cuadro () {
+  requestAnimationFrame(cuadro);
+  const crudo = Math.min(0.05, reloj.getDelta());
+  // en pausa se sigue dibujando, pero el mundo no corre
+  const dt = (empezado && !bloqueado) ? 0 : crudo;
+  fps = fps * 0.92 + (1 / Math.max(crudo, 0.0001)) * 0.08;
+
+  const { presion, arma, quiereApuntar } = simular(dt);
+  const p = jugador.cfgPostura;
+
   // El mundo pasa por el desenfoque de velocidad; apuntando se apaga, que es
   // cuando menos falta hace y más molesta.
   const embalado = montado() && !quiereApuntar
@@ -1114,6 +1133,7 @@ cuadro();
 
 window.juego = { jugador, armas, sable, humo, fuego, soldados, escena, camara, render, soltarSoldado, lejania, pasadaVel,
   lod: m => { LOD_CERCA = m; }, separarAhora: apretujar, VOLTEO, OFICIO, METRALLA_CABALLO,
+  repartirAhora: repartirLejania, pintarAhora: pintarLejania, simular,
   pinza, formarPinza, tocarClarin: () => pinza.tocar(),
   get caballo () { return caballo; }, caballos, canones, acto,
   montarODesmontar, voltear, ponerCanones,

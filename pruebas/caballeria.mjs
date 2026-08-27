@@ -160,9 +160,19 @@ const r = await pag.evaluate(() => {
   const cab = l3.monta;
   cab.recibir(6);
   ok('el caballo muere', !cab.vivo);
+  // ESTA ES LA PRUEBA QUE MENTÍA. Decía «el jinete se baja solo» y comprobaba
+  // `!l3.montado`, que es un getter que lee `monta.vivo`: en cuanto el caballo
+  // muere da false SIN QUE NADIE SE HAYA BAJADO DE NADA. Pasaba siempre, y
+  // mientras tanto el hombre quedaba con el caballo puesto, a horcajadas y
+  // flotando a 46 cm del suelo. Ahora se comprueba el HECHO, no el getter.
+  ok('el jinete se baja solo, de verdad', l3.monta === null, `monta=${l3.monta ? 'puesta' : 'null'}`);
+  ok('y el caballo lo suelta a él', cab.jinete === null && cab.montado === false);
+  ok('cae al piso, no queda flotando', Math.abs(l3.pos.y) < 0.06, `y=${l3.pos.y.toFixed(3)}`);
+  ok('y cierra las piernas', l3.fig.montura === false);
   paso(cab, 1.2);
   ok('se desploma de costado', Math.abs(cab.raiz.rotation.z) > 1.2, `z=${cab.raiz.rotation.z.toFixed(2)}`);
-  ok('el jinete se baja solo', !l3.montado);
+  l3.actualizar(1 / 60, j.jugador, j.soldados);
+  ok('y un cuadro después sigue en el piso', Math.abs(l3.pos.y) < 0.06, `y=${l3.pos.y.toFixed(3)}`);
   const tAntes = cab.tMuerto;
   paso(cab, 3);
   ok('el cadáver cuenta su tiempo', cab.tMuerto > tAntes + 2.5, `${cab.tMuerto.toFixed(1)} s`);

@@ -215,6 +215,21 @@ export class Caballo {
       this.andar = 0;
       this.enElAire = false;
       this.velY = 0;
+      // Y AVISA EN EL ACTO. El jinete se baja solo al cuadro siguiente, pero
+      // «al cuadro siguiente» no alcanza: los cañones resuelven la metralla
+      // DESPUÉS del bucle de soldados, así que ese jinete se dibujaría una vez
+      // sentado en el aire sobre un caballo ya desplomado. Un cuadro a 60 son
+      // dieciséis milésimas y no se ve; a veinte cuadros por segundo, se ve.
+      //
+      // Al jugador NO se le avisa —no tiene `jinete`— y es a propósito: cuando
+      // a él le matan el caballo no se baja, queda con la pierna abajo. Ahí
+      // empieza el acto Cabral.
+      // OJO: no se pregunta `jinete.montado`. Ese getter lee `monta.vivo`, que
+      // acabamos de poner en false dos líneas más arriba, así que YA da false y
+      // la guarda se saltearía siempre a sí misma. Es exactamente la trampa que
+      // causó el bicho original. `desmontar` ya sabe volverse solo si no hay
+      // nada que desmontar.
+      if (this.jinete) this.jinete.desmontar(true);
       return true;
     }
     return false;

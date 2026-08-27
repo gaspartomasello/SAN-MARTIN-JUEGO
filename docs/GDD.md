@@ -885,6 +885,85 @@ llamadas y no depende de dónde mires.
 
 ---
 
+### El jinete congelado en el aire
+
+Un bicho que volvía una y otra vez, y volvía porque **la prueba que tenía que
+cazarlo pasaba en falso**. Vale la pena dejarlo escrito entero.
+
+**El síntoma.** Le matan el caballo a un lancero y el hombre queda flotando a
+46 cm del suelo —la altura exacta de la silla—, con las piernas a horcajadas,
+sentado sobre un caballo que ya se desplomó. Para siempre.
+
+**La causa.** `montado` no es una bandera: es un getter.
+
+```js
+get montado () { return !!this.monta && this.monta.vivo; }
+```
+
+Cuando el caballo muere, ese getter pasa a `false` **en el mismo instante**. Y
+el único código que bajaba al hombre del caballo muerto vivía adentro de
+`if (this.montado) { … }`. O sea: **la limpieza estaba guardada detrás de la
+condición que su propio disparador invalida.** Nunca corría.
+
+**Por qué no lo cazaba la prueba.** Existía esta línea:
+
+```js
+ok('el jinete se baja solo', !l3.montado);
+```
+
+que comprueba el mismo getter. En cuanto el caballo moría daba `false` sin que
+nadie se hubiera bajado de nada. Pasaba siempre, en verde, mientras el bicho
+estaba ahí. Una prueba que interroga al mismo oráculo que causó el problema no
+prueba nada.
+
+**El arreglo**, en tres capas:
+
+1. La bajada sale de la rama y va **primero, sin condición**:
+   `if (this.monta && !this.monta.vivo) this.desmontar(true);`
+2. El caballo **avisa en el acto** al morir, porque «al cuadro siguiente» no
+   alcanza: los cañones resuelven la metralla *después* del bucle de soldados,
+   así que ese jinete se dibujaría una vez sentado en el aire. (Al jugador no se
+   le avisa —no tiene `jinete`— y es a propósito: ahí empieza el acto Cabral.)
+3. Una red: un hombre a pie tiene `y = 0`. Siempre. Si no, algo se rompió.
+
+Y de yapa, la misma trampa mordió dos veces: el primer intento del punto 2
+escribía `if (this.jinete.montado === false) …` para no bajar dos veces al
+mismo — con el getter ya en `false`, esa guarda se salteaba a sí misma siempre.
+
+### Caza de fantasmas (`pruebas/fantasmas.mjs`)
+
+Lo que quedó, y es más importante que el arreglo. En vez de buscar el bicho
+adivinando, se escriben las reglas que **nunca** se pueden romper y se hace
+correr la batalla entera hasta que alguien las rompa:
+
+1. si va montado, está sentado exactamente encima de su caballo;
+2. si va montado, su caballo está vivo y lo reconoce como jinete;
+3. si no va montado, sus pies están en el piso — nadie flota;
+4. un caballo con jinete anotado es el caballo de ese jinete;
+5. nadie se dibuja por los dos lados ni por ninguno (malla contra lejanía);
+6. ningún caballo queda simulado sin malla, ni montado fuera de la lista.
+
+Lo que hace útil al detector no es la lista: es que **mide cuántos cuadros
+seguidos** queda rota cada regla. Un cuadro suelto es el orden del bucle y se
+resuelve solo; **659 cuadros seguidos es el bicho del que se quejó el jugador**.
+Esos son los dos números que salieron de esta caza, antes y después.
+
+Cuatro escenarios —escaramuza, metralla, partida con el jugador montando y
+desmontando, y la pinza entera—, cada uno **dos veces**: todo cerca (malla
+articulada) y todo lejos (instancia horneada), porque el bicho puede estar en
+cualquiera de los dos caminos.
+
+### El bucle es una función
+
+Y para que todo eso sirva, hizo falta partir `cuadro()` en dos: `simular(dt)` y
+el dibujo. Antes las pruebas **reconstruían el bucle a mano** —con render por
+software el navegador da dos o tres cuadros por segundo, no había otra— y una
+reconstrucción se desactualiza: terminás probando un juego que no existe. Los
+bichos de jinetes congelados vivían justo en esa diferencia. Ahora la caza corre
+**el** bucle, no uno parecido.
+
+---
+
 ### El duelo (Fase 2)
 
 Dos formas de ganar un intercambio, y ninguna es apretar el botón de tajo.

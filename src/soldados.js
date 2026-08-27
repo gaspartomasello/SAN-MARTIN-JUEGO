@@ -339,6 +339,24 @@ export class Soldado {
       return;
     }
 
+    // ------------------------------------------------------------------
+    // EL CABALLO MUERTO. Esto va PRIMERO, y fuera de toda rama.
+    //
+    // Acá estuvo el bicho que dejaba jinetes congelados en el aire. `montado`
+    // no es una bandera: es un getter que lee `monta && monta.vivo`. Cuando le
+    // matan el caballo, ese getter pasa a false EN EL MISMO INSTANTE, así que
+    // la rama `if (this.montado)` se apaga sola... y el único código que bajaba
+    // al hombre del caballo muerto vivía adentro de esa rama.
+    //
+    // O sea: la limpieza estaba guardada detrás de la condición que su propio
+    // disparador invalida. Nunca corría. El hombre quedaba con `monta` puesto,
+    // con las piernas a horcajadas y a 46 cm del suelo —la altura de la silla—
+    // para siempre, montado sobre un caballo que ya se había desplomado.
+    //
+    // Y pasaba cada vez que un caballo moría, que es una de las cosas más
+    // comunes del juego: la metralla los voltea de una.
+    if (this.monta && !this.monta.vivo) this.desmontar(true);
+
     const dist = this._elegirObjetivo(jugador, soldados);
 
     // EL JINETE SE ACTUALIZA SIEMPRE, haya blanco o no.
@@ -527,6 +545,10 @@ export class Soldado {
     }
 
     this._chocar();
+    // Un hombre a pie está en el piso. Siempre. No hay salto, no hay barranca
+    // que lo levante: si su y no es cero es que algo se rompió, y más vale que
+    // camine mal a que quede flotando. La red debajo del arreglo de arriba.
+    this.malla.position.y = 0;
     this.andando = andando;
     this.fig.actualizar(dt, andando, this.ritmo);
   }
