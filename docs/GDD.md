@@ -1150,6 +1150,92 @@ Es mejor y sigue estando mal, y `pruebas/balance.mjs` lo dice en el archivo:
 durar lo que tarde la aritmética. Lo que falta no es balance: es **moral de
 tropa**, y es la fase que sigue.
 
+### El corte por sistemas: main.js deja de ser el módulo dios
+
+`main.js` tenía mil doscientas cincuenta y tres líneas y hacía de todo: la
+tabla de daño, la resolución de impactos, el despliegue, las armas del
+jugador, el teclado, el reparto de la lejanía y el bucle. Los subsistemas
+—soldados, caballo, pinza, lejanía— estaban limpios, así que no molestaba
+todavía; pero para cambiar un número de balance había que encontrarlo entre
+mil doscientas líneas de lógica, y ése es el número que se toca veinte veces
+antes de quedar bien.
+
+**El corte, y la regla de cada pedazo.**
+
+| | de qué es dueño |
+|---|---|
+| `balance.js` | los NÚMEROS: vida, daño, puntería, volteo, aliento, saturación, topes |
+| `combate.js` | la MECÁNICA del impacto: a quién se le pregunta, en qué orden, qué se ve |
+| `arsenal.js` | lo que llevás encima y qué tenés en la mano |
+| `despliegue.js` | quién sale al campo, dónde y cuándo |
+| `gentio.js` | quién se dibuja entero y quién ocupa lugar |
+| `mando.js` | teclado, mouse, puntero, pausa y los dos botones de la portada |
+| `main.js` | nada propio: monta el escenario, ata los sistemas y corre el bucle |
+
+De 1253 líneas, `main.js` quedó en 381 y ninguna de ellas decide nada.
+
+#### La regla que ordena el resto
+
+**Ningún archivo inventa un número de combate.** Si una bala hace veintiséis,
+lo dice `balance.js` y nada más que `balance.js`. Eso obligó a mover cosas que
+estaban escondidas donde no se las encontraba nunca:
+
+- la dispersión y el volteo vivían en `soldados.js`, mezclados con el
+  comportamiento;
+- el daño del culatazo y del bayonetazo estaban sueltos en la tabla de armas
+  de `armas.js`, como `dano: 2`;
+- y varios estaban directamente escritos a mano en el medio de una llamada
+  —`o.recibir(2, dir, VOLTEO.bala)`—, que es la peor forma posible de guardar
+  un número de balance: no se puede buscar.
+
+Ahora todos tienen nombre y viven juntos: `BALA_TROPA`, `BAYONETA_TROPA`,
+`LANZA_TROPA`, `METRALLA_TROPA`, `BALA_JUGADOR`, `CULATAZO`, `BAYONETAZO`.
+
+`soldados.js` se quedó con lo que le corresponde, que es el COMPORTAMIENTO: qué
+decide un hombre, cuándo se da vuelta, cuánto tarda en bajar la lanza. Su
+`apuntarA()` pasó a ser una línea que le pregunta a la tabla:
+
+```js
+apuntarA (dist, oclusion, anchoBlanco) {
+  return tirar(dist, oclusion, anchoBlanco, this.rodilla);
+}
+```
+
+Y `balance.tirar()` es ahora la única función del juego que decide si una bala
+acierta —la del jugador contra un realista y la de un realista contra vos son
+la misma cuenta—.
+
+#### El orden del armado, que no es casual
+
+Los sistemas no se conocen entre sí: `main.js` le pasa a cada uno lo que
+necesita. Eso deja dos dependencias que van al revés del orden de creación y
+hay que resolverlas a propósito:
+
+```js
+let arsenal = null;
+const canones = [];
+const combate = armarCombate({ ..., canones, conSable: () => arsenal.conSable() });
+arsenal = armarArsenal({ ..., resolverDisparo: combate.resolverDisparo });
+```
+
+`combate.js` se arma primero porque los otros dos dependen de él —el despliegue
+le ata los ganchos a cada soldado que suelta, el arsenal le avisa cuando el arma
+dispara—, pero necesita dos cosas que todavía no existen: el array de piezas,
+que lo va a llenar el despliegue, y `conSable`, que se resuelve recién en tiempo
+de ejecución. El array se pasa por referencia y la pregunta como función. Es la
+única costura del armado y está comentada donde está.
+
+#### Lo que se gana además del orden
+
+`mando.js` terminó **sin un solo import del proyecto**. Es la única parte del
+juego que habla con el navegador y ahora se ve que no decide nada: traduce
+«apretó F» a «puntazo» o «pechada» y le pide al módulo que corresponda que lo
+haga. Si algún día aparece un segundo esquema de teclas, o un joystick, o una
+grabación de partida, entra por ahí y no toca nada más.
+
+Y el grafo quedó sin ciclos, con `balance.js` como hoja que no importa nada y de
+la que cuelga todo lo que pelea.
+
 ---
 
 ### El duelo (Fase 2)
@@ -1220,23 +1306,53 @@ Da identidad y salva rendimiento al mismo tiempo.
   juego — hay que hacerla a mano, no sale de una biblioteca genérica.
 - **Guardado:** `localStorage`. Un jugador, sin red.
 
-### Estructura propuesta
+### La estructura, como quedó
+
+La propuesta original era de carpetas —`core/`, `render/`, `ai/`, `crowd/`—, o
+sea la estructura de un motor. No se construyó eso y está bien que no: veinte
+archivos planos con nombre claro se navegan mejor que veinte carpetas de a uno,
+y no hay paso de compilación que justifique el andamio.
 
 ```
 src/
-  core/        loop, tiempo, input, estados de juego
-  render/      escena, luces, post-proceso, LODs
-  player/      controlador, cámara, aliento, heridas
-  weapons/     máquina de recarga, balística, humo
-  melee/       máquina de estados del duelo, guardia, riposte
-  ai/          percepción (con grilla de humo), formaciones, moral
-  crowd/       instancias, VAT, LOD
-  mount/       caballo
-  audio/       Web Audio, mezcla, ducking
-  levels/      actos 0–6
-  ui/          HUD diegético, menús, accesibilidad
-assets/        modelos, texturas, sonidos
+  balance.js      LOS NÚMEROS de la pelea: vida, daño, puntería, volteo, aliento
+  combate.js      quién le pega a quién y qué pasa
+  arsenal.js      lo que llevás encima y qué tenés en la mano
+  despliegue.js   quién sale al campo, dónde y cuándo
+  gentio.js       quién se dibuja entero y quién ocupa lugar
+  mando.js        teclado, mouse, puntero, pausa y los dos modos
+  main.js         monta el escenario, ata los sistemas, corre el bucle
+
+  soldados.js     el comportamiento de un hombre
+  caballo.js      cuatro andares, salto, radio de giro, filo por velocidad
+  jugador.js      posturas, aliento, heridas, cámara, colisión
+  pinza.js        la maniobra: columnas, huecos, rutas (geometría pura)
+  acto.js         el acto Cabral
+  lejania.js      el horneado de posturas y las instancias
+  estorbos.js     radios, cajas y la rejilla de hash espacial
+
+  armas.js        carga de siete pasos, fallas de época
+  sable.js        guardia, aviso, parada, remate
+  canon.js        mecha, abanico de metralla, sirvientes
+  figura.js       anatomía: huesos, IK, fusión de geometría
+  mundo.js        escena, luz de amanecer, cielo, niebla
+  sanlorenzo.js   convento, barranca, el Paraná, los buques
+  humo.js         nubes instanciadas + grilla de densidad
+  fuego.js  audio.js  hud.js
+  pasadaVelocidad.js  pasadaArma.js
+
+vendor/           three.js, vendorizado: no hay npm en tiempo de ejecución
+herramientas/     empaquetar.mjs, el único paso de construcción que existe
+pruebas/          39 archivos sobre Playwright, contra el juego de verdad
 ```
+
+Las dos reglas que sostienen el reparto:
+
+1. **Cada archivo importa hacia abajo y nunca hacia el costado.** El grafo no
+   tiene ciclos. `balance.js` y `mando.js` son hojas: uno no importa nada
+   porque son puros números, el otro porque sólo traduce teclas.
+2. **Ningún archivo inventa un número de combate.** Si una bala hace veintiséis,
+   lo dice `balance.js` y nada más.
 
 ---
 

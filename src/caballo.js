@@ -151,7 +151,7 @@ export class Caballo {
     this.vel = 0;
     this.andar = 0;
     this.paso = 0;
-    this.vida = 6;
+    this.vida = VIDA_CABALLO;
     this.vivo = true;
     this.montado = false;
     this.caida = 0;

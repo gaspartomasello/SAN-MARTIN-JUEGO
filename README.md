@@ -130,18 +130,40 @@ pasarlo con `CHROMIUM=/ruta/al/chrome`.
 Las 195 llamadas ya pasan el presupuesto de 120 del GDD: cada realista son trece mallas
 sueltas. Es exactamente el problema que resuelve el sistema de multitud de la Fase 4.
 
-## Estructura
+## Los sistemas
+
+El código está partido por **sistema**, no por tipo de archivo, y cada uno importa sólo
+hacia abajo: no hay ciclos. Si hay que tocar algo, esta tabla dice dónde.
+
+| Archivo | De qué es dueño | Se abre cuando… |
+|---|---|---|
+| **`src/balance.js`** | **la tabla de la pelea**: vida, daño, puntería, volteo, aliento, saturación y cuántos entran | …la batalla dura poco, te matan rápido o los bots no fallan nunca |
+| `src/combate.js` | quién le pega a quién y qué pasa: tu tiro, tu sablazo, el fuego de ellos, la metralla, la tirada de la silla | …una regla de impacto está mal (no *cuánto* duele: eso es balance) |
+| `src/arsenal.js` | lo que llevás encima: tercerola, pistolón, sable, el fusil que le sacás a un caído, cartuchos, qué tenés en la mano | …se cambia de arma, se toma un fusil o se toca la carga |
+| `src/despliegue.js` | quién sale al campo, dónde y cuándo: la pinza, los cañones, los caballos, las oleadas | …hay que mover una formación o cambiar dónde desembarcan |
+| `src/gentio.js` | quién se dibuja entero y quién ocupa lugar: reparto de la lejanía y separación de los bots | …el cuadro se cae con mucha gente, o alguien atraviesa a alguien |
+| `src/mando.js` | teclado, mouse, captura del puntero, pausa y los dos botones de la portada | …se rebindea una tecla |
+| `src/soldados.js` | **el comportamiento** de un hombre: qué decide, cuándo corre, cuándo se da vuelta, la lanza | …un bot hace algo raro |
+| `src/caballo.js` | cuatro andares, salto, radio de giro, filo por velocidad | |
+| `src/jugador.js` | posturas, aliento, heridas, cámara, colisión | |
+| `src/pinza.js` | la maniobra: columnas, huecos, rutas. **Geometría pura: no sabe qué es un soldado** | |
+| `src/acto.js` | el acto Cabral | |
+| `src/lejania.js` | el horneado de posturas y las instancias | |
+| `src/estorbos.js` | radios, cajas y la rejilla de hash espacial | |
+| `src/armas.js` `src/sable.js` `src/canon.js` | las armas por dentro: carga de siete pasos, guardia, mecha | |
+| `src/figura.js` | la anatomía: huesos, IK, fusión de geometría | |
+| `src/mundo.js` `src/sanlorenzo.js` | el escenario: convento, barranca, el Paraná, luz de amanecer | |
+| `src/humo.js` `src/fuego.js` `src/audio.js` `src/hud.js` | efectos, sonido sintetizado e interfaz | |
+| `src/pasadaVelocidad.js` `src/pasadaArma.js` | las dos pasadas de render | |
+| **`src/main.js`** | **nada propio**: monta el escenario, ata los sistemas y corre el bucle | …hay que enchufar un sistema nuevo |
+
+La regla que ordena todo esto: **ningún archivo inventa un número de combate**. Si una
+bala hace 26, lo dice `balance.js` y nada más que `balance.js`. Para reequilibrar la
+batalla se abre un archivo solo.
 
 ```
-index.html        portada, HUD y capas de presentación
-src/main.js       bucle, balística, oleadas y cableado
-src/mundo.js      escena, luz de amanecer, cielo, pasto, blancos
-src/tercerola.js  modelo del arma y máquina de carga de siete pasos
-src/sable.js      sable curvo (lo mínimo hasta la Fase 2)
-src/humo.js       nubes instanciadas + grilla de densidad
-src/enemigo.js    infante de marina realista
-src/jugador.js    controlador, aliento, heridas, cámara
-src/hud.js        interfaz diegética
-src/audio.js      sonido sintetizado con Web Audio
-docs/GDD.md       documento de diseño completo
+index.html        portada de dos modos, HUD y capas de presentación
+herramientas/     el empaquetador de un solo archivo
+pruebas/          39 archivos de prueba, sobre Playwright
+docs/GDD.md       el documento de diseño y el registro de por qué
 ```

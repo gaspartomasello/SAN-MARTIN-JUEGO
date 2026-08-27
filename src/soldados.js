@@ -2,6 +2,14 @@ import * as THREE from 'three';
 import { Figura } from './figura.js';
 import { Caballo } from './caballo.js';
 import { sacarDeCaja, RADIO_HOMBRE } from './estorbos.js';
+// LOS NÚMEROS DE LA PELEA NO VIVEN ACÁ. Vida, daño, puntería, volteo, aliento
+// y saturación están todos en balance.js, que es el único archivo que hay que
+// abrir para reequilibrar la batalla. Acá vive el COMPORTAMIENTO: qué decide
+// un hombre, cuándo se da vuelta, cuánto tarda en bajar la lanza.
+import {
+  VIDA_TROPA, VOLTEO, OFICIO, tirar,
+  ALIENTO_TROPA, GASTO_CARRERA, RECUPERO, CARRERA_MINIMA, SATURACION
+} from './balance.js';
 
 // Soldados de los dos bandos. Misma anatomía, distinta casaca:
 //   granadero — casaca azul, vivos encarnados, morrión con penacho
@@ -30,20 +38,6 @@ import { sacarDeCaja, RADIO_HOMBRE } from './estorbos.js';
 // Y el fallo SE VE. Si la bala pasó cerca, zumba; si dio en el piso, levanta
 // tierra. Un tiro que falla sin dejar rastro es indistinguible de un tiro que
 // no existió.
-const CONO_FUSIL = 0.043;        // radianes: el cono del que salen los tiros
-const CONO_HINCADO = 0.62;       // con la rodilla en tierra el arma se apoya
-const CONO_HUMO = 1.6;           // por unidad de oclusión, el cono se abre
-const TEMBLOR = 0.52;            // metros de error que NO dependen de la distancia
-const BLANCO_HOMBRE = 0.34;      // medio ancho de un hombre de frente, en metros
-const ZUMBIDO = 1.6;             // a menos de esto, la bala se oye pasar
-
-// Desviación angular con colas: dos uniformes sumadas se parecen a una campana,
-// así que la mayoría de los tiros van cerca y de vez en cuando sale uno muy
-// abierto —o uno afortunado a sesenta metros—.
-function _desvio (cono) {
-  return (Math.random() + Math.random() - 1) * cono;
-}
-
 const VEL = 1.85;
 const VEL_CARRERA = 4.3;        // a la carrera, con el fusil corto y bajo
 const ALCANCE_TIRO = 62;
@@ -67,10 +61,6 @@ const RECARGA = 12.5;
 // para el jugador —es lo que impide jugar el duelo entero con la guardia en
 // alto— y acá hace exactamente lo mismo. Cuatro segundos de carrera, cinco de
 // resuello. Los intervalos salen solos y nadie los coreografió.
-const ALIENTO_TROPA = 100;
-const GASTO_CARRERA = 26;        // por segundo corriendo
-const RECUPERO = 13;             // por segundo caminando
-const CARRERA_MINIMA = 35;       // con menos que esto no arranca a correr
 
 // ---- NO TODOS AL MISMO BLANCO ----
 //
@@ -82,7 +72,6 @@ const CARRERA_MINIMA = 35;       // con menos que esto no arranca a correr
 // Se paga en metros: cada atacante que ya tiene un blanco lo aleja siete
 // metros a los ojos de los demás. El cuarto que te venía a buscar prefiere al
 // granadero de al lado antes que ser el quinto encima tuyo.
-const SATURACION = 7;
 
 // ---- NO SE DISPARA PARA CUALQUIER LADO ----
 //
@@ -154,17 +143,6 @@ const ATURDIDO = 1.35;      // lo que dura abierto tras una parada perfecta
 // —te pega, no te empuja—, la bayoneta desde abajo te busca la pierna y el
 // estribo, el asta del lancero te levanta de la silla porque para eso se
 // inventó, y la metralla no pregunta.
-export const VOLTEO = {
-  bala: 0.20,
-  bayoneta: 0.34,
-  lanza: 0.58,
-  metralla: 1
-};
-
-// Lo que resta un jinete de oficio. San Martín no era un recluta arriba de un
-// caballo: era comandante de caballería. Con esto, un balazo lo baja una vez
-// cada trece; a un lancero de la tropa, una de cada cinco.
-export const OFICIO = 0.62;
 
 const LANZA_ALCANCE = 3.6;      // 2,70 m de asta más el brazo desde la silla
 const LANZA_ENRISTRE = 15;      // a esta distancia baja el asta: el aviso largo
@@ -212,7 +190,7 @@ export class Soldado {
     this.vivo = true;
     // El doble de vida que antes: la pelea tenía que durar más. Un hombre
     // aguanta dos balazos de fusil, o dos bayonetazos, o un lanzazo.
-    this.vida = 4;
+    this.vida = VIDA_TROPA;
     this.estado = 'avanzar';
     this.t = 0;
     this.recarga = Math.random() * 4;
@@ -1054,19 +1032,8 @@ export class Soldado {
   // TIRAR. Devuelve dónde pasó la bala respecto del blanco, en metros, y si
   // acertó. Una sola regla para el tiro contra el jugador y contra la tropa:
   // antes eran dos cuentas distintas y ninguna tenía bala.
-  apuntarA (dist, oclusion, anchoBlanco = BLANCO_HOMBRE) {
-    let cono = CONO_FUSIL * (1 + oclusion * CONO_HUMO);
-    let temblor = TEMBLOR;
-    if (this.rodilla) { cono *= CONO_HINCADO; temblor *= CONO_HINCADO; }
-    // El error tiene dos partes y hace falta que tenga las dos. El cono crece
-    // con la distancia —es el arma— y el temblor no —es el hombre—. Con sólo
-    // el cono, a cinco metros la cuenta daba 100 % de acierto, y a bocajarro
-    // NADIE acierta siempre: hay humo, hay grito, el blanco se mueve y a vos
-    // te tiembla el pulso. El temblor es esa parte, y no se va nunca.
-    const dx = _desvio(cono) * dist + _desvio(temblor);
-    const dy = _desvio(cono) * dist + _desvio(temblor);
-    const fuera = Math.hypot(dx, dy);
-    return { acierto: fuera < anchoBlanco, fuera, dx, dy };
+  apuntarA (dist, oclusion, anchoBlanco) {
+    return tirar(dist, oclusion, anchoBlanco, this.rodilla);
   }
 
   _descargar () {
