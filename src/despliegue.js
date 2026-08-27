@@ -71,7 +71,8 @@ export function armarDespliegue (ctx) {
   function caballoCerca (metros) {
     let mejor = null, mejorD = metros;
     for (const c of caballos) {
-      if (!c.vivo || c.montado) continue;
+      // el caballo de la otra máquina no se monta: es un dibujo, no un animal
+      if (!c.vivo || c.montado || c.titere) continue;
       const d = c.pos.distanceTo(jugador.pos);
       if (d < mejorD) { mejor = c; mejorD = d; }
     }

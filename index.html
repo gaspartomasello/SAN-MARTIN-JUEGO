@@ -162,8 +162,8 @@
      La pinza y el clarín existían desde hace días y no se veían: había que
      escribir juego.formarPinza() en la consola. Una función que hay que
      invocar desde la consola no es una función del juego. */
-  .modos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:4px 0 24px}
-  @media (max-width:620px){.modos{grid-template-columns:1fr}}
+  .modos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:4px 0 24px}
+  @media (max-width:700px){.modos{grid-template-columns:1fr}}
   /* flex en columna: un <button> centra su contenido en vertical por defecto y
      las dos tarjetas quedaban desalineadas entre sí */
   .modo{display:flex;flex-direction:column;width:100%;text-align:left;text-transform:none;letter-spacing:normal;
@@ -185,6 +185,53 @@
   details.ayuda summary::-webkit-details-marker{display:none}
   details.ayuda summary::before{content:'▸ ';color:var(--bronce)}
   details.ayuda[open] summary::before{content:'▾ '}
+
+  /* ---- la sala de dos ----
+     La pinza son dos columnas. Hasta acá una la llevaba el jugador y la otra
+     la máquina; con esto la otra la puede llevar otra persona. */
+  #sala{position:fixed;inset:0;z-index:21;background:#0F141A;display:flex;align-items:center;
+    justify-content:center;padding:32px}
+  #sala.oculto{display:none}
+  .luz{display:flex;align-items:center;gap:11px;background:#161D25;
+    border:1px solid rgba(230,226,214,.16);padding:15px 18px;margin-bottom:14px}
+  .luz i{flex:0 0 9px;height:9px;border-radius:50%;background:#5E6A75;font-style:normal;
+    box-shadow:0 0 0 3px rgba(230,226,214,.06)}
+  .luz.va i{background:#9BC48F;animation:latido 1.6s ease-in-out infinite}
+  .luz.espera i{background:var(--bronce);animation:latido 1.1s ease-in-out infinite}
+  .luz.mal i{background:#E4797B}
+  @keyframes latido{0%,100%{opacity:1}50%{opacity:.35}}
+  .luz b{font-weight:600;letter-spacing:.13em;text-transform:uppercase;font-size:12.5px}
+  .luz span{color:#8B97A1;font-size:13px;letter-spacing:.02em;line-height:1.5}
+  .papeles{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(230,226,214,.13);
+    border:1px solid rgba(230,226,214,.13);margin-bottom:20px}
+  @media (max-width:620px){.papeles{grid-template-columns:1fr}}
+  .papel{background:#161D25;padding:14px 17px;opacity:.42;transition:opacity .2s}
+  .papel.vos{opacity:1;background:#1B242E}
+  .papel i{display:block;font-style:normal;color:#D9696C;font-weight:600;font-size:10.5px;
+    letter-spacing:.17em;text-transform:uppercase}
+  .papel b{display:block;font-family:"Libre Caslon Display",Georgia,serif;font-weight:400;
+    font-size:19px;margin:6px 0 4px}
+  .papel span{display:block;color:#8B97A1;font-size:12.5px;line-height:1.5}
+  .papel em{color:var(--bronce);font-style:normal;font-size:11px;letter-spacing:.15em;
+    text-transform:uppercase;font-weight:600}
+  #sala-manual{margin-bottom:18px}
+  #sala-manual.oculto{display:none}
+  #sala-manual label{display:block;color:#8B97A1;font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;margin-bottom:7px}
+  #sala-manual .fila{display:flex;gap:9px}
+  #sala-dir{flex:1;background:#0B1015;border:1px solid rgba(230,226,214,.22);color:var(--hueso);
+    font-family:var(--ui);font-size:14px;padding:12px 13px;letter-spacing:.03em}
+  #sala-dir:focus{outline:none;border-color:var(--bronce)}
+  .botones{display:flex;gap:11px;align-items:center;flex-wrap:wrap}
+  button.flojo{background:transparent;color:#8B97A1;border:1px solid rgba(230,226,214,.22)}
+  button.flojo:hover{background:#161D25;color:var(--hueso)}
+  button[disabled]{opacity:.32;cursor:not-allowed}
+  button[disabled]:hover{background:var(--bronce)}
+  .receta{margin:0 0 20px;padding:15px 18px;background:#12181F;border-left:2px solid var(--bronce)}
+  .receta p{margin:0 0 7px;color:#8B97A1;font-size:13px;line-height:1.65;letter-spacing:.02em}
+  .receta p:last-child{margin:0}
+  .receta code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
+    color:var(--bronce);background:rgba(198,155,84,.09);padding:1px 5px}
 </style>
 </head>
 <body>
@@ -241,6 +288,15 @@
           Vas a la cabeza de una columna: los sesenta te siguen <em>a vos</em>.
           Cuando quieras, tocás el clarín con <kbd>T</kbd> y salen las dos a la vez.</span>
       </button>
+      <button class="modo" id="modo-red">
+        <i>De a dos · red local</i>
+        <b>Los dos costados</b>
+        <span>San Martín no cargó solo: partió los ciento veinte en dos
+          escuadrones y el otro lo llevó el capitán <em>Justo Bermúdez</em>.
+          Uno lleva la columna del oeste y el otro la del este, cada uno en su
+          máquina, y la pinza se cierra de verdad. Hace falta levantar la sala
+          con <kbd>node herramientas/servidor.mjs</kbd>.</span>
+      </button>
       <button class="modo" id="modo-campo">
         <i>Práctica</i>
         <b>El campo de tiro</b>
@@ -290,6 +346,54 @@
     </details>
 
     <div class="pie">Clic para tomar el mouse · Esc para soltarlo y pausar</div>
+  </div>
+</div>
+
+<div id="sala" class="oculto">
+  <div class="caja">
+    <div class="franja"><i></i><i></i><i></i></div>
+    <div class="eyebrow">Dos jugadores · una red local</div>
+    <h1>Los dos costados</h1>
+    <p class="sub">Las dos columnas salieron a la vez por los dos costados del convento.
+      Una la lleva cada uno.</p>
+
+    <div class="luz" id="sala-luz"><i></i><div><b id="sala-titulo">Buscando la sala</b>
+      <span id="sala-detalle">…</span></div></div>
+
+    <div class="papeles">
+      <div class="papel" id="papel-anfitrion">
+        <i>Columna del oeste · anfitrión</i>
+        <b>José de San Martín</b>
+        <span>Lleva la batalla en su máquina y <em>toca el clarín</em>.
+          Es el que entra primero a la sala.</span>
+      </div>
+      <div class="papel" id="papel-invitado">
+        <i>Columna del este · invitado</i>
+        <b>Capitán Justo Bermúdez</b>
+        <span>Sesenta granaderos del otro lado. Sale cuando suena el clarín.</span>
+      </div>
+    </div>
+
+    <div class="receta" id="sala-receta">
+      <p>En una de las dos máquinas, parada en la carpeta del juego:</p>
+      <p><code>node herramientas/servidor.mjs</code></p>
+      <p>Imprime una dirección tipo <code>http://192.168.0.7:8099</code>. Los dos la abren
+        —el que la levantó también— y entran acá. El primero que llega es el anfitrión.</p>
+    </div>
+
+    <div id="sala-manual" class="oculto">
+      <label>Dirección de la sala</label>
+      <div class="fila">
+        <input id="sala-dir" type="text" spellcheck="false" placeholder="ws://192.168.0.7:8099">
+        <button id="sala-probar" class="flojo">Probar</button>
+      </div>
+    </div>
+
+    <div class="botones">
+      <button id="sala-entrar" disabled>Salir al campo</button>
+      <button id="sala-volver" class="flojo">Volver</button>
+    </div>
+    <div class="pie">El anfitrión forma las dos columnas al entrar · Esc para soltar el mouse</div>
   </div>
 </div>
 

@@ -177,9 +177,18 @@ export class Soldado {
     this.humo = humo;
     this.sonido = sonido;
     this.bando = bando || 'realista';
-    this.lancero = !!op.caballo && this.bando === 'granadero';
+    // en red el títere del lancero nace sin caballo —el animal es otra entidad
+    // que llega por su cuenta— y sin embargo tiene que salir con la lanza
+    this.lancero = op.lancero !== undefined
+      ? !!op.lancero
+      : (!!op.caballo && this.bando === 'granadero');
 
-    this.fig = new Figura(this.bando, Math.random(),
+    // La semilla decide cara, estatura y cómo le cae el uniforme. En red
+    // viaja por el cable: si cada máquina sorteara la suya, los dos jugadores
+    // verían la misma batalla peleada por dos ejércitos distintos.
+    this.semilla = op.semilla !== undefined ? op.semilla : Math.random();
+    this.tez = op.tez || null;
+    this.fig = new Figura(this.bando, this.semilla,
       { tez: op.tez, arma: this.lancero ? 'lanza' : null });
     // la malla exterior lleva el rumbo; la figura de adentro, el desplome
     this.malla = new THREE.Group();
@@ -247,6 +256,20 @@ export class Soldado {
     this.tPasada = 0;
     this.tirado = 0;          // > 0: en el suelo tras la caída, sin defensa
     this.alDesmontar = null;
+
+    // ---- EL TÍTERE ----
+    //
+    // En red, la batalla la piensa UNA sola máquina. En la otra este mismo
+    // hombre existe, se ve y se oye igual, pero no decide nada: lo mueve el
+    // parte que llega por el cable veinte veces por segundo.
+    //
+    // Y no puede recibir daño de su lado, porque entonces cada máquina llevaría
+    // su propia cuenta de muertos y a los dos minutos serían dos batallas.
+    // `alCastigo` es la puerta: lo que iba a ser un golpe se convierte en un
+    // pedido —«a éste le pegué»— que resuelve el que manda. Nada más del juego
+    // se entera: combate.js le pega igual que siempre.
+    this.titere = false;
+    this.alCastigo = null;
     if (op.caballo) this.montar(op.caballo);
   }
 
@@ -363,6 +386,8 @@ export class Soldado {
   // bayoneta que no te voltea, te hiere.
   recibir (dano, dir, volteo = 0) {
     if (!this.vivo) return false;
+    // el títere no se hiere solo: pide que lo hieran del otro lado
+    if (this.titere) return this.alCastigo ? !!this.alCastigo({ dano, volteo, dir }) : false;
     if (this.montado && volteo > 0 && Math.random() < volteo) { this.desmontar(true); return false; }
     this.vida -= dano;
     if (this.vida <= 0) {
@@ -390,6 +415,7 @@ export class Soldado {
   // parado en seco: se le corta el golpe y queda abierto
   aturdir (seg) {
     if (!this.vivo) return;
+    if (this.titere) { if (this.alCastigo) this.alCastigo({ aturdir: seg || ATURDIDO }); return; }
     this.aturdido = Math.max(this.aturdido, seg || ATURDIDO);
     this.avisando = false;
     this._pego = true;          // el golpe que venía ya no sale
@@ -445,7 +471,31 @@ export class Soldado {
     return mejorD;
   }
 
+  // EL TÍTERE SE DIBUJA, NO PIENSA.
+  //
+  // Todo lo que hace `actualizar` —elegir blanco, girar, decidir si carga,
+  // apuntar, disparar— acá no pasa: eso ya lo pensó la otra máquina y el
+  // resultado llega hecho. Lo único que queda es lo visual, y eso SÍ corre
+  // local, a los cuadros que dé la máquina: si esperáramos el parte para mover
+  // un brazo, el campo iría a veinte cuadros por segundo a los tirones.
+  //
+  // O sea: la posición y la pose vienen del cable veinte veces por segundo, y
+  // la animación entre parte y parte la hace cada máquina por su cuenta.
+  actualizarTitere (dt) {
+    if (!this.vivo) {
+      this.caida = Math.min(1, this.caida + dt * 2.6);
+      const e = 1 - Math.pow(1 - this.caida, 3);
+      this.fig.desplomar(e);
+      this.malla.position.y = -e * 0.10;
+      return;
+    }
+    if (this.montado) { this._sentar(); this.fig.actualizar(dt, false); return; }
+    this.malla.position.y = 0;
+    this.fig.actualizar(dt, this.andando, this.ritmo);
+  }
+
   actualizar (dt, jugador, soldados) {
+    if (this.titere) return this.actualizarTitere(dt);
     if (!this.vivo) {
       this.caida = Math.min(1, this.caida + dt * 2.6);
       const e = 1 - Math.pow(1 - this.caida, 3);

@@ -64,6 +64,10 @@ export class Columna {
     this.punto = 0;
     this.hombres = [];
     this.jefe = null;             // el Soldado que va adelante, si no la manda el jugador
+    // EN RED: la columna del este la manda el otro jugador, que no es un
+    // Soldado ni es `jugador` —está en la otra máquina—. Una función que
+    // devuelve dónde va su caballo alcanza para que los sesenta lo sigan.
+    this.remota = null;
     this.estado = 'formada';      // formada → saliendo → suelta
     this.alSoltar = null;
     this.alHeredar = null;
@@ -75,6 +79,7 @@ export class Columna {
 
   // De dónde cuelga la formación: el caballo del jugador, o el del jefe.
   _cabeza (jugador) {
+    if (this.remota) return this.remota();
     if (this.jefe) {
       if (this.jefe.vivo && this.jefe.montado) {
         const c = this.jefe.monta;

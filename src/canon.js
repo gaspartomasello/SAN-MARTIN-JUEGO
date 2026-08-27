@@ -90,6 +90,9 @@ export class Canon {
     this.objetivo = null;
     this.alDisparar = null;
     this.sirvientes = [];          // los artilleros: si caen todos, la pieza calla
+    // en red: la pieza de la otra máquina no piensa ni se hiere de este lado
+    this.titere = false;
+    this.alCastigo = null;
     this._v = new THREE.Vector3();
     this._humoPos = new THREE.Vector3();
     this._humoDir = new THREE.Vector3();
@@ -108,6 +111,7 @@ export class Canon {
 
   recibir (dano) {
     if (!this.vivo) return false;
+    if (this.titere) return this.alCastigo ? !!this.alCastigo({ dano }) : false;
     this.vida -= dano;
     if (this.vida <= 0) {
       this.vivo = false;
@@ -138,6 +142,9 @@ export class Canon {
   }
 
   actualizar (dt, candidatos) {
+    // en red la pieza de la otra máquina no busca blanco ni ceba: hace lo que
+    // dice el parte. Ver soldados.js, «EL TÍTERE».
+    if (this.titere) return;
     if (!this.vivo) return;
     this.t += dt;
     this.recarga = Math.max(0, this.recarga - dt);

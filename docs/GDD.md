@@ -1238,6 +1238,164 @@ la que cuelga todo lo que pelea.
 
 ---
 
+### Los dos costados (Fase 9): la pinza jugada por dos
+
+San Martín no cargó solo, y eso estaba faltando en el juego de una manera rara: la
+maniobra que ganó la batalla es que **dos** escuadrones salieran a la vez por los dos
+costados del convento, y hasta ahora uno lo llevaba el jugador y el otro lo llevaba una
+rutina. Media pinza era una decoración.
+
+El otro escuadrón lo llevó el capitán **Justo Bermúdez**. Ahora lo puede llevar una
+persona, en la máquina de al lado.
+
+|  | Anfitrión | Invitado |
+|---|---|---|
+| Quién es | José de San Martín | capitán Justo Bermúdez |
+| Columna | oeste | este |
+| El clarín | **lo toca él** | espera la señal |
+| Qué simula | **la batalla entera** | sólo su propio cuerpo |
+
+**El clarín lo toca uno solo, y no es una limitación técnica.** Dos clarines son dos
+cargas. Uno solo es una pinza. Y la espera —estar formado detrás del convento, en
+silencio, sin poder hacer nada hasta que el otro dé la señal— es la primera de las tres
+cosas que este juego siempre quiso que se pudieran jugar. Con un compañero del otro lado
+recién ahí se siente de verdad.
+
+#### La decisión de fondo: una sola batalla
+
+Hay dos maneras de hacer esto y son incompatibles.
+
+**Paso fijo determinista.** Las dos máquinas corren la misma simulación y sólo se pasan
+las teclas. Barato en cable y elegante… si las dos llegan **siempre** al mismo resultado,
+cuadro por cuadro, durante quince minutos. Con cuatrocientos hombres tirando dados y
+cientos de llamadas a `Math.random()` por cuadro, la primera diferencia de una millonésima
+entre dos procesadores termina, un minuto después, en dos batallas distintas: en una
+máquina ganaste y en la otra estás muerto. No se arregla después; sólo se evita.
+
+**Un solo simulador.** El anfitrión piensa toda la batalla —los 250 realistas, los 120
+granaderos, los caballos, las dos piezas, quién le pega a quién— y le manda al otro un
+**parte** veinte veces por segundo. Eso no puede desincronizarse porque no hay dos
+cuentas: hay una.
+
+Se eligió el segundo. Cuesta cable y el cable, medido, no es un problema.
+
+#### Lo que sí es de cada uno: su propio cuerpo
+
+Si el invitado tuviera que pedirle permiso al anfitrión para dar un paso, el juego se
+sentiría pegajoso aunque el retardo fuera de dos milésimas. Así que **cada jugador se
+mueve, apunta, carga y sablea en su máquina, sin esperar a nadie**. Lo que manda por el
+cable es dónde quedó, no dónde quiere ir.
+
+Y lo que un jugador le hace a la tropa del otro viaja como **pedido**: «a éste le pegué
+tanto». Lo resuelve el anfitrión y vuelve en el parte siguiente.
+
+#### El títere, y por qué `combate.js` no cambió una línea
+
+El hombre de la otra máquina existe, se ve, se oye, se puede sablear y ocupa lugar. Lo
+único que no puede es **herirse de este lado**, porque entonces cada máquina llevaría su
+propia cuenta de muertos.
+
+La tentación era meterle a `combate.js` un `if (enRed)` en cada resolución de impacto.
+Habrían sido siete, y `combate.js` es justamente el archivo que no tiene que saber nada
+de esto. La salida fue poner el desvío **un nivel más abajo**, en el propio hombre:
+
+```js
+recibir (dano, dir, volteo = 0) {
+  if (!this.vivo) return false;
+  // el títere no se hiere solo: pide que lo hieran del otro lado
+  if (this.titere) return this.alCastigo ? !!this.alCastigo({ dano, volteo, dir }) : false;
+  ...
+```
+
+Tres líneas en `soldados.js`, dos en `caballo.js`, dos en `canon.js`. `combate.js` le
+pega igual que siempre y no se entera de que hay una red. Lo mismo con el pensamiento:
+el guardia de títere va **dentro** de `actualizar`, no en quien lo llama, para que ningún
+bucle —ni uno que se escriba mañana— pueda hacerle pensar a un títere.
+
+El mismo gancho sirve en los **dos sentidos**, que es lo que lo hace valer la pena. Del
+lado del invitado convierte su sablazo en un pedido; del lado del anfitrión, el cuerpo
+del invitado es un títere más, así que cuando un realista le mete la bayoneta el daño
+sale por el cable hacia su dueño. Un solo mecanismo para las dos direcciones.
+
+#### El invitado no es un fantasma
+
+El cuerpo del compañero se mete en el array `soldados` de las **dos** máquinas, y no es
+un detalle de implementación: del lado del anfitrión es lo que hace que los realistas lo
+**vean** —lo eligen de blanco y le tiran como a cualquier granadero—, y de los dos lados
+le da lejanía, animación y su renglón en la cuenta de vivos, sin una línea de código
+aparte. Meterlo en la lista que ya existe salió más barato que cualquier caso especial.
+
+Y la columna del este cuelga de él por una función de tres líneas en `pinza.js`:
+
+```js
+_cabeza (jugador) {
+  if (this.remota) return this.remota();
+  ...
+```
+
+La Pinza no sabe ni le importa que esa cabeza esté a treinta metros o a treinta
+kilómetros. Si el invitado se desmonta o lo matan, la cabeza desaparece y la columna la
+hereda un sargento — exactamente lo mismo que ya pasaba en solo.
+
+#### Los dos formatos, y por qué son dos
+
+| | Va en | Por qué |
+|---|---|---|
+| **El parte del mundo** — 375 hombres, 121 caballos, 2 piezas, 20 veces por segundo | **binario** | En JSON serían 40.000 caracteres por paquete, 800 KB/s y un recolector de basura trabajando todo el tiempo. En binario son **6,3 KB** por paquete. |
+| **Todo lo demás** — nacimientos, muertes, disparos, avisos, el cuerpo del otro | **JSON** | Son pocos y espaciados. En JSON se leen con los ojos cuando algo anda mal, y optimizarlos sería cambiar claridad por nada. |
+
+La regla para distinguirlos no cuesta un byte: en el navegador un mensaje de texto es
+JSON y uno binario es el mundo.
+
+Cada hombre entra en **catorce bytes**: número, tres posiciones en centímetros, el rumbo
+en 1/65536 de vuelta, la **pose** —el índice de la postura, no el estado de la IA— y un
+byte de banderas. Mandar la pose y no la posición de cada hueso es lo que permite que la
+animación corra **local**, a los cuadros que dé cada máquina: si se esperara el parte
+para mover un brazo, el campo iría a veinte cuadros por segundo a los tirones. El parte
+dice *en qué postura está*; interpolar entre parte y parte lo hace cada uno por su cuenta.
+
+#### Lo medido
+
+| | |
+|---|---|
+| Parte del mundo, batalla entera (375 hombres, 121 caballos) | **6.322 bytes** |
+| Cable total, con todo el tráfico de sucesos | **114 KB/s** ≈ 0,9 Mbit/s |
+| Error de posición entre las dos máquinas | **0,28 m** en el peor hombre |
+| Dependencias del servidor | **ninguna** — 250 líneas de Node, RFC 6455 a mano |
+
+#### El bicho que agarró la prueba
+
+`pruebas/red.mjs` levanta el servidor, abre **dos** navegadores y comprueba que estén
+viendo la misma batalla. Contando cosas encontró esto: el invitado tenía **ocho** piezas
+de artillería donde el anfitrión tenía dos.
+
+Al rearmar la batalla, el invitado barría dos de sus tres listas y se olvidaba de los
+cañones. Los dos que quedaban perdían su número —así que ningún mensaje de «quitar»
+podía volver a encontrarlos— y el armado siguiente les sumaba dos más encima. Cada
+rearmado dejaba dos cañones fantasma plantados en la playa, apuntando a nadie, para
+siempre.
+
+Es exactamente la clase de error que no se ve jugando —dos cañones de más entre
+trescientos setenta hombres no se notan— y que una prueba que **cuenta** agarra en el
+primer intento.
+
+#### Lo que queda afuera, dicho de frente
+
+- **Es red local.** Las dos máquinas tienen que verse. No hay emparejamiento por
+  internet, ni cuentas, ni atravesar routers.
+- **Son dos, no más.** La pinza son dos columnas. Un tercero recibe un cartel.
+- **Si se va el anfitrión, se termina.** Era el que estaba pensando la batalla. El
+  invitado se entera con un cartel en vez de quedarse mirando un campo congelado.
+- **El acto Cabral es de San Martín.** Cabral no se murió por cualquiera: se murió por el
+  que quedó con la pierna abajo del caballo. Al invitado le matan el caballo y se cae,
+  como a todo el mundo.
+- **No hay reconciliación fina.** Entre parte y parte cada títere persigue su destino con
+  una exponencial de tres líneas. No es un búfer de interpolación con historial; a la
+  velocidad a la que se mueve un hombre no se distingue, y si algún día se distingue, se
+  cambia ahí.
+
+---
+
 ### El duelo (Fase 2)
 
 Dos formas de ganar un intercambio, y ninguna es apretar el botón de tajo.
@@ -1320,7 +1478,9 @@ src/
   arsenal.js      lo que llevás encima y qué tenés en la mano
   despliegue.js   quién sale al campo, dónde y cuándo
   gentio.js       quién se dibuja entero y quién ocupa lugar
-  mando.js        teclado, mouse, puntero, pausa y los dos modos
+  mando.js        teclado, mouse, puntero, pausa, la sala y los tres modos
+  red.js          el otro costado de la pinza, en la otra máquina
+  protocolo.js    QUÉ SE MANDA por el cable, byte por byte (hoja, como balance)
   main.js         monta el escenario, ata los sistemas, corre el bucle
 
   soldados.js     el comportamiento de un hombre
@@ -1342,15 +1502,16 @@ src/
   pasadaVelocidad.js  pasadaArma.js
 
 vendor/           three.js, vendorizado: no hay npm en tiempo de ejecución
-herramientas/     empaquetar.mjs, el único paso de construcción que existe
-pruebas/          39 archivos sobre Playwright, contra el juego de verdad
+herramientas/     empaquetar.mjs (el único paso de construcción) y servidor.mjs
+pruebas/          40 archivos sobre Playwright, contra el juego de verdad
 ```
 
 Las dos reglas que sostienen el reparto:
 
 1. **Cada archivo importa hacia abajo y nunca hacia el costado.** El grafo no
-   tiene ciclos. `balance.js` y `mando.js` son hojas: uno no importa nada
-   porque son puros números, el otro porque sólo traduce teclas.
+   tiene ciclos. `balance.js`, `protocolo.js` y `mando.js` son hojas: los dos
+   primeros no importan nada del proyecto —uno son puros números, el otro puros
+   bytes—, y el tercero sólo traduce teclas.
 2. **Ningún archivo inventa un número de combate.** Si una bala hace veintiséis,
    lo dice `balance.js` y nada más.
 

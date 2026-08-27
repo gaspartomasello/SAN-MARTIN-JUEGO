@@ -23,7 +23,7 @@ npm run empaquetar      # genera clarin-san-lorenzo.html (~1,3 MB)
 
 Después se abre con doble clic desde el escritorio. Adentro:
 
-1. Elegís uno de los **dos modos** de la portada.
+1. Elegís uno de los **tres modos** de la portada.
 2. **Clic en la pantalla** para que el navegador entregue el mouse.
 3. **`Esc`** lo suelta y pausa la partida: aparece el cursor, nadie avanza ni te tira, y
    con un clic volvés al combate.
@@ -31,12 +31,73 @@ Después se abre con doble clic desde el escritorio. Adentro:
 Anda en Chrome, Edge y Firefox de escritorio. Necesita teclado y mouse, así que en
 celular no se juega.
 
-### Los dos modos
+### Los tres modos
 
 | | |
 |---|---|
 | **El clarín** — *la batalla* | 3 de febrero de 1813, cinco y media de la mañana. Ciento veinte granaderos formados **detrás** del convento en dos columnas de sesenta, y doscientos cincuenta realistas subiendo de la barranca con dos cañones sin saber que estás ahí. Vas a la cabeza de una columna: los sesenta te siguen **a vos**. Cuando quieras, tocás el clarín con **`T`** y salen las dos a la vez. |
+| **Los dos costados** — *de a dos, red local* | La misma batalla con un amigo, cada uno en su máquina. Uno lleva la columna del oeste como San Martín y el otro la del este como el capitán **Justo Bermúdez**, que es como fue. Hace falta levantar la sala: ver más abajo. |
 | **El campo de tiro** — *práctica* | Cuartel del Retiro, diciembre de 1812. Para aprender lo que no se parece a un shooter moderno: cargar en siete pasos, parar una bayoneta en el instante justo y andar a caballo sin que te maten. Con **`O`** empiezan a venir. |
+
+---
+
+## De a dos, en la misma red
+
+San Martín no cargó solo. Partió los ciento veinte granaderos en dos escuadrones: llevó
+uno él y el otro lo llevó el capitán **Justo Bermúdez**. Las dos columnas salieron a la
+vez por los dos costados del convento y se cerraron sobre el desembarco al mismo tiempo.
+Eso es la pinza, y es lo único que ganó la batalla.
+
+Hasta ahora una columna la llevaba el jugador y la otra la máquina. Ahora la otra la
+puede llevar otra persona.
+
+**En una de las dos máquinas** —cualquiera de las dos, pero tiene que tener el proyecto
+clonado y Node instalado:
+
+```bash
+npm run sala            # node herramientas/servidor.mjs
+```
+
+Imprime algo así:
+
+```
+  En esta máquina:   http://localhost:8099
+  En la otra máquina, cualquiera de éstas:
+                     http://192.168.0.7:8099
+```
+
+**Los dos abren esa dirección** —el que levantó la sala también, por `localhost`— y
+eligen **«Los dos costados»**. El primero que entra es el anfitrión.
+
+| | |
+|---|---|
+| **Anfitrión** · José de San Martín · columna del **oeste** | **Simula la batalla entera** en su máquina y es el único que **toca el clarín**. Es el que entra primero a la sala. |
+| **Invitado** · capitán Justo Bermúdez · columna del **este** | Sus sesenta granaderos lo siguen a él. Sale cuando suena el clarín del otro. |
+
+**El clarín lo toca uno solo, y a propósito.** Dos clarines son dos cargas; uno solo es
+una pinza. Esa espera —estar formado detrás del convento sin poder hacer nada hasta que
+el otro dé la señal— es lo que se sintió el 3 de febrero a las cinco y media.
+
+Detalles que conviene saber:
+
+- **No hace falta instalar nada más.** El servidor son doscientas líneas de Node sin una
+  sola dependencia: sirve los archivos del juego y pasa mensajes entre los dos
+  navegadores. No sabe qué es un granadero.
+- **Es red local.** Las dos máquinas tienen que verse: el mismo wifi o el mismo cable.
+  No hay servidores en internet ni cuentas ni nada por el estilo.
+- **Cuesta un megabit por segundo.** Medido con la batalla entera —375 hombres y 121
+  caballos— da **114 KB/s**. Cualquier wifi de casa mueve cincuenta veces eso.
+- **Si se va el anfitrión, se termina la batalla**, porque era el que la estaba
+  pensando. El invitado se entera con un cartel en vez de quedarse mirando un campo
+  congelado.
+- **El archivo único no sirve para esto.** El `.html` autocontenido se abre sin
+  servidor, y sin servidor no hay sala. Para jugar de a dos hay que entrar por la
+  dirección que imprime `npm run sala`. Si se lo intenta igual, el juego lo dice.
+- **El acto Cabral es de San Martín.** Cabral no se murió por cualquiera: se murió por
+  el que quedó con la pierna abajo del caballo. Al invitado le matan el caballo y se
+  cae, como a todo el mundo.
+
+---
 
 **Camino de desarrollo — servidor estático.** No hay build: three.js está vendorizado en
 `vendor/`, así que alcanza con servir la carpeta y recargar el navegador.
@@ -79,6 +140,8 @@ Lo que **ya funciona**:
 - **La tropa que se cansa y se acomoda**: corren a intervalos porque el aliento es un
   recurso, no se apilan todos sobre el mismo blanco, se dan vuelta antes de apuntar y no
   le tiran en la nuca al compañero de adelante.
+- **La pinza de a dos, en red local**: las dos columnas llevadas por dos personas, cada
+  una en su máquina, con una sola simulación de por medio para que no haya dos batallas.
 
 Lo que **todavía no** está: **la moral**, y por lo tanto el final. Hoy la única forma de
 ganar es matar a los 250 de a uno, que es justo lo contrario de lo que pasó —la línea se
@@ -104,6 +167,7 @@ barranca, el epílogo del pino y los modos sueltos.
 | `G` | tomar el fusil de un realista caído / intercambiar |
 | `B` | revisar la cartuchera |
 | `V` | vendarse |
+| `T` | **tocar el clarín** (en la batalla; en red, sólo San Martín) |
 | `O` | que vengan los realistas |
 | `F3` | datos de depuración |
 
@@ -113,7 +177,13 @@ barranca, el epílogo del pino y los modos sueltos.
 npm run ritmo         # mide la carga con y sin acertar los tiempos
 npm run rendimiento   # llamadas de dibujo y triángulos bajo carga
 npm run capturas      # capturas de pantalla a capturas/
+npm run red           # dos navegadores, el servidor y el cable de verdad
 ```
+
+`npm run red` levanta la sala, abre **dos** navegadores, los conecta y comprueba que los
+dos estén viendo *la misma* batalla: que el invitado reciba los 375 hombres sin perder a
+nadie, que estén en el mismo lugar y no cerca, que un tiro suyo **mate del lado del
+anfitrión** y que la columna del este lo siga a él.
 
 Requieren `npm i` y un Chromium; si no está en el `PATH` de Playwright,
 pasarlo con `CHROMIUM=/ruta/al/chrome`.
@@ -142,7 +212,9 @@ hacia abajo: no hay ciclos. Si hay que tocar algo, esta tabla dice dónde.
 | `src/arsenal.js` | lo que llevás encima: tercerola, pistolón, sable, el fusil que le sacás a un caído, cartuchos, qué tenés en la mano | …se cambia de arma, se toma un fusil o se toca la carga |
 | `src/despliegue.js` | quién sale al campo, dónde y cuándo: la pinza, los cañones, los caballos, las oleadas | …hay que mover una formación o cambiar dónde desembarcan |
 | `src/gentio.js` | quién se dibuja entero y quién ocupa lugar: reparto de la lejanía y separación de los bots | …el cuadro se cae con mucha gente, o alguien atraviesa a alguien |
-| `src/mando.js` | teclado, mouse, captura del puntero, pausa y los dos botones de la portada | …se rebindea una tecla |
+| `src/mando.js` | teclado, mouse, captura del puntero, pausa, la sala de dos y los tres botones de la portada | …se rebindea una tecla |
+| `src/red.js` | **el otro costado de la pinza**: quién simula, qué se replica, los títeres y el cuerpo del compañero | …algo se ve distinto en las dos máquinas |
+| `src/protocolo.js` | **qué se manda por el cable**, byte por byte. Hoja del árbol: no importa nada del proyecto | …hay que agregar algo al parte del mundo |
 | `src/soldados.js` | **el comportamiento** de un hombre: qué decide, cuándo corre, cuándo se da vuelta, la lanza | …un bot hace algo raro |
 | `src/caballo.js` | cuatro andares, salto, radio de giro, filo por velocidad | |
 | `src/jugador.js` | posturas, aliento, heridas, cámara, colisión | |
@@ -162,8 +234,8 @@ bala hace 26, lo dice `balance.js` y nada más que `balance.js`. Para reequilibr
 batalla se abre un archivo solo.
 
 ```
-index.html        portada de dos modos, HUD y capas de presentación
-herramientas/     el empaquetador de un solo archivo
-pruebas/          39 archivos de prueba, sobre Playwright
+index.html        portada de tres modos, sala de dos, HUD y capas de presentación
+herramientas/     el empaquetador de un solo archivo y el servidor de la sala
+pruebas/          40 archivos de prueba, sobre Playwright
 docs/GDD.md       el documento de diseño y el registro de por qué
 ```

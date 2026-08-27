@@ -1,16 +1,16 @@
 // ===========================================================================
-// EL MANDO · el teclado, el mouse y los dos modos
+// EL MANDO · el teclado, el mouse y los tres modos
 // ===========================================================================
 //
 // La única parte del juego que habla con el navegador: teclas, botones,
-// captura del puntero, la pantalla de pausa y los dos botones de la portada.
+// captura del puntero, la pantalla de pausa y los tres botones de la portada.
 //
 // No decide nada. Traduce «apretó F» a «puntazo» o «pechada» y le pide al
 // módulo que corresponda que lo haga. Si algo de acá pareciera lógica de
 // juego, está en el archivo equivocado.
 
 export function armarMando (ctx) {
-  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido } = ctx;
+  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red } = ctx;
 
   const teclas = new Set();
   const sensibilidad = 0.0021;
@@ -61,7 +61,17 @@ export function armarMando (ctx) {
       case 'Digit2': arsenal.cambiar('sable'); break;
       case 'Digit3': arsenal.cambiar('pistolon'); break;
       // EL CLARÍN. Una sola tecla, una sola vez, y salen los ciento veinte.
+      //
+      // En red lo toca UNO SOLO, y es San Martín. No es una limitación técnica:
+      // es la maniobra. Dos clarines son dos cargas; uno solo es una pinza. Y
+      // esa espera —estar formado del otro lado del convento sin poder hacer
+      // nada hasta que el otro dé la señal— es exactamente lo que se sintió el
+      // 3 de febrero a las cinco y media de la mañana.
       case 'KeyT': {
+        if (red && red.esInvitado) {
+          hud.mostrarAviso('El clarín lo toca San Martín', 'malo');
+          break;
+        }
         if (pinza.sonando) pinza.tocar();
         else if (pinza.viva) hud.mostrarAviso('El clarín ya sonó', 'malo');
         else hud.mostrarAviso('No hay columna formada', 'malo');
@@ -74,7 +84,13 @@ export function armarMando (ctx) {
       case 'Enter':
         if (!jugador.vivo) {
           jugador.revivir();
-          campo.limpiarCampo();
+          // EN RED EL CAMPO NO ES TUYO. Barrerlo acá haría dos destrozos: al
+          // invitado le borraría los títeres que el anfitrión sigue moviendo
+          // —y le seguirían llegando partes de hombres que ya no existen—, y
+          // al anfitrión le limpiaría de un plumazo la batalla que el otro
+          // está peleando. En una pelea compartida no se borra a todos porque
+          // uno se cayó: se vuelve a formar y se sigue.
+          if (!red.activo) campo.limpiarCampo();
           arsenal.reponer();
           campo.ponerCaballo();
           hud.mostrarAviso('En pie', 'bien');
@@ -175,9 +191,85 @@ export function armarMando (ctx) {
   document.getElementById('modo-batalla').addEventListener('click', () => arrancar('batalla'));
   document.getElementById('modo-campo').addEventListener('click', () => arrancar('campo'));
 
+  // ------------------------------ la sala de dos ------------------------------
+  //
+  // Igual que los otros dos modos: acá no hay lógica de red, hay botones. Todo
+  // lo que sabe este bloque es pedirle a red.js que llame y pintar en pantalla
+  // lo que red.js contesta.
+  const pantallaSala = document.getElementById('sala');
+  const luz = document.getElementById('sala-luz');
+  const titulo = document.getElementById('sala-titulo');
+  const detalle = document.getElementById('sala-detalle');
+  const entrar = document.getElementById('sala-entrar');
+  const manual = document.getElementById('sala-manual');
+  const papeles = {
+    anfitrion: document.getElementById('papel-anfitrion'),
+    invitado: document.getElementById('papel-invitado')
+  };
+
+  const CARTELES = {
+    suelto: ['Sala cerrada', 'Nadie está llamando.'],
+    llamando: ['Buscando la sala', 'Golpeando la puerta del servidor…'],
+    esperando: ['Falta el otro escuadrón', 'Ya estás adentro. Que el otro abra la misma dirección.'],
+    listo: ['Los dos escuadrones en la sala', 'Cuando quieras, al campo.'],
+    caido: ['No hay sala', '']
+  };
+
+  function pintarSala (p) {
+    const [t, d] = CARTELES[p.fase] || CARTELES.suelto;
+    titulo.textContent = p.fase === 'listo' && p.rol
+      ? (p.rol === 'anfitrion' ? 'Sos San Martín · columna del oeste' : 'Sos Bermúdez · columna del este')
+      : t;
+    detalle.textContent = p.motivo || d;
+    luz.classList.toggle('va', p.fase === 'listo');
+    luz.classList.toggle('espera', p.fase === 'llamando' || p.fase === 'esperando');
+    luz.classList.toggle('mal', p.fase === 'caido');
+    papeles.anfitrion.classList.toggle('vos', p.rol === 'anfitrion');
+    papeles.invitado.classList.toggle('vos', p.rol === 'invitado');
+    manual.classList.toggle('oculto', p.fase !== 'caido');
+    entrar.disabled = p.fase !== 'listo';
+    entrar.textContent = p.rol === 'anfitrion'
+      ? 'Formar las columnas y salir al campo'
+      : 'Salir al campo';
+  }
+
+  function abrirSala () {
+    document.getElementById('portada').classList.add('oculto');
+    pantallaSala.classList.remove('oculto');
+    red.alCambiar(pintarSala);
+    red.conectar();
+    pintarSala(red.parte());
+  }
+
+  function cerrarSala () {
+    red.cortar();
+    pantallaSala.classList.add('oculto');
+    document.getElementById('portada').classList.remove('oculto');
+  }
+
+  document.getElementById('modo-red').addEventListener('click', abrirSala);
+  document.getElementById('sala-volver').addEventListener('click', cerrarSala);
+  document.getElementById('sala-probar').addEventListener('click', () => {
+    const dir = document.getElementById('sala-dir').value.trim();
+    if (!dir) return;
+    red.cortar();
+    red.conectar(dir.startsWith('ws') ? dir : 'ws://' + dir.replace(/^https?:\/\//, ''));
+  });
+  entrar.addEventListener('click', () => {
+    pantallaSala.classList.add('oculto');
+    sonido.iniciar();
+    empezado = true;
+    tSoltado = 0;
+    // el anfitrión arma la batalla —es el que la va a simular—; el invitado
+    // entra a un campo vacío y los trescientos setenta le llegan por el cable
+    if (red.esAnfitrion) red.formarBatalla();
+    lienzo.requestPointerLock();
+  });
+
   return {
     teclas,
     arrancar,
+    abrirSala,
     // el mundo no corre con la pausa puesta, pero se sigue dibujando
     get enPausa () { return empezado && !bloqueado; }
   };

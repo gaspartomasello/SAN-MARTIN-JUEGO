@@ -10,7 +10,9 @@
 //   arsenal.js    lo que llevás encima y qué tenés en la mano
 //   despliegue.js quién sale al campo, dónde y cuándo
 //   gentio.js     quién se dibuja entero y quién ocupa lugar
-//   mando.js      el teclado, el mouse y los dos modos
+//   mando.js      el teclado, el mouse y los tres modos
+//   red.js        el otro costado de la pinza, en la otra máquina
+//   protocolo.js  qué se manda por el cable, byte por byte
 //
 // Los sistemas no se conocen entre sí: cada uno recibe acá lo que necesita.
 // Por eso el orden del armado importa y está comentado donde importa.
@@ -34,6 +36,7 @@ import { armarArsenal } from './arsenal.js';
 import { armarDespliegue } from './despliegue.js';
 import { armarGentio } from './gentio.js';
 import { armarMando } from './mando.js';
+import { armarRed } from './red.js';
 import { VOLTEO, OFICIO, METRALLA_CABALLO, CAIDA } from './balance.js';
 
 // ---------------------------------------------------------------------------
@@ -111,9 +114,16 @@ const combate = armarCombate({
   montado, conSable: () => arsenal.conSable()
 });
 
+// Un solo enganche extra en red: cada vez que tu arma escupe, el otro jugador
+// tiene que ver el fogonazo. El daño no pasa por ahí —lo resuelve combate.js
+// como siempre, contra los títeres, que ya saben cómo pedir permiso—.
+let red = null;
 arsenal = armarArsenal({
   camara, camaraArma, sonido, humo, hud, sable, jugador, soldados,
-  resolverDisparo: combate.resolverDisparo,
+  resolverDisparo: (o, d, disp) => {
+    if (red) red.avisarTiro(o, d);
+    combate.resolverDisparo(o, d, disp);
+  },
   resolverGolpe: combate.resolverGolpe
 });
 sable.alGolpear = combate.sablazo;
@@ -122,12 +132,43 @@ sable.alGolpear = combate.sablazo;
 // combate.js les cobra los balazos
 const campo = armarDespliegue({
   escena, mundo, humo, sonido, hud, jugador, soldados, caballos, pinza, canones,
-  disparoEnemigo: combate.disparoEnemigo,
+  // el disparo de la tropa y el cañonazo también se le cuentan al otro: son
+  // los dos ruidos que arman la batalla y sin ellos el campo se siente mudo
+  disparoEnemigo: (q, o, d, ob) => {
+    if (red) red.avisarTiroTropa(o, d);
+    combate.disparoEnemigo(q, o, d, ob);
+  },
   golpeEnemigo: combate.golpeEnemigo,
-  resolverMetralla: combate.resolverMetralla
+  resolverMetralla: c => {
+    if (red) red.avisarCanon(c);
+    combate.resolverMetralla(c);
+  }
 });
 
 const gentio = armarGentio({ jugador, soldados, caballos, lejania });
+
+// LA RED. Va último porque necesita el campo ya armado, y hasta que alguien
+// no elija «Los dos costados» en la portada no hace absolutamente nada: en
+// solo, `red.esInvitado` es false y el juego corre igual que siempre.
+//
+// La pose es lo único que el otro no puede deducir de una posición: si vas
+// apuntando, cargando, con el sable en alto o embalado con la lanza. Va por
+// el cable en una palabra y del otro lado la figura se arma sola.
+function poseDelJugador () {
+  if (!jugador.vivo) return 'aturdido';
+  if (montado()) return jugador.monta.vel > 4.2 ? 'enristre' : 'lanzaAlto';
+  const a = arsenal.actual();
+  if (!a) return 'guardia';
+  if (a.cargando) return 'recargar';
+  if (arsenal.apuntando) return 'apuntar';
+  return 'marcha';
+}
+
+red = armarRed({
+  escena, humo, fuego, sonido, hud, jugador,
+  soldados, caballos, canones, pinza, campo, luzBoca, montado,
+  poseDelJugador, intentarVoltear: combate.intentarVoltear
+});
 
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 jugador.alMorir = () => hud.mostrarAviso('Fuera de combate', 'malo');
@@ -149,13 +190,30 @@ pinza.oeste.alSoltar = () => {
   hud.mostrarAviso('¡Se rompió la formación!', 'malo');
   hud.decir('Ya no hay columna. Ahora son sesenta hombres y vos.', 4);
 };
+// LA COLUMNA DEL ESTE, CUANDO LA LLEVA UNA PERSONA.
+//
+// El aviso se dispara donde VIVE la columna, que es la máquina del anfitrión,
+// y hay que mandárselo al que la está llevando, que está en la otra. En solo
+// no cambia nada: sin compañero, `red.contar` no manda nada a ningún lado.
+pinza.este.alSoltar = () => {
+  red.contar('¡Se rompió la formación!', 'malo',
+    'Ya no hay columna. Ahora son sesenta hombres y vos.');
+};
+pinza.este.alHeredar = () => {
+  red.contar('Un sargento tomó la cabeza de tu columna', 'malo');
+};
 pinza.alTocar = () => {
   sonido.clarin();
   hud.mostrarAviso('¡A LA CARGA!', 'bien');
   hud.decir('El clarín. Ciento veinte hombres salen a la vez por los dos costados.', 5);
+  // EL CLARÍN SUENA EN LAS DOS MÁQUINAS. Es la única señal de la batalla y la
+  // da uno solo: si el otro no la oyera, no habría pinza, habría dos cargas.
+  red.contarClarin();
+  red.contar('¡A LA CARGA!', 'bien',
+    'El clarín de San Martín. Salís vos también, por el otro costado.');
 };
 
-const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido });
+const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red });
 
 addEventListener('resize', () => {
   camara.aspect = innerWidth / innerHeight;
@@ -199,6 +257,12 @@ function simular (dt) {
   const arma = arsenal.actual();
   const quiereApuntar = arsenal.quiereApuntar();
 
+  // EL PARTE, ANTES QUE NADA. Los títeres tienen que estar en su sitio nuevo
+  // antes de que nadie los mire: el jinete se sienta sobre el caballo de este
+  // cuadro, no sobre el del anterior.
+  red.aplicar(dt);
+  red.seguirCompanero(dt);
+
   // se reparte ANTES de mover a nadie: el que está lejos no arma el cuerpo
   gentio.repartir();
 
@@ -213,7 +277,7 @@ function simular (dt) {
       mandoCaballo.girar = (mando.teclas.has('KeyD') ? 1 : 0) - (mando.teclas.has('KeyA') ? 1 : 0);
     }
     c.actualizar(dt, mandoCaballo);
-    if (!c.vivo && c.tMuerto > 45) {
+    if (!c.titere && !c.vivo && c.tMuerto > 45) {
       c.quitar();
       caballos.splice(i, 1);
       if (campo.caballo === c) campo.caballo = null;
@@ -223,7 +287,10 @@ function simular (dt) {
   // montado no te levantás: la pierna queda debajo. Ahí arranca el acto.
   if (jugador.monta && !jugador.monta.vivo) {
     const c = jugador.monta;
-    if (acto.puedeArrancar(c)) {
+    // EL ACTO CABRAL ES DE SAN MARTÍN. Cabral no se murió por cualquiera: se
+    // murió por el que quedó con la pierna abajo del caballo, y ése fue San
+    // Martín. Al invitado le matan el caballo y se cae, como a todo el mundo.
+    if (!red.esInvitado && acto.puedeArrancar(c)) {
       acto.arrancar(c);
     } else {
       jugador.desmontar();
@@ -254,12 +321,15 @@ function simular (dt) {
   // Quién tiene a quién encima. Se cuenta una vez por cuadro, con los objetivos
   // del cuadro anterior, y de ahí sale que no te caigan los doscientos
   // cincuenta al mismo tiempo. Ver SATURACION en balance.js.
-  Soldado.censar(soldados);
+  if (!red.esInvitado) Soldado.censar(soldados);
 
   for (let i = soldados.length - 1; i >= 0; i--) {
     const s = soldados[i];
     s.actualizar(dt, jugador, soldados);
-    if (!s.vivo && s.caida >= 1) {
+    // al títere lo levanta del campo el que lleva la batalla, con un mensaje.
+    // Si además lo barriera el reloj de acá, las dos máquinas tendrían listas
+    // distintas y el parte siguiente le hablaría de un hombre que ya no está.
+    if (!s.titere && !s.vivo && s.caida >= 1) {
       s.tMuerto = (s.tMuerto || 0) + dt;
       if (s.tMuerto > 45) { s.quitar(); soldados.splice(i, 1); }
     }
@@ -267,11 +337,13 @@ function simular (dt) {
 
   pinza.actualizar(dt, jugador, soldados.filter(s => s.esRealista));
   // y se aprieta y se pinta DESPUÉS, con las posiciones del cuadro ya puestas
-  gentio.apretujar();
+  // apretujar es simulación —empuja hombre contra hombre— y por eso la hace
+  // sólo el que lleva la batalla. Pintar es dibujo y lo hacen los dos.
+  if (!red.esInvitado) gentio.apretujar();
   gentio.pintar();
 
   // las piezas: buscan blanco, se orientan, ceban y disparan
-  if (canones.length) {
+  if (canones.length && !red.esInvitado) {
     const candidatos = [];
     if (jugador.vivo) candidatos.push({ pos: jugador.pos, montado: montado() });
     for (const s of soldados) if (s.vivo && !s.esRealista) candidatos.push({ pos: s.pos, montado: s.montado });
@@ -281,6 +353,9 @@ function simular (dt) {
   campo.actualizarOleadas(dt);
 
   luzBoca.intensity = Math.max(0, luzBoca.intensity - dt * 260);
+
+  // y al final del cuadro sale por el cable lo que haya para salir
+  red.latir(dt);
 
   return { presion, arma, quiereApuntar };
 }
@@ -351,7 +426,8 @@ cuadro();
 // Todo lo que las pruebas y el que quiera hurgar necesitan tocar desde afuera.
 window.juego = {
   // los sistemas, por si hace falta entrar por abajo
-  combate, arsenal, campo, gentio, mando, balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
+  combate, arsenal, campo, gentio, mando, red,
+  balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, render,
   lejania, pasadaVel, pinza, canones, acto, simular,

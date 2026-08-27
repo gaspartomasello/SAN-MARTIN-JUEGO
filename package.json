@@ -10,7 +10,9 @@
     "rendimiento": "node pruebas/rendimiento.mjs",
     "capturas": "node pruebas/capturas.mjs",
     "empaquetar": "node herramientas/empaquetar.mjs",
-    "archivo-unico": "node pruebas/archivo-unico.mjs"
+    "archivo-unico": "node pruebas/archivo-unico.mjs",
+    "sala": "node herramientas/servidor.mjs",
+    "red": "node pruebas/red.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

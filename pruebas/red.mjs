@@ -1,0 +1,274 @@
+// LOS DOS COSTADOS. Dos navegadores de verdad, el servidor de verdad y el
+// cable de verdad. Lo que hay que probar no es que se conecten: es que los dos
+// estén viendo LA MISMA batalla.
+//
+// Cuatro cosas, y si falla cualquiera el modo no sirve:
+//
+//   1. que el invitado vea el campo entero sin simularlo —los hombres, los
+//      caballos y las piezas que armó el otro—;
+//   2. que lo vea en el mismo lugar, no cerca;
+//   3. que un tiro del invitado MATE del lado del anfitrión, que es lo único
+//      que hace que peleen la misma batalla y no dos parecidas;
+//   4. que la columna del este siga al invitado, que es la pinza.
+import { chromium } from 'playwright';
+import { spawn } from 'node:child_process';
+
+const PUERTO = 8123;
+const servidor = spawn(process.execPath, ['herramientas/servidor.mjs', String(PUERTO)],
+  { stdio: ['ignore', 'pipe', 'pipe'] });
+const dicho = [];
+servidor.stdout.on('data', d => dicho.push(String(d)));
+servidor.stderr.on('data', d => dicho.push('ERR ' + d));
+await new Promise(r => setTimeout(r, 900));
+
+// El servidor se apaga pase lo que pase, y esto va ACÁ y no más abajo: si la
+// prueba se cae en el primer paso, un servidor huérfano deja el puerto tomado
+// y la corrida siguiente falla sin ningún motivo aparente.
+const cerrar = () => { try { servidor.kill(); } catch { /* ya no estaba */ } };
+process.on('exit', cerrar);
+process.on('uncaughtException', e => { console.error(e); cerrar(); process.exit(1); });
+
+const nav = await chromium.launch({ executablePath: process.env.CHROMIUM,
+  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox',
+    '--autoplay-policy=no-user-gesture-required'] });
+
+const errs = [];
+async function abrir (quien) {
+  const p = await nav.newPage({ viewport: { width: 700, height: 460 } });
+  p.on('pageerror', e => errs.push(`${quien}: ${e.message}`));
+  await p.goto(`http://localhost:${PUERTO}/index.html`, { waitUntil: 'load' });
+  await p.waitForFunction('window.juego && window.juego.red', null, { timeout: 25000 });
+  return p;
+}
+
+// El anfitrión entra PRIMERO: el que llega primero a la sala es el que lleva
+// la batalla, y eso es parte de lo que se prueba.
+const anf = await abrir('anfitrión');
+await anf.click('#modo-red');
+await anf.waitForTimeout(500);
+const inv = await abrir('invitado');
+await inv.click('#modo-red');
+// se espera a que los DOS se den por completos: en una máquina cargada el
+// apretón de manos puede tardar más que cualquier número que uno invente
+for (const p of [anf, inv]) {
+  await p.waitForFunction("window.juego.red.parte().fase === 'listo'", null, { timeout: 15000 })
+    .catch(() => {});
+}
+await anf.waitForTimeout(200);
+
+const out = [];
+const ok = (n, cond, extra) => out.push([cond ? 'OK ' : 'MAL', n, extra === undefined ? '' : extra]);
+
+const papel = async p => p.evaluate(() => window.juego.red.parte());
+const pa = await papel(anf), pi = await papel(inv);
+ok('el primero en llegar es el anfitrión', pa.rol === 'anfitrion', pa.rol);
+ok('el segundo es el invitado', pi.rol === 'invitado', pi.rol);
+ok('los dos ven la sala completa', pa.fase === 'listo' && pi.fase === 'listo', `${pa.fase} / ${pi.fase}`);
+ok('y saben a quién están jugando', pa.nombre.includes('San Martín') && pi.nombre.includes('Bermúdez'),
+  `${pa.nombre} / ${pi.nombre}`);
+ok('el botón de salir al campo se habilitó solo',
+  !(await anf.$eval('#sala-entrar', b => b.disabled)) && !(await inv.$eval('#sala-entrar', b => b.disabled)));
+
+// ---- al campo, por el botón, como una persona ----
+await anf.click('#sala-entrar');
+await anf.waitForTimeout(400);
+await inv.click('#sala-entrar');
+await inv.waitForTimeout(400);
+
+// Y se vuelve a formar chico: doscientos cincuenta hombres por dos navegadores
+// con render por software no es una prueba, es una siesta. De paso se prueba
+// el barrido: los trescientos setenta primeros tienen que DESAPARECER del lado
+// del invitado, no quedar de fantasmas.
+await anf.evaluate(() => window.juego.red.formarBatalla(8, 24));
+
+// EL BUCLE, A MANO Y EN LOS DOS. Con render por software el navegador da dos
+// cuadros por segundo: si esperáramos al reloj, esto tardaría media hora. Se
+// corre el mundo de verdad —juego.simular— a paso fijo, alternando, y entre
+// tanda y tanda se le deja al navegador el respiro que necesita para entregar
+// lo que llegó por el cable.
+async function latir (segundos, dt = 1 / 30) {
+  const cuadros = Math.round(segundos / dt);
+  for (let i = 0; i < cuadros; i += 6) {
+    const n = Math.min(6, cuadros - i);
+    await Promise.all([
+      anf.evaluate(([n, dt]) => { for (let k = 0; k < n; k++) window.juego.simular(dt); }, [n, dt]),
+      inv.evaluate(([n, dt]) => { for (let k = 0; k < n; k++) window.juego.simular(dt); }, [n, dt])
+    ]);
+    await anf.waitForTimeout(12);
+  }
+}
+
+await latir(2.5);
+
+const censo = p => p.evaluate(() => {
+  const j = window.juego;
+  return {
+    soldados: j.soldados.length,
+    granaderos: j.soldados.filter(s => s.bando === 'granadero').length,
+    realistas: j.soldados.filter(s => s.esRealista).length,
+    caballos: j.caballos.length,
+    canones: j.canones.length,
+    titeres: j.soldados.filter(s => s.titere).length,
+    kbs: j.red.parte().kbs
+  };
+});
+
+const ca = await censo(anf), ci = await censo(inv);
+out.push(['—', 'anfitrión', JSON.stringify(ca)]);
+out.push(['—', 'invitado ', JSON.stringify(ci)]);
+
+// 8 + 8 granaderos + el compañero + 24 realistas + 4 artilleros
+ok('el invitado ve a toda la tropa del anfitrión', ci.soldados === ca.soldados,
+  `${ci.soldados} contra ${ca.soldados}`);
+ok('y a todos los caballos', ci.caballos >= ca.caballos - 1, `${ci.caballos} contra ${ca.caballos}`);
+ok('y las dos piezas', ci.canones === 2, String(ci.canones));
+ok('el anfitrión no simula ningún títere salvo el compañero', ca.titeres === 1, String(ca.titeres));
+ok('el invitado no simula NADA: todos son títeres', ci.titeres === ci.soldados, `${ci.titeres}/${ci.soldados}`);
+ok('el barrido borró los 370 del primer armado', ci.realistas === ca.realistas,
+  `${ci.realistas} contra ${ca.realistas}`);
+
+// ---- 2. en el MISMO lugar, no cerca ----
+const sitios = p => p.evaluate(() => {
+  const m = {};
+  for (const s of window.juego.soldados) if (s._red) m[s._red] = [+s.pos.x.toFixed(2), +s.pos.z.toFixed(2)];
+  return m;
+});
+const sa = await sitios(anf), si = await sitios(inv);
+let peor = 0, pares = 0;
+for (const id of Object.keys(sa)) {
+  if (!si[id]) continue;
+  pares++;
+  peor = Math.max(peor, Math.hypot(sa[id][0] - si[id][0], sa[id][1] - si[id][1]));
+}
+ok('todos los hombres emparejados por número', pares === Object.keys(sa).length, `${pares} pares`);
+ok('y ninguno a más de medio metro del suyo', peor < 0.5, `el peor a ${peor.toFixed(2)} m`);
+
+// ---- 3. el tiro del invitado mata del lado del anfitrión ----
+//
+// Es la prueba central del modo. Si esto falla, cada uno está peleando su
+// propia batalla contra copias del mismo ejército.
+const antes = await anf.evaluate(() => window.juego.soldados.filter(s => s.esRealista && s.vivo).length);
+const pegado = await inv.evaluate(() => {
+  const j = window.juego;
+  const o = j.soldados.find(s => s.esRealista && s.vivo);
+  if (!o) return null;
+  const id = o._red;
+  // el mismo golpe que da el sable: combate.js no sabe que hay una red
+  const murio = o.recibir(99, null, 0);
+  return { id, murio, vidaLocal: o.vida };
+});
+await latir(0.5);
+const despues = await anf.evaluate(id => {
+  const j = window.juego;
+  const o = j.soldados.find(s => s._red === id);
+  return { vivos: j.soldados.filter(s => s.esRealista && s.vivo).length, sigueVivo: o ? o.vivo : null };
+}, pegado.id);
+ok('el golpe del invitado viajó y mató del otro lado',
+  despues.sigueVivo === false && despues.vivos === antes - 1,
+  `${antes} → ${despues.vivos} vivos`);
+const eco = await inv.evaluate(id => {
+  const o = window.juego.soldados.find(s => s._red === id);
+  return o ? o.vivo : 'ya no está';
+}, pegado.id);
+ok('y el parte de vuelta lo dio por muerto también acá', eco === false || eco === 'ya no está', String(eco));
+
+// ---- 4. la columna del este sigue al invitado ----
+const lejosAntes = await anf.evaluate(() => {
+  const p = window.juego.pinza;
+  return { conRemota: !!p.este.remota, sinJefe: p.este.jefe === null, hombres: p.este.hombres.length };
+});
+ok('la columna del este quedó sin jefe propio', lejosAntes.sinJefe && lejosAntes.conRemota);
+
+// EL CLARÍN LO TOCA SAN MARTÍN Y SALEN LAS DOS COLUMNAS. La del este está en
+// la máquina del anfitrión pero la manda el invitado: la señal tiene que
+// largarla igual.
+await anf.evaluate(() => window.juego.tocarClarin());
+await latir(0.5);
+const largada = await anf.evaluate(() => window.juego.pinza.este.estado);
+ok('con el clarín, la columna del invitado también arranca', largada !== 'formada', largada);
+
+// el invitado se lleva su caballo y los sesenta tienen que ir detrás
+const dondeEstan = () => anf.evaluate(() => {
+  const p = window.juego.pinza;
+  const cab = p.este.remota ? p.este.remota() : null;
+  if (!cab) return null;
+  const ds = p.este.hombres.filter(h => h.vivo && h.montado)
+    .map(h => Math.hypot(h.monta.pos.x - cab.x, h.monta.pos.z - cab.z));
+  return { cab: [Math.round(cab.x), Math.round(cab.z)], n: ds.length,
+    lejos: ds.length ? Math.max(...ds) : -1 };
+});
+// se lo mueve DENTRO del campo propio, detrás del convento: acá se mide si la
+// columna lo sigue, no si sobrevive a que lo metan solo entre los realistas
+await inv.evaluate(() => {
+  const j = window.juego;
+  if (j.jugador.monta) { j.jugador.monta.pos.set(6, 0, 40); j.jugador.monta.rumbo = Math.PI; }
+});
+await latir(0.4);
+const antesDeSeguir = await dondeEstan();
+await latir(4);
+const siguen = await dondeEstan();
+out.push(['—', 'la cabeza del este, vista por el anfitrión', JSON.stringify(siguen)]);
+ok('el anfitrión sabe dónde está el invitado', !!siguen && Math.abs(siguen.cab[0] - 6) < 5,
+  siguen ? `x=${siguen.cab[0]}` : 'perdió la cabeza de la columna');
+// no se mide la distancia final —cuatro segundos no alcanzan para cruzar el
+// campo— sino que los sesenta VAYAN PARA ALLÁ, que es lo que hay que probar
+ok('y sus sesenta van detrás de él',
+  !!siguen && !!antesDeSeguir && siguen.n > 0 && siguen.lejos < antesDeSeguir.lejos - 3,
+  siguen && antesDeSeguir
+    ? `${antesDeSeguir.lejos.toFixed(0)} m → ${siguen.lejos.toFixed(0)} m con ${siguen.n} montados`
+    : 'se quedó sin cabeza');
+
+// ---- el cable ----
+const kbs = Math.max(ca.kbs, ci.kbs);
+ok('el cable no se desborda', kbs < 400, `${kbs} KB/s con ${ca.soldados} hombres`);
+
+// ---- y el compañero se ve ----
+const verse = await Promise.all([anf, inv].map(p => p.evaluate(() => {
+  const c = window.juego.red.companero;
+  return c ? { hay: true, montado: c.montado, x: Math.round(c.pos.x), z: Math.round(c.pos.z) } : { hay: false };
+})));
+out.push(['—', 'el compañero, de los dos lados', JSON.stringify(verse)]);
+ok('cada uno tiene el cuerpo del otro en el campo', verse[0].hay && verse[1].hay);
+ok('y lo ve montado', verse[0].montado && verse[1].montado);
+
+// UN SOLO CABALLO DEBAJO DEL COMPAÑERO. El cuerpo del otro viaja aparte, con
+// su propia montura; si además se replicara el animal de verdad quedarían dos
+// caballos superpuestos temblando uno sobre el otro. No lo agarra ninguna
+// cuenta global: hay que ir a mirar el lugar exacto.
+const encimados = await Promise.all([anf, inv].map(p => p.evaluate(() => {
+  const j = window.juego, c = j.red.companero;
+  if (!c) return -1;
+  return j.caballos.filter(h => Math.hypot(h.pos.x - c.pos.x, h.pos.z - c.pos.z) < 1.6).length;
+})));
+ok('nadie ve dos caballos encimados debajo del compañero',
+  encimados[0] === 0 && encimados[1] === 0, `anfitrión ${encimados[0]} · invitado ${encimados[1]}`);
+
+// ---- 5. LA BATALLA ENTERA POR EL CABLE ----
+//
+// Lo de arriba se midió con cuarenta y cinco hombres para que la prueba no
+// tarde una hora. Pero San Lorenzo son trescientos setenta, y el número que
+// importa es cuánto cable comen ésos: si no entra en una red de casa, el modo
+// no existe. Se arma la batalla de verdad y se mide.
+await anf.evaluate(() => window.juego.red.formarBatalla(60, 250));
+await latir(2.5);
+const grande = await Promise.all([anf, inv].map(censo));
+out.push(['—', 'la batalla entera, anfitrión', JSON.stringify(grande[0])]);
+out.push(['—', 'la batalla entera, invitado ', JSON.stringify(grande[1])]);
+ok('el invitado recibe los 370 sin perder a nadie', grande[1].soldados === grande[0].soldados,
+  `${grande[1].soldados} contra ${grande[0].soldados}`);
+ok('y sigue sin simular a ninguno', grande[1].titeres === grande[1].soldados);
+// veinte partes por segundo de 370 hombres y 130 caballos: seis kilobytes cada
+// uno. Ciento treinta por segundo es un megabit: cualquier wifi de casa mueve
+// cincuenta veces eso.
+ok('la batalla entera entra cómoda en una red de casa',
+  Math.max(grande[0].kbs, grande[1].kbs) < 300,
+  `${Math.max(grande[0].kbs, grande[1].kbs)} KB/s`);
+
+for (const [e, n, x] of out) console.log(e.padEnd(4), n.padEnd(52), x);
+const mal = out.filter(x => x[0] === 'MAL').length;
+console.log(`\n${out.filter(x => x[0] === 'OK ').length} bien, ${mal} mal`);
+console.log(errs.length ? 'ERRORES: ' + errs.join(' / ') : 'sin errores de consola');
+await nav.close();
+servidor.kill();
+if (dicho.some(d => d.startsWith('ERR'))) console.log('el servidor dijo:\n' + dicho.join(''));
+process.exit(mal ? 1 : 0);

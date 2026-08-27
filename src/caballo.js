@@ -175,6 +175,11 @@ export class Caballo {
     // instancia—, porque arriba de la silla el hombre no se mueve solo.
     this.lejos = false;
 
+    // en red, el caballo de la otra máquina: se dibuja pero no se mueve solo
+    // ni se puede herir de este lado. Ver soldados.js, «EL TÍTERE».
+    this.titere = false;
+    this.alCastigo = null;
+
     // pose de reposo: sin esto el cuello cuelga hacia abajo hasta el primer cuadro
     h.cuello.rotation.x = 2.30;
     h.cabeza.rotation.x = -1.315;
@@ -210,6 +215,7 @@ export class Caballo {
 
   recibir (dano) {
     if (!this.vivo) return false;
+    if (this.titere) return this.alCastigo ? !!this.alCastigo({ dano }) : false;
     this.vida -= dano;
     if (this.vida <= 0) {
       this.vivo = false;
@@ -237,7 +243,28 @@ export class Caballo {
     return false;
   }
 
+  // El caballo de la otra máquina: patas, polvareda y desplome, nada de
+  // física. La posición se la escribe red.js con lo que llega del cable.
+  actualizarTitere (dt) {
+    if (!this.vivo) {
+      this.caida = Math.min(1, this.caida + dt * 2.2);
+      const e = 1 - Math.pow(1 - this.caida, 3);
+      if (!this.poseFija) {
+        this.raiz.rotation.z = e * 1.5 * this.lado;
+        this.raiz.rotation.x = e * 0.18;
+        this.raiz.position.y = this.alto - e * 0.42;
+      }
+      this._avanzar(dt);
+      return;
+    }
+    this._avanzar(dt);
+    if (this.lejos) this.paso += dt * (1.7 + this.vel * 0.62);
+    else this._andarPatas(dt);
+    this._polvareda(dt);
+  }
+
   actualizar (dt, mando) {
+    if (this.titere) return this.actualizarTitere(dt);
     if (!this.vivo) {
       // Se desploma para un costado —el que le tocó— y se queda ahí. El
       // cadáver dura lo mismo que el de un hombre: el campo se llena parejo.
