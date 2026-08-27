@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { Taller, cil, caja, bola } from './figura.js';
+// la vida del animal es un número de combate: vive en la tabla
+import { VIDA_CABALLO } from './balance.js';
 
 // El caballo del acto 3. Se construye con el mismo horno que los soldados
 // —piezas fundidas por hueso, color en los vértices— así que un caballo entero
