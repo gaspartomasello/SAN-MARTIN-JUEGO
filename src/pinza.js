@@ -66,6 +66,7 @@ export class Columna {
     this.jefe = null;             // el Soldado que va adelante, si no la manda el jugador
     this.estado = 'formada';      // formada → saliendo → suelta
     this.alSoltar = null;
+    this.alHeredar = null;
     this._p = new THREE.Vector3();
   }
 
@@ -85,9 +86,27 @@ export class Columna {
       const c = this.jefe.monta;
       return { x: c.pos.x, z: c.pos.z, rumbo: c.rumbo, andar: c.andar };
     }
-    if (!jugador || !jugador.monta) return null;
-    const c = jugador.monta;
-    return { x: c.pos.x, z: c.pos.z, rumbo: c.rumbo, andar: c.andar };
+    if (jugador && jugador.monta && jugador.vivo) {
+      const c = jugador.monta;
+      return { x: c.pos.x, z: c.pos.z, rumbo: c.rumbo, andar: c.andar };
+    }
+    // TE BAJARON, Y LA COLUMNA SIGUE.
+    //
+    // Sesenta hombres no se quedan parados detrás del convento porque su jefe
+    // se cayó del caballo. Antes pasaba justo eso: la columna del jugador
+    // colgaba de él y si él no montaba —muerto, desmontado, o simplemente
+    // quieto mirando— los sesenta esperaban una orden que no llegaba nunca,
+    // toda la batalla. Ahora la toma el primero que siga arriba de un caballo,
+    // que es lo que hace un sargento.
+    if (this.estado === 'saliendo') {
+      this.jefe = this.hombres.find(h => h.vivo && h.montado) || null;
+      if (this.jefe) {
+        if (this.alHeredar) this.alHeredar(this);
+        const c = this.jefe.monta;
+        return { x: c.pos.x, z: c.pos.z, rumbo: c.rumbo, andar: c.andar };
+      }
+    }
+    return null;
   }
 
   arrancar () { if (this.estado === 'formada') this.estado = 'saliendo'; }

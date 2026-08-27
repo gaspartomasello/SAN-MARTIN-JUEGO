@@ -73,10 +73,17 @@ Lo que **ya funciona**:
   dibujo.
 - **La pinza**: las dos columnas de sesenta, la formación que se mantiene y se rompe sola
   en el choque, y el clarín que las larga.
+- **El tiro que puede errar**: la bala sale de un cono y cae donde cae —64 % de acierto a
+  cinco metros, 9 % a cuarenta—, se ve la polvareda donde pega y se oye zumbar la que
+  pasa cerca. De rodilla se tira al doble de bien; dentro del humo, al 6 %.
+- **La tropa que se cansa y se acomoda**: corren a intervalos porque el aliento es un
+  recurso, no se apilan todos sobre el mismo blanco, se dan vuelta antes de apuntar y no
+  le tiran en la nuca al compañero de adelante.
 
 Lo que **todavía no** está: **la moral**, y por lo tanto el final. Hoy la única forma de
 ganar es matar a los 250 de a uno, que es justo lo contrario de lo que pasó —la línea se
-quebró y salieron corriendo a los botes—. Después de eso: las órdenes de tropa, la
+quebró y salieron corriendo a los botes—. Por eso la batalla dura hoy dos minutos y no
+quince: ninguna tabla de daño convierte un exterminio en San Lorenzo. Después de eso: las órdenes de tropa, la
 barranca, el epílogo del pino y los modos sueltos.
 
 > Agacharse va en `C` y no en `Ctrl` a propósito: `Ctrl+W` es un atajo del navegador

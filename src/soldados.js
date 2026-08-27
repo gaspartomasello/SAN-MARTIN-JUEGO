@@ -10,6 +10,40 @@ import { sacarDeCaja, RADIO_HOMBRE } from './estorbos.js';
 // descarga y su percepción consulta la MISMA grilla de humo que ve el jugador:
 // si la nube tapa, pierden de vista y caminan a donde vieron por última vez.
 
+// ---- LA BALA VA A ALGÚN LADO ----
+//
+// Antes esto era `Math.random() < punteria` y daño completo: no había bala,
+// había un dado. Y el dado estaba cargado —a cinco metros de un realista
+// hincado la cuenta daba 75 % por disparo—, así que se sentía como puntería
+// perfecta con castigo aleatorio, que es la peor de las dos cosas.
+//
+// Ahora el tiro tiene DIRECCIÓN. Cada disparo sortea una desviación angular
+// dentro del cono del arma, y después se mira si a esa distancia la desviación
+// cae adentro de la silueta del blanco. La caída con la distancia sale sola de
+// ahí: no hay que inventarla, es geometría.
+//
+// Un ánima lisa de 1813, disparada por un hombre apurado, con humo y con el
+// oído reventado, agrupa alrededor de dos grados y medio. A veinte metros eso
+// es un metro de desvío contra un blanco de treinta y cinco centímetros de
+// radio: la mayoría de los tiros pasan al lado. Que es lo que pasaba.
+//
+// Y el fallo SE VE. Si la bala pasó cerca, zumba; si dio en el piso, levanta
+// tierra. Un tiro que falla sin dejar rastro es indistinguible de un tiro que
+// no existió.
+const CONO_FUSIL = 0.043;        // radianes: el cono del que salen los tiros
+const CONO_HINCADO = 0.62;       // con la rodilla en tierra el arma se apoya
+const CONO_HUMO = 1.6;           // por unidad de oclusión, el cono se abre
+const TEMBLOR = 0.52;            // metros de error que NO dependen de la distancia
+const BLANCO_HOMBRE = 0.34;      // medio ancho de un hombre de frente, en metros
+const ZUMBIDO = 1.6;             // a menos de esto, la bala se oye pasar
+
+// Desviación angular con colas: dos uniformes sumadas se parecen a una campana,
+// así que la mayoría de los tiros van cerca y de vez en cuando sale uno muy
+// abierto —o uno afortunado a sesenta metros—.
+function _desvio (cono) {
+  return (Math.random() + Math.random() - 1) * cono;
+}
+
 const VEL = 1.85;
 const VEL_CARRERA = 4.3;        // a la carrera, con el fusil corto y bajo
 const ALCANCE_TIRO = 62;
@@ -21,6 +55,62 @@ const RECARGA = 12.5;
 // Un soldado con el fusil descargado y el enemigo a menos de 16 m no se queda
 // a recargar: se le va encima a la bayoneta. Y uno con el fusil cargado no
 // dispara parado en medio del campo si tiene una tapia a mano.
+// ---- EL ALIENTO DE LA TROPA ----
+//
+// Los realistas corrían SIEMPRE, y venían todos juntos, en fila, al mismo
+// blanco. La causa era mecánica y no de IA: recargar lleva doce segundos y
+// medio, así que casi siempre están descargados, y un hombre descargado con el
+// enemigo a menos de dieciséis metros carga a la bayoneta. Descargados +
+// cerca = corriendo, todo el tiempo, todos.
+//
+// El arreglo no es un temporizador: es que se cansen. El aliento ya existía
+// para el jugador —es lo que impide jugar el duelo entero con la guardia en
+// alto— y acá hace exactamente lo mismo. Cuatro segundos de carrera, cinco de
+// resuello. Los intervalos salen solos y nadie los coreografió.
+const ALIENTO_TROPA = 100;
+const GASTO_CARRERA = 26;        // por segundo corriendo
+const RECUPERO = 13;             // por segundo caminando
+const CARRERA_MINIMA = 35;       // con menos que esto no arranca a correr
+
+// ---- NO TODOS AL MISMO BLANCO ----
+//
+// Un blanco que ya tiene gente encima deja de ser atractivo. Sin esto, los
+// doscientos cincuenta eligen siempre al más cercano —vos— y te llega una fila
+// india de hombres sprintando de a uno, que es lo más robótico que puede pasar
+// en un campo de batalla.
+//
+// Se paga en metros: cada atacante que ya tiene un blanco lo aleja siete
+// metros a los ojos de los demás. El cuarto que te venía a buscar prefiere al
+// granadero de al lado antes que ser el quinto encima tuyo.
+const SATURACION = 7;
+
+// ---- NO SE DISPARA PARA CUALQUIER LADO ----
+//
+// Doscientos cincuenta realistas descargando todos a la vez, en cualquier
+// dirección y a través de sus propios compañeros, no son una línea de
+// infantería: son doscientos cincuenta francotiradores sueltos a los que da la
+// casualidad de que están juntos. Medido: barrían a los ciento veinte
+// granaderos en cincuenta y cuatro segundos.
+//
+// Faltaban dos reglas, y las dos son obvias apenas se las dice en voz alta:
+//
+//   1. NO SE DISPARA A TRAVÉS DE LOS PROPIOS. Por eso las formaciones de la
+//      época tenían dos o tres filas y no veinte: sólo la de adelante tiene
+//      tiro. Con esto un bloque de doscientos cincuenta hombres pasa a tener el
+//      volumen de fuego de su FRENTE, no de su total.
+//
+//   2. NO SE DISPARA A LO QUE UNO TIENE AL COSTADO. Hay que girar primero, y
+//      girar lleva tiempo. Un fusil de chispa no se apunta hacia atrás.
+//
+// La segunda es, además, la razón de ser de la pinza: pegarle a un flanco
+// funciona porque el flanco no puede contestar. Sin ella San Martín podía haber
+// cargado de frente y daba lo mismo, y entonces la maniobra que ganó la batalla
+// sería una decoración.
+const GIRO_TROPA = 2.4;          // rad/s: lo que tarda un hombre en darse vuelta
+const CONO_TIRO = 0.62;          // ±35°: fuera de esto, primero gira
+const PASILLO = 0.75;            // si hay un compañero más cerca que esto de la
+const PASILLO_LARGO = 9;         // línea de tiro y dentro de estos metros, no tira
+
 const CARGA_BAYONETA = 16;
 const CARGA_TOQUE = 2.5;        // a esta distancia el que viene corriendo ya ensartó
 const CUBIERTA_BUSCAR = 24;     // radio en el que mira si hay parapeto
@@ -30,10 +120,15 @@ const RODILLA_SUELTA = 0.42;    // probabilidad de hincarla a campo abierto
 
 // Ritmo de la estocada. El AVISO es sagrado: es la ventana en la que el
 // jugador ve venir el golpe. Sin esto, parar es lotería.
-const ACERO_GUARDIA = 0.75;
-const ACERO_AVISO = 0.55;
+// El ciclo era de 1,95 s por estocada y con tres hombres encima te vaciaban la
+// vida en seis segundos. Un bayonetazo no es un jab: es un hombre de setenta
+// kilos empujando un fusil de cuatro y medio, y después tiene que recuperarlo.
+// El ciclo pasa a 2,62 s, y el AVISO se alarga: es la ventana con la que el
+// jugador se defiende y era lo primero que había que agrandar.
+const ACERO_GUARDIA = 1.05;
+const ACERO_AVISO = 0.62;
 const ACERO_SALIDA = 0.20;
-const ACERO_VUELTA = 0.45;
+const ACERO_VUELTA = 0.75;
 const ATURDIDO = 1.35;      // lo que dura abierto tras una parada perfecta
 
 // ---- caballería ----
@@ -74,8 +169,27 @@ export const OFICIO = 0.62;
 const LANZA_ALCANCE = 3.6;      // 2,70 m de asta más el brazo desde la silla
 const LANZA_ENRISTRE = 15;      // a esta distancia baja el asta: el aviso largo
 const LANZA_AVISO = 5.4;        // y a esta se echa atrás: el aviso corto
-const PASADA = 1.5;             // segundos de seguir de largo antes de volver
+// La pasada dura lo que tarda en despegarse de verdad. Con segundo y medio se
+// daba vuelta encima del muerto y volvía a ensartar: un lancero mataba diez
+// hombres en medio minuto. Una pasada de caballería te lleva bien lejos y
+// recién ahí volvés grupas.
+const PASADA = 3.2;
+// Y la lanza apunta ADELANTE. Antes ensartaba a cualquiera que estuviera a
+// menos de 3,6 m, aunque le pasara por el costado o por atrás: un radio, no un
+// asta. Ahora el blanco tiene que estar en el cono del asta.
+const LANZA_CONO = 0.72;
 const CAIDA_JINETE = 14;        // lo que cuesta el golpe contra el suelo
+
+// AL QUE LE MATAN EL CABALLO, SE VA.
+//
+// Un jinete desmontado en medio de la infantería enemiga no se queda a pelear:
+// se raja. Sin esto, cada granadero que perdía el caballo caminaba de vuelta
+// hacia las bayonetas hasta que lo mataban, y los ciento veinte terminaban en
+// cero en todas las corridas. No es una concesión de balance: es lo que hace
+// cualquiera. Y de paso es la primera pieza de la moral, que es la fase que
+// viene: acá un hombre ya tiene un motivo para dejar de pelear.
+const HUIDA = 9;                // segundos de sacarse de encima el problema
+const HUIDA_SEGURO = 26;        // a esta distancia del enemigo, se recompone
 
 export class Soldado {
   // op.tez      — color de piel fijo (Cabral)
@@ -96,7 +210,9 @@ export class Soldado {
     escena.add(this.malla);
 
     this.vivo = true;
-    this.vida = 2;
+    // El doble de vida que antes: la pelea tenía que durar más. Un hombre
+    // aguanta dos balazos de fusil, o dos bayonetazos, o un lanzazo.
+    this.vida = 4;
     this.estado = 'avanzar';
     this.t = 0;
     this.recarga = Math.random() * 4;
@@ -127,6 +243,15 @@ export class Soldado {
     this.rodilla = false;                   // rodilla en tierra: va a disparar
     this.tCubierta = 0;                     // para no re-buscar parapeto cada cuadro
     this.ritmo = 1;                         // 1 marcha, 2,3 carrera
+    this.aliento = ALIENTO_TROPA;           // correr cansa, también a ellos
+    // Cada uno decide cargar a SU distancia y con SU demora. Sin esto los
+    // doscientos cincuenta arrancan en el mismo cuadro y llegan en fila.
+    this.arrojo = 0.55 + Math.random() * 0.9;
+    this.tDecidir = 0;
+    this.encarado = true;
+    this.huyendo = 0;               // > 0: acaba de perder el caballo y se está yendo
+    this._tLinea = 0;               // caché de la línea de tiro
+    this._linea = true;
     this.puesto = null;                     // los artilleros no abandonan la pieza
     this.correa = 4.5;                      // metros que se puede alejar del puesto
 
@@ -176,6 +301,8 @@ export class Soldado {
   // En los dos últimos casos toca el suelo con el golpe puesto.
   desmontar (golpe) {
     if (!this.monta) return false;
+    // si lo bajaron a la fuerza, sale de ahí; si se bajó solo, no
+    if (golpe) this.huyendo = HUIDA;
     const c = this.monta;
     c.montado = false;
     c.jinete = null;
@@ -315,16 +442,26 @@ export class Soldado {
   }
 
   _elegirObjetivo (jugador, soldados) {
-    let mejor = null;
-    let mejorD = Infinity;
+    const ac = Soldado.acoso;
+    let mejor = null, mejorPuntaje = Infinity, mejorD = Infinity;
+
+    // el que ya está peleando con alguien no lo suelta por uno que pasó cerca:
+    // cambiar de blanco a mitad de una estocada es lo que los hacía parecer
+    // autómatas girando en el lugar
+    const pegado = this.estado === 'acero' && this.objetivo && this.objetivo.soldado &&
+      this.objetivo.soldado.vivo && this._distancia(this.objetivo.pos) < ALCANCE_ACERO + 1.4;
+    if (pegado) return this._distancia(this.objetivo.pos);
+
+    const mirar = (o, d, quien) => {
+      const puntaje = d + (ac.get(quien) || 0) * SATURACION;
+      if (puntaje < mejorPuntaje) { mejorPuntaje = puntaje; mejorD = d; mejor = o; }
+    };
     if (this.esRealista && jugador.vivo) {
-      mejorD = this._distancia(jugador.pos);
-      mejor = { pos: jugador.pos, jugador: true };
+      mirar({ pos: jugador.pos, jugador: true }, this._distancia(jugador.pos), 'jugador');
     }
     for (const s of soldados) {
       if (s === this || !s.vivo || s.bando === this.bando) continue;
-      const d = this._distancia(s.pos);
-      if (d < mejorD) { mejorD = d; mejor = { pos: s.pos, soldado: s }; }
+      mirar({ pos: s.pos, soldado: s }, this._distancia(s.pos), s);
     }
     this.objetivo = mejor;
     return mejorD;
@@ -397,15 +534,58 @@ export class Soldado {
     this.teVe = oc < 0.55 && dist < 95;
     if (this.teVe) this.ultimoVisto.copy(objetivo);
 
+    // El que perdió de vista al enemigo camina a donde lo vio por última vez.
+    // Pero si llega y no hay nadie, no se queda ahí parado el resto de la
+    // batalla: sigue avanzando sobre el objetivo. Sin esto, doscientos hombres
+    // terminaban plantados en un pastizal vacío mirando al horizonte.
     const destino = this.teVe ? objetivo : this.ultimoVisto;
     const hacia = new THREE.Vector3().subVectors(destino, mio);
-    const distDestino = hacia.length();
+    let distDestino = hacia.length();
+    if (!this.teVe && distDestino < 1.5) {
+      this.ultimoVisto.copy(objetivo);
+      hacia.subVectors(objetivo, mio);
+      distDestino = hacia.length();
+    }
     if (distDestino > 0.001) hacia.normalize();
 
-    this.malla.rotation.y = Math.atan2(hacia.x, hacia.z) + Math.PI;
+    this._girarHacia(Math.atan2(hacia.x, hacia.z) + Math.PI, dt, this.estado === 'correr');
 
     this.recarga = Math.max(0, this.recarga - dt);
     this.tCubierta = Math.max(0, this.tCubierta - dt);
+    this.tDecidir = Math.max(0, this.tDecidir - dt);
+    this._tLinea -= dt;
+    // El que se está yendo se va: le da la espalda al enemigo y corre. Se
+    // recompone cuando pone distancia o cuando se le acaba el susto —lo que
+    // pase primero—, y si lo alcanzan igual pelea, porque no queda otra.
+    if (this.huyendo > 0) {
+      this.huyendo -= dt;
+      if (dist > HUIDA_SEGURO) this.huyendo = 0;
+      else if (dist > ALCANCE_ACERO + 0.5) {
+        this.estado = 'huir';
+        this._dePie();
+        const hay = this.aliento > 8;
+        this.aliento = Math.max(0, this.aliento - GASTO_CARRERA * dt);
+        const v = hay ? VEL_CARRERA : VEL;
+        this.ritmo = hay ? 2.3 : 1;
+        this.fig.poner(hay ? 'correr' : 'marcha');
+        this._girarHacia(Math.atan2(-hacia.x, -hacia.z) + Math.PI, dt, true);
+        this.pos.x -= hacia.x * v * dt;
+        this.pos.z -= hacia.z * v * dt;
+        this._chocar();
+        this.malla.position.y = 0;
+        this.andando = true;
+        this.fig.actualizar(dt, true, this.ritmo);
+        return;
+      }
+    }
+    // correr cansa y caminar repone. De acá salen los intervalos: cuatro
+    // segundos de carrera, cinco de resuello, y otra vez.
+    if (this.estado === 'correr') {
+      this.aliento = Math.max(0, this.aliento - GASTO_CARRERA * dt);
+      if (this.aliento <= 0) { this.estado = 'avanzar'; this.motivo = null; this.cubierta = null; }
+    } else {
+      this.aliento = Math.min(ALIENTO_TROPA, this.aliento + RECUPERO * dt);
+    }
     this.ritmo = 1;
     this.t += dt;
     if (this.tirado > 0) {
@@ -432,7 +612,27 @@ export class Soldado {
 
         // Fusil descargado y el enemigo encima: no se queda a recargar bajo
         // fuego. Baja el arma y se le va a la carrera con la bayoneta puesta.
-        if (this.teVe && this.recarga > 0 && dist < CARGA_BAYONETA) {
+        //
+        // Pero no automáticamente y no todos juntos. Hacen falta tres cosas:
+        // que le quede aliento —correr cansa—, que el enemigo esté dentro de SU
+        // distancia de arrojo, que no es la del de al lado, y que le pase el
+        // tiempo de decidirse. Un hombre no arranca a correr en el mismo cuadro
+        // en que ve al enemigo; duda medio segundo, y cada uno duda distinto.
+        if (this.teVe && this.recarga > 0 && dist < CARGA_BAYONETA * this.arrojo) {
+          if (this.aliento < CARRERA_MINIMA) {
+            // sin aire: camina hacia él con la bayoneta puesta, resollando
+            this.fig.poner('marcha');
+            if (distDestino > 0.6) {
+              this.pos.x += hacia.x * VEL * dt;
+              this.pos.z += hacia.z * VEL * dt;
+              andando = true;
+            }
+            break;
+          }
+          if (this.tDecidir <= 0) {
+            this.tDecidir = 0.3 + Math.random() * 0.9;
+            break;                      // este cuadro todavía no arranca
+          }
           this.estado = 'correr'; this.motivo = 'carga'; this.cubierta = null;
           this.sonido.grito();
           break;
@@ -484,7 +684,7 @@ export class Soldado {
         else { bx = destino.x; bz = destino.z; }
         const dx = bx - this.pos.x, dz = bz - this.pos.z;
         const d = Math.hypot(dx, dz);
-        this.malla.rotation.y = Math.atan2(dx / (d || 1), dz / (d || 1)) + Math.PI;
+        this._girarHacia(Math.atan2(dx / (d || 1), dz / (d || 1)) + Math.PI, dt, true);
         if (d > (this.motivo === 'cubierta' ? CUBIERTA_LLEGADA : 0.6)) {
           this.pos.x += (dx / (d || 1)) * VEL_CARRERA * dt;
           this.pos.z += (dz / (d || 1)) * VEL_CARRERA * dt;
@@ -492,7 +692,7 @@ export class Soldado {
           this.ritmo = 2.3;
         } else if (this.motivo === 'cubierta') {
           // llegó al parapeto: rodilla en tierra y a apuntar por encima
-          this.malla.rotation.y = Math.atan2(hacia.x, hacia.z) + Math.PI;
+          this._girarHacia(Math.atan2(hacia.x, hacia.z) + Math.PI, dt, false);
           this._encarar(true);
         } else {
           this.estado = 'avanzar';
@@ -505,6 +705,14 @@ export class Soldado {
         // encima tuyo no se queda encarando: baja el fusil y cruza el acero
         if (dist < ALCANCE_ACERO) { this._entrarAcero(); break; }
         this.fig.poner('apuntar');
+        // ENCARADO Y CON LA LÍNEA LIBRE, o no hay tiro.
+        //
+        // Si el blanco le quedó al costado, primero gira —y girar lleva
+        // tiempo—. Si tiene un compañero en el medio, aguanta: nadie le tira
+        // por la espalda al de adelante. Mientras espera sigue encarando, así
+        // que se ve un hombre con el fusil al hombro esperando el hueco, que es
+        // exactamente lo que hacía la segunda fila.
+        if (!this.encarado || !this._lineaLibre()) { this.t = Math.min(this.t, 0.4); break; }
         // de rodillas apunta más despacio y con más cuidado
         if (this.t > (this.rodilla ? 1.9 : 1.5)) {
           this._descargar();
@@ -678,7 +886,11 @@ export class Soldado {
         if (!this._grito) { this._grito = true; this.sonido.grito(); }
       } else {
         this.fig.poner('lanzazo');
-        if (!this._pego && this.aturdido <= 0) {
+        // ¿le pasa por delante o por el costado? El asta sale por la nariz del
+        // caballo; lo que quede fuera de ese cono, no lo toca.
+        let ang = rumboA - c.rumbo;
+        ang = Math.atan2(Math.sin(ang), Math.cos(ang));
+        if (!this._pego && this.aturdido <= 0 && Math.abs(ang) < LANZA_CONO) {
           this._pego = true;
           if (this.alGolpear) this.alGolpear(this, this.objetivo);
         }
@@ -744,6 +956,53 @@ export class Soldado {
     return mejor ? mejorPunto : null;
   }
 
+  // EL RUMBO NO ES INSTANTÁNEO. Antes el hombre se daba vuelta en un cuadro,
+  // apuntara a donde apuntara, y eso era media la sensación de robot. Ahora gira
+  // a velocidad de hombre, y hasta que no está encarado no tiene tiro.
+  _girarHacia (rumboA, dt, rapido) {
+    let giro = rumboA - this.malla.rotation.y;
+    giro = Math.atan2(Math.sin(giro), Math.cos(giro));
+    const paso = GIRO_TROPA * (rapido ? 1.5 : 1) * dt;
+    this.malla.rotation.y += Math.max(-paso, Math.min(paso, giro));
+    this.encarado = Math.abs(giro) < CONO_TIRO;
+    return this.encarado;
+  }
+
+  // ¿HAY ALGUIEN ADELANTE? Se miran unos puntos sobre la línea de tiro dentro de
+  // los primeros nueve metros, que es donde estaría la propia fila. Si hay un
+  // compañero ahí, no dispara. Es lo que convierte un bloque en una línea.
+  _lineaLibre () {
+    // Con caché. Se consulta mientras encara, o sea unas cien veces por
+    // disparo, y la fila de adelante no se corre cien veces por segundo:
+    // mirarlo cuatro veces por segundo da lo mismo y cuesta veinticinco veces
+    // menos. Medido, sin esto la simulación de 370 hombres pasaba de 1,5 ms a
+    // 11,6 —de un cuadro de dieciséis—.
+    if (this._tLinea > 0) return this._linea;
+    this._tLinea = 0.25;
+    this._linea = this._mirarLinea();
+    return this._linea;
+  }
+
+  _mirarLinea () {
+    const r = Soldado.vecinos;
+    if (!r || !this.objetivo) return true;
+    const dx = this.objetivo.pos.x - this.pos.x, dz = this.objetivo.pos.z - this.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 2.5) return true;
+    const ux = dx / d, uz = dz / d;
+    const hasta = Math.min(PASILLO_LARGO, d - 1.4);
+    for (let m = 2; m <= hasta; m += 3.2) {
+      const px = this.pos.x + ux * m, pz = this.pos.z + uz * m;
+      let libre = true;
+      r.cerca(px, pz, o => {
+        if (!libre || o === this || !o.vivo || o.bando !== this.bando) return;
+        if (Math.hypot(o.pos.x - px, o.pos.z - pz) < PASILLO) libre = false;
+      });
+      if (!libre) return false;
+    }
+    return true;
+  }
+
   _entrarAcero () {
     this._parar();
     this.estado = 'acero';
@@ -792,6 +1051,24 @@ export class Soldado {
     }
   }
 
+  // TIRAR. Devuelve dónde pasó la bala respecto del blanco, en metros, y si
+  // acertó. Una sola regla para el tiro contra el jugador y contra la tropa:
+  // antes eran dos cuentas distintas y ninguna tenía bala.
+  apuntarA (dist, oclusion, anchoBlanco = BLANCO_HOMBRE) {
+    let cono = CONO_FUSIL * (1 + oclusion * CONO_HUMO);
+    let temblor = TEMBLOR;
+    if (this.rodilla) { cono *= CONO_HINCADO; temblor *= CONO_HINCADO; }
+    // El error tiene dos partes y hace falta que tenga las dos. El cono crece
+    // con la distancia —es el arma— y el temblor no —es el hombre—. Con sólo
+    // el cono, a cinco metros la cuenta daba 100 % de acierto, y a bocajarro
+    // NADIE acierta siempre: hay humo, hay grito, el blanco se mueve y a vos
+    // te tiembla el pulso. El temblor es esa parte, y no se va nunca.
+    const dx = _desvio(cono) * dist + _desvio(temblor);
+    const dy = _desvio(cono) * dist + _desvio(temblor);
+    const fuera = Math.hypot(dx, dy);
+    return { acierto: fuera < anchoBlanco, fuera, dx, dy };
+  }
+
   _descargar () {
     const origen = new THREE.Vector3(this.pos.x, this.pos.y + (this.rodilla ? 1.02 : 1.38), this.pos.z);
     const dir = new THREE.Vector3().subVectors(this.objetivo.pos, origen).normalize();
@@ -806,6 +1083,26 @@ export class Soldado {
     if (this.monta) { this.monta.quitar(); this.monta = null; }
   }
 }
+
+// EL CENSO. Quién tiene a quién encima, contado una vez por cuadro con los
+// objetivos del cuadro anterior. Usar los del anterior lo hace estable: si se
+// contara sobre la marcha, los primeros de la lista no verían saturación
+// ninguna y los últimos la verían entera, o sea que el orden del array sería
+// una ventaja táctica.
+// La rejilla del cuadro anterior, para preguntar quién está en la línea de tiro
+// sin recorrer a todo el ejército. La llena main junto con la separación.
+Soldado.vecinos = null;
+
+Soldado.acoso = new Map();
+Soldado.censar = function (soldados) {
+  const m = Soldado.acoso;
+  m.clear();
+  for (const s of soldados) {
+    if (!s.vivo || !s.objetivo) continue;
+    const k = s.objetivo.soldado || 'jugador';
+    m.set(k, (m.get(k) || 0) + 1);
+  }
+};
 
 // Un número por hombre, y nunca se repite. Sirve para que la separación
 // resuelva cada par UNA vez y para que el desempate sea siempre igual: dos

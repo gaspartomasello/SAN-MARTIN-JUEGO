@@ -195,6 +195,31 @@ export class Sonido {
     }
   }
 
+  // EL ZUMBIDO. Una bala de plomo de dieciocho milímetros pasando cerca de la
+  // oreja hace un silbido corto que sube y baja: efecto Doppler puro, porque
+  // viene más rápido de lo que uno la oye llegar. Es el sonido que te avisa que
+  // te tiraron y no te dieron, y sin él los tiros que fallan no existen.
+  zumbido (fuerza = 1) {
+    if (!this.ctx) return;
+    const t = this.t;
+    const dur = 0.13;
+    const o = this.ctx.createOscillator();
+    o.type = 'sine';
+    // sube al acercarse y se desploma al pasar: eso es el Doppler
+    const f0 = 900 + Math.random() * 700;
+    o.frequency.setValueAtTime(f0 * 0.7, t);
+    o.frequency.exponentialRampToValueAtTime(f0, t + dur * 0.42);
+    o.frequency.exponentialRampToValueAtTime(f0 * 0.34, t + dur);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.10 * fuerza, t + dur * 0.35);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+    o.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t + dur + 0.04);
+    // el aire desgarrado, que es lo que le da cuerpo
+    this._ruido(dur * 0.9, 0.055 * fuerza, 'bandpass', f0 * 1.5, 5);
+  }
+
   grito () { if (this.ctx) { this._tono(320, 140, 0.4, 0.22, 'sawtooth'); this._ruido(0.35, 0.2, 'bandpass', 800, 1.2); } }
 
   // sordera momentánea: filtro pasabajos que se abre de a poco

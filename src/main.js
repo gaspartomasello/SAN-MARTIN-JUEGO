@@ -110,6 +110,8 @@ const _emp = { x: 0, z: 0 };
 
 function apretujar () {
   separar(soldados, rejilla, RADIO_HOMBRE);
+  // la misma rejilla sirve para preguntar quién está en la línea de tiro
+  Soldado.vecinos = rejilla;
   for (const c of caballos) {
     if (!c.vivo) continue;
     const r = RADIO_CABALLO + RADIO_HOMBRE;
@@ -137,6 +139,9 @@ const pinza = new Pinza();
 // cuando el enemigo entra en distancia, la formación se rompe sola. El jugador
 // tiene que enterarse: hasta ese momento la columna era una máquina y a partir
 // de ahí son sesenta hombres peleando por su cuenta.
+pinza.oeste.alHeredar = () => {
+  hud.mostrarAviso('Un sargento tomó la cabeza de tu columna', 'malo');
+};
 pinza.oeste.alSoltar = () => {
   hud.mostrarAviso('¡Se rompió la formación!', 'malo');
   hud.decir('Ya no hay columna. Ahora son sesenta hombres y vos.', 4);
@@ -151,11 +156,16 @@ function formarPinza (porColumna = 60, realistas = 250) {
   soltarTodo();
   pinza.desarmar();
 
-  // el desembarco: la infantería realista sube de la barranca hacia el convento
+  // EL DESEMBARCO, EN LÍNEA. Estaban en seis filas de cuarenta y dos, o sea un
+  // bloque, y un bloque no puede tirar: sólo la fila de adelante tiene línea de
+  // tiro, así que doscientos cincuenta hombres disparaban como cuarenta. La
+  // infantería de la época se desplegaba en dos o tres filas justamente por
+  // eso. En tres, ochenta y cuatro fusiles miran al campo en vez de cuarenta.
+  const PORFILA = Math.ceil(realistas / 3);
   for (let k = 0; k < realistas; k++) {
-    const fila = Math.floor(k / 42);
+    const fila = Math.floor(k / PORFILA);
     soltarSoldado('realista', {
-      pos: new THREE.Vector3(-32 + (k % 42) * 1.55, 0, -66 - fila * 3.2)
+      pos: new THREE.Vector3(-(PORFILA * 0.78) + (k % PORFILA) * 1.56, 0, -66 - fila * 2.4)
     });
   }
   ponerCanones();
@@ -326,16 +336,56 @@ function intentarVoltear (base, aviso) {
 }
 
 // daño que hace una bala de plomo y una bayoneta al jugador
-const DANO_BALA = 52;
-const DANO_BAYONETA = 34;
-const DANO_SABLE = 2;
-const DANO_REMATE = 4;          // el remate mata de una: es lo que paga la parada
+// Cuánto de lo que le tiran a un jinete se lo come el caballo, y cuánto le
+// cuesta a él. Con 6 de vida, tres balazos y el hombre queda a pie.
+const CABALLO_COME = 0.6;
+const BALA_AL_CABALLO = 2;
+
+// EL TIRO QUE FALLA TIENE QUE VERSE.
+//
+// Un disparo que erra sin dejar rastro es indistinguible de uno que no existió,
+// y entonces el jugador sólo percibe los que le pegan: de ahí sale la sensación
+// de que nunca fallan. Si la bala pasó cerca, zumba; si se fue a la tierra,
+// levanta polvo donde cayó. Ahora el campo se llena de tiros que no dan, que es
+// lo que era una batalla de fusiles de chispa.
+function falloVisible (origen, blanco, tiro, contraVos) {
+  const eje = new THREE.Vector3().subVectors(blanco, origen);
+  const d = eje.length() || 1;
+  eje.divideScalar(d);
+  // el punto por donde pasó de verdad, a la altura del blanco
+  const lado = new THREE.Vector3(-eje.z, 0, eje.x);
+  const paso = new THREE.Vector3().copy(blanco)
+    .addScaledVector(lado, tiro.dx).add(new THREE.Vector3(0, tiro.dy, 0));
+  if (contraVos) {
+    if (tiro.fuera < 1.6) { sonido.zumbido(); jugador.sacudir(0.10); }
+    else if (tiro.fuera < 4) sonido.zumbido(0.4);
+  }
+  // si la trayectoria termina contra el piso, ahí salta la tierra
+  if (paso.y < 0.5) {
+    paso.y = 0.06;
+    humo.soltar(paso, new THREE.Vector3(0, 1, 0),
+      { cantidad: 2, vida: 1.5, empuje: 0.9, radio: 0.22, opacidad: 0.30, claro: 0.6, tierra: 1 });
+  }
+}
+
+// LO QUE CUESTA CADA GOLPE.
+//
+// Estaba todo al doble de lo que aguanta una pelea: un balazo se llevaba medio
+// jugador y dos te mataban, con un 40-75 % de acierto por disparo. Morías en
+// segundos y la batalla se terminaba antes de empezar. Ahora hacen falta cuatro
+// balazos o seis bayonetazos, y acertar cuesta mucho más (ver el cono de
+// dispersión en soldados.js). No es que te peguen menos: es que te pegan menos
+// veces y cada golpe no te parte al medio.
+const DANO_BALA = 26;
+const DANO_BAYONETA = 14;
+const DANO_SABLE = 3;           // contra 4 de vida: dos sablazos
+const DANO_REMATE = 6;          // el remate mata de una: es lo que paga la parada
 const GUARDIA_GASTO = 11;       // aliento por segundo aguantando el sable en alto
 const BLOQUEO_GASTO = 26;       // lo que cuesta parar tarde
 const PECHADA_GASTO = 18;
 const PECHADA_ALCANCE = 2.2;
 const ALCANCE_MONTADO = 3.3;    // desde arriba llegás más lejos
-const CAIDA = 16;               // lo que cuesta pegar contra el suelo
+const CAIDA = 12;               // lo que cuesta pegar contra el suelo
 // Cuánta gente aguanta el campo a la vez. NO es un número inventado: sale de
 // medir (pruebas/escala.mjs y pruebas/lejania.mjs).
 //
@@ -437,7 +487,11 @@ function resolverDisparo (origen, dir, dispersion) {
   if (soldado) {
     sonido.impactoCarne();
     humo.soltar(g.point, d, { cantidad: 3, vida: 2.5, empuje: 1.4, radio: 0.1, opacidad: 0.35, claro: 0 });
-    if (soldado.recibir(2, d, VOLTEO.bala)) hud.mostrarAviso('Realista abatido', 'bien');
+    // Tu bala sigue matando de una. Duplicar la vida de la tropa tenía que
+    // hacer que la pelea entre ellos durara el doble, no que vos necesitaras
+    // dos tiros para lo mismo: acá el que apunta sos vos, y ya pagaste los
+    // quince segundos de recarga.
+    if (soldado.recibir(4, d, VOLTEO.bala)) hud.mostrarAviso('Realista abatido', 'bien');
   } else if (raiz.userData.blanco) {
     sonido.impactoMadera();
     hud.mostrarAviso(`Blanco a ${Math.round(g.distance)} m`, 'bien');
@@ -467,7 +521,9 @@ function resolverGolpe (alcance, dano, nombre) {
   const g = enemigoAlFrente(alcance);
   if (!g) return;
   sonido.impactoCarne();
-  if (g.soldado.recibir(dano, g.frente, VOLTEO.bayoneta)) hud.mostrarAviso(nombre, 'bien');
+  const o = g.soldado;
+  if (o.montado && Math.random() < CABALLO_COME) { o.monta.recibir(BALA_AL_CABALLO); return; }
+  if (o.recibir(dano, g.frente, VOLTEO.bayoneta)) hud.mostrarAviso(nombre, 'bien');
 }
 
 // El sablazo choca contra el acero si el realista está en guardia. Ahí está
@@ -612,38 +668,51 @@ function soltarSoldado (bando, op = {}) {
   s.alDisparar = (quien, origen, dir, objetivo) => {
     const oc = humo.oclusion(origen, objetivo.pos);
     const dist = origen.distanceTo(objetivo.pos);
+
+    // ---- LA BALA ----
+    //
+    // Una sola regla para el tiro contra el jugador y contra la tropa: el arma
+    // tira dentro de un cono y la bala va a donde va. Si el desvío a esa
+    // distancia entra en la silueta, pegó; si no, pasó al lado —y se oye o se
+    // ve dónde—. Antes esto eran dos cuentas distintas, ninguna con bala.
+    const montadoBlanco = objetivo.jugador ? montado() : !!(objetivo.soldado && objetivo.soldado.montado);
+    // un hombre a caballo es un blanco mucho más grande; agachado, mucho menor
+    const ancho = 0.34 * (objetivo.jugador ? jugador.cfgPostura.blanco : 1) * (montadoBlanco ? 1.75 : 1);
+    const tiro = quien.apuntarA(dist, oc, ancho);
+
+    if (!tiro.acierto) {
+      falloVisible(origen, objetivo.pos, tiro, objetivo.jugador);
+      return;
+    }
+
+    // ---- EL CABALLO ES LA PRIMERA MITAD DE LA VIDA ----
+    //
+    // Un caballo es un blanco enorme y va adelante. La mayoría de lo que te
+    // tiran estando montado se lo come él, y por eso un jinete aguanta el doble
+    // que un hombre a pie: tres impactos al animal y recién ahí estás vos.
+    // «Si te baja a la mitad, perdés el caballo» — literalmente.
     if (objetivo.jugador) {
       if (jugador.atrapado > 0) return;
-      // agachado sos menos blanco; tirado, casi nada
-      // hincado apunta mejor: es lo que compra el aviso que te dio al hincarse
-      const pulso = quien.rodilla ? 1.35 : 1;
-      const punteria = Math.max(0.02, (0.6 - dist / 110 - oc * 0.45) * jugador.cfgPostura.blanco * pulso);
-      if (Math.random() < punteria) {
-        // montado sos un blanco más grande, pero buena parte se la come el caballo
-        if (montado() && Math.random() < 0.45) {
-          // La bala que se come el caballo lo lastima, pero hacen falta seis:
-          // el que lo voltea de una es el tarro de metralla, y así tiene que
-          // ser, porque de ahí sale el acto.
-          jugador.monta.recibir(1);
-          jugador.sacudir(0.3);
-          sonido.impactoCarne();
-          hud.mostrarAviso('¡Le dieron al caballo!', 'malo');
-        } else if (montado()) {
-          // la bala te hiere igual; que además te baje de la silla es otra
-          // cuenta, y una que rara vez sale
-          jugador.recibir(DANO_BALA, dir);
-          intentarVoltear(VOLTEO.bala, '¡Te bajaron de un balazo!');
-        } else {
-          jugador.recibir(DANO_BALA, dir);
-          sonido.golpeRecibido();
-          hud.mostrarAviso('¡Te dieron!', 'malo');
-        }
-      } else {
-        jugador.sacudir(0.12);
+      if (montado() && Math.random() < CABALLO_COME) {
+        jugador.monta.recibir(BALA_AL_CABALLO);
+        jugador.sacudir(0.3);
+        sonido.impactoCarne();
+        hud.mostrarAviso('¡Le dieron al caballo!', 'malo');
+        return;
       }
-    } else if (objetivo.soldado) {
-      const punteria = Math.max(0.03, (0.5 - dist / 120 - oc * 0.45) * (quien.rodilla ? 1.35 : 1));
-      if (Math.random() < punteria) objetivo.soldado.recibir(2, dir, VOLTEO.bala);
+      jugador.recibir(DANO_BALA, dir);
+      if (montado()) intentarVoltear(VOLTEO.bala, '¡Te bajaron de un balazo!');
+      else {
+        sonido.golpeRecibido();
+        hud.mostrarAviso('¡Te dieron!', 'malo');
+      }
+      return;
+    }
+
+    if (objetivo.soldado) {
+      const o = objetivo.soldado;
+      if (o.montado && Math.random() < CABALLO_COME) { o.monta.recibir(BALA_AL_CABALLO); return; }
+      o.recibir(2, dir, VOLTEO.bala);
     }
   };
 
@@ -686,11 +755,17 @@ function soltarSoldado (bando, op = {}) {
       // bayoneta y ese metro de diferencia es toda la batalla.
       // Contra un jinete, en cambio, la bayoneta no busca matar: busca
       // voltearlo. Es el único recurso que le queda a la infantería.
-      if (quien.lancero) o.recibir(3, null, VOLTEO.lanza);
+      if (quien.lancero) o.recibir(4, null, VOLTEO.lanza);   // el asta mata de una
       // La bayoneta contra un jinete ya no lo baja siempre. Y si no lo baja,
       // lo hiere: antes el golpe se perdía entero cuando el desmonte no
       // salía, y un infante contra un lancero se quedaba sin recurso.
-      else o.recibir(1, null, VOLTEO.bayoneta);
+      else if (o.montado && Math.random() < CABALLO_COME) {
+        // La misma regla que la bala, y por el mismo motivo: lo que tenés
+        // adelante es el caballo. Sin esto, la bayoneta le pegaba siempre al
+        // hombre —que es lo único que no puede alcanzar desde abajo— y una
+        // carga de caballería se deshacía en el primer contacto.
+        o.monta.recibir(BALA_AL_CABALLO);
+      } else o.recibir(2, null, VOLTEO.bayoneta);   // dos bayonetazos, contra 4 de vida
     }
   };
 
@@ -706,7 +781,9 @@ function soltarSoldado (bando, op = {}) {
 // metros. Pero AVISAN —dos segundos largos de mecha encendida— y se pueden
 // callar matando a los artilleros que las sirven.
 const canones = [];
-const DANO_METRALLA = 74;
+// La metralla sigue siendo lo peor del campo, pero ya no te mata de un tarro
+// si estás sano: te deja hecho pedazos, que es distinto y da lugar a decidir.
+const DANO_METRALLA = 58;
 const METRALLA_CABALLO = 9;     // al caballo lo voltea de una: son seis de vida
 
 function ponerCanones () {
@@ -1052,6 +1129,11 @@ function simular (dt) {
   humo.actualizar(dt);
   fuego.actualizar(dt);
   mundo.niebla.actualizar(dt);
+
+  // Quién tiene a quién encima. Se cuenta una vez por cuadro, con los objetivos
+  // del cuadro anterior, y de ahí sale que no te caigan los doscientos
+  // cincuenta al mismo tiempo. Ver SATURACION en soldados.js.
+  Soldado.censar(soldados);
 
   for (let i = soldados.length - 1; i >= 0; i--) {
     const s = soldados[i];

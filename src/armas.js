@@ -27,19 +27,19 @@ export const ARMAS = {
   tercerola: {
     nombre: 'Tercerola', escala: 0.6, cargaMult: 1.0,
     conoCadera: 3.0, conoApuntado: 0.8,
-    golpe: { nombre: 'Culatazo', alcance: 2.0, dano: 1, dur: 0.42 },
+    golpe: { nombre: 'Culatazo', alcance: 2.0, dano: 2, dur: 0.42 },
     largo: true
   },
   fusil: {
     nombre: 'Fusil con bayoneta', escala: 0.58, cargaMult: 1.18,
     conoCadera: 2.4, conoApuntado: 0.6,
-    golpe: { nombre: 'Bayonetazo', alcance: 3.0, dano: 2, dur: 0.5 },
+    golpe: { nombre: 'Bayonetazo', alcance: 3.0, dano: 3, dur: 0.5 },
     largo: true
   },
   pistolon: {
     nombre: 'Pistolón de arzón', escala: 0.68, cargaMult: 0.48,
     conoCadera: 5.0, conoApuntado: 2.2,
-    golpe: { nombre: 'Culatazo', alcance: 1.5, dano: 1, dur: 0.38 },
+    golpe: { nombre: 'Culatazo', alcance: 1.5, dano: 2, dur: 0.38 },
     largo: false
   }
 };

@@ -1002,6 +1002,154 @@ Queda una prueba nueva, `pruebas/portada.mjs`, que hace lo único que faltaba
 hacer: abre el archivo, aprieta el botón de la batalla y aprieta <kbd>T</kbd>.
 Sin tocar la consola.
 
+### El balance (Fase 8.5): la puntería, el aguante y el aim infalible
+
+La primera vez que la batalla se pudo jugar de verdad quedó a la vista lo que
+ninguna prueba unitaria había mirado: **los ciento veinte granaderos duraban
+cincuenta y cuatro segundos**. Los realistas venían todos en fila al mismo
+objetivo, esprintando sin parar nunca, y no erraban un tiro. No era dificultad:
+era que el sistema de tiro no tenía forma de errar y la infantería no tenía
+forma de cansarse.
+
+#### La bala existe
+
+Hasta acá el disparo era una tirada de probabilidad contra la distancia. No
+había bala: había un número. Ahora el tiro sale de un cono y cae donde cae.
+
+```js
+const CONO_FUSIL   = 0.043;   // radianes: el cono del que salen los tiros
+const CONO_HINCADO = 0.62;    // con la rodilla en tierra el arma se apoya
+const CONO_HUMO    = 1.6;     // por unidad de oclusión, el cono se abre
+const TEMBLOR      = 0.52;    // metros de error que NO dependen de la distancia
+const BLANCO_HOMBRE = 0.34;   // medio ancho de un hombre de frente, en metros
+```
+
+El error tiene dos partes que se suman y que se comportan distinto: el **cono**,
+que crece con la distancia, y el **temblor**, que no —el pulso del que aprieta—.
+Cada uno es la suma de dos uniformes, que es una campana barata y suficiente.
+Contra medio metro de ancho de hombre, eso da:
+
+| Distancia | Acierto |
+|---|---|
+| 5 m | 64 % |
+| 10 m | 51 % |
+| 20 m | 26 % |
+| 40 m | 9 % |
+| 60 m | 5 % |
+
+Que es, dentro de lo que se puede pedir, un fusil de ánima lisa de 1813. Antes
+era entre 42 % y 75 % **plano**, y sin proyectil.
+
+De la rodilla en tierra se tira casi el doble de bien: el arma se apoya. Dentro
+del humo se cae al 6 %, porque el mismo campo de densidad que te tapa a vos les
+abre el cono a ellos. Y el tiro que erra **ahora se ve y se oye**: hay polvareda
+donde pega la bala y, si pasa a menos de 1,6 m de la oreja, `sonido.zumbido()`
+—un barrido Doppler con ruido pasabanda—. Errar sin que se note es lo mismo que
+no errar.
+
+#### El caballo es la primera barra de vida del jinete
+
+```js
+const CABALLO_COME = 0.6;     // seis de cada diez impactos van al animal
+const BALA_AL_CABALLO = 2;
+```
+
+Un jinete es un blanco mucho más grande que un hombre, y la mayor parte de ese
+blanco es caballo. Seis de cada diez impactos —bala o acero— se los lleva el
+animal, que tiene seis de vida. Eso resuelve dos cosas de un saque: el montado
+aguanta el doble sin ser inmortal, y **cuando el aguante se termina lo que se
+pierde es el caballo, no la vida**, que era exactamente lo que se pidió.
+
+#### La mitad de daño, el doble de vida
+
+| | antes | ahora |
+|---|---|---|
+| Vida de un hombre | 2 | 4 |
+| Bala | media vida | 26 de 100 |
+| Bayoneta | fuerte y rápida | 14, con ciclo de 2,6 s |
+| Metralla | mata | 58 |
+
+Y la bayoneta dejó de ser un botón: guardia de 1,05 s, aviso telegrafiado de
+0,62 s, salida de 0,20 s y vuelta de 0,75 s. Se puede leer y se puede esquivar,
+como el duelo de la Fase 2. Parado como una estatua —que es el piso, no el
+techo— se aguantan **23 a 28 segundos contra un realista y 8 contra seis**.
+
+#### El aguante: por qué ya no corren siempre
+
+```js
+const ALIENTO_TROPA  = 100;
+const GASTO_CARRERA  = 26;    // por segundo corriendo
+const RECUPERO       = 13;    // por segundo caminando
+const CARRERA_MINIMA = 35;    // con menos que esto no arranca a correr
+```
+
+El que corre se cansa, y con el tanque por debajo de 35 no vuelve a arrancar
+hasta recuperar. Medido sobre treinta hombres: **corren el 3 % del tiempo en
+promedio, con picos del 33 %, y los treinta corrieron en algún momento**. No es
+un temporizador de «corré tres segundos, caminá cinco»: es un recurso. Aparecen
+solos los tirones y las paradas.
+
+Cada hombre además tiene `arrojo = 0.55 + Math.random() * 0.9` y su propio
+`tDecidir`, así que dos realistas al lado nunca deciden lo mismo en el mismo
+cuadro.
+
+#### Que no vengan todos al mismo
+
+```js
+const SATURACION = 7;         // castigo, en metros, por cada uno que ya lo acosa
+```
+
+Elegir blanco era «el más cercano», y el más cercano es el mismo para todos.
+Ahora el puntaje de un blanco es la distancia **más siete metros por cada
+compañero que ya lo eligió** —un censo del cuadro anterior, `Soldado.censar()`—,
+así que el octavo que iba a sumarse a la pila encuentra más barato el que está
+veinte metros más allá. Con eso, el pico de gente encima del jugador en la
+batalla real bajó de «todos en fila» a **tres**.
+
+#### La infantería en línea
+
+Tres reglas chicas que juntas terminan con el robot:
+
+- **Se dan vuelta.** `GIRO_TROPA = 2.4` rad/s y un cono de tiro de ±35°: si el
+  blanco está fuera del cono, primero se giran y recién después apuntan. No hay
+  más gente disparando de costado.
+- **No le tiran en la nuca al compañero.** `_lineaLibre()` mira si hay alguien
+  propio a menos de 0,75 m de la línea de tiro dentro de los primeros nueve
+  metros. Si lo hay, no tira: se reacomoda. Es lo que hace que una fila se vea
+  como una fila.
+- **El que está trabado en el acero no cambia de blanco.** Antes soltaban al que
+  tenían encima porque apareció uno más cerca.
+
+`_lineaLibre()` consulta la rejilla y eso costó caro —el cuadro de simulación
+saltó de 1,5 ms a 11,6 ms—. Con una **caché de 0,25 s** volvió a 4,3–7,1 ms para
+los 370 hombres, que entra cómodo en el presupuesto de 16.
+
+#### El que se cae, corre
+
+`desmontar(golpe)` ahora prende `this.huyendo = HUIDA` (9 s) y hay un estado
+`'huir'` que gasta aliento alejándose hasta los 26 m. Al que le voltean el
+caballo en medio de una carga no se levanta a pelear: se saca el problema de
+encima. Es el primer pedazo de moral que hay en el juego, aunque todavía sea
+individual y no de tropa.
+
+#### Lo que quedó midiendo
+
+| | antes | ahora |
+|---|---|---|
+| Duración | 54 s | **1,8 a 2,1 min** |
+| Granaderos | 120 → 0 | 120 → 0 |
+| Realistas | 254 → 254 | 254 → **111** |
+
+Es mejor y sigue estando mal, y `pruebas/balance.mjs` lo dice en el archivo:
+
+> la batalla de verdad duró quince minutos y NO terminó por bajas, terminó
+> porque un bando se quebró y corrió a los botes.
+
+**Ninguna tabla de daño convierte un exterminio en San Lorenzo.** Mientras el
+único final posible sea matar a los doscientos cincuenta de a uno, la pelea va a
+durar lo que tarde la aritmética. Lo que falta no es balance: es **moral de
+tropa**, y es la fase que sigue.
+
 ---
 
 ### El duelo (Fase 2)

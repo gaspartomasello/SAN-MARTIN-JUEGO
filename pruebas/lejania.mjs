@@ -52,27 +52,57 @@ const r = await pag.evaluate(async () => {
 
   // ---------- 3. el de lejos pelea igual ----------
   //
-  // La prueba que importa: dos realistas idénticos, uno articulado y otro
-  // horneado, sueltos contra el mismo blanco. Si la lejanía tocara la IA,
-  // acá se vería.
+  // La prueba que importa: dos GRUPOS de realistas idénticos contra el mismo
+  // blanco, uno articulado y otro horneado. Si la lejanía tocara la IA, acá se
+  // vería.
+  //
+  // Se comparan poblaciones y no dos individuos, y no es por comodidad: cada
+  // hombre tiene ahora su propio arrojo y vuelve a sortear cuánto duda antes de
+  // arrancar a correr —es lo que impide que doscientos cincuenta salgan en el
+  // mismo cuadro—, así que dos soldados «idénticos» nunca van a recorrer
+  // exactamente lo mismo. Lo que tiene que coincidir es el promedio.
   limpiar();
   j.jugador.pos.set(0, 1.68, 0);
   const blanco = j.soltarSoldado('granadero', { pos: new T.Vector3(0, 0, -40) });
-  blanco.alDisparar = null;
-  const A = j.soltarSoldado('realista', { pos: new T.Vector3(-3, 0, -80) });
-  const B = j.soltarSoldado('realista', { pos: new T.Vector3(3, 0, -80) });
-  for (const s of [A, B]) { s.alDisparar = null; s.recarga = 0.4; s.colisiones = []; }
-  blanco.colisiones = [];   // acá se compara IA con IA, no quién se tropezó con qué
-  A.ponerLejos(false); B.ponerLejos(true);
-  let tiros = { a: 0, b: 0 };
-  A.alDisparar = () => tiros.a++; B.alDisparar = () => tiros.b++;
+  blanco.alDisparar = null; blanco.colisiones = []; blanco.cubiertas = null; blanco.vida = 99999;
+  const grupo = (x, lejos) => {
+    const g = [];
+    for (let k = 0; k < 6; k++) {
+      const s = j.soltarSoldado('realista', { pos: new T.Vector3(x + k * 2.5, 0, -80) });
+      // sin decorado y sin parapetos: el campo no es simétrico y un grupo
+      // encontraba una tapia a la que correr y el otro no, lo que hacía parecer
+      // que la lejanía les cambiaba la conducta
+      s.alDisparar = null; s.recarga = 0.4; s.colisiones = []; s.cubiertas = null;
+      s._x0 = s.pos.x; s._z0 = s.pos.z; s._lejosFijo = lejos;
+      g.push(s);
+    }
+    return g;
+  };
+  // SIMÉTRICOS respecto del blanco, o la prueba miente: el primer intento los
+  // puso a −22 y a +8 con el blanco en 0, así que un grupo tenía que recorrer
+  // once metros más que el otro y la diferencia parecía culpa de la lejanía.
+  const cerca6 = grupo(-15, false);
+  const lejos6 = grupo(2.5, true);
+  let tirosCerca = 0, tirosLejos = 0;
+  cerca6.forEach(s => { s.alDisparar = () => tirosCerca++; });
+  lejos6.forEach(s => { s.alDisparar = () => tirosLejos++; });
+  const falso = { pos: new T.Vector3(0, 1.68, 500), vivo: false, jugador: true };
   for (let i = 0; i < 60 * 12; i++) {
-    A.ponerLejos(false); B.ponerLejos(true);
-    for (const s of [A, B, blanco]) s.actualizar(1 / 60, { pos: new T.Vector3(0, 1.68, 500), vivo: false, jugador: true }, j.soldados);
+    // la rejilla de vecinos hay que rehacerla: la consulta la línea de tiro, y
+    // una rejilla rancia —con los soldados del escenario anterior— tapaba a un
+    // grupo y no al otro, que fue exactamente lo que hizo fallar esta prueba
+    j.separarAhora();
+    for (const s of [...cerca6, ...lejos6]) s.ponerLejos(s._lejosFijo);
+    for (const s of [...cerca6, ...lejos6, blanco]) s.actualizar(1 / 60, falso, j.soldados);
   }
-  const dA = Math.hypot(A.pos.x + 3, A.pos.z + 80), dB = Math.hypot(B.pos.x - 3, B.pos.z + 80);
-  ok('recorren lo mismo', Math.abs(dA - dB) < 0.6, `${dA.toFixed(1)} m vs ${dB.toFixed(1)} m`);
-  ok('disparan lo mismo', Math.abs(tiros.a - tiros.b) <= 1, `${tiros.a} vs ${tiros.b}`);
+  const recorrido = g => g.reduce((a2, s) => a2 + Math.hypot(s.pos.x - s._x0, s.pos.z - s._z0), 0) / g.length;
+  const rc = recorrido(cerca6), rl = recorrido(lejos6);
+  // dos metros de tolerancia sobre unos dieciocho: lo que queda es el sorteo de
+  // cuánto duda cada uno antes de arrancar a correr, que se re-tira en cada
+  // decisión y por eso no se puede igualar de antemano
+  ok('recorren lo mismo', Math.abs(rc - rl) < 2, `${rc.toFixed(1)} m vs ${rl.toFixed(1)} m de promedio`);
+  ok('disparan lo mismo', Math.abs(tirosCerca - tirosLejos) <= 2, `${tirosCerca} vs ${tirosLejos}`);
+  const B = lejos6[0];
   ok('el de lejos también cuenta el paso', B.fig.paso > 1, B.fig.paso.toFixed(1));
   // y la cuenta que NO paga: doce cuadros de cinemática inversa sobre un
   // hombre que nadie está mirando de cerca
@@ -80,7 +110,6 @@ const r = await pag.evaluate(async () => {
   const antesM = B.fig.cur.manoD.clone();
   for (let i = 0; i < 12; i++) { B.ponerLejos(true); B.fig.poner('apuntar'); B.fig.actualizar(1 / 60, true, 2.3); }
   ok('pero no arma el cuerpo', B.fig.h.hombroD.quaternion.equals(antesQ) && B.fig.cur.manoD.equals(antesM));
-  // y en cuanto vuelve, lo arma
   B.ponerLejos(false); B.fig.actualizar(1 / 60, true, 2.3);
   ok('y lo arma apenas se acerca', !B.fig.h.hombroD.quaternion.equals(antesQ));
   B.ponerLejos(true);
