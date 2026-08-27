@@ -693,6 +693,20 @@ export class Soldado {
         if (!this.encarado || !this._lineaLibre()) { this.t = Math.min(this.t, 0.4); break; }
         // de rodillas apunta más despacio y con más cuidado
         if (this.t > (this.rodilla ? 1.9 : 1.5)) {
+          // Y UNA ÚLTIMA MIRADA ANTES DE APRETAR, ésta sin caché.
+          //
+          // Cuatro veces por segundo alcanza para sondear mientras encara,
+          // pero NO para el instante del tiro: en un cuarto de segundo un
+          // jinete al galope recorre más de un metro y el pasillo mide setenta
+          // y cinco centímetros, así que la respuesta guardada puede ser de un
+          // mundo que ya no existe. Acá se mira de nuevo, y no cuesta nada
+          // porque un hombre aprieta el gatillo una vez cada doce segundos.
+          if (!this._mirarLinea()) {
+            this._tLinea = 0;
+            this._linea = false;
+            this.t = Math.min(this.t, 0.4);
+            break;
+          }
           this._descargar();
           this.estado = 'recargar';
           this.recarga = RECARGA;
