@@ -5,7 +5,7 @@ const nav = await chromium.launch({ executablePath: process.env.CHROMIUM,
 const pag = await nav.newPage({ viewport: { width: 1100, height: 700 } });
 const errs = []; pag.on('pageerror', e => errs.push(e.message));
 await pag.goto('http://localhost:8099/index.html', { waitUntil: 'load' });
-await pag.waitForTimeout(1200); await pag.click('#empezar'); await pag.waitForTimeout(2200);
+await pag.waitForTimeout(1200); await pag.click('#modo-campo'); await pag.waitForTimeout(2200);
 
 await pag.evaluate(async () => {
   const j = window.juego;

@@ -8,7 +8,7 @@ pag.on('pageerror', e => errs.push('EXCEPCION: ' + e.message));
 pag.on('console', m => { if (m.type() === 'error') errs.push('CONSOLA: ' + m.text()); });
 await pag.goto('file://' + SP + '/clarin-san-lorenzo.html', { waitUntil: 'load' });
 await pag.waitForTimeout(2000);
-await pag.click('#empezar');
+await pag.click('#modo-campo');
 await pag.waitForTimeout(2500);
 const ok = await pag.evaluate(() => {
   if (!window.juego) return { arranco: false };

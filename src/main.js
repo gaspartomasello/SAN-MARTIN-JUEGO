@@ -134,6 +134,13 @@ function apretujar () {
 // medidos (pruebas/lejania.mjs): 370 hombres, 99 llamadas de dibujo. Si en tu
 // máquina va pesado, se le pasan otros: formarPinza(30, 120).
 const pinza = new Pinza();
+// cuando el enemigo entra en distancia, la formación se rompe sola. El jugador
+// tiene que enterarse: hasta ese momento la columna era una máquina y a partir
+// de ahí son sesenta hombres peleando por su cuenta.
+pinza.oeste.alSoltar = () => {
+  hud.mostrarAviso('¡Se rompió la formación!', 'malo');
+  hud.decir('Ya no hay columna. Ahora son sesenta hombres y vos.', 4);
+};
 pinza.alTocar = () => {
   sonido.clarin();
   hud.mostrarAviso('¡A LA CARGA!', 'bien');
@@ -181,12 +188,18 @@ function formarPinza (porColumna = 60, realistas = 250) {
   jugador.monta.andar = 0;
   jugador.monta.vel = 0;
   jugador.pos.set(PLAZA_OESTE.x, jugador.pos.y, PLAZA_OESTE.z);
-  jugador.yaw = PLAZA_OESTE.rumbo;
+  // ARRANCÁS MIRÁNDOLOS. El caballo apunta al campo pero la cabeza va vuelta
+  // sobre el hombro, como la vuelve cualquiera antes de dar una orden. Es la
+  // primera imagen del juego y tiene que ser ésa: sesenta hombres esperando
+  // que vos hagas algo. Mirando al frente, los sesenta quedaban a tu espalda y
+  // no te enterabas de que estaban ahí —que es justo lo que pasó—.
+  jugador.yaw = PLAZA_OESTE.rumbo + Math.PI;
+  jugador.pitch = -0.04;
   for (const c of pinza.columnas) c.plantar();
   combate = false;                 // acá no llegan refuerzos sueltos: es LA batalla
 
   hud.mostrarAviso('Tu columna está formada · [T] toca el clarín', 'bien');
-  hud.decir('Sesenta granaderos detrás tuyo, y todavía no te vieron.', 6);
+  hud.decir('Sesenta granaderos esperándote. Todavía no saben que estás acá.', 7);
   return { oeste: pinza.oeste.hombres.length, este: pinza.este.hombres.length, realistas };
 }
 
@@ -923,13 +936,24 @@ addEventListener('pagehide', soltarMouse);
 addEventListener('beforeunload', soltarMouse);
 document.addEventListener('visibilitychange', () => { if (document.hidden) soltarMouse(); });
 
-document.getElementById('empezar').addEventListener('click', () => {
+// ---- los dos modos, desde la portada ----
+//
+// Esto faltaba y era grave: la pinza existía hacía días y no se veía, porque
+// para armarla había que escribir `juego.formarPinza()` en la consola del
+// navegador. Una función que hay que invocar desde la consola no es una
+// función del juego: es una nota para el que la programó. Desde acá el que
+// abre el archivo elige entre practicar y pelear la batalla, que es lo único
+// que tendría que haber hecho falta desde el principio.
+function arrancar (modo) {
   document.getElementById('portada').classList.add('oculto');
   sonido.iniciar();
   empezado = true;
   tSoltado = 0;
+  if (modo === 'batalla') formarPinza();
   lienzo.requestPointerLock();
-});
+}
+document.getElementById('modo-batalla').addEventListener('click', () => arrancar('batalla'));
+document.getElementById('modo-campo').addEventListener('click', () => arrancar('campo'));
 
 addEventListener('resize', () => {
   camara.aspect = innerWidth / innerHeight;

@@ -158,6 +158,33 @@
   button:hover{background:#D8AC63}
   button:focus-visible{outline:2px solid var(--carmesi);outline-offset:3px}
   .pie{margin-top:22px;color:#5E6A75;font-size:12px;letter-spacing:.11em;text-transform:uppercase}
+  /* ---- los dos modos ----
+     La pinza y el clarín existían desde hace días y no se veían: había que
+     escribir juego.formarPinza() en la consola. Una función que hay que
+     invocar desde la consola no es una función del juego. */
+  .modos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:4px 0 24px}
+  @media (max-width:620px){.modos{grid-template-columns:1fr}}
+  /* flex en columna: un <button> centra su contenido en vertical por defecto y
+     las dos tarjetas quedaban desalineadas entre sí */
+  .modo{display:flex;flex-direction:column;width:100%;text-align:left;text-transform:none;letter-spacing:normal;
+    font-family:var(--ui);background:#161D25;color:var(--hueso);border:1px solid rgba(230,226,214,.16);
+    padding:0;cursor:pointer;transition:border-color .12s linear,background .12s linear}
+  .modo:hover{background:#1B242E;border-color:var(--bronce)}
+  .modo b{display:block;font-family:"Libre Caslon Display",Georgia,serif;font-weight:400;
+    font-size:23px;letter-spacing:0;padding:17px 19px 0;color:var(--hueso)}
+  .modo i{display:block;font-style:normal;color:#D9696C;font-weight:600;font-size:11px;
+    letter-spacing:.17em;text-transform:uppercase;padding:15px 19px 0}
+  .modo span{display:block;color:#8B97A1;font-size:13.5px;line-height:1.6;padding:9px 19px 18px;
+    letter-spacing:.02em}
+  .modo em{color:var(--bronce);font-style:normal}
+  .modo kbd{color:var(--bronce);font-family:var(--ui);font-weight:600;font-size:12px;
+    letter-spacing:.08em;border:1px solid rgba(230,226,214,.26);padding:1px 5px;white-space:nowrap}
+  details.ayuda{margin-bottom:8px}
+  details.ayuda summary{cursor:pointer;color:#8B97A1;font-size:13px;letter-spacing:.1em;
+    text-transform:uppercase;font-weight:600;padding:11px 0;list-style:none}
+  details.ayuda summary::-webkit-details-marker{display:none}
+  details.ayuda summary::before{content:'▸ ';color:var(--bronce)}
+  details.ayuda[open] summary::before{content:'▾ '}
 </style>
 </head>
 <body>
@@ -199,40 +226,69 @@
 <div id="portada">
   <div class="caja">
     <div class="franja"><i></i><i></i><i></i></div>
-    <div class="eyebrow">Fases 1 a 3 · prototipo jugable</div>
-    <h1>El campo de tiro</h1>
-    <p class="sub">Cuartel del Retiro, diciembre de 1812. Tres cosas que no se parecen a un
-      shooter moderno, y las tres se aprenden acá.</p>
-    <p><b>Cargar.</b> Apretá <kbd>R</kbd> y hacé click cuando se encienda ¡AHORA! Acertar los tres
-      tiempos es la diferencia entre volver a tirar o comerte una bayoneta.</p>
-    <p><b>El sable</b> (tecla <kbd>2</kbd>): click derecho cubre. El realista <em>avisa</em> antes
-      de la estocada — echa el acero atrás y grita. Cubrirte <em>en ese instante</em> se la para en
-      seco y lo deja abierto para el remate. No le entres de frente a uno en guardia: te choca
-      el acero. Rompelo con la pechada (<kbd>F</kbd>).</p>
-    <p><b>El caballo</b> (<kbd>H</kbd> para montar): arriba no se camina. <kbd>W</kbd> sube el andar
-      y <kbd>S</kbd> lo baja. Al galope el sable corta el triple, pero necesitás diez metros para
-      frenar y dieciséis para dar la vuelta. La línea se elige antes de entrar.</p>
-    <div class="teclas">
-      <div><kbd>W A S D</kbd><span>moverse</span></div>
-      <div><kbd>Shift</kbd><span>correr</span></div>
-      <div><kbd>Espacio</kbd><span>saltar</span></div>
-      <div><kbd>C</kbd><span>agacharse</span></div>
-      <div><kbd>Z</kbd><span>cuerpo a tierra</span></div>
-      <div><kbd>Click izq.</kbd><span>disparar · marcar el tiempo</span></div>
-      <div><kbd>Click der.</kbd><span>apuntar · <b>cubrirse</b> con el sable</span></div>
-      <div><kbd>R</kbd><span>cargar el arma (una apretada)</span></div>
-      <div><kbd>F</kbd><span>culatazo / bayonetazo · <b>pechada</b></span></div>
-      <div><kbd>1 / 2 / 3</kbd><span>arma larga · sable · pistolón</span></div>
-      <div><kbd>H</kbd><span>montar / bajarse del caballo</span></div>
-      <div><kbd>W / S</kbd><span>a caballo: subir y bajar el andar</span></div>
-      <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
-      <div><kbd>B</kbd><span>revisar la cartuchera</span></div>
-      <div><kbd>V</kbd><span>vendarse (cura rápido)</span></div>
-      <div><kbd>Enter</kbd><span>volver a formar</span></div>
-      <div><kbd>O</kbd><span>que empiece el combate</span></div>
-      <div><kbd>F3</kbd><span>datos de depuración</span></div>
+    <div class="eyebrow">Combate de San Lorenzo · 3 de febrero de 1813</div>
+    <h1>El clarín de San Lorenzo</h1>
+    <p class="sub">Quince minutos de pelea a orillas del Paraná. Sos José de San Martín y
+      todavía no sos nadie: es tu primer combate en suelo americano.</p>
+
+    <div class="modos">
+      <button class="modo" id="modo-batalla">
+        <i>La batalla</i>
+        <b>El clarín</b>
+        <span>Cinco y media de la mañana. Ciento veinte granaderos formados
+          <em>detrás</em> del convento, en dos columnas de sesenta. Doscientos cincuenta
+          realistas subiendo de la barranca con dos cañones, sin saber que estás ahí.
+          Vas a la cabeza de una columna: los sesenta te siguen <em>a vos</em>.
+          Cuando quieras, tocás el clarín con <kbd>T</kbd> y salen las dos a la vez.</span>
+      </button>
+      <button class="modo" id="modo-campo">
+        <i>Práctica</i>
+        <b>El campo de tiro</b>
+        <span>Cuartel del Retiro, diciembre de 1812. Para aprender lo que no se parece a
+          un shooter moderno: cargar en siete pasos, parar una bayoneta en el instante
+          justo y andar a caballo sin que te maten. Con <kbd>O</kbd> empiezan a venir.</span>
+      </button>
     </div>
-    <button id="empezar">Formar</button>
+
+    <details class="ayuda">
+      <summary>Las tres cosas que hay que entender</summary>
+      <p><b>Cargar.</b> Apretá <kbd>R</kbd> y hacé click cuando se encienda ¡AHORA! Acertar los tres
+        tiempos es la diferencia entre volver a tirar o comerte una bayoneta.</p>
+      <p><b>El sable</b> (tecla <kbd>2</kbd>): click derecho cubre. El realista <em>avisa</em> antes
+        de la estocada — echa el acero atrás y grita. Cubrirte <em>en ese instante</em> se la para en
+        seco y lo deja abierto para el remate. No le entres de frente a uno en guardia: te choca
+        el acero. Rompelo con la pechada (<kbd>F</kbd>).</p>
+      <p><b>El caballo</b> (<kbd>H</kbd> para montar): arriba no se camina. <kbd>W</kbd> sube el andar
+        y <kbd>S</kbd> lo baja. Al galope el sable corta el triple, pero necesitás diez metros para
+        frenar y dieciséis para dar la vuelta. La línea se elige antes de entrar. Con
+        <kbd>Espacio</kbd> el caballo salta las tapias, y una tapia nunca te frena del todo.</p>
+    </details>
+
+    <details class="ayuda">
+      <summary>Teclas</summary>
+      <div class="teclas">
+        <div><kbd>W A S D</kbd><span>moverse</span></div>
+        <div><kbd>Shift</kbd><span>correr</span></div>
+        <div><kbd>Espacio</kbd><span>saltar · <b>batir el caballo</b></span></div>
+        <div><kbd>C</kbd><span>agacharse</span></div>
+        <div><kbd>Z</kbd><span>cuerpo a tierra</span></div>
+        <div><kbd>Click izq.</kbd><span>disparar · marcar el tiempo</span></div>
+        <div><kbd>Click der.</kbd><span>apuntar · <b>cubrirse</b> con el sable</span></div>
+        <div><kbd>R</kbd><span>cargar el arma (una apretada)</span></div>
+        <div><kbd>F</kbd><span>culatazo / bayonetazo · <b>pechada</b></span></div>
+        <div><kbd>1 / 2 / 3</kbd><span>arma larga · sable · pistolón</span></div>
+        <div><kbd>H</kbd><span>montar / bajarse del caballo</span></div>
+        <div><kbd>W / S</kbd><span>a caballo: subir y bajar el andar</span></div>
+        <div><kbd>T</kbd><span><b>tocar el clarín</b> (en la batalla)</span></div>
+        <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
+        <div><kbd>B</kbd><span>revisar la cartuchera</span></div>
+        <div><kbd>V</kbd><span>vendarse (cura rápido)</span></div>
+        <div><kbd>Enter</kbd><span>volver a formar</span></div>
+        <div><kbd>O</kbd><span>que empiece el combate (práctica)</span></div>
+        <div><kbd>F3</kbd><span>datos de depuración</span></div>
+      </div>
+    </details>
+
     <div class="pie">Clic para tomar el mouse · Esc para soltarlo y pausar</div>
   </div>
 </div>

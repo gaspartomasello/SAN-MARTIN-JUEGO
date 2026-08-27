@@ -6,7 +6,7 @@ const pag = await nav.newPage({ viewport: { width: 1280, height: 720 } });
 pag.on('pageerror', e => console.log('[EXCEPCION]', e.message));
 await pag.goto((process.env.URL || 'http://localhost:8099') + '/index.html', { waitUntil: 'load' });
 await pag.waitForTimeout(1500);
-await pag.click('#empezar');
+await pag.click('#modo-campo');
 await pag.waitForTimeout(1500);
 
 const ev = (f, ...a) => pag.evaluate(f, ...a);

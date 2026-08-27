@@ -4,7 +4,7 @@ const nav = await chromium.launch({ executablePath: process.env.CHROMIUM,
 const pag = await nav.newPage({ viewport: { width: 1280, height: 720 } });
 pag.on('pageerror', e => console.log('[EXCEPCION]', e.message));
 await pag.goto('http://localhost:8099/index.html', { waitUntil: 'load' });
-await pag.waitForTimeout(1200); await pag.click('#empezar'); await pag.waitForTimeout(1500);
+await pag.waitForTimeout(1200); await pag.click('#modo-campo'); await pag.waitForTimeout(1500);
 const ev = (f, ...a) => pag.evaluate(f, ...a);
 
 // 1. cuatro lanceros de perfil, quietos, para ver la lanza y las tez

@@ -65,6 +65,7 @@ export class Columna {
     this.hombres = [];
     this.jefe = null;             // el Soldado que va adelante, si no la manda el jugador
     this.estado = 'formada';      // formada → saliendo → suelta
+    this.alSoltar = null;
     this._p = new THREE.Vector3();
   }
 
@@ -95,6 +96,7 @@ export class Columna {
     if (this.estado === 'suelta') return false;
     this.estado = 'suelta';
     for (const h of this.hombres) { h.plaza = null; h.estado = 'cargar'; }
+    if (this.alSoltar) this.alSoltar(this);
     return true;
   }
 

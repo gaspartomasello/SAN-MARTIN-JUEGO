@@ -6,7 +6,7 @@ const pag = await nav.newPage({ viewport: { width: 1100, height: 680 } });
 const errs = [];
 pag.on('pageerror', e => errs.push(e.message));
 await pag.goto('http://localhost:8099/index.html', { waitUntil: 'load' });
-await pag.waitForTimeout(1200); await pag.click('#empezar'); await pag.waitForTimeout(1400);
+await pag.waitForTimeout(1200); await pag.click('#modo-campo'); await pag.waitForTimeout(1400);
 const ev = (f, ...a) => pag.evaluate(f, ...a);
 
 // retrato del caballo, de costado

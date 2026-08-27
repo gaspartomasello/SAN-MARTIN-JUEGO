@@ -7,7 +7,7 @@ pag.on('pageerror', e => errs.push(e.message));
 pag.on('console', m => { if (m.type() === 'error' && !m.text().includes('Failed to load resource')) errs.push(m.text()); });
 await pag.goto((process.env.URL || 'http://localhost:8099') + '/index.html', { waitUntil: 'load' });
 await pag.waitForTimeout(1200);
-await pag.click('#empezar');
+await pag.click('#modo-campo');
 await pag.waitForTimeout(1500);
 await pag.evaluate(() => {
   const j = window.juego;

@@ -964,6 +964,46 @@ bichos de jinetes congelados vivían justo en esa diferencia. Ahora la caza corr
 
 ---
 
+### La lección más cara hasta ahora: si no se ve, no existe
+
+La pinza y el clarín estuvieron terminados y probados durante días, con
+veintiuna pruebas en verde, y **el jugador no los vio nunca**. Porque para
+armarlos había que escribir esto en la consola del navegador:
+
+```js
+juego.formarPinza()
+```
+
+Una función que hay que invocar desde la consola no es una función del juego:
+es una nota del programador para sí mismo. Mientras tanto la portada seguía
+diciendo *«Fases 1 a 3 · El campo de tiro»* y tenía un solo botón, así que el
+que abría el archivo caía en el modo de práctica y no había manera de enterarse
+de que existía otra cosa. El juego entero estaba ahí adentro, invisible.
+
+Es un error de una clase distinta a un bicho: las pruebas no lo pueden agarrar,
+porque las pruebas también llaman a la función directamente. Ninguna de las
+ciento sesenta y cinco abría el juego como lo abre una persona.
+
+**El arreglo.** La portada pasa a ser lo que tenía que haber sido: el nombre del
+juego y dos modos, cada uno con lo que es.
+
+| | |
+|---|---|
+| **El clarín** — *la batalla* | Formado detrás del convento, 120 contra 250. <kbd>T</kbd> toca el clarín. |
+| **El campo de tiro** — *práctica* | El Retiro, para aprender a cargar, a parar y a andar a caballo. |
+
+Y la puesta en escena de la batalla: **arrancás mirándolos**. El caballo apunta
+al campo pero la cabeza va vuelta sobre el hombro, como la vuelve cualquiera
+antes de dar una orden. La primera imagen del juego son sesenta hombres
+esperando que hagas algo. Mirando al frente quedaban a tu espalda y no te
+enterabas de que estaban — que es exactamente lo que pasó.
+
+Queda una prueba nueva, `pruebas/portada.mjs`, que hace lo único que faltaba
+hacer: abre el archivo, aprieta el botón de la batalla y aprieta <kbd>T</kbd>.
+Sin tocar la consola.
+
+---
+
 ### El duelo (Fase 2)
 
 Dos formas de ganar un intercambio, y ninguna es apretar el botón de tajo.
