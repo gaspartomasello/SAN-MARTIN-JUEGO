@@ -10,7 +10,7 @@
 // juego, está en el archivo equivocado.
 
 export function armarMando (ctx) {
-  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red } = ctx;
+  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano } = ctx;
 
   const teclas = new Set();
   const sensibilidad = 0.0021;
@@ -180,13 +180,24 @@ export function armarMando (ctx) {
   // navegador. Una función que hay que invocar desde la consola no es una
   // función del juego: es una nota para el que la programó. Desde acá el que
   // abre el archivo elige entre practicar y pelear la batalla.
-  function arrancar (modo) {
+  // AL CAMPO. Lo último que pasa antes de que el jugador tenga el mouse.
+  function alCampo (modo) {
     document.getElementById('portada').classList.add('oculto');
     sonido.iniciar();
     empezado = true;
     tSoltado = 0;
     if (modo === 'batalla') campo.formarPinza();
     lienzo.requestPointerLock();
+  }
+
+  // Y ANTES DE LA BATALLA, EL PLANO. En la práctica no: ahí no hay maniobra
+  // que entender, hay un campo de tiro. El botón del plano es el que toma el
+  // mouse —el navegador sólo lo entrega sobre un gesto del usuario, así que
+  // tiene que ser un click y no un temporizador—.
+  function arrancar (modo) {
+    if (modo !== 'batalla') { alCampo(modo); return; }
+    document.getElementById('portada').classList.add('oculto');
+    plano.mostrar('oeste', 250, () => alCampo('batalla'));
   }
   document.getElementById('modo-batalla').addEventListener('click', () => arrancar('batalla'));
   document.getElementById('modo-campo').addEventListener('click', () => arrancar('campo'));
@@ -257,13 +268,16 @@ export function armarMando (ctx) {
   });
   entrar.addEventListener('click', () => {
     pantallaSala.classList.add('oculto');
-    sonido.iniciar();
-    empezado = true;
-    tSoltado = 0;
-    // el anfitrión arma la batalla —es el que la va a simular—; el invitado
-    // entra a un campo vacío y los trescientos setenta le llegan por el cable
-    if (red.esAnfitrion) red.formarBatalla();
-    lienzo.requestPointerLock();
+    // el mismo plano, con la columna del otro marcada según a quién le tocó
+    plano.mostrar(red.esInvitado ? 'este' : 'oeste', 250, () => {
+      sonido.iniciar();
+      empezado = true;
+      tSoltado = 0;
+      // el anfitrión arma la batalla —es el que la va a simular—; el invitado
+      // entra a un campo vacío y los trescientos setenta le llegan por el cable
+      if (red.esAnfitrion) red.formarBatalla();
+      lienzo.requestPointerLock();
+    });
   });
 
   return {

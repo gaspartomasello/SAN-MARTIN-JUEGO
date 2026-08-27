@@ -151,6 +151,16 @@ export class Hud {
     else if (datos.vendando > 0) txt += ' · <span class="mal">vendando…</span>';
     if (datos.postura === 'cuerpo a tierra') txt += ' · <span class="mal">no se puede cargar tirado</span>';
     txt += `<br>realistas ${datos.enemigos} · granaderos ${datos.aliados} · vendas ${datos.vendas}`;
+    // LOS QUE SE ESTÁN YENDO. Es el número que dice si estás ganando, y no es
+    // el de muertos: San Lorenzo se ganó cuando la línea se quebró, con la
+    // mayoría de los doscientos cincuenta todavía en pie.
+    const q = datos.quiebre;
+    if (q && (q.realistas.rotos || q.idos)) {
+      txt += ` · <span class="bien">${q.realistas.rotos + q.idos} realistas quebrados</span>`;
+    }
+    if (q && q.granaderos.rotos) {
+      txt += ` · <span class="mal">${q.granaderos.rotos} de los tuyos se van</span>`;
+    }
     // Tu columna. Mientras esté formada es un número que no querés ver bajar:
     // son sesenta hombres que te siguen a vos y a nadie más.
     if (datos.columna) {

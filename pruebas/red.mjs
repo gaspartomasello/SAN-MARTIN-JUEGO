@@ -70,10 +70,17 @@ ok('el botón de salir al campo se habilitó solo',
   !(await anf.$eval('#sala-entrar', b => b.disabled)) && !(await inv.$eval('#sala-entrar', b => b.disabled)));
 
 // ---- al campo, por el botón, como una persona ----
-await anf.click('#sala-entrar');
-await anf.waitForTimeout(400);
-await inv.click('#sala-entrar');
-await inv.waitForTimeout(400);
+// los dos pasan por el plano, que además les dice cuál de las dos columnas
+// les tocó: es lo único que distingue a San Martín de Bermúdez antes de entrar
+for (const [p, quien] of [[anf, 'oeste'], [inv, 'este']]) {
+  await p.click('#sala-entrar');
+  await p.waitForSelector('#plano:not(.oculto)', { timeout: 10000 });
+  const dice = await p.$eval('#plano-tuya', e => e.textContent);
+  ok(`el plano le dice al ${quien === 'este' ? 'invitado' : 'anfitrión'} qué columna lleva`,
+    dice.includes(quien), dice);
+  await p.click('#plano-entrar');
+  await p.waitForTimeout(400);
+}
 
 // Y se vuelve a formar chico: doscientos cincuenta hombres por dos navegadores
 // con render por software no es una prueba, es una siesta. De paso se prueba

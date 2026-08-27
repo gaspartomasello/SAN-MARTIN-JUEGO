@@ -35,7 +35,7 @@ celular no se juega.
 
 | | |
 |---|---|
-| **El clarín** — *la batalla* | 3 de febrero de 1813, cinco y media de la mañana. Ciento veinte granaderos formados **detrás** del convento en dos columnas de sesenta, y doscientos cincuenta realistas subiendo de la barranca con dos cañones sin saber que estás ahí. Vas a la cabeza de una columna: los sesenta te siguen **a vos**. Cuando quieras, tocás el clarín con **`T`** y salen las dos a la vez. |
+| **El clarín** — *la batalla* | Arranca con **el plano de la maniobra**, como el de los libros: el convento, los dos escuadrones escondidos atrás, la columna realista con sus dos piezas y por dónde se van a ir cuando se quiebren. Después, 3 de febrero de 1813, cinco y media de la mañana. Ciento veinte granaderos formados **detrás** del convento en dos columnas de sesenta, y doscientos cincuenta realistas subiendo de la barranca con dos cañones sin saber que estás ahí. Vas a la cabeza de una columna: los sesenta te siguen **a vos**. Cuando quieras, tocás el clarín con **`T`** y salen las dos a la vez. |
 | **Los dos costados** — *de a dos, red local* | La misma batalla con un amigo, cada uno en su máquina. Uno lleva la columna del oeste como San Martín y el otro la del este como el capitán **Justo Bermúdez**, que es como fue. Hace falta levantar la sala: ver más abajo. |
 | **El campo de tiro** — *práctica* | Cuartel del Retiro, diciembre de 1812. Para aprender lo que no se parece a un shooter moderno: cargar en siete pasos, parar una bayoneta en el instante justo y andar a caballo sin que te maten. Con **`O`** empiezan a venir. |
 
@@ -140,14 +140,18 @@ Lo que **ya funciona**:
 - **La tropa que se cansa y se acomoda**: corren a intervalos porque el aliento es un
   recurso, no se apilan todos sobre el mismo blanco, se dan vuelta antes de apuntar y no
   le tiran en la nuca al compañero de adelante.
+- **La moral, y con ella un final**: cada hombre lleva su ánimo, se lo bajan los que caen
+  al lado, el flanco, la caballería encima y la soledad, y el quiebre **contagia**. La
+  batalla ya no termina cuando muere el último: termina cuando la línea se rompe y baja
+  la barranca a los botes. Medido: de 250 realistas, **186 se van y 64 mueren**.
+- **El plano de la maniobra** antes de entrar, dibujado con las medidas de verdad del
+  nivel: si mañana cambia una ruta, el plano cambia con ella.
 - **La pinza de a dos, en red local**: las dos columnas llevadas por dos personas, cada
   una en su máquina, con una sola simulación de por medio para que no haya dos batallas.
 
-Lo que **todavía no** está: **la moral**, y por lo tanto el final. Hoy la única forma de
-ganar es matar a los 250 de a uno, que es justo lo contrario de lo que pasó —la línea se
-quebró y salieron corriendo a los botes—. Por eso la batalla dura hoy dos minutos y no
-quince: ninguna tabla de daño convierte un exterminio en San Lorenzo. Después de eso: las órdenes de tropa, la
-barranca, el epílogo del pino y los modos sueltos.
+Lo que **todavía no** está: el **cierre** —no hay pantalla final ni parte de bajas: la
+línea se quiebra, se van, y el campo queda como queda—. Después de eso: las órdenes de
+tropa, bajar a la barranca detrás de ellos, el epílogo del pino y los modos sueltos.
 
 > Agacharse va en `C` y no en `Ctrl` a propósito: `Ctrl+W` es un atajo del navegador
 > para cerrar la pestaña y ninguna página puede bloquearlo.
@@ -161,7 +165,7 @@ barranca, el epílogo del pino y los modos sueltos.
 | `C` | agacharse · `Z` cuerpo a tierra |
 | Click izq. | disparar · **marcar el tiempo mientras cargás** |
 | Click der. | apuntar por el cañón |
-| `R` | cargar el arma (una apretada; otra la pausa) |
+| `R` | cargar el arma (arranca sola tras el tiro; `R` la pausa o la adelanta) |
 | `F` | culatazo (tercerola) / bayonetazo (fusil) |
 | `1` `2` `3` | arma larga · sable corvo · pistolón |
 | `G` | tomar el fusil de un realista caído / intercambiar |
@@ -178,6 +182,7 @@ npm run ritmo         # mide la carga con y sin acertar los tiempos
 npm run rendimiento   # llamadas de dibujo y triángulos bajo carga
 npm run capturas      # capturas de pantalla a capturas/
 npm run red           # dos navegadores, el servidor y el cable de verdad
+npm run moral         # que la batalla termine por quiebre y no por exterminio
 ```
 
 `npm run red` levanta la sala, abre **dos** navegadores, los conecta y comprueba que los
@@ -192,8 +197,8 @@ pasarlo con `CHROMIUM=/ruta/al/chrome`.
 
 | Medición | Valor |
 |---|---|
-| Carga acertando los tres tiempos | **6,6 s** (pistolón: 3,1 s) |
-| Carga errándolos todos | **10,5 s** |
+| Carga acertando los tres tiempos | **2,5 s** (eran 6,6 con siete pasos) |
+| Carga errándolos todos | **6,2 s** (eran 10,5) |
 | Altura de salto | 0,89 m (gravedad 15,24 m/s², como `sv_gravity 800`) |
 | Bala de mosquete sobre el jugador | 52 de 100 · regenera tras 4,5 s |
 
@@ -213,6 +218,8 @@ hacia abajo: no hay ciclos. Si hay que tocar algo, esta tabla dice dónde.
 | `src/despliegue.js` | quién sale al campo, dónde y cuándo: la pinza, los cañones, los caballos, las oleadas | …hay que mover una formación o cambiar dónde desembarcan |
 | `src/gentio.js` | quién se dibuja entero y quién ocupa lugar: reparto de la lejanía y separación de los bots | …el cuadro se cae con mucha gente, o alguien atraviesa a alguien |
 | `src/mando.js` | teclado, mouse, captura del puntero, pausa, la sala de dos y los tres botones de la portada | …se rebindea una tecla |
+| **`src/moral.js`** | **cuándo un bando deja de pelear**: el ánimo de cada hombre, el contagio del quiebre y el momento en que la línea se rompe | …la batalla termina mal: muy rápido, muy lenta, o a puro exterminio |
+| `src/plano.js` | el mapa de la maniobra, generado con las medidas del nivel | …hay que mostrar algo nuevo en el plano |
 | `src/red.js` | **el otro costado de la pinza**: quién simula, qué se replica, los títeres y el cuerpo del compañero | …algo se ve distinto en las dos máquinas |
 | `src/protocolo.js` | **qué se manda por el cable**, byte por byte. Hoja del árbol: no importa nada del proyecto | …hay que agregar algo al parte del mundo |
 | `src/soldados.js` | **el comportamiento** de un hombre: qué decide, cuándo corre, cuándo se da vuelta, la lanza | …un bot hace algo raro |
@@ -236,6 +243,6 @@ batalla se abre un archivo solo.
 ```
 index.html        portada de tres modos, sala de dos, HUD y capas de presentación
 herramientas/     el empaquetador de un solo archivo y el servidor de la sala
-pruebas/          40 archivos de prueba, sobre Playwright
+pruebas/          41 archivos de prueba, sobre Playwright
 docs/GDD.md       el documento de diseño y el registro de por qué
 ```

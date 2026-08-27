@@ -189,6 +189,60 @@
   /* ---- la sala de dos ----
      La pinza son dos columnas. Hasta acá una la llevaba el jugador y la otra
      la máquina; con esto la otra la puede llevar otra persona. */
+  /* ---- el plano de la batalla ----
+     Desde adentro de un cuerpo la pinza no se ve: se ve pasto y casacas. El
+     plano va antes de entrar, y va sobre papel y no sobre la pantalla oscura
+     del juego, porque es otra cosa: es el mapa que mirás en la mesa. */
+  #plano{position:fixed;inset:0;z-index:22;background:#0B0F14;display:flex;align-items:center;
+    justify-content:center;padding:22px}
+  #plano.oculto{display:none}
+  #plano .hoja{max-width:940px;width:100%;max-height:calc(100vh - 44px);overflow-y:auto;
+    background:#E9E3D3;color:#2A2519;padding:26px 30px 24px;
+    box-shadow:0 24px 70px rgba(0,0,0,.7)}
+  #plano .cabecera{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;
+    flex-wrap:wrap;margin-bottom:14px}
+  #plano .titulo{border:1.5px solid #2A2519;padding:9px 15px}
+  #plano .titulo b{display:block;font-family:"Libre Caslon Display",Georgia,serif;font-weight:400;
+    font-size:23px;letter-spacing:.02em;line-height:1.1}
+  #plano .titulo i{display:block;font-style:normal;font-size:12.5px;letter-spacing:.22em;margin-top:3px}
+  #plano .quien{text-align:right;max-width:34ch}
+  #plano .quien b{display:block;font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+    color:#3a5c9a;font-weight:600}
+  #plano .quien span{display:block;color:#6B6250;font-size:13px;line-height:1.6;margin-top:5px}
+  /* el marco va sobre el DIBUJO y no sobre el elemento: con max-height el svg
+     se acaja adentro de su caja y el borde quedaba a un palmo del mapa */
+  #plano-mapa{display:flex;justify-content:center}
+  #plano-mapa svg{width:auto;max-width:100%;height:min(56vh,520px);display:block;
+    background:#EFEADC;border:1px solid #C3B99E}
+  #plano-mapa .muro{fill:#D6CCB2;stroke:#4A4335;stroke-width:.7}
+  #plano-mapa .iglesia{fill:#C6BBA0;stroke:#4A4335;stroke-width:.5}
+  #plano-mapa .oculto rect{fill:#3a5c9a;fill-opacity:.22;stroke:#3a5c9a;stroke-width:.9}
+  #plano-mapa .realista{fill:#b3383c;fill-opacity:.16;stroke:#b3383c;stroke-width:.9}
+  #plano-mapa .pieza circle{fill:none;stroke:#b3383c;stroke-width:.9}
+  #plano-mapa .pieza path{stroke:#b3383c;stroke-width:.9}
+  #plano-mapa .carga{fill:none;stroke:#3a5c9a;stroke-width:1.5;stroke-linecap:round;opacity:.5}
+  #plano-mapa .carga.mia{stroke-width:2.8;opacity:1}
+  #plano-mapa .huida{stroke:#b3383c;stroke-width:1.1;stroke-dasharray:4 3.2;fill:none;opacity:.85}
+  #plano-mapa .agua{fill:#B7CBD3}
+  #plano-mapa .labio{fill:none;stroke:#8A7D63;stroke-width:.8}
+  #plano-mapa text{font-family:var(--ui);fill:#2A2519}
+  #plano-mapa .num{font-family:"Libre Caslon Display",Georgia,serif;font-size:9px;font-weight:400}
+  #plano-mapa .num.azul{fill:#3a5c9a}
+  #plano-mapa .num.rojo{fill:#b3383c}
+  #plano-mapa .nota{font-size:4px;fill:#6B6250;letter-spacing:.04em}
+  #plano-mapa .nota.rojo{fill:#a04a4c}
+  #plano-mapa .rotulo{font-size:6.4px;letter-spacing:.3em;fill:#5C7480;text-anchor:middle}
+  #plano .patas{display:flex;justify-content:space-between;align-items:flex-end;gap:22px;
+    margin-top:16px;flex-wrap:wrap}
+  #plano ol{margin:0;padding:0;list-style:none;columns:2;column-gap:26px;font-size:13px;
+    color:#4A4335;line-height:1.85;max-width:560px}
+  #plano ol li b{font-family:"Libre Caslon Display",Georgia,serif;font-weight:400;font-size:15px;
+    margin-right:5px}
+  #plano ol li.a b{color:#3a5c9a}
+  #plano ol li.r b{color:#b3383c}
+  #plano button{background:#2A2519;color:#E9E3D3;padding:15px 30px}
+  #plano button:hover{background:#4A4335}
+
   #sala{position:fixed;inset:0;z-index:21;background:#0F141A;display:flex;align-items:center;
     justify-content:center;padding:32px}
   #sala.oculto{display:none}
@@ -346,6 +400,34 @@
     </details>
 
     <div class="pie">Clic para tomar el mouse · Esc para soltarlo y pausar</div>
+  </div>
+</div>
+
+<div id="plano" class="oculto">
+  <div class="hoja">
+    <div class="cabecera">
+      <div class="titulo"><b>SAN LORENZO</b><i>3 · FEB · 1813</i></div>
+      <div class="quien">
+        <b id="plano-tuya">Vas con la 4 · la columna del oeste</b>
+        <span>Ciento veinte granaderos escondidos detrás del convento, en dos escuadrones.
+          Doscientos cincuenta realistas subieron de la barranca con dos piezas y todavía
+          no saben que estás ahí.</span>
+      </div>
+    </div>
+
+    <div id="plano-mapa"></div>
+
+    <div class="patas">
+      <ol>
+        <li><b>1</b> Monasterio de San Carlos</li>
+        <li><b>2</b> Los granaderos, ocultos</li>
+        <li class="r"><b>3</b> La columna realista y sus dos piezas</li>
+        <li class="a"><b>4</b> Carga de San Martín</li>
+        <li class="a"><b>5</b> Carga del Cap. Bermúdez</li>
+        <li class="r"><b>‑ ‑ ‑</b> Por dónde se van cuando se quiebren</li>
+      </ol>
+      <button id="plano-entrar">Salir al campo</button>
+    </div>
   </div>
 </div>
 

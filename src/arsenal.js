@@ -46,6 +46,9 @@ export function armarArsenal (ctx) {
   function conectar (arma) {
     arma.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
     arma.alGastarCartucho = () => { yo.cartuchos = Math.max(0, yo.cartuchos - 1); };
+    // la recarga sola no arranca con la cartuchera vacía: ahí hay que apretar
+    // R y comerse el aviso, que es la manera de enterarse de que no queda nada
+    arma.alPedirCarga = () => yo.cartuchos > 0;
     arma.alDisparar = resolverDisparo;
     arma.alGolpear = cfg => resolverGolpe(cfg.alcance, cfg.dano, cfg.nombre);
   }

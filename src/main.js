@@ -11,6 +11,8 @@
 //   despliegue.js quién sale al campo, dónde y cuándo
 //   gentio.js     quién se dibuja entero y quién ocupa lugar
 //   mando.js      el teclado, el mouse y los tres modos
+//   moral.js      cuándo un bando deja de pelear y se va
+//   plano.js      el mapa de la maniobra, dibujado con las medidas del nivel
 //   red.js        el otro costado de la pinza, en la otra máquina
 //   protocolo.js  qué se manda por el cable, byte por byte
 //
@@ -36,6 +38,8 @@ import { armarArsenal } from './arsenal.js';
 import { armarDespliegue } from './despliegue.js';
 import { armarGentio } from './gentio.js';
 import { armarMando } from './mando.js';
+import { armarMoral } from './moral.js';
+import { armarPlano } from './plano.js';
 import { armarRed } from './red.js';
 import { VOLTEO, OFICIO, METRALLA_CABALLO, CAIDA } from './balance.js';
 
@@ -170,6 +174,14 @@ red = armarRed({
   poseDelJugador, intentarVoltear: combate.intentarVoltear
 });
 
+// LA MORAL. Va después de la red porque el «se quiebra la línea» hay que
+// contárselo también al que lleva la otra columna, y después del campo porque
+// necesita saber cuándo se rearma para volver a cero.
+const moral = armarMoral({
+  soldados, caballos, canones, hud, sonido, jugador, montado, red
+});
+campo.alFormar = () => moral.reiniciar();
+
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 jugador.alMorir = () => hud.mostrarAviso('Fuera de combate', 'malo');
 
@@ -213,7 +225,8 @@ pinza.alTocar = () => {
     'El clarín de San Martín. Salís vos también, por el otro costado.');
 };
 
-const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red });
+const plano = armarPlano({ hud });
+const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano });
 
 addEventListener('resize', () => {
   camara.aspect = innerWidth / innerHeight;
@@ -335,6 +348,12 @@ function simular (dt) {
     }
   }
 
+  // LA MORAL, DESPUÉS DE MOVER A TODOS y antes de la pinza: mira posiciones
+  // ya puestas, y puede sacar gente del campo —el que llegó a la barranca se
+  // fue—, así que tiene que hacerlo antes de que la columna vuelva a contar
+  // los suyos. La simula el que lleva la batalla y viaja en el parte.
+  if (!red.esInvitado) moral.actualizar(dt);
+
   pinza.actualizar(dt, jugador, soldados.filter(s => s.esRealista));
   // y se aprieta y se pinta DESPUÉS, con las posiciones del cuadro ya puestas
   // apretujar es simulación —empuja hombre contra hombre— y por eso la hace
@@ -404,6 +423,7 @@ function cuadro () {
     vendando: Math.max(0, jugador.vendando),
     enemigos: campo.vivosDe('realista'),
     aliados: campo.vivosDe('granadero'),
+    quiebre: moral.parte(),
     columna: pinza.viva
       ? { tuya: pinza.oeste.montados, otra: pinza.este.montados, esperando: pinza.sonando }
       : null,
@@ -426,7 +446,7 @@ cuadro();
 // Todo lo que las pruebas y el que quiera hurgar necesitan tocar desde afuera.
 window.juego = {
   // los sistemas, por si hace falta entrar por abajo
-  combate, arsenal, campo, gentio, mando, red,
+  combate, arsenal, campo, gentio, mando, red, moral, plano,
   balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, render,

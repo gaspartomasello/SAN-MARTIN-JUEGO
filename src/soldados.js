@@ -8,7 +8,8 @@ import { sacarDeCaja, RADIO_HOMBRE } from './estorbos.js';
 // un hombre, cuándo se da vuelta, cuánto tarda en bajar la lanza.
 import {
   VIDA_TROPA, VOLTEO, OFICIO, tirar,
-  ALIENTO_TROPA, GASTO_CARRERA, RECUPERO, CARRERA_MINIMA, SATURACION
+  ALIENTO_TROPA, GASTO_CARRERA, RECUPERO, CARRERA_MINIMA, SATURACION,
+  ANIMO_TROPA, TEMPLE, REFUGIO_REALISTA, REFUGIO_GRANADERO
 } from './balance.js';
 
 // Soldados de los dos bandos. Misma anatomía, distinta casaca:
@@ -237,6 +238,25 @@ export class Soldado {
     this.tDecidir = 0;
     this.encarado = true;
     this.huyendo = 0;               // > 0: acaba de perder el caballo y se está yendo
+
+    // ---- EL ÁNIMO ----
+    //
+    // Cuánto le queda a este hombre de ganas de seguir peleando. Lo que se lo
+    // baja no está acá —eso lo mira moral.js, que es el que ve la tropa
+    // entera— ni cuánto pesa cada cosa —eso es balance.js—. Acá vive lo único
+    // que es del hombre: cuánto aguanta y qué hace cuando se le acaba.
+    this.animo = ANIMO_TROPA;
+    this.temple = TEMPLE[0] + Math.random() * TEMPLE[1];
+    this.quebrado = false;          // dejó de pelear: va a la barranca
+    this.tAnimo = Math.random() * 0.4;   // escalonado, para no mirarlos a todos juntos
+    // Hacia dónde mira LA TROPA, que no es hacia dónde mira este hombre. Un
+    // hombre se da vuelta en un segundo; una línea, no. Persigue muy despacio
+    // al rumbo real y contra él se mide el flanco. Nace en null porque el
+    // rumbo se le escribe después de construirlo —al formar, o al plantar la
+    // columna— y arrancarlo en cero pondría a doscientos cincuenta realistas
+    // creyendo que su frente es el río que tienen a la espalda.
+    this.frente = null;
+    this._llorado = false;          // su muerte ya se le cobró a los de al lado
     this._tLinea = 0;               // caché de la línea de tiro
     this._linea = true;
     this.puesto = null;                     // los artilleros no abandonan la pieza
@@ -412,6 +432,66 @@ export class Soldado {
       !this.avisando && this.tAcero < ACERO_GUARDIA;
   }
 
+  // SE QUEBRÓ. Deja de pelear y se va, y no vuelve.
+  //
+  // Que no vuelva es una decisión, no una simplificación por vagancia: en San
+  // Lorenzo los que se quebraron no se reagruparon, bajaron la barranca y se
+  // subieron a los botes. Un sistema de reagrupe además haría que el ánimo
+  // fuera de ida y vuelta, y toda la tensión de la pelea está justo antes del
+  // quiebre —en si el recupero le gana a lo que entra—, no después.
+  quebrar () {
+    if (this.quebrado || !this.vivo) return false;
+    this.quebrado = true;
+    this.animo = 0;
+    this.plaza = null;           // se acabó la formación
+    this.cubierta = null;
+    this.motivo = null;
+    this.objetivo = null;
+    this.rodilla = false;
+    this.fig.rodilla = false;
+    return true;
+  }
+
+  // A DÓNDE CORRE. No «lejos»: el realista baja por donde subió —la barranca
+  // está en z −85 y la escuadra fondeada detrás— y el granadero vuelve atrás
+  // del convento, por el costado y no por encima del edificio.
+  refugio () {
+    return this.esRealista
+      ? { x: this.pos.x, z: REFUGIO_REALISTA }
+      : { x: (this.pos.x >= 0 ? 1 : -1) * 42, z: REFUGIO_GRANADERO };
+  }
+
+  get enRefugio () {
+    const r = this.refugio();
+    return this.esRealista ? this.pos.z <= r.z : this.pos.z >= r.z;
+  }
+
+  _irse (dt) {
+    const r = this.refugio();
+    if (this.montado) {
+      this._marchar(dt, this._v.set(r.x, 0, r.z), 3);
+      this.fig.actualizar(dt, false);
+      return;
+    }
+    this._dePie();
+    let dx = r.x - this.pos.x, dz = r.z - this.pos.z;
+    const d = Math.hypot(dx, dz) || 1;
+    dx /= d; dz /= d;
+    this._girarHacia(Math.atan2(dx, dz) + Math.PI, dt, true);
+    // corre hasta quedarse sin aire y después sigue al trote: no se para
+    const hay = this.aliento > 6;
+    this.aliento = Math.max(0, this.aliento - GASTO_CARRERA * 0.55 * dt);
+    const v = hay ? VEL_CARRERA : VEL;
+    this.ritmo = hay ? 2.3 : 1;
+    this.fig.poner(hay ? 'correr' : 'marcha');
+    this.pos.x += dx * v * dt;
+    this.pos.z += dz * v * dt;
+    this._chocar();
+    this.malla.position.y = 0;
+    this.andando = true;
+    this.fig.actualizar(dt, true, this.ritmo);
+  }
+
   // parado en seco: se le corta el golpe y queda abierto
   aturdir (seg) {
     if (!this.vivo) return;
@@ -521,6 +601,10 @@ export class Soldado {
     // Y pasaba cada vez que un caballo moría, que es una de las cosas más
     // comunes del juego: la metralla los voltea de una.
     if (this.monta && !this.monta.vivo) this.desmontar(true);
+
+    // EL QUEBRADO YA NO PELEA. Va antes de elegir blanco porque justamente
+    // dejó de tener uno: lo único que le queda adelante es la barranca.
+    if (this.quebrado) { this._irse(dt); return; }
 
     const dist = this._elegirObjetivo(jugador, soldados);
 

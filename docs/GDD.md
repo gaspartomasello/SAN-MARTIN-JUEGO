@@ -1396,6 +1396,184 @@ primer intento.
 
 ---
 
+---
+
+### La moral y la ruptura (Fase 9): la batalla por fin termina
+
+Hasta acá el juego no tenía final. La única forma de ganar era matar a los
+doscientos cincuenta de a uno, y eso no es San Lorenzo con la dificultad mal
+puesta: es otra batalla. La de verdad duró quince minutos, murieron unos
+cuarenta realistas de doscientos cincuenta, y terminó porque **la línea se
+quebró y bajó corriendo la barranca a los botes**, dejando las dos piezas, la
+bandera y sus muertos.
+
+Medido antes de esta fase: 2,0 min, granaderos 120 → 0, realistas 254 → 80.
+Perdías, y perdías por aritmética.
+
+#### La moral no es una barra de ejército
+
+La forma barata es un contador global: el bando acumula bajas, llega a cero,
+todos corren. Es una abstracción de juego de estrategia y desde adentro de un
+cuerpo, en primera persona, se siente arbitraria — de golpe, sin motivo
+visible, doscientos tipos dan media vuelta.
+
+Lo que rompe una línea en 1813 es **local**. Un hombre no sabe que el ejército
+perdió cuarenta; sabe que los tres que tenía al lado están en el piso, que le
+tiran desde el costado y que se le viene un caballo encima. Así que el ánimo va
+por hombre, y lo que se lo baja es lo que ese hombre puede ver:
+
+| | |
+|---|---|
+| **El que cae al lado** | El término más pesado, y se cobra **de golpe**, una vez. Contar cadáveres haría que un campo lleno de muertos siguiera desmoralizando cuarenta segundos después: lo que asusta es el hombre cayendo, no el hombre caído. |
+| **El flanco** | Ver abajo: es la pinza escrita como número. |
+| **La caballería encima** | Infantería sin cuadro contra caballo. Es literalmente lo que pasó: los desembarcaron, les cayeron encima y no llegaron a formar. |
+| **La soledad** | Un hombre en una línea apretada aguanta; el mismo hombre solo, no. Es la otra cara del gentío: la formación no sirve sólo para tirar juntos. |
+| **La pieza que calla** | Las dos piezas eran la espina dorsal de esa fuerza. |
+| **Estar herido** | Con la mitad de la vida se pelea distinto. |
+
+Y se recompone. La tensión entera de la pelea está en una resta: si el aplomo
+le gana a lo que entra, la línea aguanta.
+
+#### El flanco: lo que hace que la pinza valga
+
+El primer intento midió «un enemigo fuera de mi cono de tiro». Medido así, un
+flanqueo **no cuesta nada**: el hombre gira en un segundo y se acabó. La prueba
+lo agarró en seguida —entrar por el costado daba *mejor* ánimo que entrar de
+frente— y era un error de diseño, no de número.
+
+Lo que hace a un flanco un flanco es que la **tropa** tiene un frente, y el
+frente de una tropa no se da vuelta como se da vuelta un hombre. Así que cada
+uno lleva un frente propio que persigue muy despacio a su rumbo real —diez
+segundos para media vuelta— y el flanco se mide contra ése.
+
+De ahí sale, escrita como número, la razón de ser de toda la maniobra del 3 de
+febrero: **no se puede estar orientado a dos lados a la vez**. Medido, con seis
+jinetes a la misma distancia y cambiando sólo el ángulo:
+
+| | ánimo tras seis segundos |
+|---|---|
+| Caballería **de frente** | 53 |
+| La misma caballería **por el flanco** | 29 |
+
+(Y de paso apareció un bicho de años: los doscientos cincuenta realistas nacían
+mirando a −z, o sea al río que tenían a la espalda. Sin moral no se notaba;
+con moral quedaban flanqueados por su propio objetivo desde el cuadro uno.)
+
+#### El contagio, que es lo que lo hace ver como una desbandada
+
+Sin contagio, doscientos cincuenta hombres cruzan su umbral cada uno por su
+cuenta y la línea se disuelve pareja, de a uno, como hielo que se derrite. Con
+contagio, un pedazo cede y el hueco se propaga hacia afuera hasta que se va
+todo junto.
+
+Medirlo también costó un intento. Comparar el pico contra el promedio no sirve:
+el promedio se lo come la propia desbandada, así que una batalla corta y
+violenta da un promedio alto y la medida no distingue nada. Lo que sí sirve es
+la **concentración**: qué tan corta es la ventana que se lleva la mitad de los
+quiebres. Medido: **la mitad en el 22 % del tiempo**.
+
+Y arriba de todo eso está **la línea rota**: cuando ya se quebró una parte del
+bando, lo que queda ve que se está yendo todo el mundo. Ese golpe es de bando y
+no de vecino, y es el instante en que la retirada se vuelve fuga.
+
+#### Se quiebra, se va, y no vuelve
+
+Que no vuelva es una decisión, no vagancia. En San Lorenzo los que se quebraron
+no se reagruparon: bajaron la barranca y se subieron a los botes. Un sistema de
+reagrupe además haría el ánimo de ida y vuelta, y toda la tensión está justo
+antes del quiebre, no después.
+
+Y corre a un lugar, no «lejos»: los realistas bajan por donde subieron —la
+barranca está en z −85 y la escuadra fondeada detrás— y los granaderos vuelven
+atrás del convento. El que llega, se fue de la batalla y se lo levanta del campo.
+
+#### Y tus granaderos también se quiebran
+
+Si sólo se rompe el enemigo, esto no es un sistema de moral: es un botón de
+ganar. Doce granaderos solos contra ochenta realistas se van, y una columna
+llevada de frente contra las piezas se te deshace. Ése es el riesgo que hace
+que valga la pena hacer bien la pinza — y en el modo de a dos, que valga la
+pena esperar el clarín.
+
+#### Lo medido
+
+| | antes | ahora |
+|---|---|---|
+| La batalla termina por | exterminio | **quiebre** |
+| Realistas que se van / que mueren | 0 / 250 | **186 / 64** |
+| Granaderos vivos al final | 0 de 120 | **89 de 120** |
+| Costo de la moral | — | **0,3 ms** por cuadro con 375 hombres |
+
+El barrido se hace **escalonado**: cada hombre mira a su alrededor cada 0,4 s y
+los turnos están repartidos al nacer. Por cuadro se miran quince, no
+trescientos setenta. De paso, escalonar sirve para algo más que el costo: si
+todos miraran en el mismo cuadro, todos cruzarían el umbral en el mismo cuadro.
+
+**Lo que esto NO arregla**: la batalla dura medio minuto de reloj, no quince.
+El techo lo pone la letalidad de una carga de lanza, que es otra tabla y otra
+conversación. Lo que la moral cambia es *cómo termina*, y eso era lo que
+faltaba.
+
+---
+
+### El plano (Fase 9.1): la maniobra, antes de meterse adentro
+
+Desde adentro de un cuerpo, a la altura de los ojos y con humo, la pinza no se
+ve. Se ve pasto, se ven casacas y se oye un clarín. El jugador podía jugar la
+batalla entera sin entender nunca qué estaba haciendo, que es exactamente lo
+contrario de lo que este juego quiere.
+
+Así que antes de arrancar se muestra el plano, como el de los libros: el
+convento, los dos escuadrones escondidos atrás, la columna realista subida de
+la barranca con sus dos piezas, las dos cargas cerrándose sobre los flancos, y
+por dónde se van a ir cuando se quiebren. Con la carga que te toca **marcada**:
+en red, el invitado necesita saber que va con la 5.
+
+**Se dibuja con las medidas de verdad.** Ni una coordenada de `plano.js` es
+decorativa: el convento sale de `sanlorenzo.js`, las rutas y las plazas de
+`pinza.js`, las piezas y el frente del desembarco de `despliegue.js`, y las
+flechas de retirada de `REFUGIO_REALISTA` en `balance.js`. Un plano dibujado a
+mano aparte del nivel es un plano que en dos semanas miente.
+
+---
+
+### La carga, de siete tiempos a cuatro
+
+Los siete pasos del reglamento eran fieles y eran demasiados: con tres marcas
+de tiempo sobre siete pasos, la mitad de la carga era mirar. Ahora son cuatro,
+y no se tiraron tres a la basura: se juntaron los que son **un solo movimiento
+de la mano**.
+
+| Antes | Ahora |
+|---|---|
+| Sacar el cartucho · Morder · Verter la pólvora | **Morder y verter** ⟵ se saca, se muerde y se vuelca sin soltar nada |
+| Cebar la cazoleta | **Cebar la cazoleta** |
+| Introducir la bala · Atacar con la baqueta | **Bala y baqueta** |
+| Amartillar | **Amartillar** |
+
+Se conservaron los **tres tiempos que se marcan a mano** y el cebado, que es el
+paso propio del arma de chispa y el que se cobra cuando hay fogonazo sin tiro.
+Con cuatro pasos y tres marcas, casi cada paso pide algo.
+
+| | antes | ahora |
+|---|---|---|
+| Acertando los tres tiempos | 6,6 s | **2,5 s** |
+| Errándolos todos | 10,5 s | **6,2 s** |
+
+Y **se recarga sola**: un granadero no espera que le den la orden de volver a
+cargar, tira y ya está metiendo la mano en la cartuchera. `R` sigue estando
+—para pausarla, para retomarla o para empezar antes de que termine el
+retroceso— pero dejó de ser obligatoria. No arranca sola con la cartuchera
+vacía: ahí hay que apretar `R` y comerse el aviso, que es la manera de
+enterarse.
+
+(Al hacerlo apareció una prueba que había dejado de probar: `pruebas/ritmo.mjs`
+tenía los siete pasos escritos a mano, así que seguía pidiendo pasos que ya no
+existían. Ahora le pide la secuencia al arma. Una prueba que repite por su
+cuenta lo que prueba deja de probarlo.)
+
+---
+
 ### El duelo (Fase 2)
 
 Dos formas de ganar un intercambio, y ninguna es apretar el botón de tajo.
@@ -1479,6 +1657,8 @@ src/
   despliegue.js   quién sale al campo, dónde y cuándo
   gentio.js       quién se dibuja entero y quién ocupa lugar
   mando.js        teclado, mouse, puntero, pausa, la sala y los tres modos
+  moral.js        cuándo un bando deja de pelear y se va
+  plano.js        el mapa de la maniobra, con las medidas del nivel
   red.js          el otro costado de la pinza, en la otra máquina
   protocolo.js    QUÉ SE MANDA por el cable, byte por byte (hoja, como balance)
   main.js         monta el escenario, ata los sistemas, corre el bucle
@@ -1503,7 +1683,7 @@ src/
 
 vendor/           three.js, vendorizado: no hay npm en tiempo de ejecución
 herramientas/     empaquetar.mjs (el único paso de construcción) y servidor.mjs
-pruebas/          40 archivos sobre Playwright, contra el juego de verdad
+pruebas/          41 archivos sobre Playwright, contra el juego de verdad
 ```
 
 Las dos reglas que sostienen el reparto:

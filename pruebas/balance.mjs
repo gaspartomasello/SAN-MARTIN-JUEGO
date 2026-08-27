@@ -138,13 +138,20 @@ const r = await pag.evaluate(async () => {
   for (const c of curva) out.push(['—', `  minuto ${c.min}`, `granaderos ${c.gr} · realistas ${c.re} · vos ${c.vos}`]);
   ok('los 120 granaderos no se evaporan en el primer minuto',
     !curva[0] || curva[0].gr > gr0 * 0.45, curva[0] ? `quedaban ${curva[0].gr} al minuto 1` : '');
-  // Honestidad sobre este número: la batalla de verdad duró quince minutos y
-  // NO terminó por bajas, terminó porque un bando se quebró y corrió a los
-  // botes. Sin moral, esto es una pelea a muerte entre dos ejércitos que no
-  // saben rendirse, y ninguna tabla de daño convierte un exterminio en San
-  // Lorenzo. Lo que se puede exigir hoy es que ya no se resuelva en el primer
-  // minuto; los quince minutos son la fase de la moral.
-  ok('ya no se resuelve en el primer minuto', t / 60 > 1.5, `${(t / 60).toFixed(1)} min`);
+  // CÓMO TERMINA LA BATALLA YA NO SE MIDE ACÁ.
+  //
+  // Este archivo pedía que la batalla durara más de minuto y medio, y tenía
+  // razón mientras la única forma de terminarla fuera matarlos a todos: ahí,
+  // que se resolviera rápido quería decir que alguien barría al otro.
+  //
+  // Con moral eso se dio vuelta. Terminar rápido pasó a ser lo que se buscaba
+  // —la línea se quiebra y baja la barranca— y el reloj dejó de decir nada
+  // por sí solo: media hora de exterminio y medio minuto de desbandada dan
+  // números opuestos y sólo el segundo es San Lorenzo.
+  //
+  // Así que la pregunta se mudó entera a pruebas/moral.mjs, que mide lo que
+  // ahora importa: si se van más de los que mueren. Acá quedan las tablas de
+  // daño, que es lo de este archivo.
   ok('y los dos bandos se hacen daño', reF < re0 * 0.5 && grF < gr0,
     `realistas ${re0}→${reF}, granaderos ${gr0}→${grF}`);
   limpiar();

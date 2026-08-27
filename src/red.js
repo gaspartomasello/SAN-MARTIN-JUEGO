@@ -60,7 +60,7 @@ import { Canon } from './canon.js';
 import { PLAZA_ESTE } from './pinza.js';
 import {
   empaquetarMundo, desempaquetarMundo, poseANumero, numeroAPose, pesoDelParte,
-  B_VIVO, B_MONTADO, B_RODILLA, B_ANDANDO, B_LANCERO, B_CUBIERTO,
+  B_VIVO, B_MONTADO, B_RODILLA, B_ANDANDO, B_LANCERO, B_CUBIERTO, B_QUEBRADO,
   C_VIVO, C_CEBANDO
 } from './protocolo.js';
 
@@ -352,7 +352,8 @@ export function armarRed (ctx) {
         pose: poseANumero(s.fig.pose),
         banderas: (s.vivo ? B_VIVO : 0) | (s.montado ? B_MONTADO : 0) |
           (s.rodilla ? B_RODILLA : 0) | (s.andando ? B_ANDANDO : 0) |
-          (s.lancero ? B_LANCERO : 0) | (s.cubierto ? B_CUBIERTO : 0),
+          (s.lancero ? B_LANCERO : 0) | (s.cubierto ? B_CUBIERTO : 0) |
+          (s.quebrado ? B_QUEBRADO : 0),
         vida: Math.max(0, s.vida), caida: s.caida
       });
     }
@@ -446,6 +447,7 @@ export function armarRed (ctx) {
       s.fig.rodilla = s.rodilla;
       s.andando = !!(h.banderas & B_ANDANDO);
       s.ritmo = s.andando ? 2.1 : 1;
+      s.quebrado = !!(h.banderas & B_QUEBRADO);
       s.vida = h.vida;
       if (h.caida > s.caida) s.caida = h.caida;
       const vivo = !!(h.banderas & B_VIVO);

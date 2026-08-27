@@ -12,7 +12,8 @@
     "empaquetar": "node herramientas/empaquetar.mjs",
     "archivo-unico": "node pruebas/archivo-unico.mjs",
     "sala": "node herramientas/servidor.mjs",
-    "red": "node pruebas/red.mjs"
+    "red": "node pruebas/red.mjs",
+    "moral": "node pruebas/moral.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

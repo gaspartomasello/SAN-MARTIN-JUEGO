@@ -52,6 +52,9 @@ export const B_ANDANDO = 8;
 export const B_LANCERO = 16;
 export const B_CUBIERTO = 32;
 export const B_LEJOS = 64;
+// el último bit que quedaba libre del byte, y le tocó al que se está yendo:
+// del otro lado de la red hay que poder ver quebrarse la línea
+export const B_QUEBRADO = 128;
 // banderas de la pieza
 export const C_VIVO = 1;
 export const C_CEBANDO = 2;

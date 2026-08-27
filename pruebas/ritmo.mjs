@@ -10,10 +10,12 @@ const r = await pag.evaluate(() => {
   const t = window.juego.arma;
   const dt = 1 / 120;
   function correr (jugarBien, presion) {
-    // reiniciar el arma
-    t.polvora = t.bala = t.cebado = t.amartillada = false;
-    t.secuencia = ['cartucho','morder','cebar','polvora','bala','baqueta','amartillar'];
-    t.paso = 0; t.tPaso = 0; t.penal = 0; t.marcado = null; t.cargando = true;
+    // Reiniciar el arma pidiéndoselo AL ARMA, no copiando su secuencia acá.
+    // Estaban escritos a mano los siete pasos del reglamento, y el día que la
+    // carga pasó a cuatro esta prueba siguió pidiendo pasos que ya no existen.
+    // Una prueba que repite por su cuenta lo que prueba deja de probarlo.
+    t.dejarDescargada();
+    t.cargando = true;
     let seg = 0, aciertos = 0, fallos = 0;
     for (let i = 0; i < 120 * 40 && !t.lista; i++) {
       const info = t.infoPaso();

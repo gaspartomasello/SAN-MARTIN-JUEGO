@@ -11,6 +11,9 @@ await pag.screenshot({ path: 'tropa/q-0-portada.png' });
 
 // el botón de la batalla, como lo aprieta cualquiera
 await pag.click('#modo-batalla');
+// entre elegir la batalla y salir al campo está el plano de la maniobra
+await pag.waitForSelector('#plano:not(.oculto)', { timeout: 10000 });
+await pag.click('#plano-entrar');
 await pag.waitForTimeout(2600);
 await pag.screenshot({ path: 'tropa/q-1-formada.png' });
 const antes = await pag.evaluate(() => ({

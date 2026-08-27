@@ -8,17 +8,34 @@ import { CULATAZO, BAYONETAZO } from './balance.js';
 // Las tres comparten la misma máquina de carga de siete pasos, que es
 // interrumpible y persistente: cada arma se acuerda de dónde quedó.
 
+// LOS CUATRO TIEMPOS.
+//
+// Eran siete y ahora son cuatro, y no es que se hayan tirado tres a la basura:
+// se juntaron los que son un solo movimiento de la mano. Sacar el cartucho,
+// morderlo y verter la pólvora es UN gesto —se saca, se muerde y se vuelca, sin
+// soltar nada en el medio— y meter la bala y atacarla con la baqueta también.
+//
+// Lo que se conservó es lo que hay que conservar: los TRES tiempos que se
+// marcan a mano —morder, baqueta y amartillar— y el cebado de la cazoleta, que
+// es el paso propio del arma de chispa y el que se cobra cuando hay fogonazo
+// sin tiro. Con siete pasos y tres marcas, la mitad de la carga era mirar. Con
+// cuatro y tres, casi cada paso pide algo.
+//
+// Y son más cortos: de 7,70 s de reglamento a 3,45. Un granadero de 1813
+// tardaba veinte segundos y hacía tres disparos por minuto; esto ya era una
+// concesión al que juega, y ahora es una concesión un poco más grande.
 export const PASOS = {
-  cartucho:   { nombre: 'Sacar el cartucho',      dur: 0.95, golpe: false },
-  morder:     { nombre: 'Morder el cartucho',     dur: 0.75, golpe: true },
-  cebar:      { nombre: 'Cebar la cazoleta',      dur: 1.35, golpe: false },
-  polvora:    { nombre: 'Verter la pólvora',      dur: 1.25, golpe: false },
-  bala:       { nombre: 'Introducir la bala',     dur: 1.10, golpe: false },
-  baqueta:    { nombre: 'Atacar con la baqueta',  dur: 1.65, golpe: true },
-  amartillar: { nombre: 'Amartillar',             dur: 0.65, golpe: true }
+  morder:     { nombre: 'Morder y verter',        dur: 0.80, golpe: true },
+  cebar:      { nombre: 'Cebar la cazoleta',      dur: 0.90, golpe: false },
+  baqueta:    { nombre: 'Bala y baqueta',         dur: 1.20, golpe: true },
+  amartillar: { nombre: 'Amartillar',             dur: 0.55, golpe: true }
 };
 
-export const SECUENCIA = ['cartucho', 'morder', 'cebar', 'polvora', 'bala', 'baqueta', 'amartillar'];
+export const SECUENCIA = ['morder', 'cebar', 'baqueta', 'amartillar'];
+
+// Lo que tarda el arma en empezar a recargarse sola después del tiro: lo que
+// dura el retroceso, para que el disparo se lea antes de que la mano vuelva.
+const AUTO_CARGA = 0.5;
 
 const PENAL = 0.9;
 const RETARDO = 0.09;
@@ -457,6 +474,8 @@ export class ArmaFuego {
 
     this.secuencia = SECUENCIA.slice();
     this.paso = 0;
+    this.autoCarga = 0;        // > 0: está por ponerse a cargar sola
+    this.alPedirCarga = null;  // el arsenal dice si queda cartucho
     this.tPaso = 0;
     this.penal = 0;
     this.marcado = null;
@@ -603,12 +622,21 @@ export class ArmaFuego {
   _completarPaso () {
     const id = this.pasoActual;
     switch (id) {
-      case 'cartucho': this.cartucho.visible = true; this.sonido.papel(); break;
-      case 'morder': this.sonido.papel(); break;
+      // morder trae adentro sacar el cartucho y verter la pólvora, y baqueta
+      // trae meter la bala: por eso acá pasan dos cosas por paso
+      case 'morder':
+        this.cartucho.visible = true;
+        this.polvora = true;
+        this.sonido.papel();
+        this.sonido.polvora();
+        break;
       case 'cebar': this.cebado = true; this.sonido.polvora(); this.sonido.rastrillo(); break;
-      case 'polvora': this.polvora = true; this.sonido.polvora(); break;
-      case 'bala': this.bala = true; this.cartucho.visible = false; if (this.alGastarCartucho) this.alGastarCartucho(); break;
-      case 'baqueta': this.sonido.baqueta(); break;
+      case 'baqueta':
+        this.bala = true;
+        this.cartucho.visible = false;
+        if (this.alGastarCartucho) this.alGastarCartucho();
+        this.sonido.baqueta();
+        break;
       case 'amartillar': this.amartillada = true; this.sonido.martillo(); break;
     }
     this.paso++;
@@ -676,6 +704,11 @@ export class ArmaFuego {
   }
 
   _tirar () {
+    // Y ARRANCA A RECARGARSE SOLA. Un granadero no espera que le den la orden
+    // de volver a cargar: tira y ya está metiendo la mano en la cartuchera. La
+    // tecla R sigue estando —para pausarla, para retomarla, o para empezar
+    // antes de que termine el retroceso—, pero dejó de ser obligatoria.
+    this.autoCarga = AUTO_CARGA;
     this.polvora = false;
     this.bala = false;
     this.cebado = false;
@@ -728,6 +761,20 @@ export class ArmaFuego {
     if (this.esperaTiro >= 0) {
       this.esperaTiro -= dt;
       if (this.esperaTiro < 0) { this.esperaTiro = -1; this._tirar(); }
+    }
+
+    // la recarga sola, pasado el retroceso. No se avisa nada si no se puede
+    // —cuerpo a tierra, o en pleno puntazo—: se vuelve a intentar al cuadro
+    // siguiente y listo. Un aviso por cuadro sería una alarma.
+    if (this.autoCarga > 0) {
+      this.autoCarga -= dt;
+      if (this.autoCarga <= 0) {
+        this.autoCarga = 0;
+        if (!this.cargando && !this.guardada && this.tGolpe < 0 && this.penalPostura > 0 &&
+            this.paso < this.secuencia.length && (!this.alPedirCarga || this.alPedirCarga())) {
+          this.cargando = true;
+        }
+      }
     }
 
     if (this.tGolpe >= 0) {
@@ -811,11 +858,8 @@ export class ArmaFuego {
       const u = Math.min(1, this.tPaso / d);
       const zBoca = this.bocaZ;
       switch (id) {
-        case 'cartucho': destino.set(0.06, -0.16, 0.12); break;
         case 'morder': destino.set(-0.01, 0.03, 0.06); break;
         case 'cebar': destino.set(0.03, 0.02, -0.09); break;
-        case 'polvora': destino.set(-0.02, 0.05, zBoca + 0.04); break;
-        case 'bala': destino.set(-0.02, 0.04, zBoca + 0.02); break;
         case 'baqueta': {
           const s = Math.abs(Math.sin(u * Math.PI * 2));
           destino.set(-0.02, 0.06 + s * 0.05, zBoca - 0.02 - s * 0.12);
@@ -825,7 +869,7 @@ export class ArmaFuego {
         case 'amartillar': destino.set(0.05, 0.02, -0.02); break;
       }
       this.cartucho.position.set(destino.x + 0.01, destino.y + 0.03, destino.z);
-      this.cartucho.visible = ['morder', 'cebar', 'polvora', 'bala'].includes(id);
+      this.cartucho.visible = ['morder', 'cebar', 'baqueta'].includes(id);
     } else {
       this.cartucho.visible = false;
     }

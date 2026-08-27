@@ -19,12 +19,25 @@ import { Canon } from './canon.js';
 import { PLAZA_OESTE, PLAZA_ESTE } from './pinza.js';
 import { ALIADOS_MAX, ENEMIGOS_MAX, MONTADOS, OLEADA_REALISTA, OLEADA_GRANADERO } from './balance.js';
 
+// DÓNDE ESTÁN LAS DOS PIEZAS. Sale de acá y no de un número suelto adentro de
+// ponerCanones porque el plano de la batalla las tiene que dibujar donde de
+// verdad están.
+export const PIEZAS = [[-13, -68, Math.PI], [11, -73, Math.PI]];
+
+// El desembarco: tres filas, y el ancho sale de cuántos son. Se exporta la
+// cuenta para que el plano dibuje la línea con el frente que va a tener.
+export const FILAS_REALISTAS = 3;
+export const PASO_FILA = 1.56;
+export const FONDO_FILA = 2.4;
+export const Z_DESEMBARCO = -66;
+
 export function armarDespliegue (ctx) {
   const { escena, mundo, humo, sonido, hud, jugador, soldados, caballos, pinza, canones,
     disparoEnemigo, golpeEnemigo, resolverMetralla } = ctx;
 
   const campo = {
     canones,
+    alFormar: null,       // se avisa cuando el campo se rearma: la moral vuelve a cero
     caballo: null,        // el del jugador; sobrevive a que se baje
     oleadas: false,       // el modo suelto: van llegando de a poco
     _tRealista: 0,
@@ -138,7 +151,7 @@ export function armarDespliegue (ctx) {
   campo.ponerCanones = function () {
     for (const c of canones) c.quitar();
     canones.length = 0;
-    for (const [x, z, r] of [[-13, -68, Math.PI], [11, -73, Math.PI]]) {
+    for (const [x, z, r] of PIEZAS) {
       const c = new Canon(escena, humo, sonido, new THREE.Vector3(x, 0, z), r);
       c.alDisparar = quien => resolverMetralla(quien);
       canones.push(c);
@@ -154,6 +167,7 @@ export function armarDespliegue (ctx) {
 
   // ------------------------------ limpiar ------------------------------
   campo.limpiarCampo = function () {
+    if (campo.alFormar) campo.alFormar();
     for (const s of soldados) s.quitar();
     soldados.length = 0;
     for (let i = caballos.length - 1; i >= 0; i--) {
@@ -186,12 +200,19 @@ export function armarDespliegue (ctx) {
     // línea de tiro, así que doscientos cincuenta hombres disparaban como
     // cuarenta. La infantería de la época se desplegaba en dos o tres filas
     // justamente por eso. En tres, ochenta y cuatro fusiles miran al campo.
-    const PORFILA = Math.ceil(realistas / 3);
+    const PORFILA = Math.ceil(realistas / FILAS_REALISTAS);
     for (let k = 0; k < realistas; k++) {
       const fila = Math.floor(k / PORFILA);
-      soltarSoldado('realista', {
-        pos: new THREE.Vector3(-(PORFILA * 0.78) + (k % PORFILA) * 1.56, 0, -66 - fila * 2.4)
+      const s = soltarSoldado('realista', {
+        pos: new THREE.Vector3(
+          -(PORFILA * PASO_FILA / 2) + (k % PORFILA) * PASO_FILA, 0,
+          Z_DESEMBARCO - fila * FONDO_FILA)
       });
+      // MIRAN AL CONVENTO. Subieron de la barranca a saquearlo: el río les
+      // queda atrás. Nacían mirando a −z, o sea al agua, y con la moral puesta
+      // eso los dejaba flanqueados por su propio objetivo desde el cuadro uno.
+      s.malla.rotation.y = Math.PI;
+      s.frente = Math.PI;
     }
     campo.ponerCanones();
 
@@ -232,6 +253,7 @@ export function armarDespliegue (ctx) {
     for (const c of pinza.columnas) c.plantar();
     campo.oleadas = false;           // acá no llegan refuerzos sueltos: es LA batalla
 
+    if (campo.alFormar) campo.alFormar();
     hud.mostrarAviso('Tu columna está formada · [T] toca el clarín', 'bien');
     hud.decir('Sesenta granaderos esperándote. Todavía no saben que estás acá.', 7);
     return { oeste: pinza.oeste.hombres.length, este: pinza.este.hombres.length, realistas };

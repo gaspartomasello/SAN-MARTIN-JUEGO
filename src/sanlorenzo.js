@@ -90,6 +90,13 @@ export const MAT = () => new THREE.MeshStandardMaterial({ vertexColors: true, ro
 // huerta. No es escenografía de fondo: es el ACCIDENTE TÁCTICO de la batalla.
 // Detrás de esta mole se escondieron ciento veinte jinetes sin que la
 // infantería española los viera, y por los dos costados salieron.
+// LA PLANTA DEL NIVEL, para el que la necesite dibujar. El plano de la batalla
+// se genera con estos números: si el convento se mueve, el plano se mueve solo.
+export const CONVENTO = { x0: -31, x1: 31, z0: 16, z1: 68 };
+export const IGLESIA = { x0: -19.5, x1: -6.5, z0: 17, z1: 37 };
+export const Z_BARRANCA = -84;   // el labio por donde se cae el terreno
+export const Z_RIO = -99;
+
 function convento (horno, colisiones) {
   const Z = 16;                 // la cara que mira al campo
   const LARGO = 52;
@@ -153,7 +160,7 @@ function convento (horno, colisiones) {
 // nueve metros de golpe hasta el río. Ahí desembarcaron los doscientos
 // cincuenta españoles y ahí volvieron a refugiarse los dispersos.
 function barrancaYRio (escena, colisiones) {
-  const Z0 = -84, Z1 = -99, HONDO = -9;
+  const Z0 = Z_BARRANCA, Z1 = Z_RIO, HONDO = -9;
   const ANCHO = 260;
 
   const geo = new THREE.BufferGeometry();

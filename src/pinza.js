@@ -74,8 +74,11 @@ export class Columna {
     this._p = new THREE.Vector3();
   }
 
-  get vivos () { return this.hombres.filter(h => h.vivo).length; }
-  get montados () { return this.hombres.filter(h => h.vivo && h.montado).length; }
+  // El que se quebró ya no cuenta, aunque siga arriba del caballo y a la
+  // vista: se está yendo. Si contara, el número del HUD diría que la columna
+  // está entera justo mientras se te deshace.
+  get vivos () { return this.hombres.filter(h => h.vivo && !h.quebrado).length; }
+  get montados () { return this.hombres.filter(h => h.vivo && h.montado && !h.quebrado).length; }
 
   // De dónde cuelga la formación: el caballo del jugador, o el del jefe.
   _cabeza (jugador) {
@@ -86,7 +89,7 @@ export class Columna {
         return { x: c.pos.x, z: c.pos.z, rumbo: c.rumbo, andar: c.andar };
       }
       // se quedó sin jefe: lo hereda el primero que siga arriba de un caballo
-      this.jefe = this.hombres.find(h => h.vivo && h.montado) || null;
+      this.jefe = this.hombres.find(h => h.vivo && h.montado && !h.quebrado) || null;
       if (!this.jefe) return null;
       const c = this.jefe.monta;
       return { x: c.pos.x, z: c.pos.z, rumbo: c.rumbo, andar: c.andar };
@@ -104,7 +107,7 @@ export class Columna {
     // toda la batalla. Ahora la toma el primero que siga arriba de un caballo,
     // que es lo que hace un sargento.
     if (this.estado === 'saliendo') {
-      this.jefe = this.hombres.find(h => h.vivo && h.montado) || null;
+      this.jefe = this.hombres.find(h => h.vivo && h.montado && !h.quebrado) || null;
       if (this.jefe) {
         if (this.alHeredar) this.alHeredar(this);
         const c = this.jefe.monta;
@@ -166,7 +169,7 @@ export class Columna {
     let n = 0;
     for (const h of this.hombres) {
       if (h === this.jefe) continue;
-      if (!h.vivo || !h.montado) { h.plaza = null; continue; }
+      if (!h.vivo || !h.montado || h.quebrado) { h.plaza = null; continue; }
       if (!h.plaza) h.plaza = new THREE.Vector3();
       this._sitio(cab, n++, h.plaza);
       h.andarColumna = andar;
@@ -192,7 +195,7 @@ export class Columna {
     const cab = { x: this.formacion.x, z: this.formacion.z, rumbo: this.formacion.rumbo, andar: 0 };
     let n = 0;
     for (const h of this.hombres) {
-      if (!h.montado) continue;
+      if (!h.montado || h.quebrado) continue;
       const esJefe = h === this.jefe;
       if (esJefe) this._p.set(cab.x, 0, cab.z);
       else this._sitio(cab, n++, this._p);

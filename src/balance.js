@@ -197,3 +197,100 @@ export const OLEADA_GRANADERO = [4, 4];
 export const PECHADA_ALCANCE = 2.2;
 export const SABLE_ALCANCE = 2.4;
 export const ALCANCE_MONTADO = 3.3;   // desde arriba llegás más lejos
+
+// ---------------------------------------------------------------------------
+// 8 · EL ÁNIMO · lo que hace que un hombre deje de pelear
+// ---------------------------------------------------------------------------
+//
+// Esta sección existe porque a la batalla le faltaba un final. Hasta acá la
+// única forma de ganar era matar a los doscientos cincuenta de a uno, que es
+// exactamente lo contrario de lo que pasó: la línea realista se quebró y bajó
+// corriendo la barranca a los botes, dejando las dos piezas y sus muertos.
+// Ninguna tabla de daño convierte un exterminio en San Lorenzo.
+//
+// LA MORAL NO ES UNA BARRA DE EJÉRCITO. La tentación es un contador global:
+// el bando acumula bajas, llega a cero y todos corren. Eso es una abstracción
+// de juego de estrategia y desde adentro de un cuerpo, en primera persona, se
+// siente arbitrario: de golpe, sin motivo visible, doscientos tipos dan media
+// vuelta. Lo que rompe una línea en 1813 es LOCAL. Un hombre no sabe que el
+// ejército perdió cuarenta; sabe que los tres que tenía al lado están en el
+// piso, que le tiran desde el costado y que se le viene un caballo encima.
+//
+// Así que el ánimo va por hombre, y lo que lo baja es lo que ese hombre puede
+// ver. Todo lo de acá abajo se paga POR SEGUNDO salvo donde dice de golpe.
+export const ANIMO_TROPA = 100;
+
+// El compañero que cae al lado. Es el término más pesado y es de golpe, no por
+// segundo: un muerto se cobra una vez, no mientras el cadáver esté ahí. Contar
+// cadáveres haría que un campo lleno de muertos siguiera desmoralizando cuarenta
+// segundos después, que es al revés de como funciona el susto.
+export const CAIDO_CERCA = 10;
+export const CAIDO_RADIO = 6.5;
+
+// EL FLANCO. Esto es la pinza, escrita como número. El juego ya obliga a girar
+// antes de disparar —un fusil de chispa no se apunta hacia atrás— pero hasta
+// ahora que te entraran por el costado no COSTABA nada: girabas y listo. Acá
+// empieza a costar, y por eso pegarle a un flanco pasa a ser mejor que pegarle
+// de frente, que es la razón de ser de toda la maniobra.
+// Y el flanco NO es «un enemigo fuera de mi cono de tiro». Eso se arregla
+// girando, y girar lleva un segundo: medido así, un flanqueo no cuesta nada.
+//
+// Lo que hace a un flanco un flanco es que la TROPA tiene un frente, y el
+// frente de una tropa no se da vuelta como se da vuelta un hombre. Así que
+// cada uno lleva un frente propio que persigue MUY despacio hacia dónde está
+// mirando —diez segundos para media vuelta— y el flanco se mide contra ése.
+//
+// De ahí sale, escrita como número, la razón de ser de toda la maniobra del 3
+// de febrero: contra dos columnas que entran por los dos costados no hay
+// frente que alcance. No se puede estar orientado a dos lados a la vez.
+export const FLANCO = 9;
+export const FLANCO_RADIO = 22;
+export const FLANCO_CONO = 1.0;       // ±57°: fuera de esto lo tengo al costado
+export const FLANCO_LLENO = 3;        // con tres o más ya no empeora
+export const FRENTE_GIRO = 0.32;      // rad/s: lo que tarda la tropa en reorientarse
+
+// CABALLERÍA ENCIMA. Infantería sin cuadro contra caballo. Es literalmente lo
+// que pasó: los desembarcaron, les cayeron encima y no llegaron a formar.
+export const CABALLO_ENCIMA = 10;
+export const CABALLO_RADIO = 15;
+export const CABALLO_LLENO = 2;
+
+// LA SOLEDAD. Un hombre en una línea apretada aguanta; el mismo hombre solo,
+// no. Es la otra cara del gentío: la formación no sirve sólo para tirar juntos.
+export const SOLEDAD = 5;
+export const JUNTOS_RADIO = 9;
+export const JUNTOS_MINIMO = 3;
+
+export const HERIDO = 4;              // por segundo con menos de la mitad de la vida
+export const PIEZA_CALLADA = 18;      // de golpe, a los de su bando a 30 m
+export const PIEZA_RADIO = 30;
+
+// Y se recompone. Mientras no pase nada de lo de arriba y tenga gente al lado,
+// el ánimo vuelve. Toda la tensión de la pelea está en esta resta: si el
+// recupero le gana a lo que entra, la línea aguanta.
+export const APLOMO = 4;
+
+// EL CONTAGIO, que es lo que hace que se vea como una desbandada y no como un
+// deshielo. Sin esto, doscientos cincuenta hombres cruzan su umbral cada uno
+// por su cuenta y la línea se disuelve pareja, de a uno, como hielo que se
+// derrite. Con esto un pedazo cede y el hueco se propaga hacia afuera hasta que
+// se va todo junto. Eso es una desbandada.
+export const CONTAGIO = 18;
+export const CONTAGIO_RADIO = 7.5;
+
+// El temple de cada uno, para que no se quiebren todos en el mismo cuadro. Es
+// el mismo recurso que el arrojo: multiplica lo que le entra.
+export const TEMPLE = [0.72, 0.62];   // [mínimo, azar]
+
+// LA LÍNEA ROTA. Cuando esta proporción del bando ya se quebró, lo que queda
+// ve que se está yendo todo el mundo, y eso es un golpe aparte: es el momento
+// en que la retirada ordenada se vuelve fuga. Sin él la desbandada se arrastra;
+// con él tiene un instante.
+export const LINEA_ROTA = 0.22;
+export const DESBANDE = 45;
+
+// Y a dónde corre el que se quebró. No «lejos»: los realistas bajan por donde
+// subieron —la barranca está en z −85 y la escuadra fondeada detrás— y los
+// granaderos vuelven atrás del convento. El que llega, se fue de la batalla.
+export const REFUGIO_REALISTA = -82;
+export const REFUGIO_GRANADERO = 58;
