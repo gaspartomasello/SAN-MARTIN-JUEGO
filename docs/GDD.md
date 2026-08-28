@@ -1459,6 +1459,87 @@ jinetes a la misma distancia y cambiando sólo el ángulo:
 mirando a −z, o sea al río que tenían a la espalda. Sin moral no se notaba;
 con moral quedaban flanqueados por su propio objetivo desde el cuadro uno.)
 
+#### Se le estaba cobrando a la caballería por hacer bien su trabajo
+
+La primera versión rompía las dos columnas de granaderos casi tan rápido como
+la línea realista, y no se veía por qué. Para saberlo hubo que hacer que cada
+hombre **dejara anotado qué le está bajando el ánimo** (`s.porQue`, cinco
+escrituras cada 0,4 s). El desglose, promediado sobre la batalla:
+
+| Lo que baja el ánimo | Al granadero | Al realista |
+|---|---|---|
+| **El flanco** | **1,62** | 0,57 |
+| **La soledad** | **0,51** | 0,04 |
+| Caballería encima | 0 | 1,09 |
+
+O sea: el sistema castigaba tres veces más a la tropa que estaba **ganando la
+batalla**. Y no era un número mal puesto, era un error de concepto. Los dos
+términos más pesados son de **línea de infantería**:
+
+- **El flanco** duele porque una línea de infantería *no se puede reorientar*:
+  su frente tarda diez segundos en girar. Una carga de caballería, en cambio,
+  se mete adentro del enemigo — quedar rodeado es el objetivo, no el fracaso—.
+  Y el lancero vuelve grupas todo el tiempo, así que su frente de tropa nunca
+  alcanza a su rumbo real y quedaba leyéndose como flanqueado permanente.
+- **La soledad** duele porque la infantería pelea hombro con hombro. Un lancero
+  necesita cancha para embalar: se le estaba cobrando la dispersión que la
+  carga exige.
+
+**Los dos se cobran sólo a pie.** Con eso el flanco del granadero cayó de 1,62
+a 0,37 —lo que le queda es de los desmontados, que es correcto— y los quiebres
+de las dos columnas de 70 a 15 sobre 120.
+
+Y de paso el reparto quedó diciendo algo: **al que le voltean el caballo se le
+cobran el flanco y la soledad enteros, de golpe**. Ya no es caballería, es un
+hombre solo y rodeado. Ése es el miedo de la caballería, y ya estaba escrito.
+
+##### Y el miedo al jinete tiene ángulo
+
+Sacados el flanco y la soledad de la caballería, faltaba que los realistas se
+quebraran **antes** de que la lanza los alcanzara. El radio del miedo al jinete
+estaba en quince metros, y ahí no servía para nada: una carga al galope cruza
+quince metros en segundo y medio, así que el miedo llegaba junto con el asta.
+Cuando la tenés encima ya es tarde para tener miedo. Pasó a **treinta y ocho**:
+cuatro segundos largos de verla cerrarse, que son los segundos en los que una
+línea decide.
+
+Pero eso trajo un efecto que no había visto: el terror pasó a pesar **igual
+desde cualquier ángulo**, y aplastó la ventaja de flanquear. Medido, la
+diferencia entre entrar de frente y entrar por el costado se había caído a doce
+puntos de ánimo. Dos términos tirando para lados distintos.
+
+La salida no fue subir uno y bajar el otro, sino ver que **son una sola idea**.
+Caballería que ves venir de frente es espantosa; caballería que te aparece por
+un costado al que no podés dar la cara es otra cosa. Así que el miedo al jinete
+se multiplica (×2,4) según cuántos de esos jinetes estén fuera del frente de la
+tropa. Con eso:
+
+| Ánimo a los 4 s, media de 3 corridas | de frente | por el flanco |
+|---|---|---|
+| | **70** | **27** |
+| | 63 | 23 |
+| | 70 | 18 |
+
+Y la pinza volvió a ser la mejor manera de entrar sin que haya que decirlo
+aparte en ningún lado.
+
+##### El número que se probó y se sacó
+
+Sacados esos dos, se le agregó al jinete el **atasco**: quedarse frenado
+adentro del montón, que es cuando una carga deja de ser una carga y pasa a ser
+un blanco a la altura de la bayoneta. Suena bien y se midió:
+
+| Velocidad del lancero con enemigos a menos de 8 m | |
+|---|---|
+| Menos de 4 m/s | **0 %** |
+| 4 a 6 m/s | 26 % |
+| 6 a 8 m/s | 16 % |
+| Galope tendido | **58 %** |
+
+El lancero **nunca** se frena: entra, pega y sale, que es exactamente lo que
+tiene que hacer. La constante no se disparaba jamás, así que se sacó. Un número
+que nunca se usa es peor que no tenerlo: miente sobre lo que la tabla hace.
+
 #### El contagio, que es lo que lo hace ver como una desbandada
 
 Sin contagio, doscientos cincuenta hombres cruzan su umbral cada uno por su
@@ -1502,6 +1583,7 @@ pena esperar el clarín.
 | La batalla termina por | exterminio | **quiebre** |
 | Realistas que se van / que mueren | 0 / 250 | **186 / 64** |
 | Granaderos vivos al final | 0 de 120 | **89 de 120** |
+| Granaderos que se quiebran | — | 15 de 120 (eran 70 antes de separar a pie de a caballo) |
 | Costo de la moral | — | **0,3 ms** por cuadro con 375 hombres |
 
 El barrido se hace **escalonado**: cada hombre mira a su alrededor cada 0,4 s y
@@ -1509,10 +1591,44 @@ los turnos están repartidos al nacer. Por cuadro se miran quince, no
 trescientos setenta. De paso, escalonar sirve para algo más que el costo: si
 todos miraran en el mismo cuadro, todos cruzarían el umbral en el mismo cuadro.
 
-**Lo que esto NO arregla**: la batalla dura medio minuto de reloj, no quince.
-El techo lo pone la letalidad de una carga de lanza, que es otra tabla y otra
-conversación. Lo que la moral cambia es *cómo termina*, y eso era lo que
-faltaba.
+#### Lo que esto NO arregla, y la cuenta que lo demuestra
+
+En San Lorenzo se fueron unos doscientos diez de doscientos cincuenta y
+murieron unos cuarenta. Acá se van alrededor de **115** y mueren **135**. La
+moral hace que la batalla termine por quiebre, pero no alcanza a salvar a los
+que la lanza alcanza primero.
+
+La cuenta, que es lo que cierra la discusión: los realistas caen de 254 a ~130
+entre el segundo 15 y el 27, o sea **diez muertos por segundo**. Con ciento
+veinte lanceros eso es una muerte por lancero cada doce segundos, que es
+exactamente lo que dura un ciclo de carga —entrar, pegar, seguir de largo,
+volver grupas—. O sea: **cada pasada de lanza mata**, porque `LANZA_TROPA` vale
+4 y `VIDA_TROPA` vale 4. Exactamente letal.
+
+Mientras eso siga así, la mitad de la fuerza se muere antes de tener tiempo de
+quebrarse, por rápido que se quiebre. No es un problema de moral: es la tabla
+de daño. `pruebas/moral.mjs` imprime la brecha en cada corrida para que no se
+olvide.
+
+Lo mismo con el reloj: la batalla dura medio minuto, no quince, y el techo lo
+pone la misma letalidad.
+
+#### Dos lecciones de medición
+
+**Una medida ruidosa no se arregla aflojando el umbral.** La comparación entre
+flanco y frente saltaba entre 0,58 y 0,80 de una corrida a otra —el temple de
+cada hombre va de 0,72 a 1,34 a propósito—, así que la prueba pasaba o fallaba
+según los dados. Se corre tres veces y se promedia.
+
+**Y cuando promediar empeora el ruido, las corridas no eran independientes.**
+Al promediar «cuántos segundos tardan en quebrarse» la medida se puso *peor*,
+y el motivo resultó ser una propiedad del sistema y no un defecto de la prueba:
+la ventaja del flanco **se agota**. El frente de la tropa gira a 0,32 rad/s, así
+que en unos diez segundos la línea terminó de reorientarse y algunas corridas no
+se quebraban nunca, metiendo el tope de cuarenta segundos en el promedio. Que
+es, además, lo que hay que entender de la maniobra: la pinza vale en los
+primeros segundos, no indefinidamente. La medición se mudó adentro de esa
+ventana.
 
 ---
 

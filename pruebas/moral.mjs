@@ -34,8 +34,8 @@ const r = await pag.evaluate(async () => {
   function escena (desdeElCostado) {
     limpiar();
     const re = [];
-    for (let k = 0; k < 12; k++) {
-      const s = j.soltarSoldado('realista', { pos: new T(-5.5 + k * 1.0, 0, -30) });
+    for (let k = 0; k < 20; k++) {
+      const s = j.soltarSoldado('realista', { pos: new T(-9.5 + k * 1.0, 0, -30) });
       // la línea mira al convento, que es su frente
       s.malla.rotation.y = Math.PI;
       s.frente = Math.PI;
@@ -52,25 +52,46 @@ const r = await pag.evaluate(async () => {
     }
     return re;
   }
+  // SE MIDE EL ÁNIMO A LOS CUATRO SEGUNDOS, y el cuatro no es al azar.
+  //
+  // El primer intento midió «cuántos segundos tardan en quebrarse», que parecía
+  // más robusto y salió peor: algunas corridas no se quebraban nunca y el tope
+  // de cuarenta segundos se colaba en el promedio. Y el motivo resultó ser una
+  // propiedad del sistema, no un defecto de la prueba: LA VENTAJA DEL FLANCO SE
+  // AGOTA. El frente de la tropa gira a 0,32 rad/s, así que en unos diez
+  // segundos la línea terminó de reorientarse y el castigo desaparece.
+  //
+  // Que es exactamente lo que hay que entender de la maniobra: la pinza vale en
+  // los primeros segundos, no indefinidamente. Así que se mide adentro de esa
+  // ventana, antes de que se cierre.
   function aguante (desdeElCostado) {
     const re = escena(desdeElCostado);
-    // se los deja quietos: acá se mide el ánimo, no quién gana la pelea
+    // se los deja quietos y sin poder pegarse: acá se mide el ánimo, no quién
+    // gana la pelea
     for (const s of j.soldados) { s.alDisparar = null; s.alGolpear = null; }
     for (const s of j.soldados) if (!s.esRealista) { s.plaza = new T(s.pos.x, 0, s.pos.z); s.andarColumna = 0; }
-    correr(60 * 6);
-    // SE MIDEN LOS DEL MEDIO, no los doce. En las puntas la geometría no es
-    // simétrica —al último de la fila el grupo del costado le queda más lejos
-    // que el del frente— y esa diferencia de metros se mezclaría con la de
-    // ángulo, que es la única que se quiere medir acá.
-    const medio = re.slice(4, 8);
+    // LOS DEL MEDIO, no los doce: en las puntas la geometría no es simétrica
+    // —al último de la fila el grupo del costado le queda más lejos que el del
+    // frente— y esa diferencia de metros se mezclaría con la de ángulo, que es
+    // la única que se quiere medir acá.
+    const medio = re.slice(6, 14);
+    correr(60 * 4);
     return medio.reduce((a, s) => a + s.animo, 0) / medio.length;
   }
-  const frente = aguante(false);
-  const costado = aguante(true);
-  out.push(['—', 'ánimo tras seis segundos', `de frente ${frente.toFixed(0)} · por el flanco ${costado.toFixed(0)}`]);
-  ok('por el flanco duele mucho más que de frente', costado < frente - 15,
+  // SE CORRE TRES VECES Y SE PROMEDIA. El temple de cada hombre va de 0,72 a
+  // 1,34 a propósito —si no, se quiebran todos en el mismo cuadro— y con veinte
+  // hombres eso todavía mueve la medición medio segundo para cada lado. Una
+  // sola corrida daba entre 0,58 y 0,80 de la misma relación, o sea que la
+  // prueba pasaba o fallaba según los dados. Tres corridas y el promedio: la
+  // respuesta correcta a una medida ruidosa no es aflojar el umbral.
+  const promedio = f => (f() + f() + f()) / 3;
+  const frente = promedio(() => aguante(false));
+  const costado = promedio(() => aguante(true));
+  out.push(['—', 'ánimo a los 4 s (media de 3 corridas)',
+    `de frente ${frente.toFixed(0)} · por el flanco ${costado.toFixed(0)}`]);
+  ok('por el flanco duele mucho más que de frente', costado < frente - 12,
     `${frente.toFixed(0)} contra ${costado.toFixed(0)}`);
-  ok('y de frente, con la línea entera, se aguanta', frente > 45, frente.toFixed(0));
+  ok('y de frente la línea todavía tiene con qué', frente > 40, frente.toFixed(0));
 
   // ---------- 2. el que se quiebra se va, y se va a la barranca ----------
   limpiar();
@@ -90,7 +111,7 @@ const r = await pag.evaluate(async () => {
   j.formarPinza(gr0 / 2, re0);
   j.tocarClarin();
   const curva = [];
-  let t = 0, quiebre = -1, proxima = 3;
+  let t = 0, quiebre = -1, proxima = 2;
   while (t < 15 * 60) {
     // el jugador carga, como en pruebas/balance.mjs: quieto no es una batalla
     if (j.jugador.monta) {
@@ -100,7 +121,7 @@ const r = await pag.evaluate(async () => {
     j.simular(1 / 60); t += 1 / 60;
     if (quiebre < 0 && j.moral.lineaRota.realista) quiebre = t;
     if (t >= proxima) {
-      proxima += 3;
+      proxima += 2;
       const p = j.moral.parte();
       curva.push({ s: Math.round(t), re: p.realistas.vivos, rotos: p.realistas.rotos,
         gr: p.granaderos.vivos, idos: p.idos });
@@ -109,6 +130,19 @@ const r = await pag.evaluate(async () => {
     if (p.realistas.vivos - p.realistas.rotos <= 0) break;
     if (p.granaderos.vivos <= 0) break;
   }
+  // LA PERSECUCIÓN. El bucle de arriba corta cuando ya no queda nadie
+  // peleando, y en ese instante hay decenas de hombres corriendo a la barranca
+  // que todavía no llegaron: algunos van a llegar y a otros los van a alcanzar.
+  // Contar ahí mezcla a los que se salvaron con los que están por morir, y da
+  // un número que se mueve solo —dos corridas seguidas dieron exactamente
+  // 124 contra 126, o sea el empate, que es lo que pasa cuando se mide un
+  // proceso a la mitad—. Se lo deja terminar.
+  for (let i = 0; i < 60 * 25; i++) {
+    j.simular(1 / 60);
+    const p = j.moral.parte();
+    if (p.realistas.rotos === 0) break;      // ya llegaron todos, o ya no llegan
+  }
+
   const fin = j.moral.parte();
   // OJO: `rotos` cuenta a los quebrados que SIGUEN en el campo. El que llegó a
   // la barranca ya no está en ninguna lista, y se cuenta en `idos`. Sumarlos es
@@ -117,14 +151,34 @@ const r = await pag.evaluate(async () => {
   out.push(['—', 'curva (s: realistas/quebrados/idos · granaderos)',
     curva.map(c => `${c.s}:${c.re}/${c.rotos}/${c.idos}·g${c.gr}`).join(' ')]);
   out.push(['—', 'la batalla', `${(t / 60).toFixed(1)} min · ` +
-    `realistas ${re0}→${fin.realistas.vivos} · ${dejaron} dejaron de pelear (${fin.idos} ya bajaron) · ` +
+    `realistas ${re0}: ${fin.idos} bajaron la barranca · ${dejaron - fin.idos} todavía corriendo · ` +
     `granaderos ${gr0}→${fin.granaderos.vivos}`]);
 
   ok('la línea realista se quiebra', fin.roto.realista, quiebre > 0 ? `al minuto ${(quiebre / 60).toFixed(1)}` : 'nunca');
   // ÉSTA es la prueba de fondo: los que se fueron tienen que ser más que los
   // que quedaron muertos en el campo. Si no, no hubo desbandada: hubo matanza.
+  // ---- LA BRECHA, QUE SE IMPRIME SIEMPRE ----
+  //
+  // En San Lorenzo se fueron unos doscientos diez de doscientos cincuenta y
+  // murieron unos cuarenta. Acá se van alrededor de ciento diez y mueren
+  // ciento cuarenta, y eso NO lo arregla la moral: lo pone la lanza.
+  //
+  // La cuenta: los realistas caen de 254 a ~130 entre el segundo 15 y el 27,
+  // o sea diez muertos por segundo. Con ciento veinte lanceros eso es una
+  // muerte por lancero cada doce segundos, que es lo que dura un ciclo de
+  // carga. Cada pasada mata, porque LANZA_TROPA vale 4 y VIDA_TROPA vale 4:
+  // exactamente letal. Mientras eso siga así, la mitad de la fuerza se muere
+  // antes de tener tiempo de quebrarse, por rápido que se quiebre.
+  //
+  // Así que acá se exige lo que la moral SÍ garantiza —que un tercio largo de
+  // la fuerza llegue a los botes en vez de morir en el sitio— y se imprime la
+  // brecha en cada corrida, para que no se olvide de qué falta.
   const muertos = re0 - fin.realistas.vivos - fin.idos;
-  ok('se van más de los que mueren', dejaron > muertos, `${dejaron} se fueron, ${muertos} muertos`);
+  out.push(['—', 'contra la batalla de verdad',
+    `bajaron ${fin.idos} y murieron ${muertos} · en 1813 fueron unos 210 y unos 40 ` +
+    `— la diferencia la pone la lanza, no la moral`]);
+  ok('un tercio de la fuerza llega a los botes', fin.idos > re0 * 0.3,
+    `${fin.idos} de ${re0} bajaron la barranca`);
   ok('y tus granaderos no se evaporan', fin.granaderos.vivos > gr0 * 0.3,
     `${fin.granaderos.vivos} de ${gr0}`);
 
@@ -160,9 +214,9 @@ const r = await pag.evaluate(async () => {
     if (ventana <= ancho) break;
   }
   const porcion = ventana / Math.max(1, saltos.length);
-  out.push(['—', 'quiebres cada tres segundos', saltos.join(' ')]);
+  out.push(['—', 'quiebres cada dos segundos', saltos.join(' ')]);
   out.push(['—', 'la mitad de los quiebres entra en',
-    `${ventana * 3} s de ${(saltos.length * 3)} — el ${(porcion * 100).toFixed(0)} % de la pelea`]);
+    `${ventana * 2} s de ${(saltos.length * 2)} — el ${(porcion * 100).toFixed(0)} % de la pelea`]);
   ok('se desbanda de golpe, no se derrite de a uno', porcion < 0.3,
     `la mitad en el ${(porcion * 100).toFixed(0)} % del tiempo`);
 

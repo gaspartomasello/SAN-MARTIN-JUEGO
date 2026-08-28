@@ -243,6 +243,25 @@ export const CAIDO_RADIO = 6.5;
 // De ahí sale, escrita como número, la razón de ser de toda la maniobra del 3
 // de febrero: contra dos columnas que entran por los dos costados no hay
 // frente que alcance. No se puede estar orientado a dos lados a la vez.
+// OJO: EL FLANCO Y LA SOLEDAD SON DE LA INFANTERÍA, no de todo el mundo.
+//
+// Los dos primeros números que salieron de medir esto eran una injusticia con
+// la caballería: al granadero le cobraban 1,62 de flanco por segundo contra
+// 0,57 al realista, o sea que el sistema castigaba a la tropa que hacía bien
+// su trabajo. Y con razón, porque los dos conceptos son de LÍNEA:
+//
+//   · el flanco duele porque una línea de infantería NO se puede reorientar.
+//     Una carga de caballería, en cambio, se mete adentro del enemigo: quedar
+//     rodeado es el objetivo. Y el lancero vuelve grupas todo el tiempo, así
+//     que su frente de tropa nunca alcanza a su rumbo y quedaba leyéndose como
+//     flanqueado permanente;
+//   · la soledad duele porque la infantería pelea hombro con hombro. Un
+//     lancero necesita cancha para embalar: le estábamos cobrando la
+//     dispersión que la carga exige.
+//
+// Los dos se cobran SÓLO A PIE. Y al que le voltearon el caballo en medio del
+// desembarco se le cobran los dos de golpe, que es exactamente lo que tiene
+// que sentir: ya no es caballería, es un hombre solo y rodeado.
 export const FLANCO = 9;
 export const FLANCO_RADIO = 22;
 export const FLANCO_CONO = 1.0;       // ±57°: fuera de esto lo tengo al costado
@@ -251,9 +270,33 @@ export const FRENTE_GIRO = 0.32;      // rad/s: lo que tarda la tropa en reorien
 
 // CABALLERÍA ENCIMA. Infantería sin cuadro contra caballo. Es literalmente lo
 // que pasó: los desembarcaron, les cayeron encima y no llegaron a formar.
-export const CABALLO_ENCIMA = 10;
-export const CABALLO_RADIO = 15;
+export const CABALLO_ENCIMA = 11;
+// Y SE VE VENIR DE LEJOS, que es el punto entero.
+//
+// Estaba en quince metros y ahí no servía para nada: una carga al galope cruza
+// quince metros en segundo y medio, así que el miedo llegaba junto con la
+// lanza. Cuando la tenés encima ya es tarde para tener miedo —ya estás muerto o
+// ya estás corriendo—. A treinta y ocho metros la ves cerrarse durante cuatro
+// segundos largos antes de que te toque, y ésos son los segundos en los que una
+// línea decide si aguanta o se va. Medido, es la diferencia entre que se
+// quiebren después de perder ciento treinta hombres o antes.
+export const CABALLO_RADIO = 38;
 export const CABALLO_LLENO = 2;
+
+// Y NO DA LO MISMO DE DÓNDE VIENE, que es lo que junta a este término con el
+// flanco en vez de dejarlos peleándose.
+//
+// Subir el radio a treinta y ocho metros —para que el miedo llegue antes que la
+// lanza— tuvo un efecto que no había visto: el terror pasó a pesar igual desde
+// cualquier ángulo, y aplastó la ventaja de flanquear. Dos términos tirando
+// para lados distintos.
+//
+// Son una sola idea. Caballería que ves venir de frente es espantosa;
+// caballería que te aparece por un costado al que no podés dar la cara es otra
+// cosa. Así que el miedo al jinete se multiplica según cuántos de ellos estén
+// fuera del frente de la tropa, y la pinza vuelve a ser la mejor manera de
+// entrar sin que haya que decirlo aparte.
+export const CABALLO_FLANCO = 2.4;
 
 // LA SOLEDAD. Un hombre en una línea apretada aguanta; el mismo hombre solo,
 // no. Es la otra cara del gentío: la formación no sirve sólo para tirar juntos.
@@ -261,6 +304,21 @@ export const SOLEDAD = 5;
 export const JUNTOS_RADIO = 9;
 export const JUNTOS_MINIMO = 3;
 
+// ¿Y QUÉ LE DA MIEDO A LA CABALLERÍA, ENTONCES?
+//
+// Sacados el flanco y la soledad, al granadero montado le queda el compañero
+// que cae al lado, sus propias heridas y el contagio. Se probó agregarle el
+// ATASCO —quedarse frenado adentro del montón, que es cuando una carga deja de
+// ser una carga y pasa a ser un blanco a la altura de la bayoneta— y se midió:
+// con enemigos a menos de ocho metros, el lancero NUNCA baja de cuatro metros
+// por segundo. El 58 % del tiempo va a galope tendido. Entra, pega y sale, que
+// es exactamente lo que tiene que hacer, así que la constante no se disparaba
+// jamás. Se sacó: un número que nunca se usa es peor que no tenerlo, porque
+// miente sobre lo que la tabla hace.
+//
+// Lo que sí le da miedo a la caballería, y ya estaba, es DEJAR DE SERLO: al
+// que le voltean el caballo pasa a ser un hombre solo y rodeado, y ahí se le
+// cobran de golpe el flanco y la soledad enteros.
 export const HERIDO = 4;              // por segundo con menos de la mitad de la vida
 export const PIEZA_CALLADA = 18;      // de golpe, a los de su bando a 30 m
 export const PIEZA_RADIO = 30;
@@ -275,6 +333,17 @@ export const APLOMO = 4;
 // por su cuenta y la línea se disuelve pareja, de a uno, como hielo que se
 // derrite. Con esto un pedazo cede y el hueco se propaga hacia afuera hasta que
 // se va todo junto. Eso es una desbandada.
+// PRIMERO EL QUE TODAVÍA PELEA. Al que ya se está yendo se lo mira a lo
+// último, y esto faltaba: sin la regla, los ciento veinte granaderos soltaban a
+// los que les tiraban para correr atrás del más cercano, que casi siempre era
+// alguno huyendo. Medido, la persecución se llevaba 145 de 250 —más de la
+// mitad— cuando en San Lorenzo murieron unos cuarenta.
+//
+// No es piedad: es prioridad. El que corre ya no te dispara; el que se quedó,
+// sí. Se paga en metros, con la misma moneda que la saturación: el quebrado se
+// ve como si estuviera veintidós metros más lejos de lo que está.
+export const PERSEGUIR = 22;
+
 export const CONTAGIO = 18;
 export const CONTAGIO_RADIO = 7.5;
 
@@ -286,8 +355,13 @@ export const TEMPLE = [0.72, 0.62];   // [mínimo, azar]
 // ve que se está yendo todo el mundo, y eso es un golpe aparte: es el momento
 // en que la retirada ordenada se vuelve fuga. Sin él la desbandada se arrastra;
 // con él tiene un instante.
-export const LINEA_ROTA = 0.22;
-export const DESBANDE = 45;
+// Y hace falta una LÍNEA para que se pueda quebrar una línea: con menos que
+// esto no hay bando que se desbande, hay unos tipos peleando. Sin el mínimo,
+// en una escaramuza de doce hombres bastaban dos quebrados para dispararle el
+// desbande a los diez restantes.
+export const LINEA_MINIMA = 30;
+export const LINEA_ROTA = 0.17;
+export const DESBANDE = 52;
 
 // Y a dónde corre el que se quebró. No «lejos»: los realistas bajan por donde
 // subieron —la barranca está en z −85 y la escuadra fondeada detrás— y los

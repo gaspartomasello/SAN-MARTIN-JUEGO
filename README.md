@@ -143,7 +143,13 @@ Lo que **ya funciona**:
 - **La moral, y con ella un final**: cada hombre lleva su ánimo, se lo bajan los que caen
   al lado, el flanco, la caballería encima y la soledad, y el quiebre **contagia**. La
   batalla ya no termina cuando muere el último: termina cuando la línea se rompe y baja
-  la barranca a los botes. Medido: de 250 realistas, **186 se van y 64 mueren**.
+  la barranca a los botes. Medido: de 250 realistas, **~115 bajan la barranca y ~135
+  mueren** (en 1813 fueron unos 210 y unos 40: la diferencia la pone la lanza, que mata
+  en cada pasada, no la moral — está anotado en `pruebas/moral.mjs`).
+  El flanco y la soledad se cobran **sólo a pie** —una carga se mete adentro del enemigo:
+  quedar rodeado es el objetivo—, así que al que le voltean el caballo se le vienen los
+  dos encima de golpe. Cada hombre deja anotado qué le está bajando el ánimo
+  (`juego.soldados[0].porQue` en la consola), que es lo que permite ajustarlo.
 - **El plano de la maniobra** antes de entrar, dibujado con las medidas de verdad del
   nivel: si mañana cambia una ruta, el plano cambia con ella.
 - **La pinza de a dos, en red local**: las dos columnas llevadas por dos personas, cada

@@ -45,11 +45,11 @@ import {
   ANIMO_TROPA, VIDA_TROPA,
   CAIDO_CERCA, CAIDO_RADIO,
   FLANCO, FLANCO_RADIO, FLANCO_CONO, FLANCO_LLENO,
-  CABALLO_ENCIMA, CABALLO_RADIO, CABALLO_LLENO,
+  CABALLO_ENCIMA, CABALLO_RADIO, CABALLO_LLENO, CABALLO_FLANCO,
   SOLEDAD, JUNTOS_RADIO, JUNTOS_MINIMO,
   HERIDO, PIEZA_CALLADA, PIEZA_RADIO, FRENTE_GIRO,
   APLOMO, CONTAGIO, CONTAGIO_RADIO,
-  LINEA_ROTA, DESBANDE
+  LINEA_ROTA, LINEA_MINIMA, DESBANDE
 } from './balance.js';
 
 const PASO = 0.4;                 // cada cuánto mira cada hombre a su alrededor
@@ -88,7 +88,7 @@ export function armarMoral (ctx) {
   // 2. LO QUE VE UN HOMBRE ALREDEDOR
   // -------------------------------------------------------------------------
   function mirar (s, dt) {
-    let amigos = 0, flanco = 0, jinetes = 0, rotos = 0;
+    let amigos = 0, flanco = 0, jinetes = 0, deCostado = 0, rotos = 0;
 
     // EL FRENTE DE LA TROPA, que persigue al rumbo del hombre pero muchísimo
     // más despacio. Contra esto se mide el flanco, y no contra hacia dónde
@@ -115,9 +115,10 @@ export function armarMoral (ctx) {
         else if (d < JUNTOS_RADIO) amigos++;
         continue;
       }
-      if (o.montado && d < CABALLO_RADIO) jinetes++;
       // ¿lo tengo adelante, o al costado y a la espalda?
-      if ((dx * fx + dz * fz) / d < COS_FLANCO) flanco++;
+      const aLaCara = (dx * fx + dz * fz) / d >= COS_FLANCO;
+      if (o.montado && d < CABALLO_RADIO) { jinetes++; if (!aLaCara) deCostado++; }
+      if (!aLaCara) flanco++;
     }
 
     // Y VOS CONTÁS. Sos el enemigo más importante del campo: si el jugador no
@@ -127,17 +128,39 @@ export function armarMoral (ctx) {
       const dx = jugador.pos.x - s.pos.x, dz = jugador.pos.z - s.pos.z;
       const d = Math.hypot(dx, dz) || 0.001;
       if (d < FLANCO_RADIO) {
-        if (montado() && d < CABALLO_RADIO) jinetes++;
-        if ((dx * fx + dz * fz) / d < COS_FLANCO) flanco++;
+        const aLaCara = (dx * fx + dz * fz) / d >= COS_FLANCO;
+        if (montado() && d < CABALLO_RADIO) { jinetes++; if (!aLaCara) deCostado++; }
+        if (!aLaCara) flanco++;
       }
     }
 
-    let baja = 0;
-    if (flanco) baja += FLANCO * Math.min(1, flanco / FLANCO_LLENO);
-    if (jinetes) baja += CABALLO_ENCIMA * Math.min(1, jinetes / CABALLO_LLENO);
-    if (amigos < JUNTOS_MINIMO) baja += SOLEDAD * (1 - amigos / JUNTOS_MINIMO);
-    if (s.vida <= VIDA_TROPA / 2) baja += HERIDO;
-    if (rotos) baja += CONTAGIO * Math.min(1, rotos / 2);
+    // POR QUÉ SE ESTÁ QUEBRANDO. Se anota desglosado, y no es un lujo de
+    // depuración: un sistema en el que un hombre deja de pelear sin que se
+    // pueda decir por qué es un sistema que no se puede ajustar. Cuesta cinco
+    // escrituras cada 0,4 s por hombre.
+    const q = s.porQue || (s.porQue = { flanco: 0, jinetes: 0, solo: 0, herido: 0, rotos: 0 });
+    // A PIE Y A CABALLO NO SE LE TIENE MIEDO A LO MISMO.
+    //
+    // El flanco y la soledad son de la LÍNEA DE INFANTERÍA y se cobran sólo a
+    // pie (el porqué, en balance.js). Una carga se mete adentro del enemigo:
+    // quedar rodeado es el objetivo, y el lancero necesita cancha. Cobrárselos
+    // era castigar a la tropa por hacer bien su trabajo — medido: 1,62 de
+    // flanco por segundo al granadero contra 0,57 al realista.
+    //
+    // Y al que le voltean el caballo se le cobran los dos de golpe, que es
+    // exactamente lo que tiene que sentir: dejó de ser caballería.
+    const aPie = !s.montado;
+    q.flanco = aPie && flanco ? FLANCO * Math.min(1, flanco / FLANCO_LLENO) : 0;
+    q.solo = aPie && amigos < JUNTOS_MINIMO ? SOLEDAD * (1 - amigos / JUNTOS_MINIMO) : 0;
+    // el jinete que te entra por el costado asusta el doble largo que el que
+    // te viene de frente: es la misma idea que el flanco, no otra
+    q.jinetes = jinetes
+      ? CABALLO_ENCIMA * Math.min(1, jinetes / CABALLO_LLENO) *
+        (1 + (deCostado / jinetes) * (CABALLO_FLANCO - 1))
+      : 0;
+    q.herido = s.vida <= VIDA_TROPA / 2 ? HERIDO : 0;
+    q.rotos = rotos ? CONTAGIO * Math.min(1, rotos / 2) : 0;
+    const baja = q.flanco + q.jinetes + q.solo + q.herido + q.rotos;
 
     // El neto, y no una rama: si el recupero fuera un «else» habría un
     // escalón en cero —el que tiene un enemigo lejísimos no se recompone
@@ -233,7 +256,7 @@ export function armarMoral (ctx) {
 
     for (const bando of ['realista', 'granadero']) {
       const c = cuenta[bando];
-      if (roto[bando] || c.vivos < 8) continue;
+      if (roto[bando] || c.vivos < LINEA_MINIMA) continue;
       if (c.rotos / c.vivos >= LINEA_ROTA) romper(bando, c.vivos - c.rotos);
     }
 

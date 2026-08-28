@@ -9,7 +9,7 @@ import { sacarDeCaja, RADIO_HOMBRE } from './estorbos.js';
 import {
   VIDA_TROPA, VOLTEO, OFICIO, tirar,
   ALIENTO_TROPA, GASTO_CARRERA, RECUPERO, CARRERA_MINIMA, SATURACION,
-  ANIMO_TROPA, TEMPLE, REFUGIO_REALISTA, REFUGIO_GRANADERO
+  ANIMO_TROPA, TEMPLE, REFUGIO_REALISTA, REFUGIO_GRANADERO, PERSEGUIR
 } from './balance.js';
 
 // Soldados de los dos bandos. Misma anatomía, distinta casaca:
@@ -536,8 +536,13 @@ export class Soldado {
       this.objetivo.soldado.vivo && this._distancia(this.objetivo.pos) < ALCANCE_ACERO + 1.4;
     if (pegado) return this._distancia(this.objetivo.pos);
 
+    // PRIMERO EL QUE TODAVÍA PELEA. El que se quebró ya no te dispara y se
+    // está yendo solo: perseguirlo antes que atender al que sí te está
+    // apuntando es lo que convertía la desbandada en una carnicería. Se paga
+    // en metros, con la misma moneda que la saturación.
     const mirar = (o, d, quien) => {
-      const puntaje = d + (ac.get(quien) || 0) * SATURACION;
+      const puntaje = d + (ac.get(quien) || 0) * SATURACION +
+        (quien !== 'jugador' && quien.quebrado ? PERSEGUIR : 0);
       if (puntaje < mejorPuntaje) { mejorPuntaje = puntaje; mejorD = d; mejor = o; }
     };
     if (this.esRealista && jugador.vivo) {
