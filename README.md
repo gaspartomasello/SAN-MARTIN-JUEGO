@@ -1,111 +1,118 @@
 # El Clarín de San Lorenzo
 
-FPS histórico de la **Batalla de San Lorenzo** (3 de febrero de 1813) en three.js,
-para navegador. Sos José de San Martín al mando de los Granaderos a Caballo.
+**La campaña de San Martín, jugada desde adentro.** Un FPS histórico en three.js, para
+navegador, donde sos José de San Martín y la cámara está a la altura de sus ojos.
+
+**San Lorenzo es el principio de todo.** El 3 de febrero de 1813, a orillas del Paraná,
+es su primer combate en suelo americano —todavía no es nadie, todavía no hay Ejército de
+los Andes— y es también donde se construye **el sistema**: cómo se carga un arma de
+chispa, cómo se pelea a sable, cómo se lleva un caballo, y sobre todo **cuándo un
+hombre deja de pelear y se va**. Todo eso es lo que después tiene que servir para
+Chacabuco, para Maipú y para el cruce. Por eso los quince minutos de San Lorenzo se
+miden tanto: lo que quede mal acá se arrastra a toda la campaña.
 
 > **Un disparo, quince segundos, y después el acero.**
 
-El diseño completo de la mecánica está en **[docs/GDD.md](docs/GDD.md)**: armas, humo,
-cuerpo a cuerpo, moral, la estructura de los siete actos y el acto del Sargento Cabral.
+El diseño completo está en **[docs/GDD.md](docs/GDD.md)**.
 
 ---
 
-## Cómo abrir el juego
+## Cómo jugar
 
-**Doble clic y listo.** El juego es **un solo archivo** `.html` autocontenido: three.js,
-el código, las texturas y el sonido van todos adentro. No hace falta servidor, ni
-instalar nada, ni internet.
+**Doble clic en `JUGAR.bat`.** Nada más.
 
-```bash
-npm install
-npm run empaquetar      # genera clarin-san-lorenzo.html (~1,3 MB)
-```
+Trae lo último del repo si hay internet, abre el juego en el navegador, y si no hay
+internet lo abre igual con lo que tengas. En macOS o Linux es `jugar.sh`.
 
-Después se abre con doble clic desde el escritorio. Adentro:
+El juego es **un solo archivo** `.html` de un megabyte y pico con todo adentro —three.js,
+el código, las texturas, el sonido— y viaja armado en el repo. No hace falta servidor, ni
+`npm install`, ni internet. Si preferís, se abre directo haciendo doble clic en
+`clarin-san-lorenzo.html`.
+
+Adentro:
 
 1. Elegís uno de los **tres modos** de la portada.
 2. **Clic en la pantalla** para que el navegador entregue el mouse.
-3. **`Esc`** lo suelta y pausa la partida: aparece el cursor, nadie avanza ni te tira, y
-   con un clic volvés al combate.
+3. **`Esc`** lo suelta y pausa: aparece el cursor, nadie avanza ni te tira, y con un clic
+   volvés al combate.
 
-Anda en Chrome, Edge y Firefox de escritorio. Necesita teclado y mouse, así que en
-celular no se juega.
+Anda en Chrome, Edge y Firefox de escritorio. Necesita teclado y mouse: en celular no.
 
 ### Los tres modos
 
 | | |
 |---|---|
-| **El clarín** — *la batalla* | Arranca con **el plano de la maniobra**, como el de los libros: el convento, los dos escuadrones escondidos atrás, la columna realista con sus dos piezas y por dónde se van a ir cuando se quiebren. Después, 3 de febrero de 1813, cinco y media de la mañana. Ciento veinte granaderos formados **detrás** del convento en dos columnas de sesenta, y doscientos cincuenta realistas subiendo de la barranca con dos cañones sin saber que estás ahí. Vas a la cabeza de una columna: los sesenta te siguen **a vos**. Cuando quieras, tocás el clarín con **`T`** y salen las dos a la vez. |
-| **Los dos costados** — *de a dos, red local* | La misma batalla con un amigo, cada uno en su máquina. Uno lleva la columna del oeste como San Martín y el otro la del este como el capitán **Justo Bermúdez**, que es como fue. Hace falta levantar la sala: ver más abajo. |
-| **El campo de tiro** — *práctica* | Cuartel del Retiro, diciembre de 1812. Para aprender lo que no se parece a un shooter moderno: cargar en siete pasos, parar una bayoneta en el instante justo y andar a caballo sin que te maten. Con **`O`** empiezan a venir. |
+| **El clarín** — *la batalla* | Arranca con **el plano de la maniobra**, como el de los libros. Después, cinco y media de la mañana: ciento veinte granaderos formados **detrás** del convento en dos columnas de sesenta, y doscientos cincuenta realistas subiendo de la barranca con dos cañones sin saber que estás ahí. Vas a la cabeza de una columna: los sesenta te siguen **a vos**. Cuando quieras, tocás el clarín con **`T`** y salen las dos a la vez. |
+| **El campo de tiro** — *práctica* | Cuartel del Retiro, diciembre de 1812. Para aprender lo que no se parece a un shooter moderno: cargar en cuatro tiempos, parar una bayoneta en el instante justo y andar a caballo sin que te maten. Con **`O`** empiezan a venir. |
+| **Los dos costados** — *de a dos, red local* | La misma batalla con un amigo, cada uno en su máquina. Necesita levantar una sala: ver **[De a dos](#de-a-dos-en-la-misma-red)**, más abajo. |
 
 ---
 
-## De a dos, en la misma red
+## Trabajar en varias máquinas
 
-San Martín no cargó solo. Partió los ciento veinte granaderos en dos escuadrones: llevó
-uno él y el otro lo llevó el capitán **Justo Bermúdez**. Las dos columnas salieron a la
-vez por los dos costados del convento y se cerraron sobre el desembarco al mismo tiempo.
-Eso es la pinza, y es lo único que ganó la batalla.
+El proyecto se toca desde varias computadoras y la única fuente de verdad es el repo.
 
-Hasta ahora una columna la llevaba el jugador y la otra la máquina. Ahora la otra la
-puede llevar otra persona.
+**Doble clic en `SINCRONIZAR.bat`** (o `sincronizar.sh`). Hace las cuatro cosas en orden:
+guarda lo que tocaste acá, trae lo de las otras máquinas, rearma el juego y sube todo.
+Te pregunta una sola cosa —qué hiciste— y con Enter le pone una descripción por defecto.
 
-**En una de las dos máquinas** —cualquiera de las dos, pero tiene que tener el proyecto
-clonado y Node instalado:
+Lo único que necesita es **Node** y que git tenga permiso de subir. Para *jugar* no hace
+falta ni Node.
 
-```bash
-npm run sala            # node herramientas/servidor.mjs
-```
+### Por qué hay una herramienta para esto y no seis comandos de git
 
-Imprime algo así:
+`clarin-san-lorenzo.html` es el juego armado y viaja en el repo a propósito: si no
+viajara, la máquina que no tiene esbuild instalado se quedaría con el código fuente y sin
+manera de jugar. Pero es un archivo **generado** de un megabyte, así que dos máquinas que
+tocaron cualquier cosa de `src/` lo van a tener distinto siempre, y git no lo puede
+fusionar —no hay líneas que combinar, hay un bundle—.
 
-```
-  En esta máquina:   http://localhost:8099
-  En la otra máquina, cualquiera de éstas:
-                     http://192.168.0.7:8099
-```
+La salida no es pelearse con ese choque: es no leerlo. Ese archivo no tiene información
+propia, sale entero de `src/` e `index.html`, así que cuando choca **se tira y se rearma
+desde el código ya fusionado**. Es la única resolución correcta posible, y por eso se
+puede automatizar sin riesgo. De eso se ocupa `herramientas/sincronizar.mjs`.
 
-**Los dos abren esa dirección** —el que levantó la sala también, por `localhost`— y
-eligen **«Los dos costados»**. El primero que entra es el anfitrión.
+Si chocan archivos de verdad —dos máquinas que tocaron el mismo código— la herramienta se
+para, te dice cuáles y no inventa nada.
+
+---
+
+## Cómo está armado
+
+La separación que importa, y que es la razón de ser del proyecto: **lo que es sistema
+tiene que servir para toda la campaña; lo que es San Lorenzo es contenido de esta
+batalla.**
+
+### El sistema — vale para cualquier batalla
 
 | | |
 |---|---|
-| **Anfitrión** · José de San Martín · columna del **oeste** | **Simula la batalla entera** en su máquina y es el único que **toca el clarín**. Es el que entra primero a la sala. |
-| **Invitado** · capitán Justo Bermúdez · columna del **este** | Sus sesenta granaderos lo siguen a él. Sale cuando suena el clarín del otro. |
+| `balance.js` | **Todos** los números de la pelea: vida, daño, puntería, volteo, moral. Ningún otro archivo inventa un número de combate. Para reequilibrar se abre éste y ninguno más. |
+| `combate.js` | Quién le pega a quién y qué pasa. La mecánica; los números están en `balance.js`. |
+| `moral.js` | Cuándo un bando deja de pelear y se va. Lo único que le puede dar un final a una batalla que no sea el exterminio. |
+| `soldados.js` | El hombre: qué decide, cuándo se da vuelta, cuánto aguanta. |
+| `armas.js` · `arsenal.js` | Las armas de chispa y la carga en cuatro tiempos. |
+| `sable.js` · `caballo.js` | El duelo de acero y los cuatro andares. |
+| `figura.js` · `lejania.js` | El cuerpo humano por huesos y el truco para dibujar 370 a la vez. |
+| `humo.js` · `fuego.js` · `audio.js` · `hud.js` | Humo con densidad, trazas, sonido, pantalla. |
+| `jugador.js` · `mando.js` | Vos, y el teclado. |
+| `gentio.js` · `estorbos.js` | Que no se apilen y que no atraviesen paredes. |
+| `red.js` · `protocolo.js` · `herramientas/servidor.mjs` | Jugar de a dos en red local. |
 
-**El clarín lo toca uno solo, y a propósito.** Dos clarines son dos cargas; uno solo es
-una pinza. Esa espera —estar formado detrás del convento sin poder hacer nada hasta que
-el otro dé la señal— es lo que se sintió el 3 de febrero a las cinco y media.
+### San Lorenzo — el contenido de esta batalla
 
-Detalles que conviene saber:
+| | |
+|---|---|
+| `sanlorenzo.js` | **El lugar**: el convento de San Carlos, la barranca de nueve metros, el Paraná y la escuadra fondeada. |
+| `despliegue.js` · `pinza.js` | Quién sale al campo, dónde, y las dos columnas de sesenta. |
+| `canon.js` | Las dos piezas ligeras que trajeron los realistas. |
+| `acto.js` | El acto del sargento Cabral, que arranca la primera vez que te matan el caballo estando montado. |
+| `plano.js` | El plano de la maniobra, dibujado con las medidas de verdad del nivel. |
+| `mundo.js` | El amanecer del 3 de febrero. |
 
-- **No hace falta instalar nada más.** El servidor son doscientas líneas de Node sin una
-  sola dependencia: sirve los archivos del juego y pasa mensajes entre los dos
-  navegadores. No sabe qué es un granadero.
-- **Es red local.** Las dos máquinas tienen que verse: el mismo wifi o el mismo cable.
-  No hay servidores en internet ni cuentas ni nada por el estilo.
-- **Cuesta un megabit por segundo.** Medido con la batalla entera —375 hombres y 121
-  caballos— da **114 KB/s**. Cualquier wifi de casa mueve cincuenta veces eso.
-- **Si se va el anfitrión, se termina la batalla**, porque era el que la estaba
-  pensando. El invitado se entera con un cartel en vez de quedarse mirando un campo
-  congelado.
-- **El archivo único no sirve para esto.** El `.html` autocontenido se abre sin
-  servidor, y sin servidor no hay sala. Para jugar de a dos hay que entrar por la
-  dirección que imprime `npm run sala`. Si se lo intenta igual, el juego lo dice.
-- **El acto Cabral es de San Martín.** Cabral no se murió por cualquiera: se murió por
-  el que quedó con la pierna abajo del caballo. Al invitado le matan el caballo y se
-  cae, como a todo el mundo.
-
----
-
-**Camino de desarrollo — servidor estático.** No hay build: three.js está vendorizado en
-`vendor/`, así que alcanza con servir la carpeta y recargar el navegador.
-
-```bash
-npm run servir          # o: npx serve .
-# abrir http://localhost:8099
-```
+Una batalla nueva de la campaña necesita su propio *lugar*, su propio *despliegue* y sus
+propias *piezas*. El sistema no se toca — y si hay que tocarlo, es señal de que estaba
+mal generalizado.
 
 ---
 
@@ -113,9 +120,11 @@ npm run servir          # o: npx serve .
 
 Lo que **ya funciona**:
 
-- **Carga de chispa en siete pasos** con tres momentos de tiempo, interrumpible y
-  persistente, con las fallas de época: fogonazo sin tiro, chispa fallida, emplome del
-  ánima y retardo de percusión.
+- **Carga de chispa en cuatro tiempos** con tres momentos que se marcan a mano,
+  interrumpible y persistente, con las fallas de época: fogonazo sin tiro, chispa
+  fallida y retardo de percusión. Arranca sola después del tiro, y **se puede cargar
+  arriba del caballo en los cuatro andares** —al galope cuesta tres veces y media lo
+  que a pie—.
 - **Humo con grilla de densidad** compartida por el render y la percepción enemiga: la
   nube que te tapa a vos también los ciega a ellos.
 - **Duelo de acero**: guardia, aviso telegrafiado, **parada perfecta** de 180 ms, remate
@@ -123,41 +132,50 @@ Lo que **ya funciona**:
 - **El caballo**: cuatro andares, salto de tapias, radio de giro que se abre con la
   velocidad, filo por velocidad, y una tapia nunca lo frena del todo.
 - **Caballería con lanza**: la carga en tres tiempos que se lee por la distancia, y el
-  desmonte como tirada por arma —la bala 20 %, la bayoneta 34 %, el asta 58 %, la
-  metralla 100 %—, con el oficio de jinete restando aparte.
-- **El lugar**: convento de San Carlos, barranca, el Paraná y los buques, al amanecer.
+  desmonte como tirada por arma, con el oficio de jinete restando aparte.
 - **Los dos cañones ligeros** con aviso de tres tiempos y metralla en abanico que no
   distingue bandos.
-- **El acto Cabral**, que arranca la primera vez que te matan el caballo estando montado.
-- **La lejanía**: a partir de cierta distancia el soldado deja de ser un esqueleto y pasa
-  a ser una instancia horneada. Los 370 hombres de la batalla entran en 99 llamadas de
-  dibujo.
-- **La pinza**: las dos columnas de sesenta, la formación que se mantiene y se rompe sola
-  en el choque, y el clarín que las larga.
-- **El tiro que puede errar**: la bala sale de un cono y cae donde cae —64 % de acierto a
-  cinco metros, 9 % a cuarenta—, se ve la polvareda donde pega y se oye zumbar la que
-  pasa cerca. De rodilla se tira al doble de bien; dentro del humo, al 6 %.
-- **La tropa que se cansa y se acomoda**: corren a intervalos porque el aliento es un
-  recurso, no se apilan todos sobre el mismo blanco, se dan vuelta antes de apuntar y no
-  le tiran en la nuca al compañero de adelante.
-- **La moral, y con ella un final**: cada hombre lleva su ánimo, se lo bajan los que caen
+- **El acto Cabral.**
+- **La lejanía**: los 370 hombres de la batalla entran en 99 llamadas de dibujo.
+- **La pinza**: las dos columnas de sesenta, la formación que se rompe sola en el choque,
+  y el clarín que las larga.
+- **El tiro que puede errar.** La bala sale de un cono y cae donde cae, se ve la
+  polvareda donde pega y se oye zumbar la que pasa cerca. Contra un hombre de frente:
+
+  | 5 m | 10 m | 20 m | 40 m |
+  |---|---|---|---|
+  | 45 % | 20 % | 7 % | 2 % |
+
+  De rodilla se tira al doble de bien; dentro del humo, a casi nada.
+- **Vos matás de una, ellos no.** El sable corvo y tu bala matan de un golpe, y tu
+  disparo distingue **dónde** pegó: al pecho o a la cabeza mata, al brazo o a la pierna
+  hiere y el tipo sigue en pie. Los golpes de la tropa, en cambio, hieren: hacen falta
+  varios. Sos uno contra doscientos cincuenta y sos el único que apunta de verdad.
+- **La moral, y con ella un final.** Cada hombre lleva su ánimo, se lo bajan los que caen
   al lado, el flanco, la caballería encima y la soledad, y el quiebre **contagia**. La
-  batalla ya no termina cuando muere el último: termina cuando la línea se rompe y baja
-  la barranca a los botes. Medido: de 250 realistas, **~115 bajan la barranca y ~135
-  mueren** (en 1813 fueron unos 210 y unos 40: la diferencia la pone la lanza, que mata
-  en cada pasada, no la moral — está anotado en `pruebas/moral.mjs`).
+  batalla no termina cuando muere el último: termina cuando la línea se rompe y baja la
+  barranca a los botes. Cada hombre deja anotado qué le está bajando el ánimo
+  (`juego.soldados[0].porQue` en la consola), que es lo que permite ajustarlo.
+
   El flanco y la soledad se cobran **sólo a pie** —una carga se mete adentro del enemigo:
   quedar rodeado es el objetivo—, así que al que le voltean el caballo se le vienen los
-  dos encima de golpe. Cada hombre deja anotado qué le está bajando el ánimo
-  (`juego.soldados[0].porQue` en la consola), que es lo que permite ajustarlo.
-- **El plano de la maniobra** antes de entrar, dibujado con las medidas de verdad del
-  nivel: si mañana cambia una ruta, el plano cambia con ella.
-- **La pinza de a dos, en red local**: las dos columnas llevadas por dos personas, cada
-  una en su máquina, con una sola simulación de por medio para que no haya dos batallas.
+  dos encima de golpe.
 
-Lo que **todavía no** está: el **cierre** —no hay pantalla final ni parte de bajas: la
-línea se quiebra, se van, y el campo queda como queda—. Después de eso: las órdenes de
-tropa, bajar a la barranca detrás de ellos, el epílogo del pino y los modos sueltos.
+Lo que **falta ajustar**, medido y sin maquillar:
+
+- **La línea se quiebra entre los 2:50 y los 3:35** de pelea, con setenta a noventa
+  realistas todavía en pie y unos sesenta granaderos vivos para verlo. Antes se quebraba
+  a los **dieciocho segundos** y a los cuarenta y cinco no quedaba nadie en el campo.
+- Pero **todavía mueren demasiados**: unos 190 de 250, cuando en 1813 murieron alrededor
+  de 40 y unos 210 bajaron la barranca. Es el hueco más grande que queda.
+- **Una corrida de cada tres se empantana.** Si a los granaderos les matan los caballos
+  temprano, no queda quién dé miedo y la batalla se vuelve una riña de infantería que
+  ganan ellos por número.
+- Falta **el cierre**: no hay pantalla final ni parte de bajas. La línea se quiebra, se
+  van, y el campo queda como queda.
+
+Después de eso: las órdenes de tropa, bajar a la barranca detrás de ellos, el epílogo del
+pino y los modos sueltos.
 
 > Agacharse va en `C` y no en `Ctrl` a propósito: `Ctrl+W` es un atajo del navegador
 > para cerrar la pestaña y ninguna página puede bloquearlo.
@@ -179,76 +197,97 @@ tropa, bajar a la barranca detrás de ellos, el epílogo del pino y los modos su
 | `V` | vendarse |
 | `T` | **tocar el clarín** (en la batalla; en red, sólo San Martín) |
 | `O` | que vengan los realistas |
+| `H` | montar / desmontar · a caballo, `W` sube el andar y `S` lo baja |
 | `F3` | datos de depuración |
+
+---
+
+## De a dos, en la misma red
+
+San Martín no cargó solo. Partió los ciento veinte granaderos en dos escuadrones: llevó
+uno él y el otro lo llevó el capitán **Justo Bermúdez**. Las dos columnas salieron a la
+vez por los dos costados del convento. Eso es la pinza, y es lo único que ganó la batalla.
+
+**En una de las dos máquinas** —cualquiera, pero con el proyecto clonado y Node
+instalado:
+
+```bash
+npm run sala
+```
+
+Imprime algo así:
+
+```
+  En esta máquina:   http://localhost:8099
+  En la otra máquina, cualquiera de éstas:
+                     http://192.168.0.7:8099
+```
+
+**Los dos abren esa dirección** —el que levantó la sala también, por `localhost`— y
+eligen **«Los dos costados»**. El primero que entra es el anfitrión.
+
+| | |
+|---|---|
+| **Anfitrión** · José de San Martín · columna del **oeste** | **Simula la batalla entera** en su máquina y es el único que **toca el clarín**. |
+| **Invitado** · capitán Justo Bermúdez · columna del **este** | Sus sesenta granaderos lo siguen a él. Sale cuando suena el clarín del otro. |
+
+**El clarín lo toca uno solo, y a propósito.** Dos clarines son dos cargas; uno solo es
+una pinza. Esa espera es lo que se sintió el 3 de febrero a las cinco y media.
+
+Detalles que conviene saber:
+
+- **El servidor no tiene dependencias.** Son doscientas líneas de Node que sirven los
+  archivos y pasan mensajes entre los dos navegadores. No sabe qué es un granadero.
+- **Es red local.** Las dos máquinas tienen que verse: el mismo wifi o el mismo cable.
+  Si están en una red institucional puede haber **aislamiento de clientes** —se ve
+  internet pero las máquinas no se ven entre sí— y ahí no hay nada que hacer desde el
+  lado de uno: sirve el hotspot del celular, un router propio o un cable directo.
+- **En Windows hay que abrirle el puerto a Node una vez:**
+  `netsh advfirewall firewall add rule name="Clarin" dir=in action=allow protocol=TCP localport=8099`
+- **Cuesta un megabit por segundo.** Medido con la batalla entera —375 hombres y 121
+  caballos— da **114 KB/s**.
+- **Si se va el anfitrión, se termina la batalla**, porque era el que la estaba pensando.
+- **El archivo único no sirve para esto.** Sin servidor no hay sala.
+
+---
+
+## Desarrollo
+
+```bash
+npm install             # sólo si vas a tocar el código
+npm run jugar           # rearma el .html y lo abre
+npm run servir          # servidor estático, para recargar el navegador al toque
+npm run empaquetar      # rearma clarin-san-lorenzo.html a mano
+```
+
+No hay build: three.js está vendorizado en `vendor/`, así que para desarrollar alcanza
+con servir la carpeta y recargar.
+
+**Después de tocar cualquier cosa de `src/` hay que rearmar el `.html`**, o el que lo
+abra a doble clic va a estar jugando la versión anterior. `SINCRONIZAR.bat` lo hace solo.
 
 ## Pruebas
 
+Los números de esta batalla no se calibran a ojo: se miden.
+
 ```bash
-npm run ritmo         # mide la carga con y sin acertar los tiempos
-npm run rendimiento   # llamadas de dibujo y triángulos bajo carga
-npm run capturas      # capturas de pantalla a capturas/
-npm run red           # dos navegadores, el servidor y el cable de verdad
+npm run desbande      # cuándo se quiebra la línea y con cuánta gente en pie
 npm run moral         # que la batalla termine por quiebre y no por exterminio
+npm run ritmo         # la carga con y sin acertar los tiempos
+npm run rendimiento   # llamadas de dibujo y triángulos bajo carga
+npm run red           # dos navegadores, el servidor y el cable de verdad
+npm run capturas      # capturas de pantalla a capturas/
 ```
 
-`npm run red` levanta la sala, abre **dos** navegadores, los conecta y comprueba que los
-dos estén viendo *la misma* batalla: que el invitado reciba los 375 hombres sin perder a
-nadie, que estén en el mismo lugar y no cerca, que un tiro suyo **mate del lado del
-anfitrión** y que la columna del este lo siga a él.
+`npm run desbande` corre la batalla entera varias veces y contesta las dos preguntas
+juntas —**cuándo** se quiebra y **con cuántos en pie**—, porque quebrarse a los tres
+minutos con veinte hombres parados no es San Lorenzo, es un exterminio que además tardó.
+Con `CORRIDAS=6` hace más pasadas y con `DIAG=1` desglosa cada quince segundos qué
+término de la moral está haciendo el trabajo.
 
-Requieren `npm i` y un Chromium; si no está en el `PATH` de Playwright,
-pasarlo con `CHROMIUM=/ruta/al/chrome`.
+Ojo con leer mal esos números: **el piloto de la prueba es suicida** —carga de frente al
+galope sin disparar y lo matan a los cuarenta segundos—. Un jugador de verdad se lleva
+muchos más hombres y adelanta el quiebre. Son el piso, no lo que vas a ver jugando.
 
-**Números medidos hoy:**
-
-| Medición | Valor |
-|---|---|
-| Carga acertando los tres tiempos | **2,5 s** (eran 6,6 con siete pasos) |
-| Carga errándolos todos | **6,2 s** (eran 10,5) |
-| Altura de salto | 0,89 m (gravedad 15,24 m/s², como `sv_gravity 800`) |
-| Bala de mosquete sobre el jugador | 52 de 100 · regenera tras 4,5 s |
-
-Las 195 llamadas ya pasan el presupuesto de 120 del GDD: cada realista son trece mallas
-sueltas. Es exactamente el problema que resuelve el sistema de multitud de la Fase 4.
-
-## Los sistemas
-
-El código está partido por **sistema**, no por tipo de archivo, y cada uno importa sólo
-hacia abajo: no hay ciclos. Si hay que tocar algo, esta tabla dice dónde.
-
-| Archivo | De qué es dueño | Se abre cuando… |
-|---|---|---|
-| **`src/balance.js`** | **la tabla de la pelea**: vida, daño, puntería, volteo, aliento, saturación y cuántos entran | …la batalla dura poco, te matan rápido o los bots no fallan nunca |
-| `src/combate.js` | quién le pega a quién y qué pasa: tu tiro, tu sablazo, el fuego de ellos, la metralla, la tirada de la silla | …una regla de impacto está mal (no *cuánto* duele: eso es balance) |
-| `src/arsenal.js` | lo que llevás encima: tercerola, pistolón, sable, el fusil que le sacás a un caído, cartuchos, qué tenés en la mano | …se cambia de arma, se toma un fusil o se toca la carga |
-| `src/despliegue.js` | quién sale al campo, dónde y cuándo: la pinza, los cañones, los caballos, las oleadas | …hay que mover una formación o cambiar dónde desembarcan |
-| `src/gentio.js` | quién se dibuja entero y quién ocupa lugar: reparto de la lejanía y separación de los bots | …el cuadro se cae con mucha gente, o alguien atraviesa a alguien |
-| `src/mando.js` | teclado, mouse, captura del puntero, pausa, la sala de dos y los tres botones de la portada | …se rebindea una tecla |
-| **`src/moral.js`** | **cuándo un bando deja de pelear**: el ánimo de cada hombre, el contagio del quiebre y el momento en que la línea se rompe | …la batalla termina mal: muy rápido, muy lenta, o a puro exterminio |
-| `src/plano.js` | el mapa de la maniobra, generado con las medidas del nivel | …hay que mostrar algo nuevo en el plano |
-| `src/red.js` | **el otro costado de la pinza**: quién simula, qué se replica, los títeres y el cuerpo del compañero | …algo se ve distinto en las dos máquinas |
-| `src/protocolo.js` | **qué se manda por el cable**, byte por byte. Hoja del árbol: no importa nada del proyecto | …hay que agregar algo al parte del mundo |
-| `src/soldados.js` | **el comportamiento** de un hombre: qué decide, cuándo corre, cuándo se da vuelta, la lanza | …un bot hace algo raro |
-| `src/caballo.js` | cuatro andares, salto, radio de giro, filo por velocidad | |
-| `src/jugador.js` | posturas, aliento, heridas, cámara, colisión | |
-| `src/pinza.js` | la maniobra: columnas, huecos, rutas. **Geometría pura: no sabe qué es un soldado** | |
-| `src/acto.js` | el acto Cabral | |
-| `src/lejania.js` | el horneado de posturas y las instancias | |
-| `src/estorbos.js` | radios, cajas y la rejilla de hash espacial | |
-| `src/armas.js` `src/sable.js` `src/canon.js` | las armas por dentro: carga de siete pasos, guardia, mecha | |
-| `src/figura.js` | la anatomía: huesos, IK, fusión de geometría | |
-| `src/mundo.js` `src/sanlorenzo.js` | el escenario: convento, barranca, el Paraná, luz de amanecer | |
-| `src/humo.js` `src/fuego.js` `src/audio.js` `src/hud.js` | efectos, sonido sintetizado e interfaz | |
-| `src/pasadaVelocidad.js` `src/pasadaArma.js` | las dos pasadas de render | |
-| **`src/main.js`** | **nada propio**: monta el escenario, ata los sistemas y corre el bucle | …hay que enchufar un sistema nuevo |
-
-La regla que ordena todo esto: **ningún archivo inventa un número de combate**. Si una
-bala hace 26, lo dice `balance.js` y nada más que `balance.js`. Para reequilibrar la
-batalla se abre un archivo solo.
-
-```
-index.html        portada de tres modos, sala de dos, HUD y capas de presentación
-herramientas/     el empaquetador de un solo archivo y el servidor de la sala
-pruebas/          41 archivos de prueba, sobre Playwright
-docs/GDD.md       el documento de diseño y el registro de por qué
-```
+Requieren `npm i` y un Chromium; si no está en el `PATH` de Playwright, pasarlo con
+`CHROMIUM=/ruta/al/chrome`.

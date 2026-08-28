@@ -1,3 +1,11 @@
 node_modules/
 capturas/
-clarin-san-lorenzo.html
+
+# clarin-san-lorenzo.html NO va acá. Es el juego armado en un solo archivo y es
+# lo que se abre con doble clic: si no viaja en el repo, el que clona se queda
+# con el código fuente y sin manera de jugar sin instalar esbuild. Se rearma con
+# `npm run empaquetar` cada vez que se toca algo de src/.
+
+# lo que escupen las pruebas al correr, que no es del proyecto
+tropa/*.png
+verif-archivo-unico.png

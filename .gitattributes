@@ -1,0 +1,14 @@
+# El juego armado en un solo archivo es GENERADO: sale entero de src/ e
+# index.html y no tiene una sola línea escrita a mano. Viaja en el repo porque
+# es lo que se abre con doble clic, pero no hay que leerlo nunca.
+#
+#   -diff   que `git diff` no escupa un megabyte de bundle minificado
+#   linguist-generated   que GitHub lo colapse en los pull requests
+#
+# Cuando choca entre dos máquinas no se resuelve a mano: se rearma. De eso se
+# ocupa herramientas/sincronizar.mjs.
+clarin-san-lorenzo.html -diff linguist-generated=true
+
+# Los .bat los lee cmd.exe, que quiere fin de línea de Windows sí o sí.
+*.bat text eol=crlf
+*.sh  text eol=lf

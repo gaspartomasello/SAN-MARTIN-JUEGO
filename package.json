@@ -5,6 +5,8 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "jugar": "npm run empaquetar && node herramientas/abrir.mjs",
+    "sincronizar": "node herramientas/sincronizar.mjs",
     "servir": "python3 -m http.server 8099",
     "ritmo": "node pruebas/ritmo.mjs",
     "rendimiento": "node pruebas/rendimiento.mjs",
