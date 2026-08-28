@@ -1,7 +1,8 @@
 // Arma un único .html autocontenido: three.js y todos los módulos adentro.
 // Sirve para probar el juego con doble clic, sin servidor ni instalación.
 import { build } from 'esbuild';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 const salida = process.argv[2] || 'clarin-san-lorenzo.html';
 
@@ -21,6 +22,7 @@ html = html
   .replace('<script type="module" src="./src/main.js"></script>',
     '<script type="module">\n' + paquete + '\n</script>');
 
+mkdirSync(dirname(salida), { recursive: true });
 writeFileSync(salida, html);
 const kb = (Buffer.byteLength(html) / 1024).toFixed(0);
 console.log(`${salida} · ${kb} KB · se abre con doble clic`);

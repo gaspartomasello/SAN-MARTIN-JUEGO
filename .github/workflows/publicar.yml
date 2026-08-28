@@ -1,0 +1,50 @@
+# Publica el juego en GitHub Pages cada vez que se toca el código.
+# El link es siempre el mismo y siempre trae la última versión:
+#   https://gaspartomasello.github.io/SAN-MARTIN-JUEGO/
+name: Publicar el juego
+
+on:
+  push:
+    branches: [claude/fps-san-lorenzo-mechanics-a1dtcg]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # --ignore-scripts evita que playwright se baje los navegadores:
+      # para empaquetar sólo hacen falta esbuild y three.
+      - name: Instalar lo justo
+        run: npm ci --ignore-scripts
+
+      - name: Armar el archivo único
+        run: node herramientas/empaquetar.mjs _sitio/index.html
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _sitio
+
+      - id: despliegue
+        uses: actions/deploy-pages@v4

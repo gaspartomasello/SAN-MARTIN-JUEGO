@@ -9,3 +9,6 @@ capturas/
 # lo que escupen las pruebas al correr, que no es del proyecto
 tropa/*.png
 verif-archivo-unico.png
+
+# el sitio que arma GitHub Pages
+_sitio/

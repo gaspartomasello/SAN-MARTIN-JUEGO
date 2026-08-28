@@ -1,7 +1,7 @@
 {
   "name": "clarin-de-san-lorenzo",
   "version": "0.1.0",
-  "description": "FPS histórico de la Batalla de San Lorenzo (1813) en three.js. Fase 1: el campo de tiro.",
+  "description": "El clarín de San Lorenzo: la campaña de San Martín en primera persona, en three.js. Primera batalla: San Lorenzo, 3 de febrero de 1813.",
   "type": "module",
   "private": true,
   "scripts": {

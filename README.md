@@ -19,15 +19,23 @@ El diseño completo está en **[docs/GDD.md](docs/GDD.md)**.
 
 ## Cómo jugar
 
-**Doble clic en `JUGAR.bat`.** Nada más.
+### https://gaspartomasello.github.io/SAN-MARTIN-JUEGO/
 
-Trae lo último del repo si hay internet, abre el juego en el navegador, y si no hay
-internet lo abre igual con lo que tengas. En macOS o Linux es `jugar.sh`.
+Ese link **es** el juego. Se abre en el navegador y listo: nada que bajar, nada que
+instalar, nada que clonar. Y no se queda viejo — cada vez que se toca el código, GitHub
+lo vuelve a armar solo y el link pasa a servir la versión nueva. Es siempre el mismo link.
+
+Anda en Chrome, Edge y Firefox de escritorio. Necesita teclado y mouse: en celular no.
+
+### Sin internet
 
 El juego es **un solo archivo** `.html` de un megabyte y pico con todo adentro —three.js,
-el código, las texturas, el sonido— y viaja armado en el repo. No hace falta servidor, ni
-`npm install`, ni internet. Si preferís, se abre directo haciendo doble clic en
-`clarin-san-lorenzo.html`.
+el código, las texturas, el sonido—, y viaja armado en el repo como
+`clarin-san-lorenzo.html`. Doble clic y anda: no necesita servidor, ni `npm install`, ni
+conexión.
+
+Si tenés el repo clonado, **doble clic en `JUGAR.bat`** (o `jugar.sh` en macOS y Linux)
+trae lo último y lo abre; sin internet lo abre igual con lo que tengas.
 
 Adentro:
 
