@@ -30,13 +30,37 @@ const PATA_ALTA = 0.55;
 const PATA_BAJA = 0.45;
 const CUELLO = 0.72;
 
-// andares: la W sube de uno y la S baja
+// andares: la W sube de uno y la S baja.
+//
+// `carga` es lo que se le multiplica al reloj de la recarga arriba del animal.
+// Antes de trote para arriba era un PORTÓN —penalCarga = 0, o sea que la carga
+// no arrancaba y la recarga sola después del tiro tampoco—, y eso le sacaba al
+// granadero montado la mitad de su oficio: o parabas el caballo en medio del
+// campo para cargar, o te quedabas con el arma vacía toda la batalla.
+//
+// Ahora se puede cargar siempre; lo que cambia es cuánto tarda. Al galope, con
+// las riendas en la mano y el arma bailando, cuesta el triple y medio que a
+// pie —unos doce segundos de tercerola contra tres y medio—, que es lo que
+// tiene que costar: se puede, pero conviene bajar el andar para hacerlo.
 export const ANDARES = [
-  { nombre: 'parado', vel: 0,    giro: 2.6 },
-  { nombre: 'al paso', vel: 1.9, giro: 2.1 },
-  { nombre: 'al trote', vel: 4.6, giro: 1.35 },
-  { nombre: 'a galope', vel: 10.2, giro: 0.62 }
+  { nombre: 'parado', vel: 0,    giro: 2.6,  carga: 1.35 },
+  { nombre: 'al paso', vel: 1.9, giro: 2.1,  carga: 1.8 },
+  { nombre: 'al trote', vel: 4.6, giro: 1.35, carga: 2.6 },
+  { nombre: 'a galope', vel: 10.2, giro: 0.62, carga: 3.4 }
 ];
+
+// Lo que cuesta cargar a esta velocidad. Sale de la velocidad REAL y no del
+// andar pedido, porque el caballo tarda en llegar al andar: el que acaba de
+// bajar de galope ya tiene la mano más quieta aunque el andar diga otra cosa.
+export function penalCargaMontado (vel) {
+  for (let i = ANDARES.length - 1; i > 0; i--) {
+    const alto = ANDARES[i], bajo = ANDARES[i - 1];
+    if (vel < bajo.vel) continue;
+    const t = Math.min(1, (vel - bajo.vel) / (alto.vel - bajo.vel));
+    return bajo.carga + (alto.carga - bajo.carga) * t;
+  }
+  return ANDARES[0].carga;
+}
 
 const ACEL = 3.4;
 const FRENO = 5.2;

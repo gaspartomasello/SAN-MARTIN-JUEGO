@@ -27,6 +27,7 @@ import { Sonido } from './audio.js';
 import { Jugador } from './jugador.js';
 import { Sable } from './sable.js';
 import { Soldado } from './soldados.js';
+import { penalCargaMontado } from './caballo.js';
 import { ActoCabral } from './acto.js';
 import { PasadaArma } from './pasadaArma.js';
 import { PasadaVelocidad } from './pasadaVelocidad.js';
@@ -318,8 +319,10 @@ function simular (dt) {
   jugador.actualizar(dt, mando.teclas, quiereApuntar, arma ? arma.cargando : false);
 
   const p = jugador.cfgPostura;
-  // A caballo no se carga: al trote la baqueta no entra. Al paso, con dificultad.
-  const penalMonta = montado() ? (jugador.monta.vel > 3 ? 0 : 2.4) : 1;
+  // A caballo se carga siempre, y cuesta según el andar: la tabla está en
+  // caballo.js, con el andar. Antes de trote para arriba era cero —o sea, no se
+  // podía ni empezar— y eso dejaba al granadero montado con el arma vacía.
+  const penalMonta = montado() ? penalCargaMontado(jugador.monta.vel) : 1;
   arsenal.actualizar(dt, {
     apuntando: arsenal.apuntando,
     presion,

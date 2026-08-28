@@ -7,7 +7,7 @@ import { sacarDeCaja, RADIO_HOMBRE } from './estorbos.js';
 // abrir para reequilibrar la batalla. Acá vive el COMPORTAMIENTO: qué decide
 // un hombre, cuándo se da vuelta, cuánto tarda en bajar la lanza.
 import {
-  VIDA_TROPA, VOLTEO, OFICIO, tirar,
+  VIDA_TROPA, VOLTEO, OFICIO_TROPA, tirar,
   ALIENTO_TROPA, GASTO_CARRERA, RECUPERO, CARRERA_MINIMA, SATURACION,
   ANIMO_TROPA, TEMPLE, REFUGIO_REALISTA, REFUGIO_GRANADERO, PERSEGUIR
 } from './balance.js';
@@ -246,6 +246,13 @@ export class Soldado {
     // entera— ni cuánto pesa cada cosa —eso es balance.js—. Acá vive lo único
     // que es del hombre: cuánto aguanta y qué hace cuando se le acaba.
     this.animo = ANIMO_TROPA;
+    // EL TECHO. Hasta dónde puede volver el ánimo cuando lo dejan tranquilo. No
+    // vuelve a cien: el hombre que estuvo dos minutos abajo de la caballería no
+    // es el mismo que formó a la mañana, y el aplomo no lo devuelve. Baja y no
+    // sube nunca. Es lo que hace que el desbande sea progresivo y no una
+    // moneda al aire — medido: sin techo, la misma batalla se quebraba a los
+    // cien segundos o no se quebraba jamás, según cómo cayeran los dados.
+    this.techo = ANIMO_TROPA;
     this.temple = TEMPLE[0] + Math.random() * TEMPLE[1];
     this.quebrado = false;          // dejó de pelear: va a la barranca
     this.tAnimo = Math.random() * 0.4;   // escalonado, para no mirarlos a todos juntos
@@ -408,7 +415,14 @@ export class Soldado {
     if (!this.vivo) return false;
     // el títere no se hiere solo: pide que lo hieran del otro lado
     if (this.titere) return this.alCastigo ? !!this.alCastigo({ dano, volteo, dir }) : false;
-    if (this.montado && volteo > 0 && Math.random() < volteo) { this.desmontar(true); return false; }
+    // EL OFICIO DEL JINETE, que es lo que hace que una carga siga siendo una
+    // carga. Sin el descuento la tirada era la del arma pelada y a los dos
+    // minutos no quedaba un solo granadero montado: la caballería se apagaba
+    // sola antes de quebrar nada.
+    if (this.montado && volteo > 0 && Math.random() < volteo * (1 - OFICIO_TROPA)) {
+      this.desmontar(true);
+      return false;
+    }
     this.vida -= dano;
     if (this.vida <= 0) {
       this.vivo = false;

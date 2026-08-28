@@ -23,7 +23,7 @@ import * as THREE from 'three';
 import {
   VOLTEO, OFICIO, AGARRE_AFLOJA, tirar,
   DANO_BALA, DANO_BAYONETA, DANO_METRALLA, CAIDA, BAYONETA_PARADA,
-  BALA_JUGADOR, DANO_SABLE, DANO_REMATE,
+  BALA_JUGADOR, BALA_MIEMBRO, ZONA_CABEZA, ZONA_PECHO, DANO_SABLE, DANO_REMATE,
   BALA_TROPA, BAYONETA_TROPA, LANZA_TROPA, METRALLA_TROPA,
   CABALLO_COME, BALA_AL_CABALLO, METRALLA_CABALLO,
   BLANCO_HOMBRE, BLANCO_MONTADO, ZUMBIDO,
@@ -99,6 +99,18 @@ export function armarCombate (ctx) {
   // -------------------------------------------------------------------------
   // tu arma de fuego
   // -------------------------------------------------------------------------
+  // A DÓNDE LE PEGASTE. La altura del impacto sobre los pies del hombre, medida
+  // contra la altura de su ojo: así la misma cuenta vale para uno parado, uno
+  // hincado y uno arriba del caballo, que son tres alturas distintas del mismo
+  // cuerpo. Los cortes salen de la tabla, como todo lo demás.
+  function zona (s, y) {
+    const ojo = s.fig.alturaOjo || 1.6;
+    const alto = (y - s.pos.y) / ojo;
+    if (alto >= ZONA_CABEZA) return 'cabeza';
+    if (alto >= ZONA_PECHO) return 'pecho';
+    return 'miembro';
+  }
+
   function resolverDisparo (origen, dir, dispersion) {
     jugador.sacudir(0.42);
     jugador.retroPitch += 0.075;
@@ -140,7 +152,13 @@ export function armarCombate (ctx) {
     if (soldado) {
       sonido.impactoCarne();
       humo.soltar(g.point, d, { cantidad: 3, vida: 2.5, empuje: 1.4, radio: 0.1, opacidad: 0.35, claro: 0 });
-      if (soldado.recibir(BALA_JUGADOR, d, VOLTEO.bala)) hud.mostrarAviso('Realista abatido', 'bien');
+      const z = zona(soldado, g.point.y);
+      const dano = z === 'miembro' ? BALA_MIEMBRO : BALA_JUGADOR;
+      if (soldado.recibir(dano, d, VOLTEO.bala)) {
+        hud.mostrarAviso(z === 'cabeza' ? '¡A la cabeza!' : 'Realista abatido', 'bien');
+      } else if (z === 'miembro') {
+        hud.mostrarAviso('Le diste, pero sigue en pie', 'bien');
+      }
     } else if (raiz.userData.blanco) {
       sonido.impactoMadera();
       hud.mostrarAviso(`Blanco a ${Math.round(g.distance)} m`, 'bien');

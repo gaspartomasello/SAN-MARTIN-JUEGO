@@ -42,13 +42,13 @@
 // mismo cuadro, todos cruzarían el umbral en el mismo cuadro.
 
 import {
-  ANIMO_TROPA, VIDA_TROPA,
+  VIDA_TROPA,
   CAIDO_CERCA, CAIDO_RADIO,
   FLANCO, FLANCO_RADIO, FLANCO_CONO, FLANCO_LLENO,
   CABALLO_ENCIMA, CABALLO_RADIO, CABALLO_LLENO, CABALLO_FLANCO,
   SOLEDAD, JUNTOS_RADIO, JUNTOS_MINIMO,
   HERIDO, PIEZA_CALLADA, PIEZA_RADIO, FRENTE_GIRO,
-  APLOMO, CONTAGIO, CONTAGIO_RADIO,
+  APLOMO, DESGASTE, CONTAGIO, CONTAGIO_RADIO,
   LINEA_ROTA, LINEA_MINIMA, DESBANDE
 } from './balance.js';
 
@@ -63,6 +63,16 @@ export function armarMoral (ctx) {
   const roto = { realista: false, granadero: false };
   let idos = 0;                   // cuántos bajaron la barranca y se fueron
   let tGrito = 0;
+
+  // Un golpe de ánimo de los que se cobran DE GOLPE —el compañero que cae, la
+  // pieza que calla, la línea que se rompe—. Pasa por acá y no se resta a mano
+  // en tres lugares porque también tiene que morder el techo: si no, un hombre
+  // se comería cincuenta de susto y los recuperaría enteros dos minutos después
+  // como si no hubiera pasado nada.
+  function golpear (o, n) {
+    o.animo -= n;
+    o.techo = Math.max(0, o.techo - n * DESGASTE);
+  }
 
   // -------------------------------------------------------------------------
   // 1. EL QUE CAYÓ AL LADO
@@ -80,7 +90,7 @@ export function armarMoral (ctx) {
       if (o.bando !== muerto.bando) continue;
       const d = Math.hypot(o.pos.x - x, o.pos.z - z);
       if (d > CAIDO_RADIO) continue;
-      o.animo -= CAIDO_CERCA * o.temple * (1 - d / CAIDO_RADIO);
+      golpear(o, CAIDO_CERCA * o.temple * (1 - d / CAIDO_RADIO));
     }
   }
 
@@ -162,10 +172,22 @@ export function armarMoral (ctx) {
     q.rotos = rotos ? CONTAGIO * Math.min(1, rotos / 2) : 0;
     const baja = q.flanco + q.jinetes + q.solo + q.herido + q.rotos;
 
+    // EL DESGASTE, que es lo que hace que esto avance. Una parte de lo que le
+    // entró se la lleva el techo, y el techo no vuelve a subir: el aplomo
+    // recompone al hombre hasta donde quedó, no hasta donde estaba.
+    //
+    // Sin esto la cuenta era una resta pura y el resultado, una moneda al aire:
+    // al que le tocaba un temple bueno y una pausa se le recomponía el ánimo
+    // entero y no se quebraba nunca, y la misma batalla terminaba en desbandada
+    // o en exterminio según cómo cayeran los dados. Con el techo el castigo se
+    // acumula, la línea se va gastando y el quiebre llega igual: más tarde si
+    // aguantan bien, pero llega.
+    s.techo = Math.max(0, s.techo - baja * s.temple * DESGASTE * dt);
+
     // El neto, y no una rama: si el recupero fuera un «else» habría un
     // escalón en cero —el que tiene un enemigo lejísimos no se recompone
     // nunca— y toda la tensión de la pelea está justo en esta resta.
-    s.animo = Math.max(0, Math.min(ANIMO_TROPA, s.animo + (APLOMO - baja * s.temple) * dt));
+    s.animo = Math.max(0, Math.min(s.techo, s.animo + (APLOMO - baja * s.temple) * dt));
     if (s.animo <= 0) quebrar(s);
   }
 
@@ -190,7 +212,7 @@ export function armarMoral (ctx) {
         if (!o.vivo || o.quebrado || o.titere || !o.esRealista) continue;
         const d = Math.hypot(o.pos.x - c.pos.x, o.pos.z - c.pos.z);
         if (d > PIEZA_RADIO) continue;
-        o.animo -= PIEZA_CALLADA * o.temple * (1 - d / PIEZA_RADIO);
+        golpear(o, PIEZA_CALLADA * o.temple * (1 - d / PIEZA_RADIO));
       }
     }
   }
@@ -208,7 +230,7 @@ export function armarMoral (ctx) {
     roto[bando] = true;
     for (const o of soldados) {
       if (!o.vivo || o.quebrado || o.titere || o.bando !== bando) continue;
-      o.animo -= DESBANDE * o.temple;
+      golpear(o, DESBANDE * o.temple);
     }
     if (bando === 'realista') {
       hud.mostrarAviso('¡SE QUIEBRA LA LÍNEA!', 'bien');

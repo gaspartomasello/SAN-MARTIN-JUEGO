@@ -549,11 +549,17 @@ export class ArmaFuego {
   // ---------- carga ----------
   iniciarCarga () {
     if (this.guardada || this.tGolpe >= 0) return;
+    // EL ARMA LLENA NO SE VUELVE A CARGAR. Esta pregunta estaba metida adentro
+    // del `if` de abajo, y como la partida arranca con la tercerola cargada y
+    // el paso en cero, la condición no se cumplía nunca: tocabas R con las dos
+    // armas listas y te ponías a morder un cartucho arriba de una carga entera,
+    // que además gastaba el cartucho.
+    if (this.lista) { this._aviso('El arma ya está lista', 'bien'); return; }
     if (this.penalPostura <= 0) { this._aviso('No se puede cargar cuerpo a tierra', 'malo'); return; }
-    if (this.paso >= this.secuencia.length) {
-      if (this.lista) { this._aviso('El arma ya está lista', 'bien'); return; }
-      this._nuevaSecuencia();
-    }
+    // Con nada empezado —o con la secuencia terminada— se arma la secuencia que
+    // corresponde al estado REAL del arma: al que le falta amartillar se le
+    // pide amartillar y nada más, no los cuatro tiempos de nuevo.
+    if (this.paso === 0 || this.paso >= this.secuencia.length) this._nuevaSecuencia();
     this.cargando = true;
   }
 
