@@ -71,6 +71,26 @@ armas, de partículas, de sonido y de spawn. No hagas otro.
 **5 · Visual y gameplay separados.** Geometrías, materiales y animaciones por un
 lado; daño, vida, moral y estados por el otro.
 
+**6 · El jugador no es un soldado más, y la asimetría es a propósito.** Sos uno
+contra doscientos cincuenta: si peleás con las reglas de la tropa, no hay
+batalla. Lo que ya está torcido a tu favor:
+
+| | Vos | La tropa |
+|---|---|---|
+| Bala | `BALA_JUGADOR` 8 — mata de una al pecho | `BALA_TROPA` 0,9 — nueve balazos |
+| Zonas de impacto | cabeza, pecho y miembro | no tiene: acierta o no |
+| Sable | `DANO_SABLE` 8 — el corvo mata de una | — |
+| Girar a caballo | `RIENDA` ×1,85 | el giro pelado |
+| Contra una pared | desliza y sigue | se le acomoda el rumbo |
+
+**Cuando toques uno de estos números, fijate de qué lado está.** Los dos casos
+peores del proyecto salieron de mover algo que sin querer valía para las dos
+puntas: subir `ANDARES.giro` apelotonó las columnas de la pinza, y sacarle el
+acomodamiento contra paredes dejó a la caballería trabada en el convento. Las
+dos veces la línea realista dejó de quebrarse. Si el cambio es para el que
+juega, va en el camino del jugador —`mando.girar`, `resolverDisparo`— y no en
+la tabla compartida.
+
 ---
 
 ## Pruebas

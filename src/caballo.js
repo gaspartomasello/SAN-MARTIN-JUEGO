@@ -43,9 +43,9 @@ const CUELLO = 0.72;
 // las riendas en la mano y el arma bailando, cuesta el triple y medio que a
 // pie —unos doce segundos de tercerola contra tres y medio—, que es lo que
 // tiene que costar: se puede, pero conviene bajar el andar para hacerlo.
-export const RIENDA = 1.85;            // cuánto más dobla el que lleva las riendas
+const RIENDA = 1.85;                   // cuánto más dobla el que lleva las riendas
 
-const ANDARES = [
+export const ANDARES = [
   { nombre: 'parado', vel: 0,    giro: 2.6,  carga: 1.35 },
   { nombre: 'al paso', vel: 1.9, giro: 2.1,  carga: 1.8 },
   { nombre: 'al trote', vel: 4.6, giro: 1.35, carga: 2.6 },
