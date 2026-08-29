@@ -30438,6 +30438,7 @@ var PASILLO = 0.75;
 var PASILLO_LARGO = 9;
 var CARGA_BAYONETA = 16;
 var CARGA_TOQUE = 2.5;
+var CARGA_JINETE = 5;
 var CUBIERTA_BUSCAR = 24;
 var CUBIERTA_MINIMA = 6;
 var CUBIERTA_LLEGADA = 1.1;
@@ -30529,6 +30530,7 @@ var Soldado = class _Soldado {
     this.andarColumna = 0;
     this.monta = null;
     this.tPasada = 0;
+    this.pasadas = 0;
     this.tirado = 0;
     this.alDesmontar = null;
     this.titere = false;
@@ -30963,7 +30965,11 @@ var Soldado = class _Soldado {
           break;
         }
         const tardaEnLlegar = dist / VEL_CARRERA;
-        if (this.teVe && this.tResuello <= 0 && this.recarga > tardaEnLlegar && dist < CARGA_BAYONETA * this.arrojo) {
+        const monta = this.objetivo.soldado ? this.objetivo.soldado.monta : jugador2.monta;
+        const jinete = !!(monta && monta.vivo);
+        const alcanceCarga = jinete ? CARGA_JINETE : CARGA_BAYONETA * this.arrojo;
+        const alcanzable = !jinete || monta.vel < VEL_CARRERA;
+        if (this.teVe && this.tResuello <= 0 && alcanzable && this.recarga > tardaEnLlegar && dist < alcanceCarga) {
           if (this.aliento < CARRERA_MINIMA) {
             this.fig.poner("marcha");
             if (distDestino > 0.6) {
@@ -31236,6 +31242,7 @@ var Soldado = class _Soldado {
         }
         this.estado = "pasada";
         this.tPasada = PASADA;
+        this.pasadas++;
       }
     }
     if (c.puedeSaltar && c.obstaculoAdelante(c.vel * 0.55 + 2.5)) mando2.saltar = true;
@@ -31998,17 +32005,30 @@ var RUTA_ESTE = [
 ];
 var PLAZA_OESTE = { x: -44, z: 54, rumbo: 0 };
 var PLAZA_ESTE = { x: 44, z: 54, rumbo: 0 };
+var SALIDA = 30;
+var REUNION_OESTE = { x: -76, z: -26, rumbo: 0 };
+var REUNION_ESTE = { x: 76, z: -26, rumbo: 0 };
+var MITAD = 0.5;
+var CARGA_MINIMA = 16;
+var CARGA_LARGA = 26;
+var REUNION_LARGA = 9;
+var LLEGADA_REUNION = 6;
+var PEGADO = 2;
 var Columna = class {
   // cabeza: null si la manda el jugador (entonces se le pasa en actualizar)
-  constructor(nombre, ruta, formacion) {
+  constructor(nombre, ruta, formacion, reunion) {
     this.nombre = nombre;
     this.ruta = ruta;
     this.formacion = formacion;
+    this.reunion = reunion;
     this.punto = 0;
     this.hombres = [];
     this.jefe = null;
     this.remota = null;
     this.estado = "formada";
+    this.fase = null;
+    this.tFase = 0;
+    this.sitio = null;
     this.alSoltar = null;
     this.alHeredar = null;
     this._p = new Vector3();
@@ -32055,15 +32075,95 @@ var Columna = class {
   soltar() {
     if (this.estado === "suelta") return false;
     this.estado = "suelta";
-    for (const h of this.hombres) {
-      h.plaza = null;
-      h.estado = "cargar";
-    }
+    this._cargar();
     if (this.alSoltar) this.alSoltar(this);
     return true;
   }
+  // A CARGAR. Se les saca la plaza —sin plaza cada uno vuelve a su ciclo de
+  // lancero— y se pone el contador de pasadas en cero, que es lo que la
+  // columna va a mirar para saber cuándo ya cargó.
+  _cargar() {
+    this.fase = "cargando";
+    this.tFase = 0;
+    for (const h of this.hombres) {
+      h.plaza = null;
+      h.pasadas = 0;
+      if (h.vivo && h.montado && !h.quebrado) h.estado = "cargar";
+    }
+  }
+  // A REUNIRSE. La plaza manda sobre el objetivo (soldados.js), así que el que
+  // vuelve grupas no se para a ensartar a nadie en el camino: sale.
+  _reunir(enemigos, monta) {
+    this.fase = "reunion";
+    this.tFase = 0;
+    this.sitio = this._puntoReunion(enemigos, monta);
+  }
+  // Dónde se reúne: treinta metros para afuera, en la dirección que va del
+  // centro enemigo al centro de la columna.
+  _puntoReunion(enemigos, monta) {
+    let ne = 0, ex = 0, ez = 0;
+    if (enemigos) for (const e of enemigos) {
+      if (!e.vivo || e.quebrado) continue;
+      ne++;
+      ex += e.pos.x;
+      ez += e.pos.z;
+    }
+    if (!ne || !monta.length) return this.reunion;
+    ex /= ne;
+    ez /= ne;
+    let gx = 0, gz = 0;
+    for (const h of monta) {
+      gx += h.pos.x;
+      gz += h.pos.z;
+    }
+    gx /= monta.length;
+    gz /= monta.length;
+    let dx = gx - ex, dz = gz - ez;
+    const d = Math.hypot(dx, dz);
+    if (d < 1) {
+      dx = Math.sign(this.reunion.x) || 1;
+      dz = 0;
+    } else {
+      dx /= d;
+      dz /= d;
+    }
+    const x = Math.max(-110, Math.min(110, gx + dx * SALIDA));
+    const z = Math.max(-92, Math.min(70, gz + dz * SALIDA));
+    return { x, z, rumbo: Math.atan2(ex - x, ez - z) + Math.PI };
+  }
+  // La columna después del choque. Alterna carga y reunión hasta que no queda
+  // nadie arriba de un caballo.
+  _pelear(dt, enemigos) {
+    this.tFase += dt;
+    const monta = this.hombres.filter((h) => h.vivo && h.montado && !h.quebrado);
+    if (monta.length === 0) return;
+    if (this.fase === "cargando") {
+      const pasaron = monta.filter((h) => h.pasadas > 0).length;
+      const gastada = pasaron >= monta.length * MITAD && this.tFase > CARGA_MINIMA;
+      if (gastada || this.tFase > CARGA_LARGA) this._reunir(enemigos, monta);
+      return;
+    }
+    const p = this.sitio || this.reunion;
+    const cab = { x: p.x, z: p.z, rumbo: p.rumbo, andar: 2 };
+    let n = 0, llegados = 0;
+    for (const h of this.hombres) {
+      if (!h.vivo || !h.montado || h.quebrado) {
+        h.plaza = null;
+        continue;
+      }
+      if (!h.plaza) h.plaza = new Vector3();
+      this._sitio(cab, n++, h.plaza);
+      const d = Math.hypot(h.plaza.x - h.monta.pos.x, h.plaza.z - h.monta.pos.z);
+      h.andarColumna = d > PEGADO ? 2 : 0;
+      if (d < LLEGADA_REUNION) llegados++;
+    }
+    if (llegados >= n * MITAD || this.tFase > REUNION_LARGA) this._cargar();
+  }
   actualizar(dt, jugador2, enemigos) {
-    if (this.estado === "suelta") return;
+    if (this.estado === "suelta") {
+      this._pelear(dt, enemigos);
+      return;
+    }
     const cab = this._cabeza(jugador2);
     if (!cab) {
       this.soltar();
@@ -32141,8 +32241,8 @@ var Columna = class {
 };
 var Pinza = class {
   constructor() {
-    this.oeste = new Columna("oeste", RUTA_OESTE, PLAZA_OESTE);
-    this.este = new Columna("este", RUTA_ESTE, PLAZA_ESTE);
+    this.oeste = new Columna("oeste", RUTA_OESTE, PLAZA_OESTE, REUNION_OESTE);
+    this.este = new Columna("este", RUTA_ESTE, PLAZA_ESTE, REUNION_ESTE);
     this.tocado = false;
     this.alTocar = null;
     this.viva = false;
@@ -32172,6 +32272,9 @@ var Pinza = class {
       c.jefe = null;
       c.punto = 0;
       c.estado = "formada";
+      c.fase = null;
+      c.tFase = 0;
+      c.sitio = null;
     }
     this.tocado = false;
     this.viva = false;
@@ -32179,7 +32282,7 @@ var Pinza = class {
   actualizar(dt, jugador2, enemigos) {
     if (!this.viva) return;
     for (const c of this.columnas) c.actualizar(dt, jugador2, enemigos);
-    if (this.oeste.estado === "suelta" && this.este.estado === "suelta") this.viva = false;
+    if (this.oeste.montados === 0 && this.este.montados === 0) this.viva = false;
   }
 };
 

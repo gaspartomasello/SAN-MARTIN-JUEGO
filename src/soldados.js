@@ -103,6 +103,25 @@ const PASILLO_LARGO = 9;         // línea de tiro y dentro de estos metros, no 
 
 const CARGA_BAYONETA = 16;
 const CARGA_TOQUE = 2.5;        // a esta distancia el que viene corriendo ya ensartó
+// A UN HOMBRE A CABALLO NO SE LO CORRE. Un infante a la carrera va a 4,3 m/s y
+// un caballo al trote a 4,6: la diferencia es tan poca que doscientos
+// cincuenta realistas podían salir a perseguir jinetes por el campo abierto y
+// alcanzarlos. Medido: de las 120 bajas de granadero, 104 son el bayonetazo, y
+// la mayoría es el golpe de llegada de esa persecución. Ninguna infantería del
+// mundo hace eso —se la espera a pie firme, que para eso el fusil tiene un
+// palmo de acero en la punta—. Así que contra un montado la bayoneta sale
+// recién cuando lo tiene encima Y cuando el caballo está frenado: si el animal
+// va más rápido que un hombre corriendo, no hay carrera que lo alcance. No
+// hace falta un número nuevo para eso —es VEL_CARRERA contra la velocidad del
+// caballo—, y de paso le da al que juega la regla que corresponde: montado, lo
+// que te salva es no parar.
+//
+// Se probó además dejar cargar contra el jinete que VIENE derecho al hombre
+// —perseguir no, recibir sí—, que suena mejor todavía. No sirve: en un
+// revoltijo todos encaran a todos, y con el cono del asta (41°) o con uno de
+// 78° daba lo mismo, los granaderos volvían a perder los 120. La regla que
+// filtra es la velocidad.
+const CARGA_JINETE = 5;
 const CUBIERTA_BUSCAR = 24;     // radio en el que mira si hay parapeto
 const CUBIERTA_MINIMA = 6;      // no se parapeta encima del enemigo
 const CUBIERTA_LLEGADA = 1.1;
@@ -287,6 +306,10 @@ export class Soldado {
 
     this.monta = null;
     this.tPasada = 0;
+    // Pasadas dadas desde la última reunión. No es una estadística: es la
+    // señal que mira la columna para saber cuándo el escuadrón ya cargó y
+    // toca volver grupas todos juntos. Ver pinza.js.
+    this.pasadas = 0;
     this.tirado = 0;          // > 0: en el suelo tras la caída, sin defensa
     this.alDesmontar = null;
 
@@ -821,7 +844,12 @@ export class Soldado {
         // de disparar sale al acero igual que antes; el que está por terminar
         // se queda y descarga.
         const tardaEnLlegar = dist / VEL_CARRERA;
-        if (this.teVe && this.tResuello <= 0 && this.recarga > tardaEnLlegar && dist < CARGA_BAYONETA * this.arrojo) {
+        const monta = this.objetivo.soldado ? this.objetivo.soldado.monta : jugador.monta;
+        const jinete = !!(monta && monta.vivo);
+        const alcanceCarga = jinete ? CARGA_JINETE : CARGA_BAYONETA * this.arrojo;
+        const alcanzable = !jinete || monta.vel < VEL_CARRERA;
+        if (this.teVe && this.tResuello <= 0 && alcanzable &&
+            this.recarga > tardaEnLlegar && dist < alcanceCarga) {
           if (this.aliento < CARRERA_MINIMA) {
             // sin aire: camina hacia él con la bayoneta puesta, resollando
             this.fig.poner('marcha');
@@ -1152,6 +1180,7 @@ export class Soldado {
         }
         this.estado = 'pasada';
         this.tPasada = PASADA;
+        this.pasadas++;
       }
     }
 

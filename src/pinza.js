@@ -66,12 +66,90 @@ export const RUTA_ESTE = [
 export const PLAZA_OESTE = { x: -44, z: 54, rumbo: 0 };
 export const PLAZA_ESTE = { x: 44, z: 54, rumbo: 0 };
 
+// LA REUNIÓN — la otra mitad de la carga.
+//
+// La pasada del lancero ya estaba hecha (soldados.js): entra al galope, tira
+// el lanzazo, sigue de largo y vuelve grupas. Lo que faltaba es que eso lo
+// hicieran JUNTOS. Sin esto la pinza era de una sola dirección: se soltaba a
+// veintiséis metros del enemigo y no se volvía a formar nunca más, así que a
+// partir del choque eran ciento veinte tipos a caballo, cada uno en su propia
+// fase del ciclo. Mientras unos entraban, otros estaban en `volver`: al
+// trote, doblando, de costado, solos y en medio de la masa.
+//
+// Eso se pagaba poco mientras los realistas temblaban en el lugar. Cuando
+// dejaron de temblar y empezaron a converger de verdad, `volver` adentro de
+// la infantería pasó a ser una sentencia y la caballería se apagaba entera.
+//
+// La caballería de verdad no se queda adentro. Carga, atraviesa, se REÚNE
+// fuera de contacto, se vuelve a formar y carga otra vez. Dos ganancias, y la
+// segunda importa más: sale del campo justo en la ventana en que es
+// vulnerable, y la carga siguiente llega CONCENTRADA. CABALLO_ENCIMA se cobra
+// por caballo cerca, así que treinta caballos encima al mismo tiempo hacen un
+// pico de moral que treinta caballos goteando de a uno no hacen nunca.
+//
+// EL PUNTO DE REUNIÓN SE MUEVE CON EL ENEMIGO, y esto costó una medición
+// entera. La primera versión lo dejaba fijo en z = −26, que es donde estaba el
+// desembarco al empezar. Pero los realistas no se quedan en la barranca:
+// suben hacia el convento, y en un minuto y medio la línea pasa de z = −68 a
+// z = +9. O sea que el punto de reunión "fuera de contacto" quedaba, a los
+// treinta segundos, EN EL MEDIO DE LA INFANTERÍA. Medido: 76 de 92 granaderos
+// seguían a menos de ocho metros de un realista mientras se reunían, y casi
+// ninguno llegaba a su sitio. Se reunían adentro del enemigo.
+//
+// Así que la reunión se calcula cada vez: por fuera del flanco de la columna y
+// del lado del convento, que es el propio. La primera corrección fue para el
+// otro lado —atrás de la retaguardia enemiga, el campo que el realista acaba
+// de dejar— y salió peor todavía: la fuerza realista no avanza como una línea,
+// se estira ciento cincuenta metros, así que "atrás de todos" cae en la
+// barranca y los granaderos se reunían contra el río, pegados a la retaguardia
+// enemiga, sin campo para tomar carrera. Se retira uno hacia lo suyo.
+//
+// Y SE CALCULA UNA SOLA VEZ POR REUNIÓN, no cada cuadro. Ese fue el segundo
+// error medido: mirando la punta de la línea cuadro a cuadro, el punto saltaba
+// ochenta metros cada vez que el realista más adelantado moría o lo pasaba
+// otro. El escuadrón entero se pasó la batalla galopando de ida y de vuelta
+// atrás de un punto que se movía —distancia media al sitio: 78 m, 17 m, 85 m,
+// 20 m, uno tras otro—, cruzando la infantería con la lanza al hombro, que no
+// hiere. Contacto casi al doble que antes y un tercio de las bajas. El punto
+// se fija al empezar la reunión y no se mueve hasta la próxima.
+//
+// Y SE SALE DE COSTADO, POCO. La tercera medición fue la que ordenó esto. Un
+// punto de reunión lejos —por fuera del flanco y treinta y cuatro metros del
+// lado del convento— quedaba a setenta u ochenta metros de donde estaba
+// peleando la columna, así que cada reunión era un viaje de ida y vuelta
+// cruzando la infantería con la lanza al hombro. Los granaderos no se
+// evaporaban más —110 de 120 en pie al minuto y medio, contra 0— pero mataban
+// SIETE realistas en tres minutos. Sobrevivían porque no peleaban.
+//
+// La salida es corta y va derecho para afuera: se toma la dirección que va del
+// centro enemigo al centro de la columna y se retrocede treinta metros por
+// ahí. Es el camino más corto para despegarse y es el único que no vuelve a
+// cruzar la masa. Tres segundos de galope, no diez.
+const SALIDA = 30;              // lo que se retrocede, en línea recta para afuera
+export const REUNION_OESTE = { x: -76, z: -26, rumbo: 0 };
+export const REUNION_ESTE = { x: 76, z: -26, rumbo: 0 };
+
+const MITAD = 0.5;              // fracción que decide: la mitad ya cargó, la mitad ya volvió
+// LA CARGA TIENE UN MÍNIMO, y sin él la maniobra se da vuelta. La señal para
+// volver grupas es que la mitad del escuadrón ya haya dado su pasada, y eso
+// mide bien cuando la columna entra desde afuera. Pero apenas se vuelve a
+// soltar, media columna ya está pegada al enemigo: la mitad "pasa" en dos
+// segundos y el escuadrón se reúne enseguida. Medido: dos segundos cargando
+// contra nueve reuniéndose, o sea el 20 % del tiempo peleando. Un piso de
+// tiempo lo endereza.
+const CARGA_MINIMA = 16;        // lo que dura la carga por poco que pase
+const CARGA_LARGA = 26;         // y el tope, si no llega a pasar la mitad
+const REUNION_LARGA = 9;        // tope de la espera, para que una columna diezmada no espere a muertos
+const LLEGADA_REUNION = 6;      // a esta distancia de su sitio, se lo cuenta reunido
+const PEGADO = 2;               // y a esta, para el caballo
+
 export class Columna {
   // cabeza: null si la manda el jugador (entonces se le pasa en actualizar)
-  constructor (nombre, ruta, formacion) {
+  constructor (nombre, ruta, formacion, reunion) {
     this.nombre = nombre;
     this.ruta = ruta;
     this.formacion = formacion;   // { x, z, rumbo } donde espera
+    this.reunion = reunion;       // { x, z, rumbo } donde vuelve a formar entre carga y carga
     this.punto = 0;
     this.hombres = [];
     this.jefe = null;             // el Soldado que va adelante, si no la manda el jugador
@@ -80,6 +158,10 @@ export class Columna {
     // devuelve dónde va su caballo alcanza para que los sesenta lo sigan.
     this.remota = null;
     this.estado = 'formada';      // formada → saliendo → suelta
+    // Ya suelta, la columna sigue viva y alterna: 'cargando' → 'reunion' → …
+    this.fase = null;
+    this.tFase = 0;
+    this.sitio = null;           // dónde, fijado al empezar cada reunión
     this.alSoltar = null;
     this.alHeredar = null;
     this._p = new THREE.Vector3();
@@ -133,13 +215,91 @@ export class Columna {
   soltar () {
     if (this.estado === 'suelta') return false;
     this.estado = 'suelta';
-    for (const h of this.hombres) { h.plaza = null; h.estado = 'cargar'; }
+    this._cargar();
     if (this.alSoltar) this.alSoltar(this);
     return true;
   }
 
+  // A CARGAR. Se les saca la plaza —sin plaza cada uno vuelve a su ciclo de
+  // lancero— y se pone el contador de pasadas en cero, que es lo que la
+  // columna va a mirar para saber cuándo ya cargó.
+  _cargar () {
+    this.fase = 'cargando';
+    this.tFase = 0;
+    for (const h of this.hombres) {
+      h.plaza = null;
+      h.pasadas = 0;
+      if (h.vivo && h.montado && !h.quebrado) h.estado = 'cargar';
+    }
+  }
+
+  // A REUNIRSE. La plaza manda sobre el objetivo (soldados.js), así que el que
+  // vuelve grupas no se para a ensartar a nadie en el camino: sale.
+  _reunir (enemigos, monta) {
+    this.fase = 'reunion';
+    this.tFase = 0;
+    this.sitio = this._puntoReunion(enemigos, monta);
+  }
+
+  // Dónde se reúne: treinta metros para afuera, en la dirección que va del
+  // centro enemigo al centro de la columna.
+  _puntoReunion (enemigos, monta) {
+    let ne = 0, ex = 0, ez = 0;
+    if (enemigos) for (const e of enemigos) {
+      if (!e.vivo || e.quebrado) continue;
+      ne++; ex += e.pos.x; ez += e.pos.z;
+    }
+    if (!ne || !monta.length) return this.reunion;
+    ex /= ne; ez /= ne;
+
+    let gx = 0, gz = 0;
+    for (const h of monta) { gx += h.pos.x; gz += h.pos.z; }
+    gx /= monta.length; gz /= monta.length;
+
+    // Encimados: no hay dirección de salida, se usa el flanco propio.
+    let dx = gx - ex, dz = gz - ez;
+    const d = Math.hypot(dx, dz);
+    if (d < 1) { dx = Math.sign(this.reunion.x) || 1; dz = 0; }
+    else { dx /= d; dz /= d; }
+
+    const x = Math.max(-110, Math.min(110, gx + dx * SALIDA));
+    const z = Math.max(-92, Math.min(70, gz + dz * SALIDA));
+    return { x, z, rumbo: Math.atan2(ex - x, ez - z) + Math.PI };
+  }
+
+  // La columna después del choque. Alterna carga y reunión hasta que no queda
+  // nadie arriba de un caballo.
+  _pelear (dt, enemigos) {
+    this.tFase += dt;
+    const monta = this.hombres.filter(h => h.vivo && h.montado && !h.quebrado);
+    if (monta.length === 0) return;
+
+    if (this.fase === 'cargando') {
+      const pasaron = monta.filter(h => h.pasadas > 0).length;
+      const gastada = pasaron >= monta.length * MITAD && this.tFase > CARGA_MINIMA;
+      if (gastada || this.tFase > CARGA_LARGA) this._reunir(enemigos, monta);
+      return;
+    }
+
+    // Fuera de contacto y en formación: el punto de reunión hace de cabeza.
+    const p = this.sitio || this.reunion;
+    const cab = { x: p.x, z: p.z, rumbo: p.rumbo, andar: 2 };
+    let n = 0, llegados = 0;
+    for (const h of this.hombres) {
+      if (!h.vivo || !h.montado || h.quebrado) { h.plaza = null; continue; }
+      if (!h.plaza) h.plaza = new THREE.Vector3();
+      this._sitio(cab, n++, h.plaza);
+      const d = Math.hypot(h.plaza.x - h.monta.pos.x, h.plaza.z - h.monta.pos.z);
+      // lejos galopa —de eso se ocupa el rezagado de _marchar—, cerca trota y
+      // encima del sitio se para
+      h.andarColumna = d > PEGADO ? 2 : 0;
+      if (d < LLEGADA_REUNION) llegados++;
+    }
+    if (llegados >= n * MITAD || this.tFase > REUNION_LARGA) this._cargar();
+  }
+
   actualizar (dt, jugador, enemigos) {
-    if (this.estado === 'suelta') return;
+    if (this.estado === 'suelta') { this._pelear(dt, enemigos); return; }
     const cab = this._cabeza(jugador);
     if (!cab) { this.soltar(); return; }
 
@@ -226,8 +386,8 @@ export class Columna {
 // La maniobra completa: las dos columnas y el toque que las larga.
 export class Pinza {
   constructor () {
-    this.oeste = new Columna('oeste', RUTA_OESTE, PLAZA_OESTE);
-    this.este = new Columna('este', RUTA_ESTE, PLAZA_ESTE);
+    this.oeste = new Columna('oeste', RUTA_OESTE, PLAZA_OESTE, REUNION_OESTE);
+    this.este = new Columna('este', RUTA_ESTE, PLAZA_ESTE, REUNION_ESTE);
     this.tocado = false;
     this.alTocar = null;
     this.viva = false;
@@ -254,6 +414,9 @@ export class Pinza {
       c.jefe = null;
       c.punto = 0;
       c.estado = 'formada';
+      c.fase = null;
+      c.tFase = 0;
+      c.sitio = null;
     }
     this.tocado = false;
     this.viva = false;
@@ -262,6 +425,9 @@ export class Pinza {
   actualizar (dt, jugador, enemigos) {
     if (!this.viva) return;
     for (const c of this.columnas) c.actualizar(dt, jugador, enemigos);
-    if (this.oeste.estado === 'suelta' && this.este.estado === 'suelta') this.viva = false;
+    // Antes la pinza se daba por terminada en el choque. Ahora el escuadrón
+    // sigue existiendo después: se reúne y vuelve a cargar. Se apaga cuando no
+    // queda un hombre montado, que es cuando de verdad se acabó la caballería.
+    if (this.oeste.montados === 0 && this.este.montados === 0) this.viva = false;
   }
 }

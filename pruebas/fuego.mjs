@@ -47,6 +47,14 @@ const r = await pag.evaluate(async () => {
   };
   P._acero = marcar('acero', P._acero);
 
+  // OJO CON alGolpear: NO ES DEL PROTOTIPO. Se le asigna a cada soldado cuando
+  // nace, así que parchar combate.golpeEnemigo después no llega a nadie, y el
+  // bayonetazo de llegada de la carga —que se tira desde 'correr', no desde
+  // _acero— caía todo en «otra». Con eso, 80 de 118 bajas de granadero quedaban
+  // sin causa y el diagnóstico salía al revés: parecía que a la caballería la
+  // mataba algo que no era la bayoneta. Es la bayoneta: 104 de 120.
+  for (const s of j.soldados) if (s.alGolpear) s.alGolpear = marcar('acero', s.alGolpear);
+
   const _rec = P.recibir;
   P.recibir = function (...a) {
     const montado = this.montado;

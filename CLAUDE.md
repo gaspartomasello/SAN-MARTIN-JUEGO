@@ -132,6 +132,13 @@ están limpios; el balance no. Casos reales, ya medidos:
 - **Lo que importa es el producto, no el factor.** Al arreglar la línea de tiro
   los tiros pasaron de 294 a 653 por batalla, y `BALA_TROPA` tuvo que bajar de
   1,5 a 0,9 sin que una bala "duela menos".
+- **La caballería se sostiene con DOS cosas, y sueltas no sirven.** La reunión
+  del escuadrón (`pinza.js`) y la regla de que a un caballo lanzado no se lo
+  persigue (`soldados.js`). Medido por separado: sólo la persecución da
+  exterminio sin quiebre —los granaderos matan a los 254—; sólo la reunión da
+  supervivencia sin pelea —110 de 120 en pie y siete realistas muertos—. Juntas
+  dan quiebre a los 201 s con 92 granaderos en pie. La reunión les baja el ritmo
+  de matar para que la moral llegue a tiempo; la otra los mantiene vivos.
 
 Por eso: **tocar un número de `balance.js` obliga a correr `desbande` y `moral`**,
 no alcanza con que compile.
