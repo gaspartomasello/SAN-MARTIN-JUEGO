@@ -8,7 +8,7 @@ import { sacarDeCaja, RADIO_HOMBRE } from './estorbos.js';
 // un hombre, cuándo se da vuelta, cuánto tarda en bajar la lanza.
 import {
   VIDA_TROPA, VOLTEO, OFICIO_TROPA, tirar,
-  ALIENTO_TROPA, GASTO_CARRERA, RECUPERO, CARRERA_MINIMA, SATURACION,
+  ALIENTO_TROPA, GASTO_CARRERA, RECUPERO, CARRERA_MINIMA, SATURACION, TERQUEDAD,
   ANIMO_TROPA, TEMPLE, REFUGIO_REALISTA, REFUGIO_GRANADERO, PERSEGUIR
 } from './balance.js';
 
@@ -108,6 +108,7 @@ const CUBIERTA_MINIMA = 6;      // no se parapeta encima del enemigo
 const CUBIERTA_LLEGADA = 1.1;
 const RODILLA_SUELTA = 0.42;    // probabilidad de hincarla a campo abierto
 const ESPERA_HUECO = 2.2;       // segundos esperando un hueco antes de hincarse
+const PASO_BLANCO = 0.34;       // cada cuánto vuelve a mirar a quién encarar
 const CONVERGER = 22;           // a esta distancia del borde empieza a buscar su bote
 
 // Ritmo de la estocada. El AVISO es sagrado: es la ventana en la que el
@@ -239,6 +240,8 @@ export class Soldado {
     // doscientos cincuenta arrancan en el mismo cuadro y llegan en fila.
     this.arrojo = 0.55 + Math.random() * 0.9;
     this.tDecidir = 0;
+    this.tResuello = 0;                     // recién salido del acero: no vuelve a arrancar
+    this.tBlanco = Math.random() * PASO_BLANCO;   // turno repartido al nacer
     this.encarado = true;
     this.huyendo = 0;               // > 0: acaba de perder el caballo y se está yendo
 
@@ -561,7 +564,18 @@ export class Soldado {
     return Math.sqrt(dx * dx + dz * dz);
   }
 
-  _elegirObjetivo (jugador, soldados) {
+  // CADA CUÁNTO SE VUELVE A ELEGIR. No sesenta veces por segundo.
+  //
+  // Es el mismo remedio que ya usa la moral: turnos repartidos al nacer. Un
+  // hombre mira a quién encarar tres veces por segundo, no en cada cuadro, y
+  // como los turnos están corridos entre sí el ejército deja de moverse en
+  // bloque. Sin esto, cualquier empate en el puntaje se convierte en un
+  // péndulo a 60 Hz: doscientos hombres girando juntos para un lado y para el
+  // otro sin avanzar.
+  //
+  // La DISTANCIA sí se recalcula siempre —la usa la máquina de estados en cada
+  // cuadro—; lo que se espacia es la decisión, que es lo que temblaba.
+  _elegirObjetivo (jugador, soldados, dt) {
     const ac = Soldado.acoso;
     let mejor = null, mejorPuntaje = Infinity, mejorD = Infinity;
 
@@ -572,13 +586,26 @@ export class Soldado {
       this.objetivo.soldado.vivo && this._distancia(this.objetivo.pos) < ALCANCE_ACERO + 1.4;
     if (pegado) return this._distancia(this.objetivo.pos);
 
+    // ¿le toca mirar? Si no, sigue con el que tenía, siempre que siga en pie.
+    this.tBlanco -= dt;
+    const sirve = this.objetivo && (this.objetivo.jugador
+      ? jugador.vivo
+      : this.objetivo.soldado && this.objetivo.soldado.vivo);
+    if (sirve && this.tBlanco > 0) return this._distancia(this.objetivo.pos);
+    this.tBlanco = PASO_BLANCO * (0.8 + Math.random() * 0.4);
+
     // PRIMERO EL QUE TODAVÍA PELEA. El que se quebró ya no te dispara y se
     // está yendo solo: perseguirlo antes que atender al que sí te está
     // apuntando es lo que convertía la desbandada en una carnicería. Se paga
     // en metros, con la misma moneda que la saturación.
+    // el que ya tenía, para no soltarlo por una migaja
+    const previo = this.objetivo && (this.objetivo.jugador ? 'jugador' : this.objetivo.soldado);
+    let pPrevio = Infinity, dPrevio = 0, oPrevio = null;
+
     const mirar = (o, d, quien) => {
       const puntaje = d + (ac.get(quien) || 0) * SATURACION +
         (quien !== 'jugador' && quien.quebrado ? PERSEGUIR : 0);
+      if (quien === previo) { pPrevio = puntaje; dPrevio = d; oPrevio = o; }
       if (puntaje < mejorPuntaje) { mejorPuntaje = puntaje; mejorD = d; mejor = o; }
     };
     if (this.esRealista && jugador.vivo) {
@@ -587,6 +614,12 @@ export class Soldado {
     for (const s of soldados) {
       if (s === this || !s.vivo || s.bando === this.bando) continue;
       mirar({ pos: s.pos, soldado: s }, this._distancia(s.pos), s);
+    }
+    // TERQUEDAD: al que ya venía encarando sólo se lo cambia por uno claramente
+    // mejor. Sin esto SATURACION se realimenta sola y todos oscilan a la vez.
+    if (oPrevio && mejorPuntaje > pPrevio - TERQUEDAD) {
+      this.objetivo = oPrevio;
+      return dPrevio;
     }
     this.objetivo = mejor;
     return mejorD;
@@ -647,7 +680,7 @@ export class Soldado {
     // dejó de tener uno: lo único que le queda adelante es la barranca.
     if (this.quebrado) { this._irse(dt); return; }
 
-    const dist = this._elegirObjetivo(jugador, soldados);
+    const dist = this._elegirObjetivo(jugador, soldados, dt);
 
     // EL JINETE SE ACTUALIZA SIEMPRE, haya blanco o no.
     //
@@ -706,6 +739,7 @@ export class Soldado {
     this.recarga = Math.max(0, this.recarga - dt);
     this.tCubierta = Math.max(0, this.tCubierta - dt);
     this.tDecidir = Math.max(0, this.tDecidir - dt);
+    this.tResuello = Math.max(0, this.tResuello - dt);
     this._tLinea -= dt;
     // El que se está yendo se va: le da la espalda al enemigo y corre. Se
     // recompone cuando pone distancia o cuando se le acaba el susto —lo que
@@ -787,7 +821,7 @@ export class Soldado {
         // de disparar sale al acero igual que antes; el que está por terminar
         // se queda y descarga.
         const tardaEnLlegar = dist / VEL_CARRERA;
-        if (this.teVe && this.recarga > tardaEnLlegar && dist < CARGA_BAYONETA * this.arrojo) {
+        if (this.teVe && this.tResuello <= 0 && this.recarga > tardaEnLlegar && dist < CARGA_BAYONETA * this.arrojo) {
           if (this.aliento < CARRERA_MINIMA) {
             // sin aire: camina hacia él con la bayoneta puesta, resollando
             this.fig.poner('marcha');
@@ -810,7 +844,7 @@ export class Soldado {
         if (this.teVe && dist < ALCANCE_TIRO && this.recarga <= 0) {
           // ¿hay una tapia, un carro, un barril? Nadie descarga parado en
           // medio del campo si tiene dónde apoyarse.
-          const cub = this._buscarCubierta(objetivo, dist);
+          const cub = this.tResuello > 0 ? null : this._buscarCubierta(objetivo, dist);
           if (cub) {
             this.cubierta = cub; this.estado = 'correr'; this.motivo = 'cubierta';
             break;
@@ -940,6 +974,22 @@ export class Soldado {
           this.estado = 'avanzar';
           this.avisando = false;
           this.fig.poner('marcha');
+          // EL QUE SE SUELTA DEL ACERO RESUELLA ANTES DE VOLVER A SALIR.
+          //
+          // Sin esto la decisión se re-tomaba cada cuadro y salía este bucle,
+          // medido cuadro a cuadro sobre los que peor se veían:
+          //
+          //   avanzar → correr:carga → acero → avanzar → correr:carga → acero…
+          //
+          // Cruza el umbral, carga, lo alcanza, el otro se le corre medio
+          // metro, vuelve a avanzar, vuelve a cargar. Ocho segundos, diecinueve
+          // metros recorridos y CERO de avance: desde afuera es un hombre
+          // temblando en el lugar.
+          //
+          // Un segundo y medio de resuello alcanza, y además es lo que hace
+          // alguien que acaba de cruzar el acero: no vuelve a arrancar al
+          // sprint en el mismo paso. Mientras tanto marcha, que es avanzar.
+          this.tResuello = 1.5 + Math.random() * 1.1;
           break;
         }
         this._acero(dt);
@@ -1297,13 +1347,35 @@ Soldado.vecinos = null;
 Soldado.acoso = new Map();
 // Los puntos de embarque, que los pone la batalla. Vacío = se rajan derecho.
 Soldado.botes = [];
+// Y NO SE BORRA: SE ARRASTRA.
+//
+// Borrar y recontar de cero cada cuadro hacía un péndulo perfecto. Si todos
+// apuntan a X, acoso[X] vale doscientos y acoso[Y] vale cero; al cuadro
+// siguiente conviene Y, todos saltan, y se invierte. La amplitud del salto es
+// N × SATURACION —cientos de metros de puntaje—, así que ninguna terquedad
+// razonable lo aguanta.
+//
+// Medido antes de esto: 300 cambios de blanco en 300 cuadros por hombre y 43
+// cambios de sentido de giro por segundo, en los 252 realistas a la vez. Desde
+// afuera es un ejército temblando en el lugar.
+//
+// Con inercia la cuenta tarda una décima en moverse, que es lo que hace que la
+// saturación siga sirviendo —el que tiene diez encima sigue valiendo menos—
+// sin poder saltar de doscientos a cero entre dos cuadros.
+const INERCIA = 0.92;
+
 Soldado.censar = function (soldados) {
-  const m = Soldado.acoso;
-  m.clear();
+  const ahora = new Map();
   for (const s of soldados) {
     if (!s.vivo || !s.objetivo) continue;
     const k = s.objetivo.soldado || 'jugador';
-    m.set(k, (m.get(k) || 0) + 1);
+    ahora.set(k, (ahora.get(k) || 0) + 1);
+  }
+  const m = Soldado.acoso;
+  for (const k of m.keys()) if (!ahora.has(k)) ahora.set(k, 0);
+  for (const [k, v] of ahora) {
+    const q = (m.get(k) || 0) * INERCIA + v * (1 - INERCIA);
+    if (q < 0.02) m.delete(k); else m.set(k, q);
   }
 };
 

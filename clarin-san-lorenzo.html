@@ -29830,6 +29830,7 @@ var GUARDIA_GASTO = 11;
 var BLOQUEO_GASTO = 26;
 var PECHADA_GASTO = 18;
 var SATURACION = 7;
+var TERQUEDAD = 11;
 var ALIADOS_MAX = 20;
 var ENEMIGOS_MAX = 34;
 var MONTADOS = 0.66;
@@ -30442,6 +30443,7 @@ var CUBIERTA_MINIMA = 6;
 var CUBIERTA_LLEGADA = 1.1;
 var RODILLA_SUELTA = 0.42;
 var ESPERA_HUECO = 2.2;
+var PASO_BLANCO = 0.34;
 var CONVERGER = 22;
 var ACERO_GUARDIA = 1.05;
 var ACERO_AVISO = 0.62;
@@ -30506,6 +30508,8 @@ var Soldado = class _Soldado {
     this.aliento = ALIENTO_TROPA;
     this.arrojo = 0.55 + Math.random() * 0.9;
     this.tDecidir = 0;
+    this.tResuello = 0;
+    this.tBlanco = Math.random() * PASO_BLANCO;
     this.encarado = true;
     this.huyendo = 0;
     this.animo = ANIMO_TROPA;
@@ -30774,13 +30778,35 @@ var Soldado = class _Soldado {
     const dx = p.x - this.pos.x, dz = p.z - this.pos.z;
     return Math.sqrt(dx * dx + dz * dz);
   }
-  _elegirObjetivo(jugador2, soldados2) {
+  // CADA CUÁNTO SE VUELVE A ELEGIR. No sesenta veces por segundo.
+  //
+  // Es el mismo remedio que ya usa la moral: turnos repartidos al nacer. Un
+  // hombre mira a quién encarar tres veces por segundo, no en cada cuadro, y
+  // como los turnos están corridos entre sí el ejército deja de moverse en
+  // bloque. Sin esto, cualquier empate en el puntaje se convierte en un
+  // péndulo a 60 Hz: doscientos hombres girando juntos para un lado y para el
+  // otro sin avanzar.
+  //
+  // La DISTANCIA sí se recalcula siempre —la usa la máquina de estados en cada
+  // cuadro—; lo que se espacia es la decisión, que es lo que temblaba.
+  _elegirObjetivo(jugador2, soldados2, dt) {
     const ac = _Soldado.acoso;
     let mejor = null, mejorPuntaje = Infinity, mejorD = Infinity;
     const pegado = this.estado === "acero" && this.objetivo && this.objetivo.soldado && this.objetivo.soldado.vivo && this._distancia(this.objetivo.pos) < ALCANCE_ACERO + 1.4;
     if (pegado) return this._distancia(this.objetivo.pos);
+    this.tBlanco -= dt;
+    const sirve = this.objetivo && (this.objetivo.jugador ? jugador2.vivo : this.objetivo.soldado && this.objetivo.soldado.vivo);
+    if (sirve && this.tBlanco > 0) return this._distancia(this.objetivo.pos);
+    this.tBlanco = PASO_BLANCO * (0.8 + Math.random() * 0.4);
+    const previo = this.objetivo && (this.objetivo.jugador ? "jugador" : this.objetivo.soldado);
+    let pPrevio = Infinity, dPrevio = 0, oPrevio = null;
     const mirar = (o, d, quien) => {
       const puntaje = d + (ac.get(quien) || 0) * SATURACION + (quien !== "jugador" && quien.quebrado ? PERSEGUIR : 0);
+      if (quien === previo) {
+        pPrevio = puntaje;
+        dPrevio = d;
+        oPrevio = o;
+      }
       if (puntaje < mejorPuntaje) {
         mejorPuntaje = puntaje;
         mejorD = d;
@@ -30793,6 +30819,10 @@ var Soldado = class _Soldado {
     for (const s of soldados2) {
       if (s === this || !s.vivo || s.bando === this.bando) continue;
       mirar({ pos: s.pos, soldado: s }, this._distancia(s.pos), s);
+    }
+    if (oPrevio && mejorPuntaje > pPrevio - TERQUEDAD) {
+      this.objetivo = oPrevio;
+      return dPrevio;
     }
     this.objetivo = mejor;
     return mejorD;
@@ -30837,7 +30867,7 @@ var Soldado = class _Soldado {
       this._irse(dt);
       return;
     }
-    const dist = this._elegirObjetivo(jugador2, soldados2);
+    const dist = this._elegirObjetivo(jugador2, soldados2, dt);
     if (this.montado) {
       this.t += dt;
       if (this.aturdido > 0) this.aturdido -= dt;
@@ -30876,6 +30906,7 @@ var Soldado = class _Soldado {
     this.recarga = Math.max(0, this.recarga - dt);
     this.tCubierta = Math.max(0, this.tCubierta - dt);
     this.tDecidir = Math.max(0, this.tDecidir - dt);
+    this.tResuello = Math.max(0, this.tResuello - dt);
     this._tLinea -= dt;
     if (this.huyendo > 0) {
       this.huyendo -= dt;
@@ -30932,7 +30963,7 @@ var Soldado = class _Soldado {
           break;
         }
         const tardaEnLlegar = dist / VEL_CARRERA;
-        if (this.teVe && this.recarga > tardaEnLlegar && dist < CARGA_BAYONETA * this.arrojo) {
+        if (this.teVe && this.tResuello <= 0 && this.recarga > tardaEnLlegar && dist < CARGA_BAYONETA * this.arrojo) {
           if (this.aliento < CARRERA_MINIMA) {
             this.fig.poner("marcha");
             if (distDestino > 0.6) {
@@ -30953,7 +30984,7 @@ var Soldado = class _Soldado {
           break;
         }
         if (this.teVe && dist < ALCANCE_TIRO && this.recarga <= 0) {
-          const cub = this._buscarCubierta(objetivo, dist);
+          const cub = this.tResuello > 0 ? null : this._buscarCubierta(objetivo, dist);
           if (cub) {
             this.cubierta = cub;
             this.estado = "correr";
@@ -31065,6 +31096,7 @@ var Soldado = class _Soldado {
           this.estado = "avanzar";
           this.avisando = false;
           this.fig.poner("marcha");
+          this.tResuello = 1.5 + Math.random() * 1.1;
           break;
         }
         this._acero(dt);
@@ -31378,13 +31410,20 @@ var Soldado = class _Soldado {
 Soldado.vecinos = null;
 Soldado.acoso = /* @__PURE__ */ new Map();
 Soldado.botes = [];
+var INERCIA = 0.92;
 Soldado.censar = function(soldados2) {
-  const m = Soldado.acoso;
-  m.clear();
+  const ahora = /* @__PURE__ */ new Map();
   for (const s of soldados2) {
     if (!s.vivo || !s.objetivo) continue;
     const k = s.objetivo.soldado || "jugador";
-    m.set(k, (m.get(k) || 0) + 1);
+    ahora.set(k, (ahora.get(k) || 0) + 1);
+  }
+  const m = Soldado.acoso;
+  for (const k of m.keys()) if (!ahora.has(k)) ahora.set(k, 0);
+  for (const [k, v] of ahora) {
+    const q = (m.get(k) || 0) * INERCIA + v * (1 - INERCIA);
+    if (q < 0.02) m.delete(k);
+    else m.set(k, q);
   }
 };
 Soldado.proximoOrden = 0;

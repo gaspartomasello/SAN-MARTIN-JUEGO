@@ -127,7 +127,7 @@ export const BAYONETA_TROPA = 1.5;
 // doscientos diez que se salvaron se salvaron corriendo, no peleando. El
 // lanzazo hiere, voltea y aterra —CABALLO_ENCIMA, más abajo, es el término que
 // hace el trabajo—; matar es lo que menos hace.
-export const LANZA_TROPA = 1;
+export const LANZA_TROPA = 1;         // era 4 — ya no mata de una
 export const METRALLA_TROPA = 6;
 
 // -- al caballo --
@@ -285,6 +285,20 @@ export const PECHADA_GASTO = 18;
 // en un campo de batalla. Se paga en metros: cada atacante que ya tiene un
 // blanco lo aleja siete metros a los ojos de los demás.
 export const SATURACION = 7;
+
+// LA TERQUEDAD, y es la que faltaba.
+//
+// SATURACION se cobra por elegir un blanco que ya tiene gente encima, y eso
+// solo se realimenta: lo elegís, sube su cuenta, al cuadro siguiente conviene
+// otro, ese sube, y volvés al primero. Medido, el ejército entero oscilaba en
+// bloque: 300 cambios de blanco en 300 cuadros por hombre, con 43 cambios de
+// sentido de giro por segundo. Desde afuera son doscientos hombres temblando
+// en el lugar.
+//
+// Así que el que ya tiene blanco no lo suelta por una migaja: el nuevo tiene
+// que estar MEJOR POR ESTOS METROS. Tiene que superar a SATURACION o el
+// péndulo vuelve.
+export const TERQUEDAD = 11;
 
 // Cuánta gente aguanta el campo en el modo suelto. NO son números inventados:
 // salen de medir (pruebas/escala.mjs y pruebas/lejania.mjs). Con la lejanía el
