@@ -52,6 +52,28 @@ export const DANO_METRALLA = 58;      // ya no te mata de un tarro si estás san
 export const CAIDA = 12;              // lo que cuesta pegar contra el suelo
 export const BAYONETA_PARADA = 0.18;  // el acero no entra, pero el envión sí
 
+// LA BALA QUE VIENE DE LEJOS NO ENTRA IGUAL. Una bala de plomo blando pierde
+// energía rápido, y a cincuenta metros llega a hacer lo que un bayonetazo: te
+// saca de la pelea, no te mata. De cerca es otra cosa.
+//
+// Esto no reemplaza a la puntería, la acompaña. De lejos ya era MUY difícil
+// que te acertaran (a cuarenta metros, dos de cada cien tiros); ahora además,
+// cuando aciertan, duele menos. Lo que hace peligrosa la distancia no es un
+// tirador: son ciento cincuenta a la vez.
+export const BALA_CERCA = 12;         // metros: de acá para adentro entra entera
+export const BALA_LEJOS = 55;         // de acá para afuera es un balazo cansado
+export const BALA_RESTA = 0.46;       // cuánto pierde en el camino
+
+// Un solo perfil de caída, y vale para las dos puntas: contra vos y contra la
+// tropa. Si fueran dos cuentas distintas, en tres semanas una estaría vieja.
+export function caidaBala (dist) {
+  const t = Math.max(0, Math.min(1, (dist - BALA_CERCA) / (BALA_LEJOS - BALA_CERCA)));
+  return 1 - BALA_RESTA * t;
+}
+
+export function danoBalaEnemiga (dist) { return DANO_BALA * caidaBala(dist); }
+export function balaContraTropa (dist) { return BALA_TROPA * caidaBala(dist); }
+
 // DÓNDE LE PEGASTE. Tu bala mata de una, pero no desde cualquier lado: al
 // pecho o a la cabeza mata, al brazo o a la pierna hiere. Es la única
 // distinción de zona del juego y sólo vale para VOS —a la tropa se le pide que
@@ -77,11 +99,20 @@ export const CULATAZO = 4;            // el arma larga dada vuelta, de apuro
 export const BAYONETAZO = 6;          // el puntazo del fusil: llega más y duele más
 
 // -- entre la tropa --
-// Contra ocho de vida son seis balazos o seis bayonetazos. Parece muchísimo y
-// es exactamente el punto: con la puntería de un ánima lisa a quince metros
-// —once por ciento— un fusil de tropa es un arma de desgaste, no de decisión.
-// Lo que decide esta batalla es la caballería encima, no el fuego.
-export const BALA_TROPA = 1.5;
+// Contra ocho de vida son nueve balazos de cerca y catorce de lejos. Parece
+// muchísimo y es exactamente el punto: con la puntería de un ánima lisa a
+// quince metros —once por ciento— un fusil de tropa es un arma de desgaste, no
+// de decisión. Lo que decide esta batalla es la caballería encima, no el fuego.
+//
+// BAJÓ DE 1,5 A 0,9 CUANDO SE ARREGLÓ LA LÍNEA DE TIRO. Antes los realistas se
+// vetaban el tiro entre ellos y pegaban 294 tiros en toda la batalla; arreglado
+// eso pegan 653, y con el daño viejo se comían la caballería antes de los dos
+// minutos. Sin jinetes no hay CABALLO_ENCIMA y sin CABALLO_ENCIMA no se quiebra
+// ninguna línea: la batalla se plantaba en 64 de ánimo y no bajaba más.
+//
+// O sea: no bajó porque una bala duela menos. Bajó porque ahora hay el doble de
+// balas, y lo que importa es el producto.
+export const BALA_TROPA = 0.9;
 export const BAYONETA_TROPA = 1.5;
 // EL ASTA YA NO MATA DE UNA. Estaba en cuatro contra cuatro de vida, o sea que
 // cada pasada de lancero era exactamente letal, y con ciento veinte granaderos

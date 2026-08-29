@@ -107,6 +107,7 @@ const CUBIERTA_BUSCAR = 24;     // radio en el que mira si hay parapeto
 const CUBIERTA_MINIMA = 6;      // no se parapeta encima del enemigo
 const CUBIERTA_LLEGADA = 1.1;
 const RODILLA_SUELTA = 0.42;    // probabilidad de hincarla a campo abierto
+const ESPERA_HUECO = 2.2;       // segundos esperando un hueco antes de hincarse
 
 // Ritmo de la estocada. El AVISO es sagrado: es la ventana en la que el
 // jugador ve venir el golpe. Sin esto, parar es lotería.
@@ -229,6 +230,7 @@ export class Soldado {
     this.cubierta = null;                   // a dónde va corriendo
     this.motivo = null;                     // 'cubierta' o 'carga'
     this.rodilla = false;                   // rodilla en tierra: va a disparar
+    this.tTapado = 0;                       // hace cuánto que no consigue línea
     this.tCubierta = 0;                     // para no re-buscar parapeto cada cuadro
     this.ritmo = 1;                         // 1 marcha, 2,3 carrera
     this.aliento = ALIENTO_TROPA;           // correr cansa, también a ellos
@@ -843,7 +845,30 @@ export class Soldado {
         // por la espalda al de adelante. Mientras espera sigue encarando, así
         // que se ve un hombre con el fusil al hombro esperando el hueco, que es
         // exactamente lo que hacía la segunda fila.
-        if (!this.encarado || !this._lineaLibre()) { this.t = Math.min(this.t, 0.4); break; }
+        if (!this.encarado || !this._lineaLibre()) {
+          this.t = Math.min(this.t, 0.4);
+          // TAPADO HACE RATO: BAJA EL ARMA Y SIGUE.
+          //
+          // Ésta es la regla que faltaba. Un hombre sin línea de tiro no se
+          // queda apuntándole a la nuca del de adelante hasta que se acabe la
+          // batalla: baja el fusil y avanza. Y al avanzar se corre, y al
+          // correrse le abre el tiro a otro y se lo consigue a sí mismo unos
+          // metros más allá.
+          //
+          // Eso es lo que releva las filas. No hace falta que nadie las mande:
+          // el que puede tirar tira, el que no puede camina, y la línea se
+          // renueva sola. Sin esto, ciento sesenta y tres de doscientos
+          // cincuenta pasaban la batalla entera de estatua.
+          this.tTapado += dt;
+          if (this.tTapado > ESPERA_HUECO) {
+            this.tTapado = 0;
+            this._dePie();
+            this.estado = 'avanzar';
+            this.fig.poner('marcha');
+          }
+          break;
+        }
+        this.tTapado = 0;
         // de rodillas apunta más despacio y con más cuidado
         if (this.t > (this.rodilla ? 1.9 : 1.5)) {
           // Y UNA ÚLTIMA MIRADA ANTES DE APRETAR, ésta sin caché.
@@ -1141,6 +1166,12 @@ export class Soldado {
       let libre = true;
       r.cerca(px, pz, o => {
         if (!libre || o === this || !o.vivo || o.bando !== this.bando) return;
+        // EL QUE SE HINCA NO TAPA. Para eso se hinca la primera fila: para
+        // que la segunda tire por encima. Sin esta línea el bloque entero se
+        // vetaba a sí mismo —medido: veinte mil vetos contra doscientos
+        // noventa tiros en una batalla— y doscientas cincuenta bocas de fuego
+        // se pasaban la tarde haciendo cola con el arma al hombro.
+        if (o.rodilla && !this.rodilla) return;
         if (Math.hypot(o.pos.x - px, o.pos.z - pz) < PASILLO) libre = false;
       });
       if (!libre) return false;

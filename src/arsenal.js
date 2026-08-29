@@ -23,6 +23,7 @@ export function armarArsenal (ctx) {
   const armas = {
     tercerola: new ArmaFuego('tercerola', camaraArma, camara, sonido, humo),
     pistolon: new ArmaFuego('pistolon', camaraArma, camara, sonido, humo),
+    remington: new ArmaFuego('remington', camaraArma, camara, sonido, humo),
     fusil: null
   };
   let armaLarga = 'tercerola';
@@ -36,12 +37,25 @@ export function armarArsenal (ctx) {
     // El arma de fuego que tenés en la mano, o null si es el sable.
     actual () {
       if (enMano === 'sable') return null;
-      return enMano === 'pistolon' ? armas.pistolon : armas[armaLarga];
+      if (enMano === 'pistolon') return armas.pistolon;
+      if (enMano === 'remington') return armas.remington;
+      return armas[armaLarga];
     },
     // Verdadero cuando el sable está en la mano: ahí el click derecho deja de
     // apuntar y pasa a cubrir.
     conSable () { return !yo.actual() && !sable.guardado; }
   };
+
+  // La Remington no gasta de la cartuchera y no se queda sin nada: es el arma
+  // de probar, no de jugar. Se conecta aparte justamente para que la regla del
+  // cartucho quede escrita en un solo lugar y no haya que acordarse.
+  function conectarSinMunicion (arma) {
+    arma.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
+    arma.alGastarCartucho = () => {};
+    arma.alPedirCarga = () => true;
+    arma.alDisparar = resolverDisparo;
+    arma.alGolpear = cfg => resolverGolpe(cfg.alcance, cfg.dano, cfg.nombre);
+  }
 
   function conectar (arma) {
     arma.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
@@ -54,6 +68,8 @@ export function armarArsenal (ctx) {
   }
   conectar(armas.tercerola);
   conectar(armas.pistolon);
+  conectarSinMunicion(armas.remington);
+  armas.remington.cargarDeUnaVez();
   armas.tercerola.sacar();
   // se arranca la partida con las armas cargadas
   armas.tercerola.cargarDeUnaVez();
@@ -64,6 +80,7 @@ export function armarArsenal (ctx) {
     if (a) a.soltarCarga();          // la carga a medias se conserva, no se borra
     armas.tercerola.guardar();
     armas.pistolon.guardar();
+    armas.remington.guardar();
     if (armas.fusil) armas.fusil.guardar();
     sable.guardar();
   }
@@ -128,6 +145,7 @@ export function armarArsenal (ctx) {
   yo.reponer = function () {
     armas.tercerola.cargarDeUnaVez();
     armas.pistolon.cargarDeUnaVez();
+    armas.remington.cargarDeUnaVez();
     if (armas.fusil) armas.fusil.cargarDeUnaVez();
     yo.cartuchos = CARTUCHERA;
   };
@@ -142,6 +160,7 @@ export function armarArsenal (ctx) {
   yo.actualizar = function (dt, cfg) {
     armas.tercerola.actualizar(dt, cfg);
     armas.pistolon.actualizar(dt, cfg);
+    armas.remington.actualizar(dt, cfg);
     if (armas.fusil) armas.fusil.actualizar(dt, cfg);
     // Aguantar el sable en alto cansa. Sin aliento la guardia se cae sola, que
     // es lo que impide jugar todo el duelo con el botón derecho apretado.

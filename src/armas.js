@@ -60,6 +60,24 @@ export const ARMAS = {
     conoCadera: 5.0, conoApuntado: 2.2,
     golpe: { nombre: 'Culatazo', alcance: 1.5, dano: CULATAZO, dur: 0.38 },
     largo: false
+  },
+
+  // FUERA DE ÉPOCA, Y A PROPÓSITO.
+  //
+  // Una Remington de bloque basculante es de 1860 y pico: San Martín llevaba
+  // medio siglo muerto. No entra en la batalla ni va a entrar. Está para
+  // probar el campo sin pelearse con la baqueta —recorrer, ver de dónde sale
+  // el fuego, medir distancias— y por eso el HUD la nombra con el año: para
+  // que nadie la confunda con el juego.
+  //
+  // Cartucho metálico, así que la carga no son cuatro tiempos sino uno: el
+  // mismo mecanismo con cargaMult casi en cero da el ciclo entero en poco más
+  // de medio segundo.
+  remington: {
+    nombre: 'Remington · 1860, fuera de época', escala: 0.58, cargaMult: 0.16,
+    conoCadera: 1.6, conoApuntado: 0.28,
+    golpe: { nombre: 'Culatazo', alcance: 2.0, dano: CULATAZO, dur: 0.4 },
+    largo: true
   }
 };
 
@@ -426,7 +444,13 @@ function construirPistolon () {
     baquetaGuardada: { y: -0.004, z: -0.24 }, bocaZ: -0.47 };
 }
 
-const CONSTRUCTORES = { tercerola: construirTercerola, fusil: construirFusil, pistolon: construirPistolon };
+// La Remington usa el modelo de la tercerola: carabina sin bayoneta, que es la
+// silueta más cercana a un bloque basculante. No vale la pena modelar un arma
+// que está de prestado.
+const CONSTRUCTORES = {
+  tercerola: construirTercerola, fusil: construirFusil,
+  pistolon: construirPistolon, remington: construirTercerola
+};
 
 // Poses. La de apuntado es la que importa: el ojo va POR ENCIMA y por detrás
 // del cañón, no en su eje. Se alinea el punto de mira con el centro exacto de

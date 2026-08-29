@@ -22,9 +22,9 @@
 import * as THREE from 'three';
 import {
   VOLTEO, OFICIO, AGARRE_AFLOJA, tirar,
-  DANO_BALA, DANO_BAYONETA, DANO_METRALLA, CAIDA, BAYONETA_PARADA,
+  DANO_BAYONETA, DANO_METRALLA, CAIDA, BAYONETA_PARADA,
   BALA_JUGADOR, BALA_MIEMBRO, ZONA_CABEZA, ZONA_PECHO, DANO_SABLE, DANO_REMATE,
-  BALA_TROPA, BAYONETA_TROPA, LANZA_TROPA, METRALLA_TROPA,
+  BAYONETA_TROPA, LANZA_TROPA, METRALLA_TROPA, danoBalaEnemiga, balaContraTropa,
   CABALLO_COME, BALA_AL_CABALLO, METRALLA_CABALLO,
   BLANCO_HOMBRE, BLANCO_MONTADO, ZUMBIDO,
   BLOQUEO_GASTO, PECHADA_GASTO, PECHADA_ALCANCE, SABLE_ALCANCE, ALCANCE_MONTADO
@@ -265,7 +265,7 @@ export function armarCombate (ctx) {
         hud.mostrarAviso('¡Le dieron al caballo!', 'malo');
         return;
       }
-      jugador.recibir(DANO_BALA, dir);
+      jugador.recibir(danoBalaEnemiga(dist), dir);
       if (montado()) intentarVoltear(VOLTEO.bala, '¡Te bajaron de un balazo!');
       else {
         sonido.golpeRecibido();
@@ -277,7 +277,7 @@ export function armarCombate (ctx) {
     if (objetivo.soldado) {
       const o = objetivo.soldado;
       if (o.montado && Math.random() < CABALLO_COME) { o.monta.recibir(BALA_AL_CABALLO); return; }
-      o.recibir(BALA_TROPA, dir, VOLTEO.bala);
+      o.recibir(balaContraTropa(dist), dir, VOLTEO.bala);
     }
   }
 

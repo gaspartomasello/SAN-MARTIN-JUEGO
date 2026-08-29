@@ -60,6 +60,7 @@ export function armarMando (ctx) {
       case 'Digit1': arsenal.cambiar('larga'); break;
       case 'Digit2': arsenal.cambiar('sable'); break;
       case 'Digit3': arsenal.cambiar('pistolon'); break;
+      case 'Digit4': arsenal.cambiar('remington'); break;
       // EL CLARÍN. Una sola tecla, una sola vez, y salen los ciento veinte.
       //
       // En red lo toca UNO SOLO, y es San Martín. No es una limitación técnica:

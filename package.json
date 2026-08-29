@@ -16,6 +16,7 @@
     "sala": "node herramientas/servidor.mjs",
     "red": "node pruebas/red.mjs",
     "moral": "node pruebas/moral.mjs",
+    "fuego": "node pruebas/fuego.mjs",
     "desbande": "node pruebas/desbande.mjs"
   },
   "dependencies": {

@@ -28421,6 +28421,19 @@ var DANO_BAYONETA = 14;
 var DANO_METRALLA = 58;
 var CAIDA = 12;
 var BAYONETA_PARADA = 0.18;
+var BALA_CERCA = 12;
+var BALA_LEJOS = 55;
+var BALA_RESTA = 0.46;
+function caidaBala(dist) {
+  const t = Math.max(0, Math.min(1, (dist - BALA_CERCA) / (BALA_LEJOS - BALA_CERCA)));
+  return 1 - BALA_RESTA * t;
+}
+function danoBalaEnemiga(dist) {
+  return DANO_BALA * caidaBala(dist);
+}
+function balaContraTropa(dist) {
+  return BALA_TROPA * caidaBala(dist);
+}
 var ZONA_CABEZA = 0.93;
 var ZONA_PECHO = 0.55;
 var BALA_JUGADOR = 8;
@@ -28429,7 +28442,7 @@ var DANO_SABLE = 8;
 var DANO_REMATE = 10;
 var CULATAZO = 4;
 var BAYONETAZO = 6;
-var BALA_TROPA = 1.5;
+var BALA_TROPA = 0.9;
 var BAYONETA_TROPA = 1.5;
 var LANZA_TROPA = 1;
 var METRALLA_TROPA = 6;
@@ -28553,6 +28566,26 @@ var ARMAS = {
     conoApuntado: 2.2,
     golpe: { nombre: "Culatazo", alcance: 1.5, dano: CULATAZO, dur: 0.38 },
     largo: false
+  },
+  // FUERA DE ÉPOCA, Y A PROPÓSITO.
+  //
+  // Una Remington de bloque basculante es de 1860 y pico: San Martín llevaba
+  // medio siglo muerto. No entra en la batalla ni va a entrar. Está para
+  // probar el campo sin pelearse con la baqueta —recorrer, ver de dónde sale
+  // el fuego, medir distancias— y por eso el HUD la nombra con el año: para
+  // que nadie la confunda con el juego.
+  //
+  // Cartucho metálico, así que la carga no son cuatro tiempos sino uno: el
+  // mismo mecanismo con cargaMult casi en cero da el ciclo entero en poco más
+  // de medio segundo.
+  remington: {
+    nombre: "Remington \xB7 1860, fuera de \xE9poca",
+    escala: 0.58,
+    cargaMult: 0.16,
+    conoCadera: 1.6,
+    conoApuntado: 0.28,
+    golpe: { nombre: "Culatazo", alcance: 2, dano: CULATAZO, dur: 0.4 },
+    largo: true
   }
 };
 function texturaCacha() {
@@ -28905,7 +28938,12 @@ function construirPistolon() {
     bocaZ: -0.47
   };
 }
-var CONSTRUCTORES = { tercerola: construirTercerola, fusil: construirFusil, pistolon: construirPistolon };
+var CONSTRUCTORES = {
+  tercerola: construirTercerola,
+  fusil: construirFusil,
+  pistolon: construirPistolon,
+  remington: construirTercerola
+};
 function posesPara(tipo, p, escala) {
   const alturaMira = p.miraY * escala;
   const fondo = p.traseraZ * escala;
@@ -30804,6 +30842,7 @@ var CUBIERTA_BUSCAR = 24;
 var CUBIERTA_MINIMA = 6;
 var CUBIERTA_LLEGADA = 1.1;
 var RODILLA_SUELTA = 0.42;
+var ESPERA_HUECO = 2.2;
 var ACERO_GUARDIA = 1.05;
 var ACERO_AVISO = 0.62;
 var ACERO_SALIDA = 0.2;
@@ -30861,6 +30900,7 @@ var Soldado = class _Soldado {
     this.cubierta = null;
     this.motivo = null;
     this.rodilla = false;
+    this.tTapado = 0;
     this.tCubierta = 0;
     this.ritmo = 1;
     this.aliento = ALIENTO_TROPA;
@@ -31369,8 +31409,16 @@ var Soldado = class _Soldado {
         this.fig.poner("apuntar");
         if (!this.encarado || !this._lineaLibre()) {
           this.t = Math.min(this.t, 0.4);
+          this.tTapado += dt;
+          if (this.tTapado > ESPERA_HUECO) {
+            this.tTapado = 0;
+            this._dePie();
+            this.estado = "avanzar";
+            this.fig.poner("marcha");
+          }
           break;
         }
+        this.tTapado = 0;
         if (this.t > (this.rodilla ? 1.9 : 1.5)) {
           if (!this._mirarLinea()) {
             this._tLinea = 0;
@@ -31633,6 +31681,7 @@ var Soldado = class _Soldado {
       let libre = true;
       r.cerca(px, pz, (o) => {
         if (!libre || o === this || !o.vivo || o.bando !== this.bando) return;
+        if (o.rodilla && !this.rodilla) return;
         if (Math.hypot(o.pos.x - px, o.pos.z - pz) < PASILLO) libre = false;
       });
       if (!libre) return false;
@@ -32827,7 +32876,7 @@ function armarCombate(ctx) {
         hud2.mostrarAviso("\xA1Le dieron al caballo!", "malo");
         return;
       }
-      jugador2.recibir(DANO_BALA, dir);
+      jugador2.recibir(danoBalaEnemiga(dist), dir);
       if (montado2()) intentarVoltear(VOLTEO.bala, "\xA1Te bajaron de un balazo!");
       else {
         sonido2.golpeRecibido();
@@ -32841,7 +32890,7 @@ function armarCombate(ctx) {
         o.monta.recibir(BALA_AL_CABALLO);
         return;
       }
-      o.recibir(BALA_TROPA, dir, VOLTEO.bala);
+      o.recibir(balaContraTropa(dist), dir, VOLTEO.bala);
     }
   }
   function golpeEnemigo(quien, objetivo) {
@@ -32952,6 +33001,7 @@ function armarArsenal(ctx) {
   const armas = {
     tercerola: new ArmaFuego("tercerola", camaraArma2, camara2, sonido2, humo2),
     pistolon: new ArmaFuego("pistolon", camaraArma2, camara2, sonido2, humo2),
+    remington: new ArmaFuego("remington", camaraArma2, camara2, sonido2, humo2),
     fusil: null
   };
   let armaLarga = "tercerola";
@@ -32963,7 +33013,9 @@ function armarArsenal(ctx) {
     // El arma de fuego que tenés en la mano, o null si es el sable.
     actual() {
       if (enMano === "sable") return null;
-      return enMano === "pistolon" ? armas.pistolon : armas[armaLarga];
+      if (enMano === "pistolon") return armas.pistolon;
+      if (enMano === "remington") return armas.remington;
+      return armas[armaLarga];
     },
     // Verdadero cuando el sable está en la mano: ahí el click derecho deja de
     // apuntar y pasa a cubrir.
@@ -32971,6 +33023,14 @@ function armarArsenal(ctx) {
       return !yo.actual() && !sable2.guardado;
     }
   };
+  function conectarSinMunicion(arma) {
+    arma.alAviso = (t, tipo) => hud2.mostrarAviso(t, tipo);
+    arma.alGastarCartucho = () => {
+    };
+    arma.alPedirCarga = () => true;
+    arma.alDisparar = resolverDisparo;
+    arma.alGolpear = (cfg) => resolverGolpe(cfg.alcance, cfg.dano, cfg.nombre);
+  }
   function conectar(arma) {
     arma.alAviso = (t, tipo) => hud2.mostrarAviso(t, tipo);
     arma.alGastarCartucho = () => {
@@ -32982,6 +33042,8 @@ function armarArsenal(ctx) {
   }
   conectar(armas.tercerola);
   conectar(armas.pistolon);
+  conectarSinMunicion(armas.remington);
+  armas.remington.cargarDeUnaVez();
   armas.tercerola.sacar();
   armas.tercerola.cargarDeUnaVez();
   armas.pistolon.cargarDeUnaVez();
@@ -32990,6 +33052,7 @@ function armarArsenal(ctx) {
     if (a) a.soltarCarga();
     armas.tercerola.guardar();
     armas.pistolon.guardar();
+    armas.remington.guardar();
     if (armas.fusil) armas.fusil.guardar();
     sable2.guardar();
   }
@@ -33049,6 +33112,7 @@ function armarArsenal(ctx) {
   yo.reponer = function() {
     armas.tercerola.cargarDeUnaVez();
     armas.pistolon.cargarDeUnaVez();
+    armas.remington.cargarDeUnaVez();
     if (armas.fusil) armas.fusil.cargarDeUnaVez();
     yo.cartuchos = CARTUCHERA;
   };
@@ -33059,6 +33123,7 @@ function armarArsenal(ctx) {
   yo.actualizar = function(dt, cfg) {
     armas.tercerola.actualizar(dt, cfg);
     armas.pistolon.actualizar(dt, cfg);
+    armas.remington.actualizar(dt, cfg);
     if (armas.fusil) armas.fusil.actualizar(dt, cfg);
     if (sable2.guardia) {
       jugador2.aliento = Math.max(0, jugador2.aliento - GUARDIA_GASTO * dt);
@@ -33655,6 +33720,9 @@ function armarMando(ctx) {
         break;
       case "Digit3":
         arsenal2.cambiar("pistolon");
+        break;
+      case "Digit4":
+        arsenal2.cambiar("remington");
         break;
       // EL CLARÍN. Una sola tecla, una sola vez, y salen los ciento veinte.
       //
