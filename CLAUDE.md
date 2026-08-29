@@ -82,6 +82,8 @@ batalla. Lo que ya está torcido a tu favor:
 | Sable | `DANO_SABLE` 8 — el corvo mata de una | — |
 | Girar a caballo | `RIENDA` ×1,85 | el giro pelado |
 | Contra una pared | desliza y sigue | se le acomoda el rumbo |
+| Atropellar | el caballo lanzado tira, hiere y despide | aparta y sigue, nada más |
+| Sable a la carrera | pasa la guardia, y el corvo va ×0,62 | — |
 
 **Cuando toques uno de estos números, fijate de qué lado está.** Los dos casos
 peores del proyecto salieron de mover algo que sin querer valía para las dos
@@ -132,6 +134,12 @@ están limpios; el balance no. Casos reales, ya medidos:
 - **Lo que importa es el producto, no el factor.** Al arreglar la línea de tiro
   los tiros pasaron de 294 a 653 por batalla, y `BALA_TROPA` tuvo que bajar de
   1,5 a 0,9 sin que una bala "duela menos".
+- **Lo que se reparte sobre TODO el campo no tiene versión chica.** El
+  atropello del granadero se probó con daño 4, con 1, con medio segundo de
+  revolcón y con uno cada seis segundos por hombre: las cuatro veces los 250
+  realistas muertos sin quiebre. Ciento veinte caballos cruzando doscientos
+  cincuenta hombres se tocan siempre, así que el período no modera, fija. Antes
+  de bajarle el número a algo que toca a todos, preguntate si hay número.
 - **La caballería se sostiene con DOS cosas, y sueltas no sirven.** La reunión
   del escuadrón (`pinza.js`) y la regla de que a un caballo lanzado no se lo
   persigue (`soldados.js`). Medido por separado: sólo la persecución da

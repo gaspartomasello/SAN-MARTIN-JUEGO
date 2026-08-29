@@ -27,6 +27,10 @@ import { Soldado } from './soldados.js';
 const CERCA_MAX = 26;
 
 export function armarGentio ({ jugador, soldados, caballos, lejania }) {
+  // Lo pone main.js y lo resuelve combate.js: acá no se sabe cuánto duele que
+  // te lleve puesto un caballo, y no tiene por qué saberse. Es el mismo enganche
+  // que Soldado.acoso y Soldado.botes.
+  let alArrollar = null;
   let cerca = 30;                    // metros: de acá para allá, instancia horneada
   const candidatos = [];
   const rejilla = new Rejilla(2);
@@ -80,6 +84,8 @@ export function armarGentio ({ jugador, soldados, caballos, lejania }) {
         const e = r - l;
         s.pos.x += (dx / l) * e;
         s.pos.z += (dz / l) * e;
+        // y si venía lanzado, además lo arrolla
+        if (alArrollar) alArrollar(c, s);
       });
     }
   }
@@ -95,5 +101,6 @@ export function armarGentio ({ jugador, soldados, caballos, lejania }) {
     lejania.terminar();
   }
 
-  return { repartir, apretujar, pintar, rejilla, verCerca: m => { cerca = m; } };
+  return { repartir, apretujar, pintar, rejilla, verCerca: m => { cerca = m; },
+    set alArrollar (f) { alArrollar = f; } };
 }

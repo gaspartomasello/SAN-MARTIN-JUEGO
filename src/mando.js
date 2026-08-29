@@ -110,7 +110,7 @@ export function armarMando (ctx) {
         return;
       }
       if (a) a.gatillo();
-      else sable.tajo();
+      else sable.tajo(montado());
     }
     if (ev.button === 2) {
       if (arsenal.conSable()) sable.alzarGuardia();

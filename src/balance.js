@@ -314,6 +314,50 @@ export const OLEADA_GRANADERO = [4, 4];
 // ---------------------------------------------------------------------------
 // 7 · EL ALCANCE DEL ACERO
 // ---------------------------------------------------------------------------
+// EL ATROPELLO. Media tonelada a diez metros por segundo no es un obstáculo
+// que se esquiva: es un golpe. Hasta ahora el caballo empujaba al infante y
+// seguía de largo sin cobrarle nada —lo apartaba, como a un mueble—, y eso
+// dejaba al galope como una forma de VIAJAR y no como un arma. Ahora arrolla:
+// lo tira, lo manda al piso y le cuesta.
+//
+// El umbral es lo que hace que esto no rompa la batalla, y no es a ojo. Un
+// caballo va al trote a 4,6 y al galope a 10,2, y el lancero AFLOJA AL TROTE
+// cuando se le acerca al blanco —lo necesita para apuntar el asta—. Con el
+// corte en 7 el granadero no arrolla a su propio objetivo: arrolla a los que
+// se le cruzan en la pasada, que es cuando de verdad va lanzado. Y para el
+// que juega dice lo mismo que el resto del caballo: lo que sirve es no parar.
+// Y ES TUYO, no de la tropa. Con el mismo número para los dos lados la batalla
+// se termina en cuarenta segundos: ciento veinte granaderos arrollando a cuatro
+// cada vez que pasan al lado de alguien no son caballería, son una segadora.
+// Medido: los 250 realistas muertos, 120 de 120 granaderos en pie y la línea
+// sin quebrarse nunca —o sea exterminio, que es justo lo que la moral está para
+// evitar—. El porqué, más abajo.
+export const ATROPELLO = 4;           // contra 8 de vida: dos revolcadas
+export const ATROPELLO_VEL = 7;       // m/s: de acá para arriba, el caballo arrolla
+export const ATROPELLO_ESPERA = 1.2;  // segundos hasta que al mismo hombre lo pueden llevar puesto otra vez
+export const ATROPELLO_EMPUJE = 1.5;  // metros que lo despide
+export const ATROPELLO_TIRADO = 1.4;  // lo que tarda en levantarse
+// Y NO TIENE VERSIÓN DE TROPA, que es lo raro de esta fila: la bala, la
+// bayoneta, la lanza y la metralla todas tienen una. Acá no hay número chico
+// que sirva, y se buscó en cuatro mediciones seguidas, todas con el mismo
+// resultado —250 realistas muertos, la línea sin quebrarse—:
+//
+//   golpe de 4 a 1 ................ igual
+//   revolcón de 1,4 s a 0,3 ....... igual
+//   uno cada 6 s por hombre ....... igual
+//   sin daño, sólo el tumbo ....... `moral` aguanta, pero `desbande` cae a 2 de 3
+//
+// El motivo es que acá no hay un golpe, hay una SUPERFICIE. Ciento veinte
+// caballos cruzando doscientos cincuenta hombres se tocan todo el tiempo, así
+// que el período no modera nada: lo fija. Uno cada seis segundos contra ocho de
+// vida es el ejército entero muerto en cuarenta y ocho, se ponga el número que
+// se ponga. Y aun sin daño, medio segundo de trastabillar repartido sobre esa
+// superficie alcanza para que la línea no llegue a formar y la maten antes de
+// que la moral haga nada.
+//
+// Así que el caballo del granadero aparta al infante y sigue, como apartó
+// siempre. Llevarse a alguien puesto es cosa tuya.
+
 export const PECHADA_ALCANCE = 2.2;
 export const SABLE_ALCANCE = 2.4;
 export const ALCANCE_MONTADO = 3.3;   // desde arriba llegás más lejos

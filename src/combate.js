@@ -27,7 +27,8 @@ import {
   BAYONETA_TROPA, LANZA_TROPA, METRALLA_TROPA, danoBalaEnemiga, balaContraTropa,
   CABALLO_COME, BALA_AL_CABALLO, METRALLA_CABALLO,
   BLANCO_HOMBRE, BLANCO_MONTADO, ZUMBIDO,
-  BLOQUEO_GASTO, PECHADA_GASTO, PECHADA_ALCANCE, SABLE_ALCANCE, ALCANCE_MONTADO
+  BLOQUEO_GASTO, PECHADA_GASTO, PECHADA_ALCANCE, SABLE_ALCANCE, ALCANCE_MONTADO,
+  ATROPELLO, ATROPELLO_VEL, ATROPELLO_ESPERA, ATROPELLO_EMPUJE, ATROPELLO_TIRADO
 } from './balance.js';
 
 export function armarCombate (ctx) {
@@ -202,7 +203,14 @@ export function armarCombate (ctx) {
     const remate = sable.remate;
     const g = enemigoAlFrente(montado() ? ALCANCE_MONTADO : SABLE_ALCANCE);
     if (!g) return;
-    if (g.soldado.cubierto && !remate) {
+    // LA GUARDIA NO PARA UN CABALLO LANZADO. Un hombre a pie puede leer un
+    // sablazo y cruzar el fusil; lo que no puede es hacerlo contra algo que le
+    // viene encima a diez metros por segundo. Es exactamente lo que ya hacía la
+    // pechada —bajarle la guardia— pero sin gastar aliento: acá lo paga el
+    // caballo. Y le da sentido al galope: montado y frenado sos un blanco
+    // grande con la guardia enfrente; montado y lanzado no hay guardia.
+    const lanzado = montado() && jugador.monta.vel >= ATROPELLO_VEL;
+    if (g.soldado.cubierto && !remate && !lanzado) {
       sonido.choque();
       jugador.sacudir(0.16);
       hud.mostrarAviso('Paró el sablazo', 'malo');
@@ -360,6 +368,38 @@ export function armarCombate (ctx) {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // el atropello
+  // -------------------------------------------------------------------------
+  //
+  // Lo llama gentio.js, que YA recorre cada caballo y cada hombre que tiene
+  // encima para apartarlos —la rejilla y el bucle estaban hechos, esto no
+  // agrega ni una pasada—. Acá se decide lo único que gentio no puede decidir:
+  // si eso cuesta sangre.
+  //
+  let reloj = 0;
+  function correrReloj (dt) { reloj += dt; }
+
+  function arrollar (caballo, o) {
+    if (caballo.vel < ATROPELLO_VEL) return;
+    if (!o.vivo || o.montado) return;
+    // Y ES TUYO. El caballo del granadero aparta al infante como apartó siempre
+    // —de eso se ocupa gentio.js— y nada más. El porqué está medido y contado
+    // en balance.js: sobre esta superficie de contacto no hay versión chica.
+    if (caballo !== jugador.monta) return;
+    if (!o.esRealista) return;
+    // al mismo hombre no se lo lleva puesto sesenta veces por segundo
+    if (reloj - (o.tAtropello || -99) < ATROPELLO_ESPERA) return;
+    o.tAtropello = reloj;
+
+    sonido.impactoCarne();
+    o.aturdir(ATROPELLO_TIRADO);
+    const fx = -Math.sin(caballo.rumbo), fz = -Math.cos(caballo.rumbo);
+    o.pos.x += fx * ATROPELLO_EMPUJE;
+    o.pos.z += fz * ATROPELLO_EMPUJE;
+    if (o.recibir(ATROPELLO, null, VOLTEO.bayoneta)) hud.mostrarAviso('¡Lo llevaste puesto!', 'bien');
+  }
+
   // ¿alguna pieza me está cebando encima? Devuelve la peor.
   function metrallaEncima () {
     let peor = 0;
@@ -371,6 +411,6 @@ export function armarCombate (ctx) {
   }
 
   return { resolverDisparo, resolverGolpe, enemigoAlFrente, sablazo, pechada,
-    voltear, intentarVoltear, falloVisible,
+    voltear, intentarVoltear, falloVisible, arrollar, correrReloj,
     disparoEnemigo, golpeEnemigo, resolverMetralla, metrallaEncima };
 }

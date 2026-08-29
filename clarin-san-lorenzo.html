@@ -28936,6 +28936,7 @@ function geometriaHoja({
 }
 var VENTANA_PARADA = 0.18;
 var VENTANA_REMATE = 0.95;
+var DESDE_LA_SILLA = 0.62;
 var POSE_GUARDIA = { p: [0.42, -0.42, -1], r: [1.437, -7e-3, 1.639] };
 var Sable = class {
   constructor(camaraArma2, sonido2) {
@@ -29047,7 +29048,7 @@ var Sable = class {
   }
   // Devuelve true si salió el remate. El remate sólo existe si venís de una
   // parada perfecta: es más lento y más ancho, y se ve que es otra cosa.
-  tajo() {
+  tajo(montado2) {
     if (this.guardado || this.t >= 0) return false;
     this.remate = this.tRemate > 0;
     this.t = 0;
@@ -29060,6 +29061,7 @@ var Sable = class {
       this.zurdo = !this.zurdo;
       this.duracion = this.zurdo ? 0.46 : 0.52;
     }
+    if (montado2) this.duracion *= DESDE_LA_SILLA;
     this.sonido.sable();
     return this.remate;
   }
@@ -29836,6 +29838,11 @@ var ENEMIGOS_MAX = 34;
 var MONTADOS = 0.66;
 var OLEADA_REALISTA = [3, 3];
 var OLEADA_GRANADERO = [4, 4];
+var ATROPELLO = 4;
+var ATROPELLO_VEL = 7;
+var ATROPELLO_ESPERA = 1.2;
+var ATROPELLO_EMPUJE = 1.5;
+var ATROPELLO_TIRADO = 1.4;
 var PECHADA_ALCANCE = 2.2;
 var SABLE_ALCANCE = 2.4;
 var ALCANCE_MONTADO = 3.3;
@@ -32585,7 +32592,8 @@ function armarCombate(ctx) {
     const remate = sable2.remate;
     const g = enemigoAlFrente(montado2() ? ALCANCE_MONTADO : SABLE_ALCANCE);
     if (!g) return;
-    if (g.soldado.cubierto && !remate) {
+    const lanzado = montado2() && jugador2.monta.vel >= ATROPELLO_VEL;
+    if (g.soldado.cubierto && !remate && !lanzado) {
       sonido2.choque();
       jugador2.sacudir(0.16);
       hud2.mostrarAviso("Par\xF3 el sablazo", "malo");
@@ -32716,6 +32724,24 @@ function armarCombate(ctx) {
       else if (Math.random() < g) s.recibir(METRALLA_TROPA, null, VOLTEO.metralla);
     }
   }
+  let reloj2 = 0;
+  function correrReloj(dt) {
+    reloj2 += dt;
+  }
+  function arrollar(caballo, o) {
+    if (caballo.vel < ATROPELLO_VEL) return;
+    if (!o.vivo || o.montado) return;
+    if (caballo !== jugador2.monta) return;
+    if (!o.esRealista) return;
+    if (reloj2 - (o.tAtropello || -99) < ATROPELLO_ESPERA) return;
+    o.tAtropello = reloj2;
+    sonido2.impactoCarne();
+    o.aturdir(ATROPELLO_TIRADO);
+    const fx = -Math.sin(caballo.rumbo), fz = -Math.cos(caballo.rumbo);
+    o.pos.x += fx * ATROPELLO_EMPUJE;
+    o.pos.z += fz * ATROPELLO_EMPUJE;
+    if (o.recibir(ATROPELLO, null, VOLTEO.bayoneta)) hud2.mostrarAviso("\xA1Lo llevaste puesto!", "bien");
+  }
   function metrallaEncima() {
     let peor = 0;
     for (const c of canones2) {
@@ -32733,6 +32759,8 @@ function armarCombate(ctx) {
     voltear,
     intentarVoltear,
     falloVisible,
+    arrollar,
+    correrReloj,
     disparoEnemigo,
     golpeEnemigo,
     resolverMetralla,
@@ -33857,6 +33885,7 @@ function armarDespliegue(ctx) {
 // src/gentio.js
 var CERCA_MAX = 26;
 function armarGentio({ jugador: jugador2, soldados: soldados2, caballos: caballos2, lejania: lejania2 }) {
+  let alArrollar = null;
   let cerca = 30;
   const candidatos = [];
   const rejilla = new Rejilla(2);
@@ -33902,6 +33931,7 @@ function armarGentio({ jugador: jugador2, soldados: soldados2, caballos: caballo
         const e = r - l;
         s.pos.x += dx / l * e;
         s.pos.z += dz / l * e;
+        if (alArrollar) alArrollar(c, s);
       });
     }
   }
@@ -33915,9 +33945,18 @@ function armarGentio({ jugador: jugador2, soldados: soldados2, caballos: caballo
     }
     lejania2.terminar();
   }
-  return { repartir, apretujar, pintar, rejilla, verCerca: (m) => {
-    cerca = m;
-  } };
+  return {
+    repartir,
+    apretujar,
+    pintar,
+    rejilla,
+    verCerca: (m) => {
+      cerca = m;
+    },
+    set alArrollar(f) {
+      alArrollar = f;
+    }
+  };
 }
 
 // src/mando.js
@@ -34040,7 +34079,7 @@ function armarMando(ctx) {
         return;
       }
       if (a) a.gatillo();
-      else sable2.tajo();
+      else sable2.tajo(montado2());
     }
     if (ev.button === 2) {
       if (arsenal2.conSable()) sable2.alzarGuardia();
@@ -35483,6 +35522,7 @@ var campo = armarDespliegue({
   }
 });
 var gentio = armarGentio({ jugador, soldados, caballos, lejania });
+gentio.alArrollar = combate.arrollar;
 function poseDelJugador() {
   if (!jugador.vivo) return "aturdido";
   if (montado()) return jugador.monta.vel > 4.2 ? "enristre" : "lanzaAlto";
@@ -35636,6 +35676,7 @@ function simular(dt) {
   mundo.niebla.actualizar(dt);
   mundo.cielo.actualizar(dt);
   if (!red.esInvitado) Soldado.censar(soldados);
+  combate.correrReloj(dt);
   for (let i = soldados.length - 1; i >= 0; i--) {
     const s = soldados[i];
     s.actualizar(dt, jugador, soldados);

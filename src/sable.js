@@ -55,6 +55,14 @@ function geometriaHoja ({ largo = 0.82, curva = 0.95, anchoBase = 0.044,
 export const VENTANA_PARADA = 0.18;
 export const VENTANA_REMATE = 0.95;
 
+// DESDE LA SILLA EL CORVO VA MÁS RÁPIDO. No es un número de pelea —el daño no
+// cambia, el que cambia es el reloj de la animación— y por eso vive acá y no en
+// balance.js. El motivo es de mano: a pie el duelo se juega con la ventana de
+// parada, con su ritmo de leer y responder; a caballo no hay duelo, hay
+// pasada, y encadenar dos tajos antes de salirte del alcance tiene que poder
+// hacerse. Con medio segundo por tajo, al galope te alcanzaba para uno.
+const DESDE_LA_SILLA = 0.62;
+
 // Guardia: la hoja cruzada arriba a la izquierda, de plano contra la cámara y
 // lejos del ojo. Los ángulos NO son a ojo — salen de alinear la dirección de la
 // hoja (0, 0.457, −0.889 en el espacio del sable) con (−0.45, 0.88, −0.15) y su
@@ -186,7 +194,7 @@ export class Sable {
 
   // Devuelve true si salió el remate. El remate sólo existe si venís de una
   // parada perfecta: es más lento y más ancho, y se ve que es otra cosa.
-  tajo () {
+  tajo (montado) {
     if (this.guardado || this.t >= 0) return false;
     this.remate = this.tRemate > 0;
     this.t = 0;
@@ -199,6 +207,7 @@ export class Sable {
       this.zurdo = !this.zurdo;      // un tajo va de ida y el siguiente de vuelta
       this.duracion = this.zurdo ? 0.46 : 0.52;
     }
+    if (montado) this.duracion *= DESDE_LA_SILLA;
     this.sonido.sable();
     return this.remate;
   }

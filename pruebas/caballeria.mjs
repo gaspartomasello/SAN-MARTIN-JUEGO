@@ -150,15 +150,25 @@ const r = await pag.evaluate(() => {
   ok('un raspón no desmonta', l2.montado === true);
   l2.recibir(99, null, 0);
   ok('ni un golpe fuerte sin arma que voltee', l2.montado === true, `vida ${l2.vida}`);
-  l2.recibir(2, null, 1);
-  ok('el arma que voltea, voltea; y no mata', l2.montado === false && l2.vivo);
+  // Y ES UNA TIRADA, no una certeza: volteo 1 contra OFICIO_TROPA 0,75 sale una
+  // de cada cuatro. Con un solo golpe esta comprobación fallaba tres veces de
+  // cada cuatro —de ahí venía que esta prueba oscilara entre 47 y 44— y lo que
+  // se quiere saber no es si salió esta vez, es que PUEDE salir y que cuando
+  // sale no mata.
+  let golpes = 0;
+  while (l2.montado && golpes < 60) { l2.recibir(2, null, 1); golpes++; }
+  ok('el arma que voltea, voltea; y no mata', l2.montado === false && l2.vivo,
+    `hicieron falta ${golpes} golpes`);
   ok('queda tirado un rato', l2.tirado > 0);
   ok('las piernas se cierran al caer', l2.fig.montura === false);
 
   // ---------- 5. el cadáver del caballo ----------
   const l3 = j.soltarSoldado('granadero', { montado: true });
   const cab = l3.monta;
-  cab.recibir(6);
+  // OJO: no un número fijo. Decía recibir(6) de cuando un caballo tenía menos de
+  // seis de vida; con VIDA_CABALLO en 18 el animal quedaba vivo y las ocho
+  // comprobaciones de abajo fallaban sin que hubiera nada roto en el juego.
+  cab.recibir(cab.vida);
   ok('el caballo muere', !cab.vivo);
   // ESTA ES LA PRUEBA QUE MENTÍA. Decía «el jinete se baja solo» y comprobaba
   // `!l3.montado`, que es un getter que lee `monta.vivo`: en cuanto el caballo
@@ -187,7 +197,78 @@ const r = await pag.evaluate(() => {
   ok('voltear te baja', volteado && !j.jugador.monta);
   ok('la caída cuesta vida', j.jugador.vida < vidaAntes, `${vidaAntes} → ${Math.round(j.jugador.vida)}`);
 
-  // ---------- 7. pieles ----------
+  // ---------- 7. lo que cambia desde la silla ----------
+  //
+  // Tres cosas, y las tres dicen lo mismo: montado no peleás mejor, peleás
+  // distinto, y lo que te sirve es la velocidad.
+  const limpiar = () => { j.soldados.forEach(x => x.quitar()); j.soldados.length = 0; };
+  const alFrente = (d) => {
+    const s = j.soltarSoldado('realista');
+    const v = j.jugador.pos.clone();
+    j.camara.getWorldDirection(v);
+    s.pos.copy(j.jugador.pos).addScaledVector(v, d); s.pos.y = 0;
+    s.estado = 'acero'; s.tAcero = 0; s.aturdido = 0; s.avisando = false; s.vida = 8;
+    return s;
+  };
+
+  // el corvo, más rápido
+  j.sable.guardado = false; j.sable.t = -1; j.sable.tRemate = 0;
+  j.sable.tajo(false); const aPie = j.sable.duracion;
+  j.sable.t = -1; j.sable.tRemate = 0;
+  j.sable.tajo(true); const enSilla = j.sable.duracion;
+  j.sable.t = -1;
+  ok('el corvo va más rápido desde la silla', enSilla < aPie,
+    `${aPie.toFixed(2)} s a pie · ${enSilla.toFixed(2)} s montado`);
+
+  // la guardia contra un caballo lanzado
+  const cbs = j.jugador.monta || j.caballos.find(x => x.vivo && !x.montado);
+  if (!j.jugador.monta) { j.jugador.vida = 100; j.jugador.montar(cbs); }
+  limpiar();
+  cbs.vel = 9;
+  const g1 = alFrente(2.4); const v1 = g1.vida;
+  ok('en guardia y de a pie no te lo podrías llevar', g1.cubierto === true);
+  j.sable.alGolpear();
+  ok('pero la guardia no para un sablazo a la carrera', g1.vida < v1,
+    `vida ${v1} → ${g1.vida}`);
+
+  limpiar();
+  cbs.vel = 0;
+  const g2 = alFrente(2.4); const v2 = g2.vida;
+  j.sable.alGolpear();
+  ok('y montado pero frenado, la para igual que siempre', g2.vida === v2,
+    `vida ${v2} → ${g2.vida}`);
+
+  // el atropello
+  limpiar();
+  cbs.vel = 9; cbs.rumbo = 0;                 // rumbo 0 mira a −z
+  const a1 = j.soltarSoldado('realista');
+  a1.pos.set(cbs.pos.x, 0, cbs.pos.z - 1); a1.vida = 8; a1.aturdido = 0;
+  const va1 = a1.vida, za1 = a1.pos.z;
+  j.combate.arrollar(cbs, a1);
+  ok('tu caballo lanzado arrolla', a1.vida < va1 && a1.aturdido > 0,
+    `vida ${va1} → ${a1.vida}, aturdido ${a1.aturdido.toFixed(1)} s`);
+  ok('y lo despide para adelante', a1.pos.z < za1 - 1, `z ${za1.toFixed(1)} → ${a1.pos.z.toFixed(1)}`);
+
+  cbs.vel = 2;
+  const a2 = j.soltarSoldado('realista');
+  a2.pos.set(cbs.pos.x, 0, cbs.pos.z - 1); a2.vida = 8; a2.aturdido = 0;
+  j.combate.arrollar(cbs, a2);
+  ok('al paso no arrolla: aparta y sigue', a2.vida === 8 && a2.aturdido === 0);
+
+  // EL ATROPELLO ES TUYO Y DE NADIE MÁS, y no es una concesión: ciento veinte
+  // granaderos arrollando son un veneno que corre solo. Hasta la versión sin
+  // daño —sólo el trastabillar— baja `desbande` de 3 quiebres a 2. Las cuatro
+  // mediciones están contadas en balance.js. Si esto se cae, la batalla se
+  // termina por exterminio y no por quiebre, que es lo que la moral evita.
+  const gr = j.soltarSoldado('granadero', { montado: true });
+  gr.monta.vel = 9; gr.monta.rumbo = 0;
+  const a3 = j.soltarSoldado('realista');
+  a3.pos.set(gr.monta.pos.x, 0, gr.monta.pos.z - 1); a3.vida = 8; a3.aturdido = 0;
+  j.combate.arrollar(gr.monta, a3);
+  ok('el granadero aparta y sigue: no arrolla', a3.vida === 8 && a3.aturdido === 0,
+    `vida ${a3.vida}, aturdido ${a3.aturdido}`);
+
+  // ---------- 8. pieles ----------
   return out;
 });
 for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(34), x);

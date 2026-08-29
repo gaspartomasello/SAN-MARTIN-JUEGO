@@ -154,6 +154,9 @@ const campo = armarDespliegue({
 });
 
 const gentio = armarGentio({ jugador, soldados, caballos, lejania });
+// el caballo lanzado no aparta: arrolla. gentio.js encuentra el choque, combate.js
+// le pone el precio.
+gentio.alArrollar = combate.arrollar;
 
 // LA RED. Va último porque necesita el campo ya armado, y hasta que alguien
 // no elija «Los dos costados» en la portada no hace absolutamente nada: en
@@ -352,6 +355,7 @@ function simular (dt) {
   // del cuadro anterior, y de ahí sale que no te caigan los doscientos
   // cincuenta al mismo tiempo. Ver SATURACION en balance.js.
   if (!red.esInvitado) Soldado.censar(soldados);
+  combate.correrReloj(dt);
 
   for (let i = soldados.length - 1; i >= 0; i--) {
     const s = soldados[i];
