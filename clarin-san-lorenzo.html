@@ -28064,6 +28064,9 @@ var REGEN_ESPERA = 4.5;
 var REGEN_TASA = 21;
 var VENDA_CURA = 48;
 var VENDA_TIEMPO = 1.4;
+var CAMPO_X = 96;
+var CAMPO_Z0 = -105;
+var CAMPO_Z1 = 78;
 var Jugador = class {
   constructor(camara2, colisiones) {
     this.camara = camara2;
@@ -28321,8 +28324,8 @@ var Jugador = class {
   _mover(dx, dz) {
     this.pos.x += dx;
     this.pos.z += dz;
-    this.pos.x = Math.max(-62, Math.min(62, this.pos.x));
-    this.pos.z = Math.max(-105, Math.min(78, this.pos.z));
+    this.pos.x = Math.max(-CAMPO_X, Math.min(CAMPO_X, this.pos.x));
+    this.pos.z = Math.max(CAMPO_Z0, Math.min(CAMPO_Z1, this.pos.z));
     const cabeza = this.pies + this.altura;
     for (const caja3 of this.colisiones) {
       if (caja3.max.y <= this.pies + ESCALON) continue;
@@ -31820,20 +31823,20 @@ var LLEGADA = 9;
 var CHOQUE = 26;
 var CABEZA_ANDAR = 3;
 var RUTA_OESTE = [
-  { x: -43, z: 8 },
-  // asoma por la esquina del frente
-  { x: -34, z: -30 },
-  // baja por el flanco, ya a la vista
-  { x: -15, z: -56 }
-  // cierra sobre el flanco derecho realista
+  { x: -52, z: 6 },
+  // asoma por la esquina, ya bien abierto
+  { x: -74, z: -40 },
+  // baja POR FUERA de la punta de la línea
+  { x: -56, z: -72 }
+  // dobla y entra por detrás del extremo
 ];
 var RUTA_ESTE = [
-  { x: 43, z: 8 },
-  { x: 34, z: -30 },
-  { x: 15, z: -56 }
+  { x: 52, z: 6 },
+  { x: 74, z: -40 },
+  { x: 56, z: -72 }
 ];
-var PLAZA_OESTE = { x: -40, z: 54, rumbo: 0 };
-var PLAZA_ESTE = { x: 40, z: 54, rumbo: 0 };
+var PLAZA_OESTE = { x: -44, z: 54, rumbo: 0 };
+var PLAZA_ESTE = { x: 44, z: 54, rumbo: 0 };
 var Columna = class {
   // cabeza: null si la manda el jugador (entonces se le pasa en actualizar)
   constructor(nombre, ruta, formacion) {

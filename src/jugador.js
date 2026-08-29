@@ -26,6 +26,23 @@ const REGEN_TASA = 21;      // puntos por segundo
 const VENDA_CURA = 48;
 const VENDA_TIEMPO = 1.4;
 
+// EL CAMPO. Hasta dónde te dejan ir.
+//
+// Estaba en 62 y era un error medible: los doscientos cincuenta realistas se
+// despliegan en tres filas de ochenta y cuatro a 1,56 m, o sea que su línea
+// mide ciento treinta y un metros y llega hasta el 65. La pared quedaba TRES
+// METROS ADENTRO de la punta de su línea.
+//
+// Con eso, flanquear no era difícil: era imposible. Te chocabas con el borde
+// del mundo antes de llegar al último hombre. Ahora hay treinta metros de
+// campo por fuera de cada punta, que es donde se juega una pinza.
+//
+// El suelo ya medía 400 x 290 y el cielo tiene 300 de radio, así que esto no
+// destapa ningún borde: el límite era artificial, no geométrico.
+const CAMPO_X = 96;
+const CAMPO_Z0 = -105;   // el río
+const CAMPO_Z1 = 78;     // el fondo del convento
+
 export class Jugador {
   constructor (camara, colisiones) {
     this.camara = camara;
@@ -354,9 +371,8 @@ export class Jugador {
   _mover (dx, dz) {
     this.pos.x += dx;
     this.pos.z += dz;
-    // el mismo mundo que el caballo: la pinza se forma detrás del convento
-    this.pos.x = Math.max(-62, Math.min(62, this.pos.x));
-    this.pos.z = Math.max(-105, Math.min(78, this.pos.z));
+    this.pos.x = Math.max(-CAMPO_X, Math.min(CAMPO_X, this.pos.x));
+    this.pos.z = Math.max(CAMPO_Z0, Math.min(CAMPO_Z1, this.pos.z));
 
     // Se resuelve empujando al jugador fuera de la caja, no deshaciendo el
     // movimiento: deshacerlo es lo que hacía vibrar la pantalla al quedar

@@ -42,18 +42,29 @@ const CABEZA_ANDAR = 3;         // la columna sale al galope: hay 60 m de campo 
 // La tapia de la huerta corre por x = ±31 y un caballo ocupa casi un metro de
 // radio: la formación va a ±40 para que ni el archero de adentro la roce. Un
 // hombre pegado a la tapia al arrancar sale rebotando en vez de saliendo.
+// LAS RUTAS ENVUELVEN, NO EMBISTEN.
+//
+// Antes el último punto era x = ∓15, que cae en el MEDIO de la línea realista
+// —se despliegan de -65 a +65—. O sea que las dos columnas se juntaban contra
+// el centro enemigo: eso no es una pinza, es una carga frontal repartida en
+// dos. El flanco quedaba intacto y FLANCO, que es el término de moral que
+// paga por atacar de costado, casi no se cobraba.
+//
+// Ahora bajan POR AFUERA de la punta (x = ∓74, más allá del último hombre) y
+// recién ahí doblan hacia adentro, entrando por detrás del extremo. Es la
+// maniobra que hizo la caballería en 1813 y ahora el terreno la permite.
 export const RUTA_OESTE = [
-  { x: -43, z: 8 },             // asoma por la esquina del frente
-  { x: -34, z: -30 },           // baja por el flanco, ya a la vista
-  { x: -15, z: -56 }            // cierra sobre el flanco derecho realista
+  { x: -52, z: 6 },             // asoma por la esquina, ya bien abierto
+  { x: -74, z: -40 },           // baja POR FUERA de la punta de la línea
+  { x: -56, z: -72 }            // dobla y entra por detrás del extremo
 ];
 export const RUTA_ESTE = [
-  { x: 43, z: 8 },
-  { x: 34, z: -30 },
-  { x: 15, z: -56 }
+  { x: 52, z: 6 },
+  { x: 74, z: -40 },
+  { x: 56, z: -72 }
 ];
-export const PLAZA_OESTE = { x: -40, z: 54, rumbo: 0 };
-export const PLAZA_ESTE = { x: 40, z: 54, rumbo: 0 };
+export const PLAZA_OESTE = { x: -44, z: 54, rumbo: 0 };
+export const PLAZA_ESTE = { x: 44, z: 54, rumbo: 0 };
 
 export class Columna {
   // cabeza: null si la manda el jugador (entonces se le pasa en actualizar)
