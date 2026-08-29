@@ -129,6 +129,50 @@ const r = await pag.evaluate(async () => {
     ok('con el enemigo encima, la columna se suelta', p.este.estado === 'suelta', p.este.estado);
     ok('y a cada uno se le devuelve la iniciativa', p.este.hombres.every(h => h.plaza === null));
   }
+  // ---------- 7. ¡A MÍ! la columna se rehace y vuelve a entrar ----------
+  //
+  // La orden de la Q. Lo que hay que probar no es que se junten: es que la
+  // columna SUELTA se pueda volver a formar, que se forme atrás del jugador y
+  // que se suelte sola cuando la volvés a llevar al choque. O sea que la carga
+  // tenga ida y vuelta y no una sola dirección.
+  // A los realistas de la sección anterior se los manda lejos en vez de sacarlos
+  // de la lista: j.soldados es el array de main.js y soltarSoldado empuja ahí,
+  // así que si acá se lo reemplaza por otro, el realista que se suelte después
+  // no entra nunca en la simulación y la columna no se suelta jamás.
+  for (const s of j.soldados) if (s.esRealista) s.pos.set(0, 0, 400);
+  p.oeste.soltar();
+  ok('la columna estaba suelta', p.oeste.estado === 'suelta');
+  ok('y sin plaza: cada uno peleando por su cuenta',
+    p.oeste.hombres.every(h => h.plaza === null));
+
+  ok('la Q la vuelve a formar', p.reunir(false) === true);
+  ok('y no dos veces seguidas', p.reunir(false) === false);
+  // y en red la Q de Bermúdez llama a la SUYA, la del este, no a la de San Martín
+  ok('la columna de cada uno es la suya',
+    p.tuya(false) === p.oeste && p.tuya(true) === p.este);
+  correr(1.5);
+  const conPlaza = p.oeste.hombres.filter(h => h.vivo && h.montado && h.plaza).length;
+  ok('todos vuelven a tener sitio', conPlaza > 0, `${conPlaza} formados`);
+
+  // ¿se forman ATRÁS del jugador? El sitio de cada uno cuelga del eje de marcha
+  // de la cabeza, así que tiene que quedar a la espalda de su caballo.
+  const cb = j.jugador.monta;
+  if (cb) {
+    const fx = -Math.sin(cb.rumbo), fz = -Math.cos(cb.rumbo);
+    const detras = p.oeste.hombres.filter(h => h.plaza &&
+      ((h.plaza.x - cb.pos.x) * fx + (h.plaza.z - cb.pos.z) * fz) < 0).length;
+    ok('y todos atrás tuyo, no adelante', detras === conPlaza, `${detras} de ${conPlaza}`);
+  }
+
+  // y se vuelve a soltar sola con el enemigo encima
+  if (cb) {
+    j.soltarSoldado('realista', {
+      pos: new (Object.getPrototypeOf(cb.pos).constructor)(cb.pos.x, 0, cb.pos.z - 12)
+    });
+    correr(0.2);
+    ok('y con el enemigo encima se suelta otra vez', p.oeste.estado === 'suelta', p.oeste.estado);
+  }
+
   out.push(['—', 'formada con', JSON.stringify(armada)]);
   return out;
 });

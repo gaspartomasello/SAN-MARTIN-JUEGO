@@ -25,7 +25,7 @@ import {
   DANO_BAYONETA, DANO_METRALLA, CAIDA, BAYONETA_PARADA,
   BALA_JUGADOR, BALA_MIEMBRO, ZONA_CABEZA, ZONA_PECHO, DANO_SABLE, DANO_REMATE,
   BAYONETA_TROPA, LANZA_TROPA, METRALLA_TROPA, danoBalaEnemiga, balaContraTropa,
-  CABALLO_COME, BALA_AL_CABALLO, METRALLA_CABALLO,
+  CABALLO_COME, BALA_AL_CABALLO, metrallaAlCaballo,
   BLANCO_HOMBRE, BLANCO_MONTADO, ZUMBIDO,
   BLOQUEO_GASTO, PECHADA_GASTO, PECHADA_ALCANCE, SABLE_ALCANCE, ALCANCE_MONTADO,
   ATROPELLO, ATROPELLO_VEL, ATROPELLO_ESPERA, ATROPELLO_EMPUJE, ATROPELLO_TIRADO
@@ -352,7 +352,7 @@ export function armarCombate (ctx) {
       jugador.sacudir(0.5 + f * 0.9);
       if (montado()) {
         // ESTE es el disparo del 3 de febrero: el que volteó el caballo.
-        jugador.monta.recibir(Math.round(METRALLA_CABALLO * f));
+        jugador.monta.recibir(metrallaAlCaballo(f));
         hud.mostrarAviso('¡METRALLA!', 'malo');
       } else {
         jugador.recibir(Math.round(DANO_METRALLA * f), new THREE.Vector3(0, 0, -1));
@@ -363,7 +363,7 @@ export function armarCombate (ctx) {
       if (!s.vivo) continue;
       const g = canon.fuerzaSobre(s.pos);
       if (g < 0.28) continue;
-      if (s.montado) s.monta.recibir(Math.round(METRALLA_CABALLO * g));
+      if (s.montado) s.monta.recibir(metrallaAlCaballo(g));
       else if (Math.random() < g) s.recibir(METRALLA_TROPA, null, VOLTEO.metralla);
     }
   }

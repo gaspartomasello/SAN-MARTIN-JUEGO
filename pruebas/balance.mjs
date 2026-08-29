@@ -19,7 +19,7 @@
 import {
   tirar, caidaBala, danoBalaEnemiga, balaContraTropa,
   VIDA_TROPA, VIDA_CABALLO, DANO_SABLE, BALA_JUGADOR, BALA_MIEMBRO,
-  BALA_TROPA, DANO_BALA, DANO_BAYONETA, BLANCO_HOMBRE
+  BALA_TROPA, DANO_BALA, DANO_BAYONETA, BLANCO_HOMBRE, metrallaAlCaballo
 } from '../src/balance.js';
 
 const out = [];
@@ -55,6 +55,21 @@ ok('el humo le abre el tiro', conHumo < tabla[2][1] * 0.6, `${(conHumo * 100).to
 // clase de síntoma que cuesta días rastrear.
 //
 // Esto lo agarra en treinta milisegundos.
+// LA METRALLA. Es lo único que le hace daño de verdad a la caballería, así que
+// lo que importa es la relación contra la vida del caballo y no el número: en
+// pleno abanico lo voltea de una, y en el borde, de dos. Si esto se rompe, la
+// artillería vuelve a ser decorado y los granaderos vuelven a salir enteros.
+ok('la metralla en pleno voltea de una', metrallaAlCaballo(1) >= VIDA_CABALLO,
+  `${metrallaAlCaballo(1)} contra ${VIDA_CABALLO} de vida`);
+// Y afuera del cono útil no lo voltea. Lo que se calibra acá es a cuántos
+// alcanza, no cuánto pega: contra 18 de vida sólo importa si cae en uno, dos o
+// tres tiros, y no hay término medio. Si el borde del abanico volviera a
+// voltear, las piezas se llevan sesenta y dos caballos, no queda quién dé
+// miedo y la línea deja de quebrarse — medido, `desbande` cayó de 3 a 1.
+ok('en la orilla del abanico no lo voltea', metrallaAlCaballo(0.3) === 0);
+ok('y bien adentro, de dos tiros', metrallaAlCaballo(0.5) * 2 >= VIDA_CABALLO
+  && metrallaAlCaballo(0.5) < VIDA_CABALLO, `${metrallaAlCaballo(0.5)} por tiro`);
+
 ok('el corvo mata de una', DANO_SABLE >= VIDA_TROPA, `${DANO_SABLE} contra ${VIDA_TROPA} de vida`);
 ok('tu bala al pecho mata de una', BALA_JUGADOR >= VIDA_TROPA, `${BALA_JUGADOR} contra ${VIDA_TROPA}`);
 ok('pero al brazo o a la pierna no', BALA_MIEMBRO < VIDA_TROPA, `${BALA_MIEMBRO} contra ${VIDA_TROPA}`);

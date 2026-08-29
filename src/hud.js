@@ -166,6 +166,8 @@ export class Hud {
     if (datos.columna) {
       txt += `<br><b>tu columna ${datos.columna.tuya}</b> · la otra ${datos.columna.otra}`;
       if (datos.columna.esperando) txt += ' · <span class="bien">[T] el clarín</span>';
+      // Ya en la pelea, la otra orden: volverlos a formar para entrar de nuevo.
+      else if (datos.columna.suelta) txt += ' · <span class="bien">[Q] ¡a mí!</span>';
     }
     this.estado.innerHTML = txt;
 

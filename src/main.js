@@ -446,7 +446,8 @@ function cuadro () {
     aliados: campo.vivosDe('granadero'),
     quiebre: moral.parte(),
     columna: pinza.viva
-      ? { tuya: pinza.oeste.montados, otra: pinza.este.montados, esperando: pinza.sonando }
+      ? { tuya: pinza.oeste.montados, otra: pinza.este.montados, esperando: pinza.sonando,
+          suelta: pinza.tocado && pinza.oeste.estado === 'suelta' }
       : null,
     humoLocal: humo.densidadEn(jugador.pos),
     presion,

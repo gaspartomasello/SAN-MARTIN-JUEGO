@@ -392,6 +392,7 @@
         <div><kbd>H</kbd><span>montar / bajarse del caballo</span></div>
         <div><kbd>W</kbd><span>a caballo: andar (sostener) · <kbd>Shift</kbd> galope</span></div>
         <div><kbd>T</kbd><span><b>tocar el clarín</b> (en la batalla)</span></div>
+        <div><kbd>Q</kbd><span><b>¡a mí!</b> — tu columna corta la pelea y se forma atrás tuyo</span></div>
         <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
         <div><kbd>B</kbd><span>revisar la cartuchera</span></div>
         <div><kbd>V</kbd><span>vendarse (cura rápido)</span></div>
@@ -29793,6 +29794,12 @@ var METRALLA_TROPA = 6;
 var CABALLO_COME = 0.6;
 var BALA_AL_CABALLO = 2;
 var METRALLA_CABALLO = 20;
+var METRALLA_PLENA = 0.55;
+var METRALLA_JINETE = 0.45;
+function metrallaAlCaballo(g) {
+  if (g < METRALLA_JINETE) return 0;
+  return Math.round(METRALLA_CABALLO * (METRALLA_PLENA + (1 - METRALLA_PLENA) * g));
+}
 var CONO_FUSIL = 0.105;
 var CONO_HINCADO = 0.62;
 var CONO_HUMO = 1.6;
@@ -32079,6 +32086,28 @@ var Columna = class {
   arrancar() {
     if (this.estado === "formada") this.estado = "saliendo";
   }
+  // A MÍ. La columna deja de pelear y se vuelve a formar detrás del que la
+  // manda, para dar la vuelta y entrar de nuevo.
+  //
+  // Es la mitad que le faltaba al mando. La pinza tenía una sola orden —el
+  // clarín, que las larga— y después de eso el jugador miraba: sesenta hombres
+  // decidiendo solos hasta que no quedara ninguno. Ahora la carga tiene ida y
+  // vuelta, que es como se manda caballería.
+  //
+  // No hace falta código nuevo para la formación: volver a 'saliendo' con la
+  // cabeza en el jugador es exactamente lo que ya hace la columna antes del
+  // choque. Y tampoco hace falta código para soltarla de nuevo — la misma
+  // comprobación de CHOQUE que la largó la primera vez la larga otra vez
+  // cuando la llevás a menos de veintiséis metros del enemigo. Reunirse al
+  // lado del enemigo no se puede, y eso es correcto: la orden es para salir.
+  reunirse() {
+    if (this.estado !== "suelta") return false;
+    this.estado = "saliendo";
+    this.fase = null;
+    this.tFase = 0;
+    this.sitio = null;
+    return true;
+  }
   soltar() {
     if (this.estado === "suelta") return false;
     this.estado = "suelta";
@@ -32272,6 +32301,18 @@ var Pinza = class {
     if (this.alTocar) this.alTocar();
     return true;
   }
+  // LA COLUMNA DE CADA UNO. San Martín sale por el oeste y Bermúdez por el
+  // este; en solitario hay un solo jugador y es San Martín. La orden de
+  // reunirse es de quien manda la columna, así que cada máquina llama a la
+  // suya: el que juega de invitado es Bermúdez, y la del este es la de él.
+  tuya(esInvitado) {
+    return esInvitado ? this.este : this.oeste;
+  }
+  // «¡A mí!» Devuelve false si no hay a quién llamar, para que el aviso del HUD
+  // pueda decir por qué.
+  reunir(esInvitado) {
+    return this.viva && this.tocado && this.tuya(esInvitado).reunirse();
+  }
   desarmar() {
     for (const c of this.columnas) {
       for (const h of c.hombres) h.plaza = null;
@@ -32427,6 +32468,7 @@ var Hud = class {
     if (datos.columna) {
       txt += `<br><b>tu columna ${datos.columna.tuya}</b> \xB7 la otra ${datos.columna.otra}`;
       if (datos.columna.esperando) txt += ' \xB7 <span class="bien">[T] el clar\xEDn</span>';
+      else if (datos.columna.suelta) txt += ' \xB7 <span class="bien">[Q] \xA1a m\xED!</span>';
     }
     this.estado.innerHTML = txt;
     if (this.verDepurar) {
@@ -32709,7 +32751,7 @@ function armarCombate(ctx) {
       sonido2.metralla();
       jugador2.sacudir(0.5 + f * 0.9);
       if (montado2()) {
-        jugador2.monta.recibir(Math.round(METRALLA_CABALLO * f));
+        jugador2.monta.recibir(metrallaAlCaballo(f));
         hud2.mostrarAviso("\xA1METRALLA!", "malo");
       } else {
         jugador2.recibir(Math.round(DANO_METRALLA * f), new Vector3(0, 0, -1));
@@ -32720,7 +32762,7 @@ function armarCombate(ctx) {
       if (!s.vivo) continue;
       const g = canon.fuerzaSobre(s.pos);
       if (g < 0.28) continue;
-      if (s.montado) s.monta.recibir(Math.round(METRALLA_CABALLO * g));
+      if (s.montado) s.monta.recibir(metrallaAlCaballo(g));
       else if (Math.random() < g) s.recibir(METRALLA_TROPA, null, VOLTEO.metralla);
     }
   }
@@ -34042,6 +34084,23 @@ function armarMando(ctx) {
         if (pinza2.sonando) pinza2.tocar();
         else if (pinza2.viva) hud2.mostrarAviso("El clar\xEDn ya son\xF3", "malo");
         else hud2.mostrarAviso("No hay columna formada", "malo");
+        break;
+      }
+      // ¡A MÍ! La columna corta la pelea y se vuelve a formar atrás tuyo. Se
+      // suelta sola cuando la volvés a llevar al choque.
+      case "KeyQ": {
+        if (!pinza2.viva || !pinza2.tocado) {
+          hud2.mostrarAviso("No hay columna que llamar", "malo");
+          break;
+        }
+        if (!montado2()) {
+          hud2.mostrarAviso("A pie no te siguen: mont\xE1", "malo");
+          break;
+        }
+        if (pinza2.reunir(!!(red2 && red2.esInvitado))) {
+          sonido2.grito();
+          hud2.mostrarAviso("\xA1A m\xED, granaderos!", "bien");
+        } else hud2.mostrarAviso("Ya vienen", "malo");
         break;
       }
       case "KeyB":
@@ -35741,7 +35800,12 @@ function cuadro() {
     enemigos: campo.vivosDe("realista"),
     aliados: campo.vivosDe("granadero"),
     quiebre: moral.parte(),
-    columna: pinza.viva ? { tuya: pinza.oeste.montados, otra: pinza.este.montados, esperando: pinza.sonando } : null,
+    columna: pinza.viva ? {
+      tuya: pinza.oeste.montados,
+      otra: pinza.este.montados,
+      esperando: pinza.sonando,
+      suelta: pinza.tocado && pinza.oeste.estado === "suelta"
+    } : null,
     humoLocal: humo.densidadEn(jugador.pos),
     presion,
     nubes: humo.vivas,

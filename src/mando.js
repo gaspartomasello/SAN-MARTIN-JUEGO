@@ -76,6 +76,18 @@ export function armarMando (ctx) {
         else hud.mostrarAviso('No hay columna formada', 'malo');
         break;
       }
+      // ¡A MÍ! La columna corta la pelea y se vuelve a formar atrás tuyo. Se
+      // suelta sola cuando la volvés a llevar al choque.
+      case 'KeyQ': {
+        if (!pinza.viva || !pinza.tocado) { hud.mostrarAviso('No hay columna que llamar', 'malo'); break; }
+        if (!montado()) { hud.mostrarAviso('A pie no te siguen: montá', 'malo'); break; }
+        // cada uno llama a la suya: San Martín a la del oeste, Bermúdez a la del este
+        if (pinza.reunir(!!(red && red.esInvitado))) {
+          sonido.grito(); hud.mostrarAviso('¡A mí, granaderos!', 'bien');
+        }
+        else hud.mostrarAviso('Ya vienen', 'malo');
+        break;
+      }
       case 'KeyB': hud.verCartuchera(); break;
       case 'KeyV': if (jugador.vendar()) hud.mostrarAviso('Vendando', 'bien'); break;
       case 'KeyO': campo.alternarOleadas(); break;

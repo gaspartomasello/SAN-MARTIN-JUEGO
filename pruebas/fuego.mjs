@@ -33,7 +33,7 @@ const r = await pag.evaluate(async () => {
 
   const P = j.soldados[0].constructor.prototype;
   const c = { encarar: 0, veto: 0, tiro: 0, distancias: [], estados: [],
-              baja: {}, desmonte: {} };
+              baja: {}, desmonte: {}, caballo: {} };
 
   // QUÉ MATA A LOS GRANADEROS. Dos veces se ajustó este balance adivinando la
   // causa y las dos veces la adivinanza estaba mal. El daño se aplica dentro
@@ -54,6 +54,19 @@ const r = await pag.evaluate(async () => {
   // sin causa y el diagnóstico salía al revés: parecía que a la caballería la
   // mataba algo que no era la bayoneta. Es la bayoneta: 104 de 120.
   for (const s of j.soldados) if (s.alGolpear) s.alGolpear = marcar('acero', s.alGolpear);
+
+  // La metralla sí se puede marcar desde afuera: main.js la llama como
+  // combate.resolverMetralla(c), o sea que lee la propiedad en el momento.
+  j.combate.resolverMetralla = marcar('metralla', j.combate.resolverMetralla);
+
+  const C = j.caballos[0].constructor.prototype;
+  const _cr = C.recibir;
+  C.recibir = function (...a) {
+    const viva = this.vivo;
+    const v = _cr.apply(this, a);
+    if (viva && !this.vivo) c.caballo[causa] = (c.caballo[causa] || 0) + 1;
+    return v;
+  };
 
   const _rec = P.recibir;
   P.recibir = function (...a) {
@@ -113,6 +126,7 @@ const linea = o => Object.entries(o).sort((a, b) => b[1] - a[1])
   .map(([k, v]) => `${k} ${v}`).join(' · ') || 'ninguna';
 console.log(`\n  GRANADEROS`);
 console.log(`  bajas por causa .......... ${tot(r.baja)} · ${linea(r.baja)}`);
+console.log(`  caballos muertos ......... ${tot(r.caballo)} · ${linea(r.caballo)}`);
 console.log(`  desmontes por causa ...... ${tot(r.desmonte)} · ${linea(r.desmonte)}`);
 console.log('\n  t   vivos  estados');
 for (const e of r.estados) {

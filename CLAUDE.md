@@ -84,6 +84,7 @@ batalla. Lo que ya está torcido a tu favor:
 | Contra una pared | desliza y sigue | se le acomoda el rumbo |
 | Atropellar | el caballo lanzado tira, hiere y despide | aparta y sigue, nada más |
 | Sable a la carrera | pasa la guardia, y el corvo va ×0,62 | — |
+| Mando | `Q` rehace tu columna y volvés a cargar | la otra se reúne sola |
 
 **Cuando toques uno de estos números, fijate de qué lado está.** Los dos casos
 peores del proyecto salieron de mover algo que sin querer valía para las dos
@@ -134,6 +135,14 @@ están limpios; el balance no. Casos reales, ya medidos:
 - **Lo que importa es el producto, no el factor.** Al arreglar la línea de tiro
   los tiros pasaron de 294 a 653 por batalla, y `BALA_TROPA` tuvo que bajar de
   1,5 a 0,9 sin que una bala "duela menos".
+- **No se le pueden subir las bajas a los granaderos, y no es por falta de
+  ganas.** Toda baja de granadero es un jinete menos, y `CABALLO_ENCIMA` es lo
+  único que quiebra la línea. Probado: `BALA_AL_CABALLO` de 2 a 4 → de 87
+  granaderos en pie a **0**, sin punto medio; metralla que voltea en el borde
+  del abanico → 62 caballos muertos y `desbande` de 3 quiebres a 1. **El
+  desbalance que se ve al final no está de este lado**: mueren 227 realistas
+  donde en 1813 murieron unos 40, porque escapan 26 en vez de 210. Lo que hay
+  que arreglar es la huida, no la caballería.
 - **Lo que se reparte sobre TODO el campo no tiene versión chica.** El
   atropello del granadero se probó con daño 4, con 1, con medio segundo de
   revolcón y con uno cada seis segundos por hombre: las cuatro veces los 250

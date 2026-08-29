@@ -212,6 +212,29 @@ export class Columna {
 
   arrancar () { if (this.estado === 'formada') this.estado = 'saliendo'; }
 
+  // A MÍ. La columna deja de pelear y se vuelve a formar detrás del que la
+  // manda, para dar la vuelta y entrar de nuevo.
+  //
+  // Es la mitad que le faltaba al mando. La pinza tenía una sola orden —el
+  // clarín, que las larga— y después de eso el jugador miraba: sesenta hombres
+  // decidiendo solos hasta que no quedara ninguno. Ahora la carga tiene ida y
+  // vuelta, que es como se manda caballería.
+  //
+  // No hace falta código nuevo para la formación: volver a 'saliendo' con la
+  // cabeza en el jugador es exactamente lo que ya hace la columna antes del
+  // choque. Y tampoco hace falta código para soltarla de nuevo — la misma
+  // comprobación de CHOQUE que la largó la primera vez la larga otra vez
+  // cuando la llevás a menos de veintiséis metros del enemigo. Reunirse al
+  // lado del enemigo no se puede, y eso es correcto: la orden es para salir.
+  reunirse () {
+    if (this.estado !== 'suelta') return false;
+    this.estado = 'saliendo';
+    this.fase = null;
+    this.tFase = 0;
+    this.sitio = null;
+    return true;
+  }
+
   soltar () {
     if (this.estado === 'suelta') return false;
     this.estado = 'suelta';
@@ -406,6 +429,16 @@ export class Pinza {
     if (this.alTocar) this.alTocar();
     return true;
   }
+
+  // LA COLUMNA DE CADA UNO. San Martín sale por el oeste y Bermúdez por el
+  // este; en solitario hay un solo jugador y es San Martín. La orden de
+  // reunirse es de quien manda la columna, así que cada máquina llama a la
+  // suya: el que juega de invitado es Bermúdez, y la del este es la de él.
+  tuya (esInvitado) { return esInvitado ? this.este : this.oeste; }
+
+  // «¡A mí!» Devuelve false si no hay a quién llamar, para que el aviso del HUD
+  // pueda decir por qué.
+  reunir (esInvitado) { return this.viva && this.tocado && this.tuya(esInvitado).reunirse(); }
 
   desarmar () {
     for (const c of this.columnas) {

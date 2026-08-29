@@ -138,7 +138,37 @@ export const METRALLA_TROPA = 6;
 // «Si te baja a la mitad, perdés el caballo» — literalmente.
 export const CABALLO_COME = 0.6;      // seis de cada diez impactos van al animal
 export const BALA_AL_CABALLO = 2;     // contra 18 de vida: nueve impactos
-export const METRALLA_CABALLO = 20;   // lo voltea de una
+export const METRALLA_CABALLO = 20;   // en pleno abanico lo voltea de una
+
+// PERO EL ABANICO NO TIENE BORDE BLANDO. Un tarro de metralla es una escopeta:
+// el que queda en la orilla del cono se come menos perdigones, no ninguno. Con
+// el daño puro por `g` —que arranca en 0,28— un caballo del borde cobraba seis
+// de dieciocho y hacían falta tres tiros para voltearlo. Y como una pieza tira
+// cada dieciséis segundos, eso es toda la batalla.
+//
+// Medido antes de tocarlo: las dos piezas tiran DOCE veces en tres minutos y
+// atrapan 336 hombres, 75 de ellos montados... y matan UN caballo. O sea que la
+// artillería, que es lo que de verdad lastimó a los granaderos el 3 de febrero
+// —«no fue la mosquetería, fue la metralla»—, no existía como amenaza.
+//
+// Pero el piso solo no alcanza, y acá el redondeo manda: contra dieciocho de
+// vida, lo único que importa es si el del borde cae en uno, en dos o en tres
+// tiros, y no hay término medio entre esos tres. Con dos, las piezas voltean
+// sesenta y dos caballos, la caballería se apaga, no queda quién dé miedo y
+// `desbande` cae de 3 quiebres a 1. Con tres, no cambia nada: treinta bajas de
+// granadero, las mismas de antes.
+//
+// Así que lo que se ajusta no es cuánto pega sino A CUÁNTOS. El abanico entero
+// sigue cobrándole a la infantería desde 0,28 —la metralla no distingue— pero
+// para VOLTEAR un caballo hay que estar bien adentro. Que además es cierto: en
+// la orilla del cono el tarro ya se abrió y los perdigones que llegan lastiman
+// al animal, no lo tumban.
+export const METRALLA_PLENA = 0.55;   // lo que cobra el del borde del cono útil
+export const METRALLA_JINETE = 0.45;  // y de acá para afuera, al caballo no lo voltea
+export function metrallaAlCaballo (g) {
+  if (g < METRALLA_JINETE) return 0;
+  return Math.round(METRALLA_CABALLO * (METRALLA_PLENA + (1 - METRALLA_PLENA) * g));
+}
 
 // ---------------------------------------------------------------------------
 // 3 · LA PUNTERÍA · con qué probabilidad se acierta
