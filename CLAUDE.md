@@ -120,7 +120,14 @@ no alcanza con que compile.
 
 ## Rendimiento
 
-No optimizar preventivamente. Lo único medido y resuelto es la caché de vecinos
-de `_lineaLibre()`: sin ella, 370 hombres pasan de 1,5 ms a 11,6 ms por cuadro,
-de un cuadro de 16. No crear geometrías ni materiales dentro del bucle de
-dibujo.
+No optimizar preventivamente. Dos cosas ya están medidas, así que no hace falta
+volver a mirarlas:
+
+- **La caché de vecinos de `_lineaLibre()`.** Sin ella, 370 hombres pasan de
+  1,5 ms a 11,6 ms por cuadro, de un cuadro de 16.
+- **Las geometrías y materiales.** Hay 130 en `src/` y **ninguno corre por
+  cuadro**: están todos en constructores que se ejecutan una vez al armar. No
+  agregues uno dentro del bucle de dibujo.
+
+También hay **un solo raycast** en todo el proyecto. La línea de tiro de la
+tropa no usa rayos: usa la caché de vecinos.
