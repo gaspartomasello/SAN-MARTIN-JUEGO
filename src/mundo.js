@@ -398,10 +398,10 @@ export function construirMundo (escena) {
   }
 
   // --- pasto: matas instanciadas, baratas y con viento ---
-  // Eran 2600 sobre 120 m de ancho. El campo ahora mide 192 —se ensanchó para
-  // que la pinza pueda rodear— y con la misma cuenta los flancos quedaban
-  // pelados justo donde ahora se juega la maniobra.
-  const PASTO = 7000;
+  // Eran 2600 sobre 120 m de ancho. El campo ahora mide 240 —se ensanchó para
+  // que la pinza pueda rodear sin entrar de frente— y con la misma cuenta los
+  // flancos quedaban pelados justo donde ahora se juega la maniobra.
+  const PASTO = 8600;
   const mata = new THREE.PlaneGeometry(0.42, 0.4);
   mata.translate(0, 0.2, 0);
   const matas = new THREE.InstancedMesh(
@@ -419,7 +419,7 @@ export function construirMundo (escena) {
   const col = new THREE.Color();
   for (let i = 0; i < PASTO; i++) {
     // el pasto termina en el borde de la barranca: no crece sobre el Paraná
-    p.set((Math.random() - 0.5) * 196, 0, -Math.random() * 92 + 8);
+    p.set((Math.random() - 0.5) * 248, 0, -Math.random() * 92 + 8);
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI);
     const s = 0.55 + Math.random() * 1.15;
     e.set(s, s * (0.65 + Math.random() * 0.95), s);

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Taller, cil, caja, bola } from './figura.js';
 // la vida del animal es un número de combate: vive en la tabla
 import { VIDA_CABALLO } from './balance.js';
+import { CAMPO_X, CAMPO_Z0, CAMPO_Z1 } from './jugador.js';
 
 // El caballo del acto 3. Se construye con el mismo horno que los soldados
 // —piezas fundidas por hueso, color en los vértices— así que un caballo entero
@@ -507,8 +508,10 @@ export class Caballo {
     // alcanzaba mientras todo pasaba en el campo. Pero la pinza se forma DETRÁS
     // del convento, que llega hasta z=66, así que el mundo tiene que llegar más
     // atrás que el convento o la maniobra no cabe donde ocurrió.
-    this.pos.x = Math.max(-62, Math.min(62, this.pos.x));
-    this.pos.z = Math.max(-105, Math.min(78, this.pos.z));
+    // Los mismos que a pie, y por eso vienen de allá: escritos dos veces se
+    // desincronizan, y ya pasó.
+    this.pos.x = Math.max(-CAMPO_X, Math.min(CAMPO_X, this.pos.x));
+    this.pos.z = Math.max(CAMPO_Z0, Math.min(CAMPO_Z1, this.pos.z));
   }
 
   // Galope transversal: las cuatro patas con desfases distintos. La amplitud

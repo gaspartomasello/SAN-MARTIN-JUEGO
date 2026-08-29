@@ -27398,7 +27398,7 @@ function construirMundo(escena2) {
       escena2.add(t);
     }
   }
-  const PASTO = 7e3;
+  const PASTO = 8600;
   const mata = new PlaneGeometry(0.42, 0.4);
   mata.translate(0, 0.2, 0);
   const matas = new InstancedMesh(
@@ -27420,7 +27420,7 @@ function construirMundo(escena2) {
   const p = new Vector3();
   const col = new Color();
   for (let i = 0; i < PASTO; i++) {
-    p.set((Math.random() - 0.5) * 196, 0, -Math.random() * 92 + 8);
+    p.set((Math.random() - 0.5) * 248, 0, -Math.random() * 92 + 8);
     q.setFromAxisAngle(new Vector3(0, 1, 0), Math.random() * Math.PI);
     const s = 0.55 + Math.random() * 1.15;
     e.set(s, s * (0.65 + Math.random() * 0.95), s);
@@ -28157,7 +28157,7 @@ var REGEN_ESPERA = 4.5;
 var REGEN_TASA = 21;
 var VENDA_CURA = 48;
 var VENDA_TIEMPO = 1.4;
-var CAMPO_X = 96;
+var CAMPO_X = 120;
 var CAMPO_Z0 = -105;
 var CAMPO_Z1 = 78;
 var Jugador = class {
@@ -30271,8 +30271,8 @@ var Caballo = class {
       dif = Math.atan2(Math.sin(dif), Math.cos(dif));
       this.rumbo += dif * (0.55 + frente * 0.4);
     }
-    this.pos.x = Math.max(-62, Math.min(62, this.pos.x));
-    this.pos.z = Math.max(-105, Math.min(78, this.pos.z));
+    this.pos.x = Math.max(-CAMPO_X, Math.min(CAMPO_X, this.pos.x));
+    this.pos.z = Math.max(CAMPO_Z0, Math.min(CAMPO_Z1, this.pos.z));
   }
   // Galope transversal: las cuatro patas con desfases distintos. La amplitud
   // y la cadencia salen de la velocidad, así el andar nunca desentona.

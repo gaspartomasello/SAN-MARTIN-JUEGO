@@ -39,9 +39,13 @@ const VENDA_TIEMPO = 1.4;
 //
 // El suelo ya medía 400 x 290 y el cielo tiene 300 de radio, así que esto no
 // destapa ningún borde: el límite era artificial, no geométrico.
-const CAMPO_X = 96;
-const CAMPO_Z0 = -105;   // el río
-const CAMPO_Z1 = 78;     // el fondo del convento
+// Se exportan porque el caballo tiene que usar LOS MISMOS. Estaban escritos
+// dos veces —una acá y otra en caballo.js— y al ensanchar el campo se movió
+// uno solo: a pie llegabas al 96 y montado seguías chocando contra el 62, que
+// es justo el caso que importa, porque flanquear se flanquea a caballo.
+export const CAMPO_X = 120;
+export const CAMPO_Z0 = -105;   // el río
+export const CAMPO_Z1 = 78;     // el fondo del convento
 
 export class Jugador {
   constructor (camara, colisiones) {
