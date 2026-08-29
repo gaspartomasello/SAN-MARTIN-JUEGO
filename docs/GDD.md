@@ -22,7 +22,7 @@ un acontecimiento raro y el combate se resuelve, casi siempre, a sable.
 | | |
 |---|---|
 | Género | FPS histórico de acción / duelo cuerpo a cuerpo |
-| Motor | three.js + Vite (WebGL2, navegador, sin instalación) |
+| Motor | three.js + esbuild (WebGL2, navegador, sin instalación) |
 | Perspectiva | Primera persona a pie y montado |
 | Jugadores | Un jugador, campaña de ~2 h + modos sueltos |
 | Duración del acto central | ~15 minutos (los mismos de la batalla real) |
@@ -1742,9 +1742,13 @@ Da identidad y salva rendimiento al mismo tiempo.
 
 ## 12. Técnica (three.js)
 
-- **Stack:** three.js + Vite + TypeScript. Sin motor pesado encima.
-- **Física:** controlador de cápsula propio con raycast (determinista y barato). Rapier
-  (WASM) sólo si queremos ragdolls y caballo con peso real.
+- **Stack:** three.js + esbuild + JavaScript. Sin motor pesado encima, sin Vite y sin
+  TypeScript: three.js va vendorizado en `vendor/` con importmap y esbuild sólo se
+  usa para armar el archivo único. Para jugar no hace falta instalar nada.
+- **Física:** controlador de cápsula propio (determinista y barato). En todo el
+  proyecto hay UN solo raycast: la línea de tiro de la tropa se resuelve con una
+  caché de vecinos, no con rayos. Rapier (WASM) sólo si queremos ragdolls y
+  caballo con peso real.
 - **Balas:** hitscan. Un raycast con cono de dispersión; la metralla son 8 raycasts.
 - **Multitud:** los soldados lejanos son instancias con animación por textura de vértices
   (VAT); los cercanos (≤ 20) son skinned reales con LOD. Así entran 250 hombres en pantalla.
