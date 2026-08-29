@@ -158,6 +158,12 @@ const r = await pag.evaluate(async () => {
   j.jugador.revivir();          // venía muerto de la prueba anterior
   j.formarPinza(60, 250);
   j.pinza.tocar();
+  // EL PILOTO SOSTIENE LAS TECLAS, como un jugador. Antes alcanzaba con escribir
+  // monta.andar, pero el andar ahora sale de las teclas sostenidas y se reescribe
+  // cada cuadro: sin esto el caballo del piloto queda clavado en el pasto y la
+  // batalla se mide sin jugador adentro.
+  j.mando.teclas.add('KeyW'); j.mando.teclas.add('ShiftLeft');
+
   const gr0 = j.soldados.filter(s => !s.esRealista).length;
   const re0 = j.soldados.filter(s => s.esRealista).length;
   const curva = [];

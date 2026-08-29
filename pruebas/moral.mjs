@@ -109,6 +109,12 @@ const r = await pag.evaluate(async () => {
   // ---------- 3. LA BATALLA ----------
   const gr0 = 120, re0 = 250;
   j.formarPinza(gr0 / 2, re0);
+  // EL PILOTO SOSTIENE LAS TECLAS, como un jugador. Antes alcanzaba con escribir
+  // monta.andar, pero el andar ahora sale de las teclas sostenidas y se reescribe
+  // cada cuadro: sin esto el caballo del piloto queda clavado en el pasto y la
+  // batalla se mide sin jugador adentro.
+  j.mando.teclas.add('KeyW'); j.mando.teclas.add('ShiftLeft');
+
   j.tocarClarin();
   const curva = [];
   let t = 0, quiebre = -1, proxima = 2;

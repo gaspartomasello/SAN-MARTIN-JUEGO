@@ -43,7 +43,9 @@ const CUELLO = 0.72;
 // las riendas en la mano y el arma bailando, cuesta el triple y medio que a
 // pie —unos doce segundos de tercerola contra tres y medio—, que es lo que
 // tiene que costar: se puede, pero conviene bajar el andar para hacerlo.
-export const ANDARES = [
+export const RIENDA = 1.85;            // cuánto más dobla el que lleva las riendas
+
+const ANDARES = [
   { nombre: 'parado', vel: 0,    giro: 2.6,  carga: 1.35 },
   { nombre: 'al paso', vel: 1.9, giro: 2.1,  carga: 1.8 },
   { nombre: 'al trote', vel: 4.6, giro: 1.35, carga: 2.6 },
@@ -215,14 +217,25 @@ export class Caballo {
   }
 
   get altura () { return LOMO + 0.34; }        // altura del asiento
-  get nombreAndar () { return ANDARES[this.andar].nombre; }
+  // MIENTRAS PIDE ALGO, MANDA EL PEDIDO. Es la decisión que ya estaba tomada
+  // y tiene razón: el caballo tarda en llegar al andar, y lo que el jinete
+  // tiene en la mano es lo que pidió, no lo que el animal alcanzó todavía.
+  //
+  // La velocidad sólo habla cuando NO se pide nada. Con la W sostenida,
+  // soltarla baja el pedido a cero de golpe y el HUD decía "parado" con el
+  // animal todavía a ocho metros por segundo, que es el único caso donde el
+  // pedido no describe nada.
+  get nombreAndar () {
+    if (this.andar > 0) return ANDARES[this.andar].nombre;
+    let n = ANDARES[0].nombre;
+    for (const a of ANDARES) if (this.vel >= a.vel * 0.75) n = a.nombre;
+    return n;
+  }
   get rapidez () { return this.vel; }
 
   // el sablazo desde el caballo cobra por la velocidad, no por el brazo
   get filoPorVelocidad () { return 1 + Math.min(2, this.vel / 5); }
 
-  subirAndar () { if (this.vivo) this.andar = Math.min(ANDARES.length - 1, this.andar + 1); }
-  bajarAndar () { this.andar = Math.max(0, this.andar - 1); }
 
   // ¿puede saltar ahora? Hace falta batida: parado o al paso, no.
   get puedeSaltar () { return this.vivo && !this.enElAire && this.tSalto <= 0 && this.vel >= SALTO_MINIMO; }
@@ -315,6 +328,8 @@ export class Caballo {
       this.tSuelto = (this.tSuelto || 0) + dt;
       if (this.tSuelto > 2.2) { this.tSuelto = 0; this.andar = Math.max(0, this.andar - 1); }
     } else this.tSuelto = 0;
+    // el jinete pide un andar sosteniendo teclas; la IA escribe this.andar
+    if (mando.andar !== undefined) this.andar = mando.andar;
     const a = ANDARES[this.andar];
     // acelerar cuesta; frenar cuesta más todavía. No se dobla en seco.
     const objetivo = a.vel;
@@ -327,13 +342,27 @@ export class Caballo {
     const giro = THREE.MathUtils.lerp(ANDARES[0].giro, ANDARES[3].giro, t);
     // en el aire el caballo casi no corrige: el salto se apunta ANTES de batir
     const mando_giro = this.enElAire ? 0.25 : 1;
-    if (mando.girar) this.rumbo -= mando.girar * giro * mando_giro * dt;
+    // LA RIENDA ES DEL JINETE, NO DE LA IA.
+    //
+    // Subir el giro de ANDARES para que el caballo del jugador doblara más
+    // rápido salía carísimo: ese número lo usan las dos puntas, y con la IA
+    // girando más rápido las columnas de la pinza se pasan de rumbo y se
+    // apelotonan —medido: 8 hombres fuera de lugar contra 2, y la línea
+    // realista dejaba de quebrarse—.
+    //
+    // Un hombre que tira de la rienda dobla más decidido que una columna
+    // buscando un rumbo, así que el multiplicador va acá, en el camino del
+    // jinete, y la IA queda exactamente como estaba.
+    if (mando.girar) this.rumbo -= mando.girar * giro * RIENDA * mando_giro * dt;
     // la IA no pulsa teclas: pide un rumbo y el caballo lo busca a su ritmo
     if (mando.hacia !== undefined) {
       let d = mando.hacia - this.rumbo;
       d = Math.atan2(Math.sin(d), Math.cos(d));
       this.rumbo += Math.max(-giro * mando_giro * dt, Math.min(giro * mando_giro * dt, d));
     }
+    // ¿Este caballo lo lleva alguien tirando de las riendas, o una IA que pide
+    // un rumbo? Lo necesita _chocar para decidir si puede acomodarle el rumbo.
+    this._pideRumbo = mando.hacia !== undefined;
     if (mando.saltar) this.saltar();
 
     // vuelo: sube, cae y aterriza perdiendo un poco de carrera
@@ -366,7 +395,7 @@ export class Caballo {
 
     this.pos.x += -Math.sin(this.rumbo) * this.vel * dt;
     this.pos.z += -Math.cos(this.rumbo) * this.vel * dt;
-    this._chocar();
+    this._chocar(dt);
     this._avanzar(dt);
     // a la distancia el paso lo pone la Lejanía alternando dos fotogramas;
     // acá sólo hay que seguir contándolo para que no se corte al volver
@@ -440,7 +469,7 @@ export class Caballo {
   // La diferencia la hace `frente`: 1 es de lleno contra la pared, 0 es
   // pasarle raspando. De refilón se desliza por la tangente sin perder casi
   // nada; de lleno pierde la mitad y baja un andar.
-  _chocar () {
+  _chocar (dt) {
     const fx = -Math.sin(this.rumbo), fz = -Math.cos(this.rumbo);
     for (const c of this.colisiones) {
       // por encima del obstáculo: lo está saltando, pasa limpio
@@ -481,16 +510,33 @@ export class Caballo {
       const frente = Math.max(0, -(fx * nx + fz * nz));
       if (frente > 0.72) this.golpeo = true;     // se oye y se siente; no frena
 
-      // el precio, con piso: una tapia nunca te puede dejar por debajo del paso
+      // AL QUE LLEVA LAS RIENDAS NO SE LE TOCA EL RUMBO.
+      //
+      // Acá había una línea que lo reescribía hasta un 95 % en UN CUADRO —sin
+      // dt— eligiendo el lado por qué punta de la tapia quedaba más cerca. Dos
+      // desastres para el que juega:
+      //
+      //   1. Un giro casi instantáneo se siente como un rebote, no como un
+      //      roce. Le arrancaba el caballo de las manos.
+      //   2. Al pasar el punto medio de la tapia, la punta más cercana pasa a
+      //      ser la otra y el destino se DA VUELTA: el animal pegaba el
+      //      volantazo al revés en mitad del raspón.
+      //
+      // Para el jugador no hace falta nada de eso: sacarlo por la normal —lo
+      // que ya se hizo arriba— borra la componente que entra en la pared y
+      // deja la que corre a lo largo, y eso YA es deslizar. Raspa y sigue,
+      // apuntando a donde él quiere.
+      //
+      // PERO LA IA SÍ LO NECESITA, y esto costó una medición. La IA no rodea:
+      // pide un rumbo y empuja. Sacarle el acomodamiento la deja apretada
+      // contra el convento —medido: la línea realista dejaba de quebrarse—.
+      // Ese volantazo horrible le estaba haciendo de esquive.
       const piso = Math.min(this.vel, ANDARES[1].vel * 0.85);
+      if (!this._pideRumbo) {
+        this.vel = Math.max(this.vel - this.vel * frente * 1.6 * dt, piso);
+        continue;
+      }
       this.vel = Math.max(this.vel * (1 - frente * 0.42), piso);
-
-      // Y EL RUMBO SE ACOMODA A LA PARED, rodeándola por la punta que tiene más
-      // cerca. Elegir el costado por hacia dónde mira el caballo no sirve:
-      // cuando el golpe es de frente el producto da cero, el costado se sortea
-      // de nuevo cada cuadro y el animal queda vibrando contra el mismo
-      // ladrillo. La punta más cercana, en cambio, no cambia porque él se
-      // corra: es una decisión y se sostiene.
       let tx, tz;
       if (Math.abs(nz) > Math.abs(nx)) {
         tx = (c.max.x - this.pos.x) < (this.pos.x - c.min.x) ? 1 : -1;

@@ -54,8 +54,6 @@ export function armarMando (ctx) {
         break;
       }
       case 'KeyH': campo.montarODesmontar(); break;
-      case 'KeyW': if (montado()) jugador.monta.subirAndar(); break;
-      case 'KeyS': if (montado()) jugador.monta.bajarAndar(); break;
       case 'KeyG': arsenal.tomarOIntercambiar(); break;
       case 'Digit1': arsenal.cambiar('larga'); break;
       case 'Digit2': arsenal.cambiar('sable'); break;

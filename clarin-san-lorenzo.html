@@ -368,10 +368,12 @@
         de la estocada — echa el acero atrás y grita. Cubrirte <em>en ese instante</em> se la para en
         seco y lo deja abierto para el remate. No le entres de frente a uno en guardia: te choca
         el acero. Rompelo con la pechada (<kbd>F</kbd>).</p>
-      <p><b>El caballo</b> (<kbd>H</kbd> para montar): arriba no se camina. <kbd>W</kbd> sube el andar
-        y <kbd>S</kbd> lo baja. Al galope el sable corta el triple, pero necesitás diez metros para
-        frenar y dieciséis para dar la vuelta. La línea se elige antes de entrar. Con
-        <kbd>Espacio</kbd> el caballo salta las tapias, y una tapia nunca te frena del todo.</p>
+      <p><b>El caballo</b> (<kbd>H</kbd> para montar): arriba no se camina. Se anda
+        <b>sosteniendo</b> <kbd>W</kbd>, y con <kbd>Shift</kbd> sale al galope —el mismo
+        <kbd>Shift</kbd> con el que corrés a pie—. Soltás y afloja. Al galope el sable corta el
+        triple, pero necesitás diez metros para frenar y la vuelta se abre. La línea se elige
+        antes de entrar. Con <kbd>Espacio</kbd> salta las tapias, y contra una tapia el caballo
+        raspa y sigue: nunca te frena del todo ni te arranca el rumbo de las manos.</p>
     </details>
 
     <details class="ayuda">
@@ -388,7 +390,7 @@
         <div><kbd>F</kbd><span>culatazo / bayonetazo · <b>pechada</b></span></div>
         <div><kbd>1 / 2 / 3</kbd><span>arma larga · sable · pistolón</span></div>
         <div><kbd>H</kbd><span>montar / bajarse del caballo</span></div>
-        <div><kbd>W / S</kbd><span>a caballo: subir y bajar el andar</span></div>
+        <div><kbd>W</kbd><span>a caballo: andar (sostener) · <kbd>Shift</kbd> galope</span></div>
         <div><kbd>T</kbd><span><b>tocar el clarín</b> (en la batalla)</span></div>
         <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
         <div><kbd>B</kbd><span>revisar la cartuchera</span></div>
@@ -29880,6 +29882,7 @@ var LOMO = 1.05;
 var PATA_ALTA = 0.55;
 var PATA_BAJA = 0.45;
 var CUELLO = 0.72;
+var RIENDA = 1.85;
 var ANDARES = [
   { nombre: "parado", vel: 0, giro: 2.6, carga: 1.35 },
   { nombre: "al paso", vel: 1.9, giro: 2.1, carga: 1.8 },
@@ -30028,8 +30031,19 @@ var Caballo = class {
     return LOMO + 0.34;
   }
   // altura del asiento
+  // MIENTRAS PIDE ALGO, MANDA EL PEDIDO. Es la decisión que ya estaba tomada
+  // y tiene razón: el caballo tarda en llegar al andar, y lo que el jinete
+  // tiene en la mano es lo que pidió, no lo que el animal alcanzó todavía.
+  //
+  // La velocidad sólo habla cuando NO se pide nada. Con la W sostenida,
+  // soltarla baja el pedido a cero de golpe y el HUD decía "parado" con el
+  // animal todavía a ocho metros por segundo, que es el único caso donde el
+  // pedido no describe nada.
   get nombreAndar() {
-    return ANDARES[this.andar].nombre;
+    if (this.andar > 0) return ANDARES[this.andar].nombre;
+    let n = ANDARES[0].nombre;
+    for (const a of ANDARES) if (this.vel >= a.vel * 0.75) n = a.nombre;
+    return n;
   }
   get rapidez() {
     return this.vel;
@@ -30037,12 +30051,6 @@ var Caballo = class {
   // el sablazo desde el caballo cobra por la velocidad, no por el brazo
   get filoPorVelocidad() {
     return 1 + Math.min(2, this.vel / 5);
-  }
-  subirAndar() {
-    if (this.vivo) this.andar = Math.min(ANDARES.length - 1, this.andar + 1);
-  }
-  bajarAndar() {
-    this.andar = Math.max(0, this.andar - 1);
   }
   // ¿puede saltar ahora? Hace falta batida: parado o al paso, no.
   get puedeSaltar() {
@@ -30116,6 +30124,7 @@ var Caballo = class {
         this.andar = Math.max(0, this.andar - 1);
       }
     } else this.tSuelto = 0;
+    if (mando2.andar !== void 0) this.andar = mando2.andar;
     const a = ANDARES[this.andar];
     const objetivo = a.vel;
     const k = objetivo > this.vel ? ACEL : FRENO;
@@ -30124,12 +30133,13 @@ var Caballo = class {
     const t = Math.min(1, this.vel / ANDARES[3].vel);
     const giro = MathUtils.lerp(ANDARES[0].giro, ANDARES[3].giro, t);
     const mando_giro = this.enElAire ? 0.25 : 1;
-    if (mando2.girar) this.rumbo -= mando2.girar * giro * mando_giro * dt;
+    if (mando2.girar) this.rumbo -= mando2.girar * giro * RIENDA * mando_giro * dt;
     if (mando2.hacia !== void 0) {
       let d = mando2.hacia - this.rumbo;
       d = Math.atan2(Math.sin(d), Math.cos(d));
       this.rumbo += Math.max(-giro * mando_giro * dt, Math.min(giro * mando_giro * dt, d));
     }
+    this._pideRumbo = mando2.hacia !== void 0;
     if (mando2.saltar) this.saltar();
     if (this.enElAire) {
       this.velY -= GRAVEDAD2 * dt;
@@ -30162,7 +30172,7 @@ var Caballo = class {
     this.giroReal = dt > 0 ? dg / dt : 0;
     this.pos.x += -Math.sin(this.rumbo) * this.vel * dt;
     this.pos.z += -Math.cos(this.rumbo) * this.vel * dt;
-    this._chocar();
+    this._chocar(dt);
     this._avanzar(dt);
     if (this.lejos) this.paso += dt * (1.7 + this.vel * 0.62);
     else this._andarPatas(dt);
@@ -30225,7 +30235,7 @@ var Caballo = class {
   // La diferencia la hace `frente`: 1 es de lleno contra la pared, 0 es
   // pasarle raspando. De refilón se desliza por la tangente sin perder casi
   // nada; de lleno pierde la mitad y baja un andar.
-  _chocar() {
+  _chocar(dt) {
     const fx = -Math.sin(this.rumbo), fz = -Math.cos(this.rumbo);
     for (const c of this.colisiones) {
       if (this.alto + PANZA >= c.max.y) continue;
@@ -30257,6 +30267,10 @@ var Caballo = class {
       const frente = Math.max(0, -(fx * nx + fz * nz));
       if (frente > 0.72) this.golpeo = true;
       const piso = Math.min(this.vel, ANDARES[1].vel * 0.85);
+      if (!this._pideRumbo) {
+        this.vel = Math.max(this.vel - this.vel * frente * 1.6 * dt, piso);
+        continue;
+      }
       this.vel = Math.max(this.vel * (1 - frente * 0.42), piso);
       let tx, tz;
       if (Math.abs(nz) > Math.abs(nx)) {
@@ -33817,12 +33831,6 @@ function armarMando(ctx) {
       case "KeyH":
         campo2.montarODesmontar();
         break;
-      case "KeyW":
-        if (montado2()) jugador2.monta.subirAndar();
-        break;
-      case "KeyS":
-        if (montado2()) jugador2.monta.bajarAndar();
-        break;
       case "KeyG":
         arsenal2.tomarOIntercambiar();
         break;
@@ -35447,7 +35455,10 @@ function simular(dt) {
     }
     const mandoCaballo = { girar: 0 };
     if (jugador.monta === c) {
-      mandoCaballo.girar = (mando.teclas.has("KeyD") ? 1 : 0) - (mando.teclas.has("KeyA") ? 1 : 0);
+      const t = mando.teclas;
+      mandoCaballo.girar = (t.has("KeyD") ? 1 : 0) - (t.has("KeyA") ? 1 : 0);
+      const rapido = t.has("ShiftLeft") || t.has("ShiftRight");
+      mandoCaballo.andar = t.has("KeyS") ? 0 : t.has("KeyW") ? rapido ? 3 : 2 : 0;
     }
     c.actualizar(dt, mandoCaballo);
     if (!c.titere && !c.vivo && c.tMuerto > 45) {

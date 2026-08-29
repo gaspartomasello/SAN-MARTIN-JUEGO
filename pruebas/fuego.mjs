@@ -24,6 +24,12 @@ const r = await pag.evaluate(async () => {
   const j = window.juego;
   j.campo.limpiarCampo(); j.jugador.revivir(); j.jugador.pos.set(0, 1.68, 0);
   j.formarPinza(60, 250); j.pinza.tocar();
+  // EL PILOTO SOSTIENE LAS TECLAS, como un jugador. Antes alcanzaba con escribir
+  // monta.andar, pero el andar ahora sale de las teclas sostenidas y se reescribe
+  // cada cuadro: sin esto el caballo del piloto queda clavado en el pasto y la
+  // batalla se mide sin jugador adentro.
+  j.mando.teclas.add('KeyW'); j.mando.teclas.add('ShiftLeft');
+
 
   const P = j.soldados[0].constructor.prototype;
   const c = { encarar: 0, veto: 0, tiro: 0, distancias: [], estados: [],

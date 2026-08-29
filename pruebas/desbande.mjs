@@ -41,6 +41,12 @@ if (process.env.DIAG) {
     const j = window.juego;
     j.campo.limpiarCampo(); j.jugador.revivir(); j.jugador.pos.set(0, 1.68, 0);
     j.formarPinza(60, 250); j.pinza.tocar();
+    // EL PILOTO SOSTIENE LAS TECLAS, como un jugador. Antes alcanzaba con escribir
+    // monta.andar, pero el andar ahora sale de las teclas sostenidas y se reescribe
+    // cada cuadro: sin esto el caballo del piloto queda clavado en el pasto y la
+    // batalla se mide sin jugador adentro.
+    j.mando.teclas.add('KeyW'); j.mando.teclas.add('ShiftLeft');
+
     const salida = [];
     let t = 0, prox = 0;
     while (t < 300) {
@@ -90,6 +96,12 @@ const r = await pag.evaluate(async (CORRIDAS) => {
   for (let k = 0; k < CORRIDAS; k++) {
     j.campo.limpiarCampo(); j.jugador.revivir(); j.jugador.pos.set(0, 1.68, 0);
     j.formarPinza(60, 250); j.pinza.tocar();
+    // EL PILOTO SOSTIENE LAS TECLAS, como un jugador. Antes alcanzaba con escribir
+    // monta.andar, pero el andar ahora sale de las teclas sostenidas y se reescribe
+    // cada cuadro: sin esto el caballo del piloto queda clavado en el pasto y la
+    // batalla se mide sin jugador adentro.
+    j.mando.teclas.add('KeyW'); j.mando.teclas.add('ShiftLeft');
+
     const gr0 = j.soldados.filter(s => !s.esRealista).length;
     const re0 = j.soldados.filter(s => s.esRealista).length;
     let t = 0, tRoto = -1, tRotoGr = -1, muerto = -1, enPie = -1, grEnPie = -1;

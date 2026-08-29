@@ -291,7 +291,17 @@ function simular (dt) {
     if (c.actualizado) { c.actualizado = false; continue; }
     const mandoCaballo = { girar: 0 };
     if (jugador.monta === c) {
-      mandoCaballo.girar = (mando.teclas.has('KeyD') ? 1 : 0) - (mando.teclas.has('KeyA') ? 1 : 0);
+      const t = mando.teclas;
+      mandoCaballo.girar = (t.has('KeyD') ? 1 : 0) - (t.has('KeyA') ? 1 : 0);
+      // SE ANDA SOSTENIENDO, NO APRETANDO. Antes cada W subía un andar: para
+      // salir al galope había que golpearla tres veces y para frenar, tres la
+      // S. Nadie juega así. Ahora W anda, Shift galopa —el mismo Shift que
+      // corre a pie— y soltar afloja. El caballo igual tarda en acelerar y en
+      // frenar, así que sostener no es teletransportarse.
+      const rapido = t.has('ShiftLeft') || t.has('ShiftRight');
+      mandoCaballo.andar = t.has('KeyS') ? 0
+        : t.has('KeyW') ? (rapido ? 3 : 2)
+        : 0;
     }
     c.actualizar(dt, mandoCaballo);
     if (!c.titere && !c.vivo && c.tMuerto > 45) {
