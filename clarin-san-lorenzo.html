@@ -26914,6 +26914,23 @@ function convento(horno, colisiones) {
   caja3(-31.4, Z, -30.6, Z + 50, 3.4);
   caja3(30.6, Z, 31.4, Z + 50, 3.4);
 }
+var BOTES = [-72, -36, 0, 36, 72];
+function botes(h, HONDO) {
+  const CASCO2 = 4866351, BORDA = 7298882, REMO = 9075288;
+  BOTES.forEach((x, i) => {
+    const z = -101 - i % 2 * 3.4;
+    const r = -0.14 + i % 3 * 0.12;
+    const y = HONDO + 0.45;
+    h.caja(x, y, z, 7.4, 1.05, 2.3, CASCO2, r);
+    h.caja(x, y + 0.6, z, 7, 0.18, 2.5, BORDA, r);
+    for (const d of [-2.1, 0, 2.1]) {
+      h.caja(x + Math.cos(r) * d, y + 0.58, z - Math.sin(r) * d, 0.46, 0.12, 2, BORDA, r);
+    }
+    for (const lado of [-1, 1]) {
+      h.caja(x + lado * 0.7, y + 0.74, z + lado * 1.4, 5.4, 0.11, 0.11, REMO, r + lado * 0.3);
+    }
+  });
+}
 function barrancaYRio(escena2, colisiones) {
   const Z02 = Z_BARRANCA, Z12 = Z_RIO, HONDO = -9;
   const ANCHO3 = 260;
@@ -26972,6 +26989,7 @@ function barrancaYRio(escena2, colisiones) {
       h.caja(px, y + altoP * 0.36, pz, 8.2, 4.2, 0.24, VELA, r);
     }
   }
+  botes(h, HONDO);
   escena2.add(h.cocinar(MAT()));
   colisiones.push(new Box3(
     new Vector3(-ANCHO3 / 2, 0, Z02 - 1.2),
@@ -27042,29 +27060,76 @@ function pastoTextura() {
   return t;
 }
 function cieloDomo() {
-  const geo = new SphereGeometry(300, 24, 16);
+  const geo = new SphereGeometry(300, 48, 32);
   const mat2 = new ShaderMaterial({
     side: BackSide,
     depthWrite: false,
     uniforms: {
       uAlto: { value: new Color(7180989) },
       uMedio: { value: new Color(11058383) },
-      uBajo: { value: new Color(15255443) }
+      uBajo: { value: new Color(15255443) },
+      // el mismo rumbo que la luz direccional de abajo: si el sol se dibuja
+      // en un lado y las sombras caen del otro, el amanecer se deshace
+      uSol: { value: new Vector3(48, 15, -26).normalize() },
+      uTiempo: { value: 0 }
     },
     vertexShader: `
       varying float vAltura;
+      varying vec3 vDir;
       void main () {
-        vAltura = normalize(position).y;
+        vDir = normalize(position);
+        vAltura = vDir.y;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: `
       uniform vec3 uAlto; uniform vec3 uMedio; uniform vec3 uBajo;
+      uniform vec3 uSol; uniform float uTiempo;
       varying float vAltura;
+      varying vec3 vDir;
+
+      float hash (vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float ruido (vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                   mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
+      float fbm (vec2 p) {
+        float v = 0.0, a = 0.5;
+        for (int k = 0; k < 4; k++) { v += a * ruido(p); p *= 2.03; a *= 0.5; }
+        return v;
+      }
+
       void main () {
-        float h = clamp(vAltura, -0.2, 1.0);
+        // RENORMALIZAR. vDir sale unitario del v\xE9rtice pero llega interpolado,
+        // y un vector interpolado entre dos unitarios NO es unitario: se acorta
+        // en el medio del tri\xE1ngulo. Con el disco elevado a 260 ese error de
+        // largo se ve como una veta.
+        vec3 d = normalize(vDir);
+        float h = clamp(d.y, -0.2, 1.0);
         vec3 c = h < 0.16
           ? mix(uBajo, uMedio, smoothstep(-0.2, 0.16, h))
           : mix(uMedio, uAlto, smoothstep(0.16, 0.62, h));
+
+        float haciaSol = max(dot(d, uSol), 0.0);
+
+        // EL RESPLANDOR va antes que las nubes y el DISCO despu\xE9s: una nube
+        // que pasa por delante del sol tapa el disco pero no el halo, que es
+        // lo que hace el aire.
+        c += vec3(1.0, 0.84, 0.58) * pow(haciaSol, 7.0) * 0.20;
+
+        // LAS NUBES. Viven en un plano por encima de la cabeza y se las mira
+        // en perspectiva: dividir por la altura las estira hacia el horizonte
+        // igual que se estiran de verdad. Se desvanecen ah\xED abajo, donde la
+        // proyecci\xF3n se vuelve infinita y la niebla del r\xEDo ya tapa todo.
+        vec2 uv = d.xz / max(d.y, 0.05) * 0.75 + vec2(uTiempo * 0.006, 0.0);
+        float n = fbm(uv);
+        float nube = smoothstep(0.34, 0.62, n) * smoothstep(0.02, 0.26, d.y);
+        // a esta hora las nubes est\xE1n encendidas del lado del sol y plomizas del otro
+        vec3 colNube = mix(vec3(0.66, 0.66, 0.69), vec3(1.0, 0.88, 0.70), pow(haciaSol, 1.6));
+        c = mix(c, colNube, nube * 0.88);
+
+        c += vec3(1.0, 0.92, 0.72) * pow(haciaSol, 260.0) * (1.0 - nube) * 0.85;
         // Este cielo se pinta a mano y a prop\xF3sito NO pasa por el mapeo de
         // tonos: los tres colores est\xE1n elegidos a ojo contra la pantalla, ya
         // en el espacio de la pantalla. Meterlos por ACES los levantar\xEDa y el
@@ -27076,7 +27141,9 @@ function cieloDomo() {
   });
   const m = new Mesh(geo, mat2);
   m.frustumCulled = false;
-  return m;
+  return { malla: m, actualizar: (dt) => {
+    mat2.uniforms.uTiempo.value += dt;
+  } };
 }
 function siluetaBlanco() {
   const g = new Group();
@@ -27184,7 +27251,8 @@ function capasDeNiebla(escena2) {
   };
 }
 function construirMundo(escena2) {
-  escena2.add(cieloDomo());
+  const cielo = cieloDomo();
+  escena2.add(cielo.malla);
   escena2.fog = new Fog(13816002, 20, 175);
   const sol = new DirectionalLight(16767392, 2.5);
   sol.position.set(48, 15, -26);
@@ -27330,6 +27398,7 @@ function construirMundo(escena2) {
       escena2.add(t);
     }
   }
+  const PASTO = 7e3;
   const mata = new PlaneGeometry(0.42, 0.4);
   mata.translate(0, 0.2, 0);
   const matas = new InstancedMesh(
@@ -27343,21 +27412,26 @@ function construirMundo(escena2) {
       alphaTest: 0.35,
       depthWrite: true
     }),
-    2600
+    PASTO
   );
   const m4 = new Matrix4();
   const q = new Quaternion();
   const e = new Vector3();
   const p = new Vector3();
-  for (let i = 0; i < 2600; i++) {
-    p.set((Math.random() - 0.5) * 120, 0, -Math.random() * 92 + 8);
+  const col = new Color();
+  for (let i = 0; i < PASTO; i++) {
+    p.set((Math.random() - 0.5) * 196, 0, -Math.random() * 92 + 8);
     q.setFromAxisAngle(new Vector3(0, 1, 0), Math.random() * Math.PI);
-    const s = 0.6 + Math.random() * 0.9;
-    e.set(s, s * (0.7 + Math.random() * 0.8), s);
+    const s = 0.55 + Math.random() * 1.15;
+    e.set(s, s * (0.65 + Math.random() * 0.95), s);
     m4.compose(p, q, e);
     matas.setMatrixAt(i, m4);
+    const t = 0.5 + 0.5 * Math.sin(p.x * 0.045) * Math.cos(p.z * 0.038);
+    col.setHSL(0.13 - t * 0.02, 0.2 + t * 0.16, 0.44 + t * 0.16);
+    matas.setColorAt(i, col);
   }
   matas.instanceMatrix.needsUpdate = true;
+  matas.instanceColor.needsUpdate = true;
   matas.receiveShadow = true;
   escena2.add(matas);
   const cortezaMat = new MeshStandardMaterial({ color: 5522222, roughness: 1 });
@@ -27369,8 +27443,25 @@ function construirMundo(escena2) {
     [-8, -60, 0.6, 5, 3.2],
     [22, -66, 0.5, 4.4, 2.7],
     [-24, -48, 0.45, 3.8, 2.4],
-    [7, -72, 0.55, 4.8, 3]
+    [7, -72, 0.55, 4.8, 3],
+    // entre el convento y el arranque del rodeo
+    [-40, -14, 0.55, 4.6, 3],
+    [42, -20, 0.6, 5.2, 3.4],
+    [-44, -52, 0.5, 4, 2.6],
+    [45, -58, 0.55, 4.4, 2.9],
+    [38, 12, 0.5, 4.2, 2.7],
+    [-37, 16, 0.45, 3.6, 2.3],
+    // el monte de los flancos, por fuera de la ruta de las columnas
+    [-88, -30, 1.4, 6.4, 6],
+    [-84, -62, 0.7, 5.4, 3.6],
+    [-91, 4, 0.6, 4.8, 3.1],
+    [87, -34, 1.3, 6.2, 5.8],
+    [83, -66, 0.65, 5, 3.4],
+    [90, 8, 0.6, 4.6, 3],
+    [-86, -78, 0.55, 4.2, 2.8],
+    [85, -80, 0.5, 4, 2.6]
   ];
+  const LOBULOS = [[0, 0, 0, 1], [-0.26, 0.46, 0.16, 0.74], [0.22, 0.8, -0.14, 0.5]];
   const troncos = new InstancedMesh(
     new CylinderGeometry(0.6, 1, 1, 7),
     cortezaMat,
@@ -27379,7 +27470,7 @@ function construirMundo(escena2) {
   const copas = new InstancedMesh(
     new SphereGeometry(1, 10, 8),
     follajeMat,
-    arboles.length
+    arboles.length * LOBULOS.length
   );
   troncos.castShadow = copas.castShadow = true;
   troncos.receiveShadow = true;
@@ -27388,12 +27479,14 @@ function construirMundo(escena2) {
   arboles.forEach(([x, z, radio, alto, copaR], i) => {
     _m.compose(new Vector3(x, alto / 2, z), _q, new Vector3(radio, alto, radio));
     troncos.setMatrixAt(i, _m);
-    _m.compose(
-      new Vector3(x, alto + copaR * 0.42, z),
-      _q,
-      new Vector3(copaR * 1.3, copaR * 0.8, copaR * 1.2)
-    );
-    copas.setMatrixAt(i, _m);
+    LOBULOS.forEach(([lx, ly, lz, r], k) => {
+      _m.compose(
+        new Vector3(x + lx * copaR, alto + copaR * (0.34 + ly * 0.78), z + lz * copaR),
+        _q,
+        new Vector3(copaR * 1.02 * r, copaR * 0.94 * r, copaR * 1 * r)
+      );
+      copas.setMatrixAt(i * LOBULOS.length + k, _m);
+    });
     colisiones.push(new Box3(
       new Vector3(x - radio, 0, z - radio),
       new Vector3(x + radio, alto, z + radio)
@@ -27402,7 +27495,7 @@ function construirMundo(escena2) {
   escena2.add(troncos);
   escena2.add(copas);
   const niebla = capasDeNiebla(escena2);
-  return { colisiones, blancos, sol, niebla };
+  return { colisiones, blancos, sol, niebla, cielo, botes: BOTES };
 }
 
 // src/humo.js
@@ -30335,6 +30428,7 @@ var CUBIERTA_MINIMA = 6;
 var CUBIERTA_LLEGADA = 1.1;
 var RODILLA_SUELTA = 0.42;
 var ESPERA_HUECO = 2.2;
+var CONVERGER = 22;
 var ACERO_GUARDIA = 1.05;
 var ACERO_AVISO = 0.62;
 var ACERO_SALIDA = 0.2;
@@ -30589,7 +30683,20 @@ var Soldado = class _Soldado {
   // está en z −85 y la escuadra fondeada detrás— y el granadero vuelve atrás
   // del convento, por el costado y no por encima del edificio.
   refugio() {
-    return this.esRealista ? { x: this.pos.x, z: REFUGIO_REALISTA } : { x: (this.pos.x >= 0 ? 1 : -1) * 42, z: REFUGIO_GRANADERO };
+    if (!this.esRealista) {
+      return { x: (this.pos.x >= 0 ? 1 : -1) * 42, z: REFUGIO_GRANADERO };
+    }
+    let x = this.pos.x, mejor = Infinity;
+    for (const bx of _Soldado.botes) {
+      const d = Math.abs(bx - this.pos.x);
+      if (d < mejor) {
+        mejor = d;
+        x = bx;
+      }
+    }
+    const falta = Math.max(0, this.pos.z - REFUGIO_REALISTA);
+    const juntarse = 1 - Math.min(1, falta / CONVERGER);
+    return { x: this.pos.x + (x - this.pos.x) * juntarse, z: REFUGIO_REALISTA };
   }
   get enRefugio() {
     const r = this.refugio();
@@ -31256,6 +31363,7 @@ var Soldado = class _Soldado {
 };
 Soldado.vecinos = null;
 Soldado.acoso = /* @__PURE__ */ new Map();
+Soldado.botes = [];
 Soldado.censar = function(soldados2) {
   const m = Soldado.acoso;
   m.clear();
@@ -35145,6 +35253,7 @@ var relleno = new DirectionalLight(10467024, 0.9);
 relleno.position.set(-0.9, 0.2, 0.6);
 escenaArma.add(relleno);
 var mundo = construirMundo(escena);
+Soldado.botes = mundo.botes;
 var humo = new Humo(escena);
 var fuego = new Fuego(escena, camara);
 var lejania = new Lejania(escena, 320);
@@ -35372,6 +35481,7 @@ function simular(dt) {
   humo.actualizar(dt);
   fuego.actualizar(dt);
   mundo.niebla.actualizar(dt);
+  mundo.cielo.actualizar(dt);
   if (!red.esInvitado) Soldado.censar(soldados);
   for (let i = soldados.length - 1; i >= 0; i--) {
     const s = soldados[i];

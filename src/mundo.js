@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { construirSanLorenzo, Horno, MAT } from './sanlorenzo.js';
+import { construirSanLorenzo, Horno, MAT, BOTES } from './sanlorenzo.js';
 
 // Cuartel del Retiro, amanecer. Sol rasante, pasto seco de verano, cal blanca.
 // Nada de fotorrealismo: paleta corta y formas simples, como un óleo de batalla.
@@ -64,29 +64,79 @@ function pastoTextura () {
 
 function cieloDomo () {
   // Amanecer del 3 de febrero: naranja rasante abajo, azul limpio arriba.
-  const geo = new THREE.SphereGeometry(300, 24, 16);
+  // 48x32 y no 24x16: el disco del sol se calcula por fragmento a partir de un
+  // varying, y con triángulos de cuarenta grados la interpolación lo estiraba
+  // en una veta vertical. Es una malla suelta sin culling, no cuesta nada.
+  const geo = new THREE.SphereGeometry(300, 48, 32);
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     uniforms: {
       uAlto: { value: new THREE.Color(0x6d92bd) },
       uMedio: { value: new THREE.Color(0xa8bccf) },
-      uBajo: { value: new THREE.Color(0xe8c793) }
+      uBajo: { value: new THREE.Color(0xe8c793) },
+      // el mismo rumbo que la luz direccional de abajo: si el sol se dibuja
+      // en un lado y las sombras caen del otro, el amanecer se deshace
+      uSol: { value: new THREE.Vector3(48, 15, -26).normalize() },
+      uTiempo: { value: 0 }
     },
     vertexShader: `
       varying float vAltura;
+      varying vec3 vDir;
       void main () {
-        vAltura = normalize(position).y;
+        vDir = normalize(position);
+        vAltura = vDir.y;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: `
       uniform vec3 uAlto; uniform vec3 uMedio; uniform vec3 uBajo;
+      uniform vec3 uSol; uniform float uTiempo;
       varying float vAltura;
+      varying vec3 vDir;
+
+      float hash (vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float ruido (vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                   mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
+      float fbm (vec2 p) {
+        float v = 0.0, a = 0.5;
+        for (int k = 0; k < 4; k++) { v += a * ruido(p); p *= 2.03; a *= 0.5; }
+        return v;
+      }
+
       void main () {
-        float h = clamp(vAltura, -0.2, 1.0);
+        // RENORMALIZAR. vDir sale unitario del vértice pero llega interpolado,
+        // y un vector interpolado entre dos unitarios NO es unitario: se acorta
+        // en el medio del triángulo. Con el disco elevado a 260 ese error de
+        // largo se ve como una veta.
+        vec3 d = normalize(vDir);
+        float h = clamp(d.y, -0.2, 1.0);
         vec3 c = h < 0.16
           ? mix(uBajo, uMedio, smoothstep(-0.2, 0.16, h))
           : mix(uMedio, uAlto, smoothstep(0.16, 0.62, h));
+
+        float haciaSol = max(dot(d, uSol), 0.0);
+
+        // EL RESPLANDOR va antes que las nubes y el DISCO después: una nube
+        // que pasa por delante del sol tapa el disco pero no el halo, que es
+        // lo que hace el aire.
+        c += vec3(1.0, 0.84, 0.58) * pow(haciaSol, 7.0) * 0.20;
+
+        // LAS NUBES. Viven en un plano por encima de la cabeza y se las mira
+        // en perspectiva: dividir por la altura las estira hacia el horizonte
+        // igual que se estiran de verdad. Se desvanecen ahí abajo, donde la
+        // proyección se vuelve infinita y la niebla del río ya tapa todo.
+        vec2 uv = d.xz / max(d.y, 0.05) * 0.75 + vec2(uTiempo * 0.006, 0.0);
+        float n = fbm(uv);
+        float nube = smoothstep(0.34, 0.62, n) * smoothstep(0.02, 0.26, d.y);
+        // a esta hora las nubes están encendidas del lado del sol y plomizas del otro
+        vec3 colNube = mix(vec3(0.66, 0.66, 0.69), vec3(1.0, 0.88, 0.70), pow(haciaSol, 1.6));
+        c = mix(c, colNube, nube * 0.88);
+
+        c += vec3(1.0, 0.92, 0.72) * pow(haciaSol, 260.0) * (1.0 - nube) * 0.85;
         // Este cielo se pinta a mano y a propósito NO pasa por el mapeo de
         // tonos: los tres colores están elegidos a ojo contra la pantalla, ya
         // en el espacio de la pantalla. Meterlos por ACES los levantaría y el
@@ -98,7 +148,7 @@ function cieloDomo () {
   });
   const m = new THREE.Mesh(geo, mat);
   m.frustumCulled = false;
-  return m;
+  return { malla: m, actualizar: dt => { mat.uniforms.uTiempo.value += dt; } };
 }
 
 function siluetaBlanco () {
@@ -203,7 +253,8 @@ function capasDeNiebla (escena) {
 }
 
 export function construirMundo (escena) {
-  escena.add(cieloDomo());
+  const cielo = cieloDomo();
+  escena.add(cielo.malla);
   // niebla de las cinco de la mañana sobre el Paraná
   escena.fog = new THREE.Fog(0xd2d0c2, 20, 175);
 
@@ -347,6 +398,10 @@ export function construirMundo (escena) {
   }
 
   // --- pasto: matas instanciadas, baratas y con viento ---
+  // Eran 2600 sobre 120 m de ancho. El campo ahora mide 192 —se ensanchó para
+  // que la pinza pueda rodear— y con la misma cuenta los flancos quedaban
+  // pelados justo donde ahora se juega la maniobra.
+  const PASTO = 7000;
   const mata = new THREE.PlaneGeometry(0.42, 0.4);
   mata.translate(0, 0.2, 0);
   const matas = new THREE.InstancedMesh(
@@ -355,39 +410,68 @@ export function construirMundo (escena) {
       map: pastoTextura(), color: 0xcfc292, roughness: 1,
       side: THREE.DoubleSide, transparent: true, alphaTest: 0.35, depthWrite: true
     }),
-    2600
+    PASTO
   );
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const e = new THREE.Vector3();
   const p = new THREE.Vector3();
-  for (let i = 0; i < 2600; i++) {
+  const col = new THREE.Color();
+  for (let i = 0; i < PASTO; i++) {
     // el pasto termina en el borde de la barranca: no crece sobre el Paraná
-    p.set((Math.random() - 0.5) * 120, 0, -Math.random() * 92 + 8);
+    p.set((Math.random() - 0.5) * 196, 0, -Math.random() * 92 + 8);
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI);
-    const s = 0.6 + Math.random() * 0.9;
-    e.set(s, s * (0.7 + Math.random() * 0.8), s);
+    const s = 0.55 + Math.random() * 1.15;
+    e.set(s, s * (0.65 + Math.random() * 0.95), s);
     m4.compose(p, q, e);
     matas.setMatrixAt(i, m4);
+    // MANCHONES, no una alfombra pareja. Un campo de verdad tiene pasto
+    // quemado al lado de pasto que todavía aguanta, y el ruido suave hace
+    // parches anchos en vez de confeti: se ve el terreno, no la instancia.
+    const t = 0.5 + 0.5 * Math.sin(p.x * 0.045) * Math.cos(p.z * 0.038);
+    col.setHSL(0.13 - t * 0.02, 0.20 + t * 0.16, 0.44 + t * 0.16);
+    matas.setColorAt(i, col);
   }
   matas.instanceMatrix.needsUpdate = true;
+  matas.instanceColor.needsUpdate = true;
   matas.receiveShadow = true;
   escena.add(matas);
 
   // --- arboleda: los troncos frenan, y sirven de cobertura ---
   const cortezaMat = new THREE.MeshStandardMaterial({ color: 0x54432e, roughness: 1 });
   const follajeMat = new THREE.MeshStandardMaterial({ color: 0x4e5c39, roughness: 1, flatShading: true });
+  // Los siete de siempre, más los de los flancos nuevos.
+  //
+  // DÓNDE NO VAN: las columnas de la pinza siguen puntos, no buscan camino, y
+  // un tronco en el medio de la ruta las traba. Bajan por x=∓74, así que la
+  // franja de 68 a 80 queda limpia a propósito. Los de más afuera (±86 y más)
+  // sirven de cobertura al que rodea sin estorbarle el paso a nadie.
   const arboles = [
     [-30, -70, 1.6, 6.0, 6.5], [-18, -26, 0.5, 4.2, 2.6], [15, -44, 0.55, 4.6, 2.9],
     [-8, -60, 0.6, 5.0, 3.2], [22, -66, 0.5, 4.4, 2.7], [-24, -48, 0.45, 3.8, 2.4],
-    [7, -72, 0.55, 4.8, 3.0]
+    [7, -72, 0.55, 4.8, 3.0],
+    // entre el convento y el arranque del rodeo
+    [-40, -14, 0.55, 4.6, 3.0], [42, -20, 0.6, 5.2, 3.4], [-44, -52, 0.5, 4.0, 2.6],
+    [45, -58, 0.55, 4.4, 2.9], [38, 12, 0.5, 4.2, 2.7], [-37, 16, 0.45, 3.6, 2.3],
+    // el monte de los flancos, por fuera de la ruta de las columnas
+    [-88, -30, 1.4, 6.4, 6.0], [-84, -62, 0.7, 5.4, 3.6], [-91, 4, 0.6, 4.8, 3.1],
+    [87, -34, 1.3, 6.2, 5.8], [83, -66, 0.65, 5.0, 3.4], [90, 8, 0.6, 4.6, 3.0],
+    [-86, -78, 0.55, 4.2, 2.8], [85, -80, 0.5, 4.0, 2.6]
   ];
+  // Tres lóbulos por copa en vez de una bola: una esfera sola se lee como
+  // esfera, tres apenas corridas se leen como follaje. Sigue siendo una sola
+  // llamada de dibujo porque son instancias de la misma geometría.
+  // Separados sobre todo en ALTURA. Con los tres a la misma altura y corridos
+  // de costado se funden en un disco y el árbol parece un plato volador: hay
+  // que apilarlos, no desparramarlos. Y la copa va casi esférica —estaba
+  // achatada a 0,8— porque el achatamiento es justo lo que hacía el plato.
+  const LOBULOS = [[0, 0.00, 0, 1.00], [-0.26, 0.46, 0.16, 0.74], [0.22, 0.80, -0.14, 0.50]];
   // Instanciada: siete árboles con dos llamadas de dibujo en vez de catorce.
   // El tronco base mide 1 de radio y 1 de alto, y cada instancia lo escala.
   const troncos = new THREE.InstancedMesh(
     new THREE.CylinderGeometry(0.6, 1, 1, 7), cortezaMat, arboles.length);
   const copas = new THREE.InstancedMesh(
-    new THREE.SphereGeometry(1, 10, 8), follajeMat, arboles.length);
+    new THREE.SphereGeometry(1, 10, 8), follajeMat, arboles.length * LOBULOS.length);
   troncos.castShadow = copas.castShadow = true;
   troncos.receiveShadow = true;
   const _m = new THREE.Matrix4();
@@ -395,9 +479,12 @@ export function construirMundo (escena) {
   arboles.forEach(([x, z, radio, alto, copaR], i) => {
     _m.compose(new THREE.Vector3(x, alto / 2, z), _q, new THREE.Vector3(radio, alto, radio));
     troncos.setMatrixAt(i, _m);
-    _m.compose(new THREE.Vector3(x, alto + copaR * 0.42, z), _q,
-      new THREE.Vector3(copaR * 1.3, copaR * 0.8, copaR * 1.2));
-    copas.setMatrixAt(i, _m);
+    LOBULOS.forEach(([lx, ly, lz, r], k) => {
+      _m.compose(
+        new THREE.Vector3(x + lx * copaR, alto + copaR * (0.34 + ly * 0.78), z + lz * copaR),
+        _q, new THREE.Vector3(copaR * 1.02 * r, copaR * 0.94 * r, copaR * 1.0 * r));
+      copas.setMatrixAt(i * LOBULOS.length + k, _m);
+    });
     colisiones.push(new THREE.Box3(
       new THREE.Vector3(x - radio, 0, z - radio), new THREE.Vector3(x + radio, alto, z + radio)));
   });
@@ -406,5 +493,5 @@ export function construirMundo (escena) {
 
   const niebla = capasDeNiebla(escena);
 
-  return { colisiones, blancos, sol, niebla };
+  return { colisiones, blancos, sol, niebla, cielo, botes: BOTES };
 }

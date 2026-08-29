@@ -77,6 +77,9 @@ relleno.position.set(-0.9, 0.2, 0.6);
 escenaArma.add(relleno);
 
 const mundo = construirMundo(escena);
+// Dónde se embarcan los que se quiebran. Lo sabe la batalla, lo usa el
+// sistema: main los presenta y no opina de ninguno de los dos.
+Soldado.botes = mundo.botes;
 const humo = new Humo(escena);
 const fuego = new Fuego(escena, camara);
 const lejania = new Lejania(escena, 320);
@@ -333,6 +336,7 @@ function simular (dt) {
   humo.actualizar(dt);
   fuego.actualizar(dt);
   mundo.niebla.actualizar(dt);
+  mundo.cielo.actualizar(dt);
 
   // Quién tiene a quién encima. Se cuenta una vez por cuadro, con los objetivos
   // del cuadro anterior, y de ahí sale que no te caigan los doscientos

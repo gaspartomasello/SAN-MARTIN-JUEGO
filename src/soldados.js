@@ -108,6 +108,7 @@ const CUBIERTA_MINIMA = 6;      // no se parapeta encima del enemigo
 const CUBIERTA_LLEGADA = 1.1;
 const RODILLA_SUELTA = 0.42;    // probabilidad de hincarla a campo abierto
 const ESPERA_HUECO = 2.2;       // segundos esperando un hueco antes de hincarse
+const CONVERGER = 22;           // a esta distancia del borde empieza a buscar su bote
 
 // Ritmo de la estocada. El AVISO es sagrado: es la ventana en la que el
 // jugador ve venir el golpe. Sin esto, parar es lotería.
@@ -472,9 +473,28 @@ export class Soldado {
   // está en z −85 y la escuadra fondeada detrás— y el granadero vuelve atrás
   // del convento, por el costado y no por encima del edificio.
   refugio () {
-    return this.esRealista
-      ? { x: this.pos.x, z: REFUGIO_REALISTA }
-      : { x: (this.pos.x >= 0 ? 1 : -1) * 42, z: REFUGIO_GRANADERO };
+    if (!this.esRealista) {
+      return { x: (this.pos.x >= 0 ? 1 : -1) * 42, z: REFUGIO_GRANADERO };
+    }
+    // Al bote más cercano, pero CONVERGIENDO DE A POCO.
+    //
+    // Un hombre que se raja no corre hacia el vacío: corre hacia algo. Pero
+    // apuntarle al bote desde el primer paso lo hace cruzar en diagonal por
+    // delante de la línea enemiga, y eso no es huir: es ofrecerse. Medido, con
+    // la diagonal entera bajaban 7 de 250 en vez de 23.
+    //
+    // Así que primero se sale del fuego, derecho para atrás, y la convergencia
+    // entra sobre el final —cuando ya está cerca del borde y el peligro quedó
+    // atrás—. Desde arriba se ven cinco chorros que se van juntando, que es lo
+    // que se veía ese día.
+    let x = this.pos.x, mejor = Infinity;
+    for (const bx of Soldado.botes) {
+      const d = Math.abs(bx - this.pos.x);
+      if (d < mejor) { mejor = d; x = bx; }
+    }
+    const falta = Math.max(0, this.pos.z - REFUGIO_REALISTA);
+    const juntarse = 1 - Math.min(1, falta / CONVERGER);
+    return { x: this.pos.x + (x - this.pos.x) * juntarse, z: REFUGIO_REALISTA };
   }
 
   get enRefugio () {
@@ -1275,6 +1295,8 @@ export class Soldado {
 Soldado.vecinos = null;
 
 Soldado.acoso = new Map();
+// Los puntos de embarque, que los pone la batalla. Vacío = se rajan derecho.
+Soldado.botes = [];
 Soldado.censar = function (soldados) {
   const m = Soldado.acoso;
   m.clear();

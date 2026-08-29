@@ -154,6 +154,28 @@ function convento (horno, colisiones) {
   caja(30.6, Z, 31.4, Z + 50, 3.4);
 }
 
+// Dónde está varada cada chalupa. Lo lee soldados.js por Soldado.botes para
+// saber hacia cuál corre el que se quiebra: por eso son coordenadas y no
+// solamente geometría.
+export const BOTES = [-72, -36, 0, 36, 72];
+
+function botes (h, HONDO) {
+  const CASCO = 0x4a412f, BORDA = 0x6f5f42, REMO = 0x8a7a58;
+  BOTES.forEach((x, i) => {
+    const z = -101 - (i % 2) * 3.4;      // dos hileras: unas más metidas en el agua
+    const r = -0.14 + (i % 3) * 0.12;    // ninguna vararía perfectamente derecha
+    const y = HONDO + 0.45;
+    h.caja(x, y, z, 7.4, 1.05, 2.3, CASCO, r);
+    h.caja(x, y + 0.6, z, 7.0, 0.18, 2.5, BORDA, r);
+    for (const d of [-2.1, 0, 2.1]) {    // las bancadas
+      h.caja(x + Math.cos(r) * d, y + 0.58, z - Math.sin(r) * d, 0.46, 0.12, 2.0, BORDA, r);
+    }
+    for (const lado of [-1, 1]) {        // los remos, apoyados cruzados
+      h.caja(x + lado * 0.7, y + 0.74, z + lado * 1.4, 5.4, 0.11, 0.11, REMO, r + lado * 0.3);
+    }
+  });
+}
+
 // -------------------------------------------- la barranca y el Paraná
 
 // El suelo no sigue plano hasta el infinito: a ochenta y cinco metros se cae
@@ -218,8 +240,20 @@ function barrancaYRio (escena, colisiones) {
       h.caja(px, y + altoP * 0.36, pz, 8.2, 4.2, 0.24, VELA, r);
     }
   }
+  botes(h, HONDO);          // antes de cocinar: lo que se agrega después no existe
   escena.add(h.cocinar(MAT()));
 
+  // LOS BOTES, que es donde termina de verdad la desbandada.
+  //
+  // La escuadra está fondeada lejos y a un buque no se llega a pie: se llega
+  // en chalupa. Faltaba justamente ese eslabón —se veían los once buques en
+  // el horizonte y no había con qué alcanzarlos—, así que el que bajaba la
+  // barranca simplemente se desvanecía en el borde.
+  //
+  // Ahora hay cinco varadas en la playa, y los que se quiebran corren HACIA
+  // una de ellas en vez de rajar derecho para el frente. Desde arriba se ve
+  // la diferencia: la desbandada deja de ser doscientos hombres yéndose en
+  // paralelo y pasa a ser cinco chorros que convergen.
   // no se puede caminar al vacío: el borde de la barranca frena
   colisiones.push(new THREE.Box3(
     new THREE.Vector3(-ANCHO / 2, 0, Z0 - 1.2), new THREE.Vector3(ANCHO / 2, 2.4, Z0 - 0.2)));
