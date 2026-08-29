@@ -30807,7 +30807,8 @@ var Soldado = class _Soldado {
           this._entrarAcero();
           break;
         }
-        if (this.teVe && this.recarga > 0 && dist < CARGA_BAYONETA * this.arrojo) {
+        const tardaEnLlegar = dist / VEL_CARRERA;
+        if (this.teVe && this.recarga > tardaEnLlegar && dist < CARGA_BAYONETA * this.arrojo) {
           if (this.aliento < CARRERA_MINIMA) {
             this.fig.poner("marcha");
             if (distDestino > 0.6) {

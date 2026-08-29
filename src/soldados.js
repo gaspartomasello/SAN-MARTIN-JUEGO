@@ -751,7 +751,23 @@ export class Soldado {
         // distancia de arrojo, que no es la del de al lado, y que le pase el
         // tiempo de decidirse. Un hombre no arranca a correr en el mismo cuadro
         // en que ve al enemigo; duda medio segundo, y cada uno duda distinto.
-        if (this.teVe && this.recarga > 0 && dist < CARGA_BAYONETA * this.arrojo) {
+        // ¿LLEGO A CARGAR ANTES DE QUE ME CAIGA ENCIMA?
+        //
+        // Antes la puerta era `recarga > 0`: cualquier hombre a medio cargar
+        // bajaba el fusil y salía a la bayoneta. Con doce segundos y medio de
+        // recarga eso es toda la batalla, así que la infantería realista casi
+        // no tiraba: cargaba. Y la carga es lo que mata a la caballería —el
+        // 52 % de las bajas de granadero y el 97 % de los desmontes—, o sea
+        // que un número pensado para la cadencia de tiro estaba decidiendo el
+        // final de la batalla por la puerta de atrás.
+        //
+        // Ahora la pregunta es de tiempo, que es la que se hace un hombre: lo
+        // que me falta para tener tiro contra lo que tarda en llegarme. Si
+        // llego a cargar, cargo y le tiro. Si no llego, bayoneta. El que acaba
+        // de disparar sale al acero igual que antes; el que está por terminar
+        // se queda y descarga.
+        const tardaEnLlegar = dist / VEL_CARRERA;
+        if (this.teVe && this.recarga > tardaEnLlegar && dist < CARGA_BAYONETA * this.arrojo) {
           if (this.aliento < CARRERA_MINIMA) {
             // sin aire: camina hacia él con la bayoneta puesta, resollando
             this.fig.poner('marcha');
