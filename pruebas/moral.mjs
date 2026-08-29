@@ -76,7 +76,13 @@ const r = await pag.evaluate(async () => {
     // la única que se quiere medir acá.
     const medio = re.slice(6, 14);
     correr(60 * 4);
-    return medio.reduce((a, s) => a + s.animo, 0) / medio.length;
+    // SE MIDE EL TÉRMINO, NO EL ÁNIMO. Medir el ánimo resultante era pedirle a
+    // una diferencia de medio punto que se abriera paso entre el ruido de ocho
+    // hombres con temples distintos: el promedio de tres corridas daba 0,8 a
+    // favor una vez y 0,7 en contra la siguiente. `porQue.flanco` es lo que el
+    // sistema ya anota, cada 0,4 s, para poder decir por qué se está quebrando
+    // un hombre — y es exactamente lo que esta prueba afirma.
+    return medio.reduce((a, s) => a + ((s.porQue || {}).flanco || 0), 0) / medio.length;
   }
   // SE CORRE TRES VECES Y SE PROMEDIA. El temple de cada hombre va de 0,72 a
   // 1,34 a propósito —si no, se quiebran todos en el mismo cuadro— y con veinte
@@ -87,11 +93,20 @@ const r = await pag.evaluate(async () => {
   const promedio = f => (f() + f() + f()) / 3;
   const frente = promedio(() => aguante(false));
   const costado = promedio(() => aguante(true));
-  out.push(['—', 'ánimo a los 4 s (media de 3 corridas)',
-    `de frente ${frente.toFixed(0)} · por el flanco ${costado.toFixed(0)}`]);
-  ok('por el flanco duele mucho más que de frente', costado < frente - 12,
-    `${frente.toFixed(0)} contra ${costado.toFixed(0)}`);
-  ok('y de frente la línea todavía tiene con qué', frente > 40, frente.toFixed(0));
+  out.push(['—', 'castigo de flanco a los 4 s (media de 3 corridas)',
+    `de frente ${frente.toFixed(3)}/s · por el flanco ${costado.toFixed(3)}/s`]);
+  // OJO CON LO QUE PEDÍA ESTO, que estuvo mal mucho tiempo: 12 puntos de ánimo
+  // de diferencia, umbral de cuando la sección de moral de balance.js valía
+  // treinta veces más. Después del reescalado la prueba no podía pasar ni con
+  // el flanco funcionando perfecto, y falló en silencio desde entonces.
+  //
+  // Y lo que se aísla acá es el término de INFANTERÍA solo. El pago grande de
+  // la pinza no es éste: es CABALLO_FLANCO, que multiplica por 2,4 el miedo al
+  // jinete que te entra por el costado, y ése se ve en la batalla entera.
+  ok('por el flanco se cobra flanco, y de frente no', costado > frente * 2.5,
+    `${frente.toFixed(3)}/s contra ${costado.toFixed(3)}/s`);
+  ok('y no está saturado: la línea de frente casi no lo paga', frente < 0.08,
+    `${frente.toFixed(3)}/s`);
 
   // ---------- 2. el que se quiebra se va, y se va a la barranca ----------
   limpiar();

@@ -66,9 +66,9 @@ ok('la metralla en pleno voltea de una', metrallaAlCaballo(1) >= VIDA_CABALLO,
 // tres tiros, y no hay término medio. Si el borde del abanico volviera a
 // voltear, las piezas se llevan sesenta y dos caballos, no queda quién dé
 // miedo y la línea deja de quebrarse — medido, `desbande` cayó de 3 a 1.
-ok('en la orilla del abanico no lo voltea', metrallaAlCaballo(0.3) === 0);
-ok('y bien adentro, de dos tiros', metrallaAlCaballo(0.5) * 2 >= VIDA_CABALLO
-  && metrallaAlCaballo(0.5) < VIDA_CABALLO, `${metrallaAlCaballo(0.5)} por tiro`);
+ok('fuera del abanico no lo voltea', metrallaAlCaballo(0.2) === 0);
+ok('y adentro, de dos tiros', metrallaAlCaballo(0.4) * 2 >= VIDA_CABALLO
+  && metrallaAlCaballo(0.4) < VIDA_CABALLO, `${metrallaAlCaballo(0.4)} por tiro`);
 
 ok('el corvo mata de una', DANO_SABLE >= VIDA_TROPA, `${DANO_SABLE} contra ${VIDA_TROPA} de vida`);
 ok('tu bala al pecho mata de una', BALA_JUGADOR >= VIDA_TROPA, `${BALA_JUGADOR} contra ${VIDA_TROPA}`);

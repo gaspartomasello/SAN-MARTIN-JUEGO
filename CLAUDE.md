@@ -135,14 +135,23 @@ están limpios; el balance no. Casos reales, ya medidos:
 - **Lo que importa es el producto, no el factor.** Al arreglar la línea de tiro
   los tiros pasaron de 294 a 653 por batalla, y `BALA_TROPA` tuvo que bajar de
   1,5 a 0,9 sin que una bala "duela menos".
-- **No se le pueden subir las bajas a los granaderos, y no es por falta de
-  ganas.** Toda baja de granadero es un jinete menos, y `CABALLO_ENCIMA` es lo
-  único que quiebra la línea. Probado: `BALA_AL_CABALLO` de 2 a 4 → de 87
-  granaderos en pie a **0**, sin punto medio; metralla que voltea en el borde
-  del abanico → 62 caballos muertos y `desbande` de 3 quiebres a 1. **El
-  desbalance que se ve al final no está de este lado**: mueren 227 realistas
-  donde en 1813 murieron unos 40, porque escapan 26 en vez de 210. Lo que hay
-  que arreglar es la huida, no la caballería.
+- **`ANIMO_TROPA` es la escala de toda la moral, y se toca ahí y no término por
+  término.** Bajarlo acelera el desgaste entero sin mover una sola relación. Fue
+  lo que destrabó la batalla: con 100, un realista tardaba 330 s en quebrarse y
+  lo mataban a los 200, así que de 250 se quebraban 41 y los otros 209 morían en
+  su puesto —213 muertos peleando contra 8 muertos huyendo—. Con 72 se quiebran
+  164, escapan 95 y los muertos bajan de 218 a 157.
+- **Antes de tocar un número, fijate si el que miente es la prueba.** Dos
+  umbrales de `moral.mjs` eran de cuando la sección de moral valía treinta veces
+  más y fallaban en silencio desde el reescalado. Y el del flanco además medía
+  mal: pedía la diferencia en el ánimo resultante, que es medio punto contra el
+  ruido de ocho hombres. Midiendo `porQue.flanco` —el desglose que el sistema ya
+  guarda— da 0,000/s de frente contra 0,220/s por el costado, exacto y sin ruido.
+- **A tus granaderos no los puede quebrar la infantería sola**, y por eso
+  `moral.mjs` falla ahí. `CABALLO_ENCIMA` es el único término que rompe una
+  línea y los realistas no tienen un solo caballo; lo que les queda —FLANCO,
+  SOLEDAD, HERIDO— suma 0,44/s contra un pozo de 72. Arreglarlo es agregar un
+  término de «rodeado» y volver a medir la batalla entera.
 - **Lo que se reparte sobre TODO el campo no tiene versión chica.** El
   atropello del granadero se probó con daño 4, con 1, con medio segundo de
   revolcón y con uno cada seis segundos por hombre: las cuatro veces los 250

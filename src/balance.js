@@ -158,13 +158,15 @@ export const METRALLA_CABALLO = 20;   // en pleno abanico lo voltea de una
 // `desbande` cae de 3 quiebres a 1. Con tres, no cambia nada: treinta bajas de
 // granadero, las mismas de antes.
 //
-// Así que lo que se ajusta no es cuánto pega sino A CUÁNTOS. El abanico entero
-// sigue cobrándole a la infantería desde 0,28 —la metralla no distingue— pero
-// para VOLTEAR un caballo hay que estar bien adentro. Que además es cierto: en
-// la orilla del cono el tarro ya se abrió y los perdigones que llegan lastiman
-// al animal, no lo tumban.
+// Así que se agregó una segunda perilla —desde dónde el abanico voltea, aparte
+// de cuánto pega— y con la moral vieja hubo que apretarla hasta 0,45 para no
+// perder el quiebre. Con el pozo de ánimo corregido eso dejó de hacer falta: la
+// línea cede a los dos minutos y medio, o sea antes de que las piezas alcancen
+// a apagar la caballería, y el abanico entero puede voltear otra vez. La perilla
+// queda igual, en el borde del cono útil, porque el día que algo vuelva a
+// acelerar la batalla es la primera que hay que mover.
 export const METRALLA_PLENA = 0.55;   // lo que cobra el del borde del cono útil
-export const METRALLA_JINETE = 0.45;  // y de acá para afuera, al caballo no lo voltea
+export const METRALLA_JINETE = 0.28;  // y de acá para afuera, al caballo no lo voltea
 export function metrallaAlCaballo (g) {
   if (g < METRALLA_JINETE) return 0;
   return Math.round(METRALLA_CABALLO * (METRALLA_PLENA + (1 - METRALLA_PLENA) * g));
@@ -423,16 +425,49 @@ export const ALCANCE_MONTADO = 3.3;   // desde arriba llegás más lejos
 // multiplicador de flanco llegaba a veintiséis: cien de ánimo en cuatro
 // segundos. Un hombre no decide en cuatro segundos.
 //
-// Ahora el quiebre cae entre los ciento setenta y los doscientos quince
-// segundos —tres minutos y pico— con setenta a noventa realistas todavía en
-// pie. Medido en pruebas/desbande.mjs, seis corridas.
+// La ventana de entonces era 170-215 s. HOY ES OTRA, y el número de abajo la
+// mueve a propósito: el quiebre cae cerca de los ciento treinta segundos. Lo
+// que se buscaba con la ventana vieja era que la línea no se deshiciera de un
+// portazo, y eso se sigue cumpliendo; lo que NO se cumplía era la otra mitad
+// —«con setenta a noventa realistas todavía en pie»—, porque para cuando la
+// línea cedía quedaban veinte y los otros doscientos treinta ya estaban
+// muertos. El tiempo pasaba la prueba y la batalla no.
+//
+// La curva completa, midiendo el pozo contra lo que pasa (pruebas/moral.mjs):
+//
+//   pozo  quiebre  llegan a los botes  muertos  batalla
+//   100    3,1 min        16 / 250       234     4,4 min
+//    85    2,7 min        69 / 250       181     3,4 min
+//    72    2,2 min       115 / 250       135     3,2 min
+//    55    1,6 min       140 / 250       110     2,4 min
+//
+// En 1813 se salvaron unos doscientos diez y murieron unos cuarenta. Setenta y
+// dos es lo más cerca de eso que se puede estar sin que la batalla dure dos
+// minutos.
 //
 // Nada de esto se puede tocar de a un número: bajar la moral sola hacía que la
 // línea aguantara hasta que no quedara caballería para asustarla, y la batalla
 // no se alargaba, cambiaba de ganador. La escala de acá abajo va atada a tres
 // cosas de más arriba —la vida de la tropa, el cono del fusil y el oficio del
 // jinete— y si se mueve una hay que volver a medir las cuatro.
-export const ANIMO_TROPA = 100;
+// Y CUANDO CAMBIA LA ESCALA, SE CAMBIA ACÁ Y NO TÉRMINO POR TÉRMINO. Este
+// número es el pozo entero: bajarlo acelera TODO el desgaste sin tocar una sola
+// relación entre los términos, que es exactamente lo que hay que hacer cuando
+// lo que está mal es el ritmo y no el reparto.
+//
+// Y estaba mal el ritmo. Medido con el desglose que guarda `porQue`: a los 210
+// segundos el ánimo medio del que seguía vivo era 36 de 100, cayendo a unos 0,3
+// por segundo netos. O sea que un realista necesitaba trescientos treinta
+// segundos para quebrarse y lo mataban a los doscientos. No es que aguantaran:
+// es que no llegaban. De doscientos cincuenta se quebraban CUARENTA Y UNO y los
+// otros doscientos nueve morían en su puesto.
+//
+// La calibración vieja pedía el quiebre entre 170 y 215 s con setenta a noventa
+// realistas en pie, y el tiempo se seguía cumpliendo —por eso la prueba pasaba—
+// pero la gente en pie no: para cuando la línea cedía quedaban veinte. Todo lo
+// que se le sumó a la caballería desde entonces mata más rápido, y el pozo
+// quedó viejo.
+export const ANIMO_TROPA = 72;
 
 // El compañero que cae al lado. Es de golpe, no por segundo: un muerto se cobra
 // una vez, no mientras el cadáver esté ahí. Contar cadáveres haría que un campo
@@ -597,7 +632,18 @@ export const DESGASTE = 0.5;         // qué parte de cada golpe se lleva el tec
 export const PERSEGUIR = 22;
 
 export const CONTAGIO = 0.42;
-export const CONTAGIO_RADIO = 7.5;
+// EL PÁNICO SE CONTAGIA POR LA VISTA, NO POR EL CODO, y con siete metros y medio
+// no se contagiaba nada. El que se quiebra sale corriendo a cinco metros por
+// segundo, así que estaba al lado de sus compañeros segundo y medio y después
+// desaparecía del radio: cada quiebre repartía medio punto de ánimo sobre cien.
+// Medido, el resultado era que de doscientos cincuenta realistas se quebraban
+// CUARENTA Y UNO y los otros doscientos nueve morían en su puesto —213 muertos
+// peleando contra 8 muertos ya huyendo—. Eso no es una desbandada, es una
+// línea que se deja matar.
+//
+// A un hombre que sale corriendo se lo ve de lejos. Veinte metros es lo que se
+// ve, y de paso es gratis: el bucle de moral.js ya recorre a todos hasta 22.
+export const CONTAGIO_RADIO = 20;
 
 // El temple de cada uno, para que no se quiebren todos en el mismo cuadro. Es
 // el mismo recurso que el arrojo: multiplica lo que le entra.
