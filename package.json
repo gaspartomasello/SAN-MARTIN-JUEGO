@@ -16,6 +16,8 @@
     "sala": "node herramientas/servidor.mjs",
     "red": "node pruebas/red.mjs",
     "moral": "node pruebas/moral.mjs",
+    "balance": "node pruebas/balance.mjs",
+    "tablas": "RAPIDO=1 node pruebas/balance.mjs",
     "fuego": "node pruebas/fuego.mjs",
     "desbande": "node pruebas/desbande.mjs"
   },

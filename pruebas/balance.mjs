@@ -1,10 +1,90 @@
 // ¿CUÁNTO DURA LA BATALLA Y CUÁNTO DURÁS VOS?
 //
-// Los números de pelea no se calibran a ojo: se miden. Esto corre la batalla de
-// verdad con el bucle de verdad y contesta tres preguntas —cuánto vive el
-// jugador quieto en medio del campo, qué porcentaje de los tiros enemigos
-// acierta a cada distancia, y en cuánto se consumen los dos ejércitos—.
-import { chromium } from 'playwright';
+// Los números de pelea no se calibran a ojo: se miden.
+//
+// EL ARCHIVO ESTÁ PARTIDO EN DOS MITADES Y LA DIVISIÓN IMPORTA.
+//
+// Arriba va lo que se contesta con aritmética: la dispersión del fusil y las
+// relaciones entre los números de balance.js, que no importa nada y por lo
+// tanto corre en Node en milisegundos. Abajo va lo que exige el juego andando
+// —cuánto vivís parado en el medio, si corren todos juntos, la batalla entera—
+// y eso cuesta un minuto y medio de Chromium con WebGL por software.
+//
+// Mezcladas, cada vez que querías mirar una tabla de daño pagabas la batalla.
+//
+//   node pruebas/balance.mjs             las dos mitades
+//   RAPIDO=1 node pruebas/balance.mjs    sólo la aritmética, sin navegador
+//
+// En modo rápido playwright ni se importa.
+import {
+  tirar, caidaBala, danoBalaEnemiga, balaContraTropa,
+  VIDA_TROPA, VIDA_CABALLO, DANO_SABLE, BALA_JUGADOR, BALA_MIEMBRO,
+  BALA_TROPA, DANO_BALA, DANO_BAYONETA, BLANCO_HOMBRE
+} from '../src/balance.js';
+
+const out = [];
+const ok = (n, cond, extra) => out.push([cond ? 'OK ' : 'MAL', n, extra === undefined ? '' : extra]);
+
+// ---------- 1. la dispersión: qué tan seguido acierta un fusil ----------
+const proba = (d, oc, hincado) => {
+  let dio = 0;
+  for (let k = 0; k < 40000; k++) if (tirar(d, oc, BLANCO_HOMBRE, hincado).acierto) dio++;
+  return dio / 40000;
+};
+// cuarenta mil tiros por punto en vez de cuatro mil: sin navegador de por medio
+// sale gratis, y el ruido de la medición baja a la tercera parte.
+const tabla = [5, 10, 20, 40, 60].map(d => [d, proba(d, 0, false)]);
+for (const [d, p] of tabla) out.push(['—', `acierto a ${d} m`, `${(p * 100).toFixed(0)} %`]);
+ok('a cinco metros no es seguro', tabla[0][1] < 0.85 && tabla[0][1] > 0.4);
+ok('a veinte metros ya falla más de lo que acierta', tabla[2][1] < 0.45);
+ok('a sesenta metros es casi suerte', tabla[4][1] < 0.14);
+ok('cae con la distancia, sin escalones', tabla.every((f, i) => i === 0 || f[1] < tabla[i - 1][1]));
+
+const hincado = proba(20, 0, true);
+ok('hincado apunta mejor', hincado > tabla[2][1] * 1.2,
+  `${(hincado * 100).toFixed(0)} % contra ${(tabla[2][1] * 100).toFixed(0)} %`);
+const conHumo = proba(20, 1, false);
+ok('el humo le abre el tiro', conHumo < tabla[2][1] * 0.6, `${(conHumo * 100).toFixed(0)} %`);
+
+// ---------- 1b. las relaciones, que es lo que se rompe sin que se note ------
+//
+// Un número de balance nunca vale solo: vale CONTRA otro. "El corvo mata de
+// una" no es DANO_SABLE = 8, es DANO_SABLE >= VIDA_TROPA. Si alguien sube la
+// vida de la tropa, el corvo deja de matar de una y no se entera nadie hasta
+// que lo juega —y ahí lo siente como que el sable "se siente flojo", que es la
+// clase de síntoma que cuesta días rastrear.
+//
+// Esto lo agarra en treinta milisegundos.
+ok('el corvo mata de una', DANO_SABLE >= VIDA_TROPA, `${DANO_SABLE} contra ${VIDA_TROPA} de vida`);
+ok('tu bala al pecho mata de una', BALA_JUGADOR >= VIDA_TROPA, `${BALA_JUGADOR} contra ${VIDA_TROPA}`);
+ok('pero al brazo o a la pierna no', BALA_MIEMBRO < VIDA_TROPA, `${BALA_MIEMBRO} contra ${VIDA_TROPA}`);
+ok('la bala de ellos es de desgaste, no de decisión', BALA_TROPA * 4 < VIDA_TROPA,
+  `hacen falta ${Math.ceil(VIDA_TROPA / BALA_TROPA)} balazos de cerca`);
+ok('el caballo aguanta más que el hombre', VIDA_CABALLO > VIDA_TROPA, `${VIDA_CABALLO} contra ${VIDA_TROPA}`);
+
+// La caída de la bala con la distancia: entera de cerca, cansada de lejos.
+const cerca = danoBalaEnemiga(5), lejos = danoBalaEnemiga(80);
+out.push(['—', 'te pega a 5 m', `${cerca.toFixed(0)} de 100`]);
+out.push(['—', 'te pega a 80 m', `${lejos.toFixed(0)} de 100`]);
+ok('de cerca entra entera', cerca === DANO_BALA, `${cerca}`);
+ok('de lejos pega como un bayonetazo', Math.abs(lejos - DANO_BAYONETA) < 1.5,
+  `${lejos.toFixed(1)} contra ${DANO_BAYONETA} de bayoneta`);
+ok('nunca sube con la distancia', [0, 10, 20, 40, 60, 100].every((d, i, a) =>
+  i === 0 || caidaBala(d) <= caidaBala(a[i - 1])));
+ok('la tropa usa el mismo perfil que vos', 
+  Math.abs(balaContraTropa(80) / BALA_TROPA - caidaBala(80)) < 1e-9);
+
+const mostrar = () => {
+  for (const [e, n, x] of out) console.log(e.padEnd(4), n.padEnd(42), x);
+  const mal = out.filter(x => x[0] === 'MAL').length;
+  console.log(`\n${out.filter(x => x[0] === 'OK ').length} bien, ${mal} mal`);
+  return mal;
+};
+
+if (process.env.RAPIDO) { process.exit(mostrar() ? 1 : 0); }
+
+// ---------- lo que necesita el juego andando ----------
+const { chromium } = await import('playwright');
 const nav = await chromium.launch({ executablePath: process.env.CHROMIUM,
   args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'] });
 const pag = await nav.newPage({ viewport: { width: 900, height: 620 } });
@@ -23,30 +103,6 @@ const r = await pag.evaluate(async () => {
     j.caballos.length = 0;
     j.pinza.desarmar();
   };
-
-  // ---------- 1. la dispersión: qué tan seguido acierta un fusil ----------
-  limpiar();
-  const tirador = j.soltarSoldado('realista', { pos: new T.Vector3(0, 0, -60) });
-  const tabla = [];
-  for (const d of [5, 10, 20, 40, 60]) {
-    let dio = 0;
-    for (let k = 0; k < 4000; k++) if (tirador.apuntarA(d, 0, 0.34).acierto) dio++;
-    tabla.push([d, dio / 4000]);
-  }
-  for (const [d, p] of tabla) out.push(['—', `acierto a ${d} m`, `${(p * 100).toFixed(0)} %`]);
-  ok('a cinco metros no es seguro', tabla[0][1] < 0.85 && tabla[0][1] > 0.4);
-  ok('a veinte metros ya falla más de lo que acierta', tabla[2][1] < 0.45);
-  ok('a sesenta metros es casi suerte', tabla[4][1] < 0.14);
-  ok('cae con la distancia, sin escalones', tabla.every((f, i) => i === 0 || f[1] < tabla[i - 1][1]));
-  let hincado = 0;
-  tirador.rodilla = true;
-  for (let k = 0; k < 4000; k++) if (tirador.apuntarA(20, 0, 0.34).acierto) hincado++;
-  tirador.rodilla = false;
-  ok('hincado apunta mejor', hincado / 4000 > tabla[2][1] * 1.2,
-    `${(hincado / 40).toFixed(0)} % contra ${(tabla[2][1] * 100).toFixed(0)} %`);
-  let conHumo = 0;
-  for (let k = 0; k < 4000; k++) if (tirador.apuntarA(20, 1, 0.34).acierto) conHumo++;
-  ok('el humo le abre el tiro', conHumo / 4000 < tabla[2][1] * 0.6, `${(conHumo / 40).toFixed(0)} %`);
 
   // ---------- 2. cuánto vivís parado en el medio ----------
   const sobrevivir = (n, dist) => {
@@ -106,6 +162,11 @@ const r = await pag.evaluate(async () => {
   const re0 = j.soldados.filter(s => s.esRealista).length;
   const curva = [];
   let t = 0, muerteJugador = -1, acosoMax = 0, acosoSuma = 0, muestras = 0;
+  // El muestreo por minuto era `t % 60 < 1/90`, y con paso de 1/60 eso no cae
+  // casi nunca: se saltaba minutos enteros y curva[0] terminaba siendo el
+  // minuto 3 mientras la comprobación decía "al minuto 1". Un test que miente
+  // sobre qué midió es peor que no tenerlo.
+  let proxMin = 60;
   while (t < 15 * 60) {
     // el jugador CARGA: si se queda quieto no es una batalla, es una foto
     if (j.jugador.monta) { j.jugador.monta.andar = 3; j.jugador.monta.rumbo = Math.atan2(0 - j.jugador.monta.pos.x, -62 - j.jugador.monta.pos.z) + Math.PI; }
@@ -117,7 +178,8 @@ const r = await pag.evaluate(async () => {
       for (const s of j.soldados) if (s.vivo && s.esRealista && Math.hypot(s.pos.x - j.jugador.pos.x, s.pos.z - j.jugador.pos.z) < 4) n++;
       acosoMax = Math.max(acosoMax, n); acosoSuma += n; muestras++;
     }
-    if (Math.abs(t % 60) < 1 / 90) {
+    if (t >= proxMin) {
+      proxMin += 60;
       curva.push({
         min: Math.round(t / 60),
         gr: j.soldados.filter(s => !s.esRealista && s.vivo).length,
@@ -157,8 +219,7 @@ const r = await pag.evaluate(async () => {
   limpiar();
   return out;
 });
-for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(42), x);
-const mal = r.filter(x => x[0] === 'MAL').length;
-console.log(`\n${r.filter(x => x[0] === 'OK ').length} bien, ${mal} mal`);
+out.push(...r);
+mostrar();
 console.log(errs.length ? 'ERRORES: ' + errs.join(' / ') : 'sin errores de consola');
 await nav.close();
