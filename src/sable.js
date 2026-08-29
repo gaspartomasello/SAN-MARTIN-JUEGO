@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETA } from './mundo.js';
-import { brazoLibre } from './armas.js';
+import { brazoLibre } from './armas-modelos.js';
 
 // Sable corvo de San Martín: hoja de curva profunda, guarda en cruz con
 // perillas en las puntas y pomo en gancho. Sin guardamano de canasta — el
