@@ -17,6 +17,7 @@ export class Hud {
     this.ahora = $('#ahora');
     this.remate = $('#remate');
     this.velocidad = $('#velocidad');
+    this.fundido = $('#fundido');
     this.metralla = $('#metralla');
     this.frase = $('#frase');
     this.forcejeo = $('#forcejeo');
@@ -54,6 +55,14 @@ export class Hud {
     this.frase.textContent = texto;
     this.frase.classList.add('si');
     this.tFrase = segundos || 3.2;
+  }
+
+  // EL FUNDIDO A NEGRO. Existe por una sola razón y es tapar el cambio de
+  // cuerpo del acto Cabral: pasar de estar tirado bajo el caballo a estar de
+  // pie once metros más atrás no se puede hacer con un corte, se ve el truco.
+  fundir (a, segundos) {
+    this.fundido.style.transition = `opacity ${segundos || 0.9}s linear`;
+    this.fundido.style.opacity = String(a);
   }
 
   destello (f) {
@@ -102,9 +111,12 @@ export class Hud {
       this.tFrase -= dt;
       if (this.tFrase <= 0) this.frase.classList.remove('si');
     }
-    const atrapado = datos.atrapado > 0;
-    this.forcejeo.classList.toggle('si', atrapado);
-    if (atrapado) this.forcejeo.querySelector('i').style.setProperty('--f',
+    // La misma barra dice dos cosas opuestas: tirado bajo el caballo es lo que
+    // NO alcanza, y de pie empujándolo es lo que sí. Es a propósito que sea la
+    // misma: el jugador ya aprendió a mirarla en el peor momento del juego.
+    const barra = datos.atrapado > 0 || datos.empujando;
+    this.forcejeo.classList.toggle('si', barra);
+    if (barra) this.forcejeo.querySelector('i').style.setProperty('--f',
       (Math.min(1, datos.forcejeo || 0) * 100).toFixed(0) + '%');
 
     this.tomar.style.opacity = datos.puedeTomarFusil ? '1' : '0';

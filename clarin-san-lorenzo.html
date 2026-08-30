@@ -45,6 +45,9 @@
     background:radial-gradient(ellipse 78% 74% at center,rgba(0,0,0,0) 46%,rgba(150,26,20,.62) 100%);
     animation:pulsoMetralla .55s ease-in-out infinite}
   @keyframes pulsoMetralla{0%,100%{filter:brightness(.75)}50%{filter:brightness(1.35)}}
+  /* el fundido a negro del acto Cabral: tapa el cambio de cuerpo */
+  #fundido{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:0;
+           background:#000;transition:opacity .9s linear}
   #velocidad{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0;
     background:radial-gradient(ellipse 72% 68% at center,rgba(0,0,0,0) 52%,rgba(24,20,14,.38) 100%)}
   #sangre{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;transition:opacity .5s ease;
@@ -292,6 +295,7 @@
 <div id="humo-pantalla"></div>
 <div id="vineta"></div>
 <div id="velocidad"></div>
+<div id="fundido"></div>
 <div id="frase"></div>
 <div id="forcejeo"><i></i><b>ESPACIO</b></div>
 <div id="metralla"></div>
@@ -393,6 +397,8 @@
         <div><kbd>W</kbd><span>a caballo: andar (sostener) · <kbd>Shift</kbd> galope</span></div>
         <div><kbd>T</kbd><span><b>tocar el clarín</b> (en la batalla)</span></div>
         <div><kbd>Q</kbd><span><b>¡a mí!</b> — tu columna corta la pelea y se forma atrás tuyo</span></div>
+        <div><kbd>Espacio</kbd><span>saltar la tapia a caballo · y en el acto Cabral,
+          <b>machacarlo</b> para levantar el animal</span></div>
         <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
         <div><kbd>B</kbd><span>revisar la cartuchera</span></div>
         <div><kbd>V</kbd><span>vendarse (cura rápido)</span></div>
@@ -29225,7 +29231,6 @@ var PIELES = [
   5452831,
   4532760
 ];
-var PIEL_CABRAL = 5124128;
 var PELOS = [2760472, 4008990, 1840402, 4863524];
 var NEGRO = 1513499;
 var LATON = 13015892;
@@ -29279,7 +29284,7 @@ function esqueleto() {
   }
   return { raiz, h };
 }
-function vestir(taller, h, c, piel, pelo) {
+function vestir(taller, h, c, piel, pelo, sombrero) {
   taller.add(h.cadera, cil(0.172, 0.198, 0.26, 10), c.casaca, { p: [0, -0.11, 0], s: [1, 1, 0.74] });
   taller.add(h.cadera, correa(0.182, 0.026), NEGRO, { p: [0, 0.02, 0] });
   taller.add(h.cadera, caja(0.05, 0.05, 0.012), LATON, { p: [0, 0.02, -0.132], metal: true });
@@ -29315,7 +29320,30 @@ function vestir(taller, h, c, piel, pelo) {
     taller.add(h.cabeza, bola(0.013, 6), 2564380, { p: [s * 0.037, 0.175, -0.092] });
     taller.add(h.cabeza, caja(0.02, 0.07, 0.055), pelo, { p: [s * 0.094, 0.15, -0.012] });
   }
-  if (c.morrion) {
+  if (sombrero === "bicornio") {
+    taller.add(h.cabeza, cil(0.128, 0.152, 0.135, 12), NEGRO, { p: [0, 0.335, 0] });
+    taller.add(
+      h.cabeza,
+      cil(0.2, 0.2, 0.022, 16),
+      NEGRO,
+      { p: [0, 0.272, 0], s: [1.42, 1, 0.62] }
+    );
+    for (const s2 of [-1, 1]) {
+      taller.add(
+        h.cabeza,
+        caja(0.3, 0.115, 0.02),
+        NEGRO,
+        { p: [0, 0.318, s2 * 0.088], r: [s2 * 0.42, 0, 0] }
+      );
+    }
+    taller.add(
+      h.cabeza,
+      cil(0.05, 0.05, 0.014, 10),
+      c.vivo,
+      { p: [-0.148, 0.318, 0], r: [0, 0, Math.PI / 2] }
+    );
+    taller.add(h.cabeza, cil(0.014, 0.04, 0.16, 7), c.penacho, { p: [-0.145, 0.4, 0] });
+  } else if (c.morrion) {
     taller.add(h.cabeza, cil(0.126, 0.117, 0.3, 12), NEGRO, { p: [0, 0.415, 0] });
     taller.add(h.cabeza, cil(0.122, 0.122, 0.026, 12), NEGRO, { p: [0, 0.272, 0] });
     taller.add(h.cabeza, caja(0.21, 0.015, 0.1), NEGRO, { p: [0, 0.265, -0.1], r: [0.26, 0, 0] });
@@ -29541,8 +29569,9 @@ var POSES = {
 };
 var V = () => new Vector3();
 var Figura = class {
-  // op.tez  — color de piel fijo (Cabral, por ejemplo); si no, lo sortea
-  // op.arma — 'lanza' para el granadero montado; si no, el arma del bando
+  // op.tez      — color de piel fijo (Cabral, por ejemplo); si no, lo sortea
+  // op.arma     — 'lanza' para el granadero montado; si no, el arma del bando
+  // op.sombrero — 'bicornio' para San Martín en el acto Cabral
   constructor(bando, semilla = Math.random(), op = {}) {
     const c = PINTA[bando] || PINTA.realista;
     const piel = op.tez || PIELES[Math.floor(semilla * PIELES.length) % PIELES.length];
@@ -29555,7 +29584,7 @@ var Figura = class {
     this.lejos = false;
     this.rodilla = false;
     const taller = new Taller();
-    vestir(taller, h, c, piel, pelo);
+    vestir(taller, h, c, piel, pelo, op.sombrero);
     if (op.arma === "lanza") {
       lanzaGranadero(taller, h.arma);
       sableAlCinto(taller, h.cadera);
@@ -30474,6 +30503,7 @@ var HUIDA = 9;
 var HUIDA_SEGURO = 26;
 var Soldado = class _Soldado {
   // op.tez      — color de piel fijo (Cabral)
+  // op.sombrero — 'bicornio' para el San Martín del acto
   // op.caballo  — lo monta desde el arranque; si trae caballo, va con lanza
   constructor(escena2, humo2, sonido2, pos, bando, op = {}) {
     this.escena = escena2;
@@ -30486,7 +30516,7 @@ var Soldado = class _Soldado {
     this.fig = new Figura(
       this.bando,
       this.semilla,
-      { tez: op.tez, arma: this.lancero ? "lanza" : null }
+      { tez: op.tez, sombrero: op.sombrero, arma: this.lancero ? "lanza" : null }
     );
     this.malla = new Group();
     this.malla.add(this.fig.raiz);
@@ -31451,14 +31481,18 @@ Soldado.proximoOrden = 0;
 
 // src/acto.js
 var FRASE = "Muero contento, hemos batido al enemigo.";
-var T_AMENAZA = 2.2;
-var T_CABRAL = 3.8;
-var T_SALVA = 7.4;
-var T_LEVANTA = 8.8;
-var T_LIBRE = 11;
-var T_HERIDO = 12;
-var T_FRASE = 13.8;
-var T_FIN = 19;
+var T_CAIDA = 2.5;
+var T_FUNDIDO = 1;
+var T_AMENAZA = 1.2;
+var LEVANTE_SUBE = 0.085;
+var LEVANTE_CAE = 0.16;
+var LEVANTE_CERCA = 2.6;
+var LENTO = 0.42;
+var C_HERIDO = 0.6;
+var C_CAE = 1.4;
+var C_FRASE = 2.6;
+var C_NEGRO = 6;
+var C_FIN = 7.4;
 var ActoCabral = class {
   constructor(ctx) {
     this.ctx = ctx;
@@ -31468,12 +31502,29 @@ var ActoCabral = class {
     this.verdugo = null;
     this.segundo = null;
     this.caballo = null;
+    this.sanmartin = null;
+    this.sitio = null;
     this.hecho = false;
     this.forcejeo = 0;
+    this.levante = 0;
+    this.lento = 1;
+    this.fase = null;
+    this.vidaSanMartin = 100;
     this._paso = 0;
+    this._space = false;
+    this._tc = 0;
   }
   get activo() {
     return this.corriendo;
+  }
+  // ¿lo tenés al lado como para empujar el animal?
+  get puedeEmpujar() {
+    if (this.fase !== "cabral" || !this.sanmartin) return false;
+    const { jugador: jugador2 } = this.ctx;
+    return Math.hypot(
+      this.sanmartin.pos.x - jugador2.pos.x,
+      this.sanmartin.pos.z - jugador2.pos.z
+    ) < LEVANTE_CERCA;
   }
   // ¿Se dan las condiciones? Una sola vez por partida, y sólo si te voltearon
   // el caballo estando montado —que es como pasó—.
@@ -31487,7 +31538,13 @@ var ActoCabral = class {
     this.t = 0;
     this.forcejeo = 0;
     this.caballo = caballo;
+    this.fase = "caida";
+    this.levante = 0;
+    this.lento = 1;
     this._paso = 0;
+    this._tc = 0;
+    this._space = false;
+    this.vidaSanMartin = Math.max(30, jugador2.vida);
     caballo.montado = false;
     const rumbo = caballo.rumbo;
     jugador2.atrapar(
@@ -31500,11 +31557,70 @@ var ActoCabral = class {
     hud2.mostrarAviso("\xA1El caballo!", "malo");
     return true;
   }
-  // El forcejeo. Sube mientras apretás y se vuelve a caer sola. NUNCA llega.
+  // El forcejeo de San Martín, los dos primeros segundos. Sube mientras
+  // apretás y se vuelve a caer sola, y NUNCA llega: no te vas a sacar de
+  // encima medio caballo tirando de la pierna. Es la parte que no se toca.
   forcejear(dt, apretando) {
     if (apretando) this.forcejeo = Math.min(0.82, this.forcejeo + dt * 0.55);
     else this.forcejeo = Math.max(0, this.forcejeo - dt * 0.9);
     return this.forcejeo;
+  }
+  // EL LEVANTE, que es lo otro. Acá sí llega, porque acá hay dos hombres y uno
+  // está de pie. Sube DE GOLPE con cada espacio y baja sola: no alcanza con
+  // tener la tecla apretada, hay que machacarla.
+  _empujar(dt, apretando) {
+    const golpe = apretando && !this._space;
+    this._space = apretando;
+    if (!this.puedeEmpujar) {
+      this.levante = Math.max(0, this.levante - LEVANTE_CAE * dt);
+      return;
+    }
+    if (golpe) this.levante = Math.min(1, this.levante + LEVANTE_SUBE);
+    else this.levante = Math.max(0, this.levante - LEVANTE_CAE * dt);
+  }
+  // EL CAMBIO DE CUERPO. Se hace con la pantalla en negro porque pasar de
+  // estar tirado a estar de pie once metros atrás no se puede cortar en seco.
+  _serCabral() {
+    const { jugador: jugador2, hud: hud2, sonido: sonido2 } = this.ctx;
+    const jx = jugador2.pos.x, jz = jugador2.pos.z;
+    this.sitio = { x: jx, z: jz };
+    this.sanmartin = this._traer("granadero", jx, jz, { sombrero: "bicornio" });
+    this.sanmartin.esSanMartin = true;
+    this.sanmartin.vida = 99;
+    this.sanmartin.tirado = 999;
+    this.sanmartin.aturdido = 999;
+    this.sanmartin.fig.poner("aturdido");
+    this.sanmartin.alGolpear = null;
+    jugador2.liberar();
+    jugador2.pos.set(jx - 2.4, jugador2.pos.y, jz + 11.5);
+    jugador2.vida = 100;
+    jugador2.mirarA(jx, jz, 0.4);
+    this.fase = "cabral";
+    this.t = 0;
+    sonido2.grito();
+    hud2.fundir(0, 1.1);
+    hud2.decir("Sos el sargento Juan Bautista Cabral. Lleg\xE1 hasta \xE9l.", 5.4);
+  }
+  // Y LA VUELTA. Se muere Cabral, no vos: el juego sigue con San Martín.
+  _serSanMartin() {
+    const { jugador: jugador2, hud: hud2, soldados: soldados2 } = this.ctx;
+    const s = this.sanmartin;
+    if (s) {
+      const p = this.sitio || s.pos;
+      jugador2.pos.set(p.x, jugador2.pos.y, p.z);
+      s.quitar();
+      const i = soldados2.indexOf(s);
+      if (i >= 0) soldados2.splice(i, 1);
+      this.sanmartin = null;
+    }
+    jugador2.liberar();
+    jugador2.vida = this.vidaSanMartin;
+    jugador2.pitch = 0;
+    this.lento = 1;
+    this.corriendo = false;
+    this.fase = null;
+    hud2.fundir(0, 1.2);
+    hud2.decir("Juan Bautista Cabral \xB7 sargento de Granaderos \xB7 hijo de esclavos", 6);
   }
   _traer(bando, x, z, op) {
     const { escena: escena2, humo: humo2, sonido: sonido2, soldados: soldados2, parapetos } = this.ctx;
@@ -31523,101 +31639,100 @@ var ActoCabral = class {
     if (!this.corriendo) return;
     const { jugador: jugador2, hud: hud2, sonido: sonido2 } = this.ctx;
     this.t += dt;
-    this.forcejear(dt, teclas.has("Space"));
-    const jx = jugador2.pos.x, jz = jugador2.pos.z;
-    if (this.t >= T_AMENAZA && this._paso < 1) {
-      this._paso = 1;
-      this.verdugo = this._traer("realista", jx + 1.9, jz - 5.6);
-      this.verdugo.alGolpear = null;
-      jugador2.mirarA(this.verdugo.pos.x, this.verdugo.pos.z, 1.35);
-      hud2.mostrarAviso("\xA1Se te viene encima!", "malo");
-    }
-    if (this.t >= T_CABRAL && this._paso < 2) {
-      this._paso = 2;
-      this.cabral = this._traer("granadero", jx - 2.4, jz + 11.5, { tez: PIEL_CABRAL });
-      this.cabral.esCabral = true;
-      this.cabral.recarga = 40;
-      this.cabral.vida = 99;
-      jugador2.mirarA(this.cabral.pos.x, this.cabral.pos.z);
-      sonido2.grito();
-      hud2.decir("Sargento Cabral");
-    }
-    if (this.t >= T_SALVA && this._paso < 3) {
-      this._paso = 3;
-      if (this.verdugo && this.verdugo.vivo) {
-        this.verdugo.recibir(9);
-        sonido2.impactoCarne();
+    const espacio = teclas.has("Space");
+    if (this.fase === "caida") {
+      this.forcejear(dt, espacio);
+      if (this.t >= T_CAIDA - T_FUNDIDO && this._paso < 1) {
+        this._paso = 1;
+        hud2.fundir(1, T_FUNDIDO);
       }
-      if (this.cabral) this.cabral.fig.poner("estocada");
-      jugador2.sacudir(0.35);
-    }
-    if (this.t >= T_LEVANTA && this._paso < 4) {
-      this._paso = 4;
-      if (this.cabral) {
-        this.cabral.rodilla = true;
-        this.cabral.fig.rodilla = true;
+      if (this.t >= T_CAIDA) {
+        this.forcejeo = 0;
+        this.fase = "negro";
+        this.t = 0;
       }
-      hud2.decir("Cabral levanta el caballo");
+      return;
     }
-    const cerca = this._paso >= 4 ? 1.7 : 2.5;
-    for (const r of [this.verdugo, this.segundo, this.cabral]) {
-      if (!r || !r.vivo) continue;
-      const min = r === this.cabral ? cerca : 2.5;
-      const dx = r.pos.x - jx, dz = r.pos.z - jz;
-      const d = Math.hypot(dx, dz);
-      if (d < min && d > 0.01) {
-        r.pos.x = jx + dx / d * min;
-        r.pos.z = jz + dz / d * min;
+    if (this.fase === "negro") {
+      if (this.t >= 0.35) this._serCabral();
+      return;
+    }
+    if (this.fase === "cabral") {
+      jugador2.vida = Math.max(jugador2.vida, 60);
+      this._empujar(dt, espacio);
+      this.forcejeo = this.levante;
+      const sm2 = this.sanmartin;
+      const jx = sm2 ? sm2.pos.x : jugador2.pos.x, jz = sm2 ? sm2.pos.z : jugador2.pos.z;
+      if (this.t >= T_AMENAZA && this._paso < 2) {
+        this._paso = 2;
+        this.verdugo = this._traer("realista", jx + 1.9, jz - 5.6);
+        this.verdugo.alGolpear = null;
+        hud2.mostrarAviso("\xA1Se le viene encima!", "malo");
       }
-    }
-    if (this.cabral && this.cabral.vivo && this._paso >= 2) {
-      jugador2.mirarA(
-        this.cabral.pos.x,
-        this.cabral.pos.z,
-        this._paso >= 4 && this._paso < 6 ? 0.95 : 1.35
-      );
-    }
-    if (this._paso >= 4 && this._paso < 5 && this.caballo) {
-      const u = Math.min(1, (this.t - T_LEVANTA) / (T_LIBRE - T_LEVANTA));
-      this.caballo.actualizado = true;
-      this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * (1 - u * 0.42);
-      this.caballo.raiz.position.y = u * 0.3;
-      jugador2.sacudir(0.06);
-    }
-    if (this.t >= T_LIBRE && this._paso < 5) {
-      this._paso = 5;
+      if (this.puedeEmpujar && this._paso < 3) {
+        this._paso = 3;
+        hud2.decir("ESPACIO, muchas veces", 3.4);
+      }
       if (this.caballo) {
-        this.caballo.poseFija = true;
-        this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * 0.58;
-        this.caballo.raiz.position.y = 0.3;
+        this.caballo.actualizado = true;
+        this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * (1 - this.levante * 0.42);
+        this.caballo.raiz.position.y = this.levante * 0.3;
       }
-      jugador2.liberar();
-      jugador2.recibir(0, new Vector3(0, 0, 1));
-      if (this.cabral) {
-        this.cabral.rodilla = false;
-        this.cabral.fig.rodilla = false;
+      if (this.levante > 0.05 && this.puedeEmpujar) jugador2.sacudir(0.05);
+      if (this.levante >= 1) {
+        if (this.caballo) {
+          this.caballo.poseFija = true;
+          this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * 0.58;
+          this.caballo.raiz.position.y = 0.3;
+        }
+        if (sm2) {
+          sm2.tirado = 1.2;
+          sm2.aturdido = 1.2;
+          sm2.fig.poner("marcha");
+        }
+        if (this.verdugo && this.verdugo.vivo) {
+          this.verdugo.recibir(99);
+          sonido2.impactoCarne();
+        }
+        hud2.mostrarAviso("\xA1Libre!", "bien");
+        this.fase = "cine";
+        this._tc = 0;
+        this._paso = 0;
+        this.lento = LENTO;
       }
-      hud2.mostrarAviso("Libre", "bien");
+      return;
     }
-    if (this.t >= T_HERIDO && this._paso < 6) {
-      this._paso = 6;
-      this.segundo = this._traer("realista", jx - 2.9, jz + 4.6);
+    this._tc += dt;
+    const sm = this.sanmartin;
+    if (this._tc >= C_HERIDO && this._paso < 1) {
+      this._paso = 1;
+      this.segundo = this._traer("realista", jugador2.pos.x - 1.6, jugador2.pos.z + 2.2);
       this.segundo.alGolpear = null;
-      if (this.cabral) {
-        this.cabral.vida = 1;
-        this.cabral.recibir(1);
-        sonido2.impactoCarne();
-      }
-      hud2.mostrarAviso("\xA1Cabral!", "malo");
+      this.segundo.fig.poner("estocada");
+      jugador2.sacudir(1.2);
+      sonido2.impactoCarne();
+      hud2.mostrarAviso("\xA1La bayoneta!", "malo");
     }
-    if (this.t >= T_FRASE && this._paso < 7) {
-      this._paso = 7;
+    if (this._tc >= C_CAE && this._paso < 2) {
+      this._paso = 2;
+      jugador2.atrapar(jugador2.pos.x, jugador2.pos.z, jugador2.yaw || 0);
+      jugador2.pitchAtrapado = 0.52;
+      jugador2.pitch = 0.1;
+    }
+    if (this._tc >= C_FRASE && this._paso < 3) {
+      this._paso = 3;
       hud2.decir(FRASE, 5.2);
     }
-    if (this.t >= T_FIN) {
-      this.corriendo = false;
-      hud2.decir("Juan Bautista Cabral \xB7 sargento de Granaderos \xB7 hijo de esclavos", 6);
+    if (this._tc >= C_NEGRO && this._paso < 4) {
+      this._paso = 4;
+      hud2.fundir(1, 1.2);
     }
+    if (sm && this.sitio) {
+      sm.pos.x = this.sitio.x;
+      sm.pos.z = this.sitio.z;
+      sm.pos.y = 0;
+    }
+    if (this._tc >= C_FIN) this._serSanMartin();
   }
 };
 
@@ -32349,6 +32464,7 @@ var Hud = class {
     this.ahora = $("#ahora");
     this.remate = $("#remate");
     this.velocidad = $("#velocidad");
+    this.fundido = $("#fundido");
     this.metralla = $("#metralla");
     this.frase = $("#frase");
     this.forcejeo = $("#forcejeo");
@@ -32384,6 +32500,13 @@ var Hud = class {
     this.frase.textContent = texto;
     this.frase.classList.add("si");
     this.tFrase = segundos || 3.2;
+  }
+  // EL FUNDIDO A NEGRO. Existe por una sola razón y es tapar el cambio de
+  // cuerpo del acto Cabral: pasar de estar tirado bajo el caballo a estar de
+  // pie once metros más atrás no se puede hacer con un corte, se ve el truco.
+  fundir(a, segundos) {
+    this.fundido.style.transition = `opacity ${segundos || 0.9}s linear`;
+    this.fundido.style.opacity = String(a);
   }
   destello(f) {
     this.flash.style.transition = "none";
@@ -32422,9 +32545,9 @@ var Hud = class {
       this.tFrase -= dt;
       if (this.tFrase <= 0) this.frase.classList.remove("si");
     }
-    const atrapado = datos.atrapado > 0;
-    this.forcejeo.classList.toggle("si", atrapado);
-    if (atrapado) this.forcejeo.querySelector("i").style.setProperty(
+    const barra = datos.atrapado > 0 || datos.empujando;
+    this.forcejeo.classList.toggle("si", barra);
+    if (barra) this.forcejeo.querySelector("i").style.setProperty(
       "--f",
       (Math.min(1, datos.forcejeo || 0) * 100).toFixed(0) + "%"
     );
@@ -33821,6 +33944,7 @@ function armarDespliegue(ctx) {
       sop.caballo = nuevoCaballo(pos.clone(), Math.atan2(-pos.x, -pos.z) + Math.PI);
     }
     if (op.tez) sop.tez = op.tez;
+    if (op.sombrero) sop.sombrero = op.sombrero;
     const s = new Soldado(escena2, humo2, sonido2, pos, bando, sop);
     s.alDisparar = disparoEnemigo;
     s.alGolpear = golpeEnemigo;
@@ -35776,7 +35900,7 @@ function simular(dt) {
 function cuadro() {
   requestAnimationFrame(cuadro);
   const crudo = Math.min(0.05, reloj.getDelta());
-  const dt = mando.enPausa ? 0 : crudo;
+  const dt = mando.enPausa ? 0 : crudo * acto.lento;
   fps = fps * 0.92 + 1 / Math.max(crudo, 1e-4) * 0.08;
   const { presion, arma, quiereApuntar } = simular(dt);
   const p = jugador.cfgPostura;
@@ -35803,6 +35927,9 @@ function cuadro() {
     remate: sable.tRemate,
     metralla: combate.metrallaEncima(),
     atrapado: jugador.atrapado,
+    // La barra sale también cuando SOS Cabral empujando el caballo, que es el
+    // único momento en que se forcejea sin estar atrapado.
+    empujando: acto.puedeEmpujar,
     forcejeo: acto.forcejeo,
     vida: jugador.vida,
     regenerando: jugador.tSinDano > 4.5 && jugador.vida < 100,

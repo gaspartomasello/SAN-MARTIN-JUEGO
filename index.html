@@ -45,6 +45,9 @@
     background:radial-gradient(ellipse 78% 74% at center,rgba(0,0,0,0) 46%,rgba(150,26,20,.62) 100%);
     animation:pulsoMetralla .55s ease-in-out infinite}
   @keyframes pulsoMetralla{0%,100%{filter:brightness(.75)}50%{filter:brightness(1.35)}}
+  /* el fundido a negro del acto Cabral: tapa el cambio de cuerpo */
+  #fundido{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:0;
+           background:#000;transition:opacity .9s linear}
   #velocidad{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0;
     background:radial-gradient(ellipse 72% 68% at center,rgba(0,0,0,0) 52%,rgba(24,20,14,.38) 100%)}
   #sangre{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;transition:opacity .5s ease;
@@ -292,6 +295,7 @@
 <div id="humo-pantalla"></div>
 <div id="vineta"></div>
 <div id="velocidad"></div>
+<div id="fundido"></div>
 <div id="frase"></div>
 <div id="forcejeo"><i></i><b>ESPACIO</b></div>
 <div id="metralla"></div>
@@ -393,6 +397,8 @@
         <div><kbd>W</kbd><span>a caballo: andar (sostener) · <kbd>Shift</kbd> galope</span></div>
         <div><kbd>T</kbd><span><b>tocar el clarín</b> (en la batalla)</span></div>
         <div><kbd>Q</kbd><span><b>¡a mí!</b> — tu columna corta la pelea y se forma atrás tuyo</span></div>
+        <div><kbd>Espacio</kbd><span>saltar la tapia a caballo · y en el acto Cabral,
+          <b>machacarlo</b> para levantar el animal</span></div>
         <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
         <div><kbd>B</kbd><span>revisar la cartuchera</span></div>
         <div><kbd>V</kbd><span>vendarse (cura rápido)</span></div>

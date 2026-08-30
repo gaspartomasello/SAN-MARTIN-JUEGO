@@ -404,7 +404,10 @@ function cuadro () {
   requestAnimationFrame(cuadro);
   const crudo = Math.min(0.05, reloj.getDelta());
   // en pausa se sigue dibujando, pero el mundo no corre
-  const dt = mando.enPausa ? 0 : crudo;
+  // LA CÁMARA LENTA DEL ACTO. El mundo entero corre más despacio —no sólo la
+  // animación— porque lo que hay que poder ver es al español llegando, y a
+  // velocidad normal eso dura medio segundo.
+  const dt = mando.enPausa ? 0 : crudo * acto.lento;
   fps = fps * 0.92 + (1 / Math.max(crudo, 0.0001)) * 0.08;
 
   const { presion, arma, quiereApuntar } = simular(dt);
@@ -437,6 +440,9 @@ function cuadro () {
     remate: sable.tRemate,
     metralla: combate.metrallaEncima(),
     atrapado: jugador.atrapado,
+    // La barra sale también cuando SOS Cabral empujando el caballo, que es el
+    // único momento en que se forcejea sin estar atrapado.
+    empujando: acto.puedeEmpujar,
     forcejeo: acto.forcejeo,
     vida: jugador.vida,
     regenerando: jugador.tSinDano > 4.5 && jugador.vida < 100,

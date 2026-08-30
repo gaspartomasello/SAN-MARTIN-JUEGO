@@ -194,6 +194,7 @@ const HUIDA_SEGURO = 26;        // a esta distancia del enemigo, se recompone
 
 export class Soldado {
   // op.tez      — color de piel fijo (Cabral)
+  // op.sombrero — 'bicornio' para el San Martín del acto
   // op.caballo  — lo monta desde el arranque; si trae caballo, va con lanza
   constructor (escena, humo, sonido, pos, bando, op = {}) {
     this.escena = escena;
@@ -212,7 +213,7 @@ export class Soldado {
     this.semilla = op.semilla !== undefined ? op.semilla : Math.random();
     this.tez = op.tez || null;
     this.fig = new Figura(this.bando, this.semilla,
-      { tez: op.tez, arma: this.lancero ? 'lanza' : null });
+      { tez: op.tez, sombrero: op.sombrero, arma: this.lancero ? 'lanza' : null });
     // la malla exterior lleva el rumbo; la figura de adentro, el desplome
     this.malla = new THREE.Group();
     this.malla.add(this.fig.raiz);

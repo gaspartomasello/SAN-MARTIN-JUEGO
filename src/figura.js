@@ -166,7 +166,7 @@ function esqueleto () {
 
 // -------------------------------------------------------------------- ropa
 
-function vestir (taller, h, c, piel, pelo) {
+function vestir (taller, h, c, piel, pelo, sombrero) {
   // ---- cadera: faldón, cinturón, cartuchera, morral
   taller.add(h.cadera, cil(0.172, 0.198, 0.26, 10), c.casaca, { p: [0, -0.11, 0], s: [1, 1, 0.74] });
   taller.add(h.cadera, correa(0.182, 0.026), NEGRO, { p: [0, 0.02, 0] });
@@ -219,7 +219,28 @@ function vestir (taller, h, c, piel, pelo) {
     taller.add(h.cabeza, caja(0.02, 0.07, 0.055), pelo, { p: [s * 0.094, 0.15, -0.012] });   // patillas
   }
 
-  if (c.morrion) {
+  if (sombrero === 'bicornio') {
+    // EL BICORNIO DE SAN MARTÍN, y está acá por una razón de juego y no de
+    // vestuario: en el acto Cabral el jugador deja de ser San Martín y tiene
+    // que ENCONTRARLO tirado entre ciento veinte granaderos vestidos igual.
+    // Sin una silueta distinta, buscarlo es buscar a cualquiera.
+    //
+    // Se lleva en batalla, o sea de lado a lado. Lo que lo hace legible a
+    // veinte metros no es el detalle: es que sea ANCHO y CHATO donde el
+    // morrión es angosto y alto.
+    taller.add(h.cabeza, cil(0.128, 0.152, 0.135, 12), NEGRO, { p: [0, 0.335, 0] });
+    taller.add(h.cabeza, cil(0.20, 0.20, 0.022, 16), NEGRO,
+      { p: [0, 0.272, 0], s: [1.42, 1, 0.62] });
+    // las dos puntas, levantadas adelante y atrás del ala
+    for (const s2 of [-1, 1]) {
+      taller.add(h.cabeza, caja(0.30, 0.115, 0.02), NEGRO,
+        { p: [0, 0.318, s2 * 0.088], r: [s2 * 0.42, 0, 0] });
+    }
+    // escarapela y penacho: el único color de toda la silueta
+    taller.add(h.cabeza, cil(0.05, 0.05, 0.014, 10), c.vivo,
+      { p: [-0.148, 0.318, 0], r: [0, 0, Math.PI / 2] });
+    taller.add(h.cabeza, cil(0.014, 0.04, 0.16, 7), c.penacho, { p: [-0.145, 0.40, 0] });
+  } else if (c.morrion) {
     // morrión: alto pero no descomunal. Es la silueta que se lee a cien metros.
     taller.add(h.cabeza, cil(0.126, 0.117, 0.30, 12), NEGRO, { p: [0, 0.415, 0] });
     taller.add(h.cabeza, cil(0.122, 0.122, 0.026, 12), NEGRO, { p: [0, 0.272, 0] });
@@ -440,8 +461,9 @@ const POSES = {
 const V = () => new THREE.Vector3();
 
 export class Figura {
-  // op.tez  — color de piel fijo (Cabral, por ejemplo); si no, lo sortea
-  // op.arma — 'lanza' para el granadero montado; si no, el arma del bando
+  // op.tez      — color de piel fijo (Cabral, por ejemplo); si no, lo sortea
+  // op.arma     — 'lanza' para el granadero montado; si no, el arma del bando
+  // op.sombrero — 'bicornio' para San Martín en el acto Cabral
   constructor (bando, semilla = Math.random(), op = {}) {
     const c = PINTA[bando] || PINTA.realista;
     const piel = op.tez || PIELES[Math.floor(semilla * PIELES.length) % PIELES.length];
@@ -460,7 +482,7 @@ export class Figura {
     this.rodilla = false;        // true: rodilla derecha en tierra, postura de tiro
 
     const taller = new Taller();
-    vestir(taller, h, c, piel, pelo);
+    vestir(taller, h, c, piel, pelo, op.sombrero);
     if (op.arma === 'lanza') { lanzaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
     else if (c.morrion) { tercerolaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
     else fusilRealista(taller, h.arma);

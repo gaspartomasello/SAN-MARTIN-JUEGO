@@ -12,38 +12,57 @@ import { PIEL_CABRAL } from './figura.js';
 // que muere.
 //
 // -------------------------------------------------------------------------
-// La decisión de diseño más importante del juego está acá, y es esta:
+// ACÁ SE CAMBIA DE CUERPO, y eso invierte la decisión que tenía este archivo.
 //
-//   EL JUGADOR NO PUEDE HACER NADA.
+// La versión anterior dejaba al jugador tirado bajo el caballo mirando, con un
+// forcejeo capado que NUNCA llegaba, y el argumento era bueno: «lo salvó otro,
+// y la única forma de que eso se sienta es estar indefenso y tener que mirar».
 //
-// Todo el resto del juego es agencia: elegís el andar, medís la distancia,
-// parás la estocada. Acá no. La pierna está debajo de media tonelada de animal
-// muerto y no hay tecla que sirva; se puede forcejear y el forcejeo no
-// alcanza. Es tentador darle al jugador un botón que lo salve, y sería una
-// mentira: lo salvó otro. Un hombre al que la historia escolar recuerda por
-// una frase y casi nunca por su cara, su color ni su nombre completo.
+// Lo que se hace ahora es lo contrario y por el mismo motivo. En vez de mirar
+// a Cabral, SOS Cabral: aparecés once metros atrás, tenés que encontrar a un
+// hombre tirado entre ciento veinte vestidos igual —por eso el bicornio—,
+// llegar, y sacarlo de abajo del animal a fuerza de espacio. Y cuando lo
+// lograste, ahí sí se te acaba la agencia: viene el segundo español y no hay
+// tecla. La cámara se cae, mira al cielo y dice la frase.
 //
-// La única forma de que eso se sienta es que el jugador esté genuinamente
-// indefenso durante veinte segundos y tenga que mirar. Por eso el forcejeo
-// tiene una barra que sube y se vuelve a caer: no es un desafío, es una
-// respuesta honesta a «¿puedo hacer algo?». No.
+// O sea que la indefensión no se saca, se corre de lugar: no está en el
+// rescate —que ahora te toca a vos y cuesta— sino en lo que le pasa a Cabral
+// después, que es lo que de verdad no se puede evitar. Se sale del acto
+// habiendo hecho algo y habiendo perdido igual.
+//
+// EN RED NO PASA NADA DE ESTO. main.js lo arranca sólo si no sos invitado: al
+// segundo jugador le matan el caballo y se cae, como a todo el mundo.
 // -------------------------------------------------------------------------
 
 const FRASE = 'Muero contento, hemos batido al enemigo.';
 
-// tiempos del acto, en segundos desde que cae el caballo
-// Los tiempos NO son arbitrarios: salen de cuánto tarda cada uno en llegar
-// caminando o corriendo con las velocidades que ya tiene el juego. El español
-// sale a 5,6 m y marcha a 1,85 m/s; Cabral sale a 11,5 m por detrás y corre a
-// 4,3. Si el guion se adelantara a las piernas, se vería el truco.
-const T_AMENAZA = 2.2;      // el español lo ve en el suelo y se le viene
-const T_CABRAL = 3.8;       // aparece corriendo por detrás
-const T_SALVA = 7.4;        // mata al que iba a ensartarlo
-const T_LEVANTA = 8.8;      // se hinca y empuja el caballo
-const T_LIBRE = 11.0;       // la pierna sale
-const T_HERIDO = 12.0;      // el segundo español lo alcanza
-const T_FRASE = 13.8;
-const T_FIN = 19.0;
+// LA CAÍDA, que sigue siendo de San Martín y en primera persona. Son dos
+// segundos y medio tirado sin poder hacer nada: sin eso el cambio de cuerpo no
+// se entiende, porque no llegaste a registrar que te pasó algo.
+const T_CAIDA = 2.5;
+const T_FUNDIDO = 1.0;      // lo que tarda el negro en cerrarse
+// A partir de acá el reloj lo llevan tus piernas y no el guion. Lo único con
+// tiempo propio es el español, que sale a 5,6 m y marcha a 1,85 m/s: tenés
+// unos ocho segundos para llegar antes que él, y si no llegás no pasa nada
+// irreparable —no puede rematarlo— pero lo vas a ver parado encima.
+const T_AMENAZA = 1.2;      // desde que sos Cabral, el español encara
+
+// EL LEVANTE. Media tonelada no se levanta de un toque: son unos catorce
+// espacios seguidos, y si parás se te vuelve a caer más rápido de lo que sube.
+// La proporción entre SUBE y CAE es lo que hace que se sienta pesado sin ser
+// injusto; si CAE fuera mayor que SUBE, no habría manera.
+const LEVANTE_SUBE = 0.085;   // por cada golpe de espacio
+const LEVANTE_CAE = 0.16;     // por segundo sin apretar
+const LEVANTE_CERCA = 2.6;    // hay que estar al lado para empujar
+
+// LA CINEMÁTICA, en cámara lenta y ya sin teclas. Los tiempos son de reloj
+// lento, así que en pantalla duran el doble.
+const LENTO = 0.42;
+const C_HERIDO = 0.6;       // el segundo español le entra con la bayoneta
+const C_CAE = 1.4;          // la cámara se va al suelo
+const C_FRASE = 2.6;
+const C_NEGRO = 6.0;        // empieza a cerrarse el negro
+const C_FIN = 7.4;          // y volvés a ser San Martín
 
 export class ActoCabral {
   constructor (ctx) {
@@ -54,12 +73,27 @@ export class ActoCabral {
     this.verdugo = null;
     this.segundo = null;
     this.caballo = null;
+    this.sanmartin = null;
+    this.sitio = null;
     this.hecho = false;
-    this.forcejeo = 0;
+    this.forcejeo = 0;        // lo que se lee en el HUD: la caída o el levante
+    this.levante = 0;         // cuánto subió el caballo, de 0 a 1
+    this.lento = 1;           // el multiplicador de tiempo que lee main.js
+    this.fase = null;
+    this.vidaSanMartin = 100;
     this._paso = 0;
+    this._space = false;
+    this._tc = 0;             // reloj de la cinemática, aparte
   }
 
   get activo () { return this.corriendo; }
+  // ¿lo tenés al lado como para empujar el animal?
+  get puedeEmpujar () {
+    if (this.fase !== 'cabral' || !this.sanmartin) return false;
+    const { jugador } = this.ctx;
+    return Math.hypot(this.sanmartin.pos.x - jugador.pos.x,
+      this.sanmartin.pos.z - jugador.pos.z) < LEVANTE_CERCA;
+  }
 
   // ¿Se dan las condiciones? Una sola vez por partida, y sólo si te voltearon
   // el caballo estando montado —que es como pasó—.
@@ -74,7 +108,13 @@ export class ActoCabral {
     this.t = 0;
     this.forcejeo = 0;
     this.caballo = caballo;
+    this.fase = 'caida';
+    this.levante = 0;
+    this.lento = 1;
     this._paso = 0;
+    this._tc = 0;
+    this._space = false;
+    this.vidaSanMartin = Math.max(30, jugador.vida);
     caballo.montado = false;
 
     // el caballo cae de costado y encima de la pierna
@@ -89,11 +129,83 @@ export class ActoCabral {
     return true;
   }
 
-  // El forcejeo. Sube mientras apretás y se vuelve a caer sola. NUNCA llega.
+  // El forcejeo de San Martín, los dos primeros segundos. Sube mientras
+  // apretás y se vuelve a caer sola, y NUNCA llega: no te vas a sacar de
+  // encima medio caballo tirando de la pierna. Es la parte que no se toca.
   forcejear (dt, apretando) {
     if (apretando) this.forcejeo = Math.min(0.82, this.forcejeo + dt * 0.55);
     else this.forcejeo = Math.max(0, this.forcejeo - dt * 0.9);
     return this.forcejeo;
+  }
+
+  // EL LEVANTE, que es lo otro. Acá sí llega, porque acá hay dos hombres y uno
+  // está de pie. Sube DE GOLPE con cada espacio y baja sola: no alcanza con
+  // tener la tecla apretada, hay que machacarla.
+  _empujar (dt, apretando) {
+    const golpe = apretando && !this._space;
+    this._space = apretando;
+    if (!this.puedeEmpujar) {
+      this.levante = Math.max(0, this.levante - LEVANTE_CAE * dt);
+      return;
+    }
+    if (golpe) this.levante = Math.min(1, this.levante + LEVANTE_SUBE);
+    else this.levante = Math.max(0, this.levante - LEVANTE_CAE * dt);
+  }
+
+  // EL CAMBIO DE CUERPO. Se hace con la pantalla en negro porque pasar de
+  // estar tirado a estar de pie once metros atrás no se puede cortar en seco.
+  _serCabral () {
+    const { jugador, hud, sonido } = this.ctx;
+    const jx = jugador.pos.x, jz = jugador.pos.z;
+
+    // San Martín queda en el suelo, ahora como un soldado más del campo —pero
+    // con el bicornio, que es lo único que lo hace encontrable.
+    // Y ACÁ QUEDA CLAVADO. Una vez que lo sacás de abajo del caballo se para,
+    // y si lo dejaras suelto sería un granadero más: sale caminando al enemigo
+    // en plena cinemática y cuando volvés a ser él estás a ocho metros del
+    // caballo, mirando cualquier cosa. El sitio donde caíste es el sitio donde
+    // volvés.
+    this.sitio = { x: jx, z: jz };
+    this.sanmartin = this._traer('granadero', jx, jz, { sombrero: 'bicornio' });
+    this.sanmartin.esSanMartin = true;
+    this.sanmartin.vida = 99;
+    this.sanmartin.tirado = 999;        // no se levanta hasta que lo saques
+    this.sanmartin.aturdido = 999;
+    this.sanmartin.fig.poner('aturdido');
+    this.sanmartin.alGolpear = null;
+
+    // y vos pasás a ser el sargento, once metros y medio por detrás
+    jugador.liberar();
+    jugador.pos.set(jx - 2.4, jugador.pos.y, jz + 11.5);
+    jugador.vida = 100;
+    jugador.mirarA(jx, jz, 0.4);
+    this.fase = 'cabral';
+    this.t = 0;
+    sonido.grito();
+    hud.fundir(0, 1.1);
+    hud.decir('Sos el sargento Juan Bautista Cabral. Llegá hasta él.', 5.4);
+  }
+
+  // Y LA VUELTA. Se muere Cabral, no vos: el juego sigue con San Martín.
+  _serSanMartin () {
+    const { jugador, hud, soldados } = this.ctx;
+    const s = this.sanmartin;
+    if (s) {
+      const p = this.sitio || s.pos;
+      jugador.pos.set(p.x, jugador.pos.y, p.z);
+      s.quitar();
+      const i = soldados.indexOf(s);
+      if (i >= 0) soldados.splice(i, 1);
+      this.sanmartin = null;
+    }
+    jugador.liberar();
+    jugador.vida = this.vidaSanMartin;
+    jugador.pitch = 0;
+    this.lento = 1;
+    this.corriendo = false;
+    this.fase = null;
+    hud.fundir(0, 1.2);
+    hud.decir('Juan Bautista Cabral · sargento de Granaderos · hijo de esclavos', 6);
   }
 
   _traer (bando, x, z, op) {
@@ -108,127 +220,108 @@ export class ActoCabral {
     if (!this.corriendo) return;
     const { jugador, hud, sonido } = this.ctx;
     this.t += dt;
-    this.forcejear(dt, teclas.has('Space'));
+    const espacio = teclas.has('Space');
 
-    const jx = jugador.pos.x, jz = jugador.pos.z;
-
-    // ---- 1. el español lo ve en el suelo ----
-    if (this.t >= T_AMENAZA && this._paso < 1) {
-      this._paso = 1;
-      // Camina solo hasta vos: sos lo más cercano que tiene enfrente y estás
-      // en el suelo. No hace falta guionarlo. Lo único que se le saca es la
-      // capacidad de rematarte, porque la historia dice que no llegó.
-      this.verdugo = this._traer('realista', jx + 1.9, jz - 5.6);
-      this.verdugo.alGolpear = null;
-      jugador.mirarA(this.verdugo.pos.x, this.verdugo.pos.z, 1.35);
-      hud.mostrarAviso('¡Se te viene encima!', 'malo');
-    }
-
-    // ---- 2. Cabral llega corriendo ----
-    if (this.t >= T_CABRAL && this._paso < 2) {
-      this._paso = 2;
-      // Tampoco a él hace falta guionarlo: un granadero con el fusil descargado
-      // y un español a doce metros CORRE a la bayoneta. Es la misma regla de
-      // siempre. Lo único que se le toca es que no puede morir todavía.
-      this.cabral = this._traer('granadero', jx - 2.4, jz + 11.5, { tez: PIEL_CABRAL });
-      this.cabral.esCabral = true;
-      this.cabral.recarga = 40;           // descargado: se va a la carrera
-      this.cabral.vida = 99;
-      jugador.mirarA(this.cabral.pos.x, this.cabral.pos.z);
-      sonido.grito();
-      hud.decir('Sargento Cabral');
-    }
-
-    // ---- 3. mata al que iba a ensartarlo ----
-    if (this.t >= T_SALVA && this._paso < 3) {
-      this._paso = 3;
-      if (this.verdugo && this.verdugo.vivo) {
-        this.verdugo.recibir(9);
-        sonido.impactoCarne();
+    // ---- LA CAÍDA. Seguís siendo San Martín y no podés hacer nada. ----
+    if (this.fase === 'caida') {
+      this.forcejear(dt, espacio);
+      if (this.t >= T_CAIDA - T_FUNDIDO && this._paso < 1) {
+        this._paso = 1;
+        hud.fundir(1, T_FUNDIDO);
       }
-      if (this.cabral) this.cabral.fig.poner('estocada');
-      jugador.sacudir(0.35);
+      if (this.t >= T_CAIDA) { this.forcejeo = 0; this.fase = 'negro'; this.t = 0; }
+      return;
+    }
+    if (this.fase === 'negro') {
+      if (this.t >= 0.35) this._serCabral();
+      return;
     }
 
-    // ---- 4. se hinca y empuja el caballo ----
-    if (this.t >= T_LEVANTA && this._paso < 4) {
-      this._paso = 4;
-      if (this.cabral) { this.cabral.rodilla = true; this.cabral.fig.rodilla = true; }
-      hud.decir('Cabral levanta el caballo');
-    }
-    // Los españoles LOMEAN, no se te suben encima. Tirado en el pasto la
-    // cámara está a 62 cm: un hombre parado a metro y medio le tapa la pantalla
-    // entera y no se ve nada de lo que pasa. Se los mantiene a dos metros y
-    // medio, que es donde se los ve enteros y amenazan de verdad.
-    // NADIE se te sube encima. Tirado en el pasto la cámara está a 62 cm: un
-    // hombre parado a un metro tapa la pantalla entera con el calzón y no se ve
-    // nada de lo que pasa. Se los mantiene a dos metros y medio, que es donde
-    // se los ve enteros y donde amenazan de verdad. Cabral se acerca más, pero
-    // sólo cuando se hinca a levantar el caballo.
-    const cerca = this._paso >= 4 ? 1.7 : 2.5;
-    for (const r of [this.verdugo, this.segundo, this.cabral]) {
-      if (!r || !r.vivo) continue;
-      const min = r === this.cabral ? cerca : 2.5;
-      const dx = r.pos.x - jx, dz = r.pos.z - jz;
-      const d = Math.hypot(dx, dz);
-      if (d < min && d > 0.01) {
-        r.pos.x = jx + (dx / d) * min;
-        r.pos.z = jz + (dz / d) * min;
+    // ---- SOS CABRAL. Acá el reloj lo llevan tus piernas. ----
+    if (this.fase === 'cabral') {
+      // A Cabral no lo matan antes de tiempo: la historia dice que llegó.
+      jugador.vida = Math.max(jugador.vida, 60);
+      this._empujar(dt, espacio);
+      this.forcejeo = this.levante;     // el HUD dibuja la misma barra
+
+      const sm = this.sanmartin;
+      const jx = sm ? sm.pos.x : jugador.pos.x, jz = sm ? sm.pos.z : jugador.pos.z;
+
+      // el español que lo vio en el suelo. No puede rematarlo —la historia dice
+      // que no llegó— pero se le planta encima si no llegás vos primero.
+      if (this.t >= T_AMENAZA && this._paso < 2) {
+        this._paso = 2;
+        this.verdugo = this._traer('realista', jx + 1.9, jz - 5.6);
+        this.verdugo.alGolpear = null;
+        hud.mostrarAviso('¡Se le viene encima!', 'malo');
       }
-    }
 
-    // desde que aparece, la cabeza no lo suelta
-    if (this.cabral && this.cabral.vivo && this._paso >= 2) {
-      jugador.mirarA(this.cabral.pos.x, this.cabral.pos.z,
-        this._paso >= 4 && this._paso < 6 ? 0.95 : 1.35);
-    }
+      // el aviso de la tecla aparece cuando estás al lado, no antes
+      if (this.puedeEmpujar && this._paso < 3) {
+        this._paso = 3;
+        hud.decir('ESPACIO, muchas veces', 3.4);
+      }
 
-    if (this._paso >= 4 && this._paso < 5 && this.caballo) {
-      // el cuerpo del animal se va levantando de a poco
-      const u = Math.min(1, (this.t - T_LEVANTA) / (T_LIBRE - T_LEVANTA));
-      this.caballo.actualizado = true;      // que el bucle no le pise la pose
-      this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * (1 - u * 0.42);
-      this.caballo.raiz.position.y = u * 0.30;
-      jugador.sacudir(0.06);
-    }
-
-    // ---- 5. la pierna sale ----
-    if (this.t >= T_LIBRE && this._paso < 5) {
-      this._paso = 5;
-      // el animal queda corrido para siempre: no se vuelve a desplomar encima
       if (this.caballo) {
-        this.caballo.poseFija = true;
-        this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * 0.58;
-        this.caballo.raiz.position.y = 0.30;
+        this.caballo.actualizado = true;      // que el bucle no le pise la pose
+        this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * (1 - this.levante * 0.42);
+        this.caballo.raiz.position.y = this.levante * 0.30;
       }
-      jugador.liberar();
-      jugador.recibir(0, new THREE.Vector3(0, 0, 1));
-      if (this.cabral) { this.cabral.rodilla = false; this.cabral.fig.rodilla = false; }
-      hud.mostrarAviso('Libre', 'bien');
+      if (this.levante > 0.05 && this.puedeEmpujar) jugador.sacudir(0.05);
+
+      // ---- LEVANTADO: sale la pierna y arranca la cinemática ----
+      if (this.levante >= 1) {
+        if (this.caballo) {
+          this.caballo.poseFija = true;
+          this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * 0.58;
+          this.caballo.raiz.position.y = 0.30;
+        }
+        if (sm) { sm.tirado = 1.2; sm.aturdido = 1.2; sm.fig.poner('marcha'); }
+        if (this.verdugo && this.verdugo.vivo) { this.verdugo.recibir(99); sonido.impactoCarne(); }
+        hud.mostrarAviso('¡Libre!', 'bien');
+        this.fase = 'cine';
+        this._tc = 0;
+        this._paso = 0;
+        this.lento = LENTO;
+      }
+      return;
     }
 
-    // ---- 6. el segundo español lo alcanza ----
-    if (this.t >= T_HERIDO && this._paso < 6) {
-      this._paso = 6;
-      this.segundo = this._traer('realista', jx - 2.9, jz + 4.6);
+    // ---- LA CINEMÁTICA. En lento, y ya no hay tecla que sirva. ----
+    this._tc += dt;
+    const sm = this.sanmartin;
+
+    if (this._tc >= C_HERIDO && this._paso < 1) {
+      this._paso = 1;
+      this.segundo = this._traer('realista', jugador.pos.x - 1.6, jugador.pos.z + 2.2);
       this.segundo.alGolpear = null;
-      if (this.cabral) {
-        this.cabral.vida = 1;
-        this.cabral.recibir(1);           // cae ahí mismo
-        sonido.impactoCarne();
-      }
-      hud.mostrarAviso('¡Cabral!', 'malo');
+      this.segundo.fig.poner('estocada');
+      jugador.sacudir(1.2);
+      sonido.impactoCarne();
+      hud.mostrarAviso('¡La bayoneta!', 'malo');
     }
 
-    // ---- 7. la frase ----
-    if (this.t >= T_FRASE && this._paso < 7) {
-      this._paso = 7;
+    // la cámara se cae al pasto y queda mirando al cielo
+    if (this._tc >= C_CAE && this._paso < 2) {
+      this._paso = 2;
+      jugador.atrapar(jugador.pos.x, jugador.pos.z, jugador.yaw || 0);
+      jugador.pitchAtrapado = 0.52;
+      jugador.pitch = 0.1;
+    }
+
+    if (this._tc >= C_FRASE && this._paso < 3) {
+      this._paso = 3;
       hud.decir(FRASE, 5.2);
     }
 
-    if (this.t >= T_FIN) {
-      this.corriendo = false;
-      hud.decir('Juan Bautista Cabral · sargento de Granaderos · hijo de esclavos', 6);
+    if (this._tc >= C_NEGRO && this._paso < 4) {
+      this._paso = 4;
+      hud.fundir(1, 1.2);
     }
+
+    // se para, pero no se mueve del sitio: el acto todavía no terminó
+    if (sm && this.sitio) { sm.pos.x = this.sitio.x; sm.pos.z = this.sitio.z; sm.pos.y = 0; }
+
+    if (this._tc >= C_FIN) this._serSanMartin();
   }
 }

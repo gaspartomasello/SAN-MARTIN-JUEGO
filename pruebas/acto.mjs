@@ -33,7 +33,7 @@ const r = await pag.evaluate(() => {
       if (j.jugador.monta && !j.jugador.monta.vivo) {
         if (acto.puedeArrancar(j.jugador.monta)) acto.arrancar(j.jugador.monta);
       }
-      acto.actualizar(1 / 60, teclas);
+      acto.actualizar((1 / 60) * acto.lento, teclas);
       for (const s of j.soldados) s.actualizar(1 / 60, j.jugador, j.soldados);
       for (const cb of j.caballos) { if (cb.actualizado) { cb.actualizado = false; continue; } cb.actualizar(1 / 60, { girar: 0 }); }
       j.jugador.actualizar(1 / 60, teclas, false, false);
@@ -44,41 +44,88 @@ const r = await pag.evaluate(() => {
   ok('el acto arranca al caer el caballo', acto.activo);
   ok('quedás atrapado', j.jugador.atrapado > 0);
   ok('la cámara baja al pasto', j.jugador.pos.y < 0.8, `y=${j.jugador.pos.y.toFixed(2)}`);
+  const caiste = { x: j.jugador.pos.x, z: j.jugador.pos.z };
 
-  // el forcejeo NUNCA alcanza
+  // EL FORCEJEO DE SAN MARTÍN NO ALCANZA, y eso no cambió: no te sacás medio
+  // caballo de encima tirando de la pierna. Lo que cambió es lo que viene
+  // después.
   teclas.add('Space');
-  paso(6);
+  paso(1.6);
   ok('el forcejeo se topa y no libera', acto.forcejeo <= 0.83 && j.jugador.atrapado > 0,
     `barra ${acto.forcejeo.toFixed(2)}`);
   teclas.delete('Space');
 
-  const hay = b => j.soldados.filter(s => s.bando === b);
-  ok('apareció el español que te iba a rematar', hay('realista').length >= 1);
-  ok('apareció Cabral', j.soldados.some(s => s.esCabral));
-  const cab = j.soldados.find(s => s.esCabral);
-  ok('Cabral es de tez oscura', !!cab);
+  // ---- el cambio de cuerpo ----
+  paso(2.4);
+  ok('pasás a ser Cabral', acto.fase === 'cabral', `fase ${acto.fase}`);
+  ok('y te soltó', j.jugador.atrapado === 0);
+  const sm = j.soldados.find(s => s.esSanMartin);
+  ok('San Martín queda tirado en el campo', !!sm && sm.tirado > 0);
+  // EL BICORNIO, y comprobado de verdad. La primera versión de esta línea
+  // miraba que la figura tuviera hijos, que es cierto para cualquier soldado:
+  // pasaba con el sombrero puesto y sin él. Se cuentan los vértices contra un
+  // granadero normal —el bicornio y el morrión no arman la misma cabeza— así
+  // que si alguien borra la rama del sombrero, esto se cae.
+  const vertices = (x) => {
+    let n = 0;
+    x.malla.traverse(o => { if (o.geometry) n += o.geometry.attributes.position.count; });
+    return n;
+  };
+  const comun = j.soltarSoldado('granadero');
+  ok('y con el bicornio, que es lo que lo hace encontrable',
+    !!sm && vertices(sm) !== vertices(comun),
+    `${sm ? vertices(sm) : 0} vértices contra ${vertices(comun)} de un granadero`);
+  comun.quitar(); j.soldados.splice(j.soldados.indexOf(comun), 1);
+  const lejos = sm ? Math.hypot(sm.pos.x - j.jugador.pos.x, sm.pos.z - j.jugador.pos.z) : 0;
+  ok('arrancás lejos de él, hay que ir', lejos > 8, `a ${lejos.toFixed(1)} m`);
+  ok('donde caíste es donde quedó él',
+    !!sm && Math.hypot(sm.pos.x - caiste.x, sm.pos.z - caiste.z) < 0.5);
 
-  // no te pueden matar mientras estás debajo del caballo
-  const vidaAntes = j.jugador.vida;
   paso(2);
-  ok('nadie te remata ahí abajo', j.jugador.vida >= vidaAntes - 1, `${vidaAntes} → ${Math.round(j.jugador.vida)}`);
+  ok('el español que lo iba a rematar aparece', j.soldados.some(s => s.esRealista));
 
-  // Cabral llega y mata al español
+  // ---- machacar el espacio ----
+  // de lejos no se empuja nada, por mucho que la aprietes
+  const machacar = (seg) => {
+    for (let i = 0; i < seg * 60; i++) {
+      if (i % 6 === 0) teclas.add('Space'); else teclas.delete('Space');
+      paso(1 / 60);
+    }
+    teclas.delete('Space');
+  };
+  machacar(2);
+  ok('de lejos no se levanta nada', acto.levante === 0, `barra ${acto.levante.toFixed(2)}`);
+
+  // te acercás
+  if (sm) j.jugador.pos.set(sm.pos.x + 1.2, j.jugador.pos.y, sm.pos.z);
+  paso(0.2);
+  ok('al lado sí se puede empujar', acto.puedeEmpujar);
+
+  // una sola pulsación no alcanza: hay que machacar
+  teclas.add('Space'); paso(1 / 60); teclas.delete('Space'); paso(0.5);
+  ok('un solo espacio no lo levanta', acto.levante < 0.5 && acto.fase === 'cabral',
+    `barra ${acto.levante.toFixed(2)}`);
+
+  machacar(6);
+  ok('machacando sí sale', acto.fase === 'cine', `fase ${acto.fase} · barra ${acto.levante.toFixed(2)}`);
+  ok('el caballo quedó levantado', c.raiz.position.y > 0.1, `y=${c.raiz.position.y.toFixed(2)}`);
+  ok('y el que lo iba a rematar cayó', acto.verdugo && !acto.verdugo.vivo);
+
+  // ---- la cinemática ----
+  ok('va en cámara lenta', acto.lento < 1, `x${acto.lento}`);
   paso(2);
-  const dCab = Math.hypot(cab.pos.x - j.jugador.pos.x, cab.pos.z - j.jugador.pos.z);
-  ok('Cabral llegó hasta vos', dCab < 6, `a ${dCab.toFixed(1)} m`);
-  ok('el que te iba a rematar cayó', acto.verdugo && !acto.verdugo.vivo);
+  ok('el segundo español le entra con la bayoneta', !!acto.segundo);
+  ok('la cámara se cae y mira al cielo',
+    j.jugador.atrapado > 0 && j.jugador.pitchAtrapado > 0.4,
+    `pitch ${j.jugador.pitchAtrapado.toFixed(2)}`);
 
-  // levanta el caballo y te suelta
-  paso(4.5);
-  ok('te libera', j.jugador.atrapado === 0, `paso ${acto._paso}`);
-  ok('el caballo se levantó de encima', c.raiz.position.y > 0.1, `y=${c.raiz.position.y.toFixed(2)}`);
-
-  // y muere
-  paso(3);
-  ok('Cabral cae', !cab.vivo);
-  paso(8);
+  paso(12);
   ok('el acto termina', !acto.activo);
+  ok('y el tiempo vuelve a correr normal', acto.lento === 1);
+  ok('volvés a ser San Martín, en su lugar',
+    Math.hypot(j.jugador.pos.x - caiste.x, j.jugador.pos.z - caiste.z) < 1.5,
+    `a ${Math.hypot(j.jugador.pos.x - caiste.x, j.jugador.pos.z - caiste.z).toFixed(1)} m`);
+  ok('y el San Martín del suelo ya no está', !j.soldados.some(s => s.esSanMartin));
   ok('no se repite', !acto.puedeArrancar(c));
   return out;
 });
