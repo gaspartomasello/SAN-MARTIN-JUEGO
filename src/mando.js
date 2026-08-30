@@ -256,18 +256,37 @@ export function armarMando (ctx) {
     luz.classList.toggle('mal', p.fase === 'caido');
     papeles.anfitrion.classList.toggle('vos', p.rol === 'anfitrion');
     papeles.invitado.classList.toggle('vos', p.rol === 'invitado');
-    manual.classList.toggle('oculto', p.fase !== 'caido');
+    manual.classList.toggle('oculto', p.fase !== 'caido' || !puedeHaberSalaLocal);
+    // Los dos botones se ven mientras no estés en una sala; el código grande,
+    // sólo cuando lo creaste y estás esperando a que entre alguien.
+    if (elegir) elegir.classList.toggle('oculto', p.fase !== 'suelto' && p.fase !== 'caido');
+    if (claveCaja) {
+      const mostrar = !!red.codigo && p.rol === 'anfitrion' && p.fase !== 'suelto';
+      claveCaja.classList.toggle('oculto', !mostrar);
+      if (mostrar) clave.textContent = red.codigo;
+    }
     entrar.disabled = p.fase !== 'listo';
     entrar.textContent = p.rol === 'anfitrion'
       ? 'Formar las columnas y salir al campo'
       : 'Salir al campo';
   }
 
+  // ¿PUEDE haber una sala local? Es el camino del «Jugar de a dos»: ahí el
+  // servidor ya está levantado y no hay código que dictar, así que se prueba
+  // solo. Pages va por https, así que un http con host es una máquina de la red.
+  //
+  // Pero PODER no es SER: cualquier servidor estático sirve la página por http
+  // y no es una sala. Por eso se prueba y no se decide —si no contesta, quedan
+  // los botones del código, que es el camino normal—. La primera versión daba
+  // por hecho que era una sala y escondía los botones, y cualquiera que abriera
+  // la página desde otro servidor se quedaba mirando «no contesta nadie».
+  const puedeHaberSalaLocal = location.protocol === 'http:' && !!location.host;
+
   function abrirSala () {
     document.getElementById('portada').classList.add('oculto');
     pantallaSala.classList.remove('oculto');
     red.alCambiar(pintarSala);
-    red.conectar();
+    if (puedeHaberSalaLocal) red.conectar(null, true);   // tanteo callado
     pintarSala(red.parte());
   }
 
@@ -279,6 +298,21 @@ export function armarMando (ctx) {
 
   document.getElementById('modo-red').addEventListener('click', abrirSala);
   document.getElementById('sala-volver').addEventListener('click', cerrarSala);
+  const elegir = document.getElementById('sala-elegir');
+  const claveCaja = document.getElementById('sala-codigo-grande');
+  const clave = document.getElementById('sala-clave');
+  const campoCodigo = document.getElementById('sala-codigo');
+
+  document.getElementById('sala-crear').addEventListener('click', () => red.crearSala());
+  const unirse = () => red.entrarASala(campoCodigo.value);
+  document.getElementById('sala-unirse').addEventListener('click', unirse);
+  campoCodigo.addEventListener('keydown', ev => { if (ev.key === 'Enter') unirse(); });
+  // se escribe como sale y se ve prolijo: mayúsculas y sin las letras que se
+  // confunden al dictar
+  campoCodigo.addEventListener('input', () => {
+    campoCodigo.value = red.limpiarCodigo(campoCodigo.value);
+  });
+
   document.getElementById('sala-probar').addEventListener('click', () => {
     const dir = document.getElementById('sala-dir').value.trim();
     if (!dir) return;

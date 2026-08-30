@@ -286,6 +286,23 @@
   .papel span{display:block;color:#8B97A1;font-size:12.5px;line-height:1.5}
   .papel em{color:var(--bronce);font-style:normal;font-size:11px;letter-spacing:.15em;
     text-transform:uppercase;font-weight:600}
+  #sala-elegir.oculto{display:none}
+  #sala-elegir{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:20px}
+  #sala-elegir .o{color:#6C7681;font-size:12px;letter-spacing:.2em;text-transform:uppercase}
+  #sala-elegir .fila{display:flex;gap:9px}
+  #sala-codigo{width:172px;background:#0B1015;border:1px solid rgba(230,226,214,.22);
+    color:var(--hueso);padding:11px 14px;font-family:"Libre Caslon Display",Georgia,serif;
+    font-size:26px;letter-spacing:.34em;text-align:center;text-transform:uppercase}
+  #sala-codigo:focus{outline:none;border-color:var(--bronce)}
+  #sala-codigo-grande{text-align:center;margin-bottom:20px}
+  #sala-codigo-grande.oculto{display:none}
+  #sala-codigo-grande label{display:block;color:#8B97A1;font-size:12px;
+    letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}
+  #sala-codigo-grande b{display:block;font-family:"Libre Caslon Display",Georgia,serif;
+    font-weight:400;font-size:clamp(46px,9vw,74px);letter-spacing:.22em;
+    color:var(--bronce);line-height:1.1}
+  #sala-codigo-grande span{display:block;color:#6C7681;font-size:12px;margin-top:6px}
+  #sala-receta .chico{color:#6C7681;font-size:12px;margin-top:10px}
   #sala-manual{margin-bottom:18px}
   #sala-manual.oculto{display:none}
   #sala-manual label{display:block;color:#8B97A1;font-size:12px;letter-spacing:.14em;
@@ -459,7 +476,7 @@
 <div id="sala" class="oculto">
   <div class="caja">
     <div class="franja"><i></i><i></i><i></i></div>
-    <div class="eyebrow">Dos jugadores · el mismo wifi</div>
+    <div class="eyebrow">Dos jugadores · con un código</div>
     <h1>Los dos costados</h1>
     <p class="sub">Las dos columnas salieron a la vez por los dos costados del convento.
       Una la lleva cada uno.</p>
@@ -481,14 +498,30 @@
       </div>
     </div>
 
+    <div id="sala-elegir">
+      <button id="sala-crear">Crear sala</button>
+      <div class="o">o</div>
+      <div class="fila">
+        <input id="sala-codigo" type="text" spellcheck="false" autocomplete="off"
+               maxlength="4" placeholder="····">
+        <button id="sala-unirse" class="flojo">Entrar</button>
+      </div>
+    </div>
+
+    <div id="sala-codigo-grande" class="oculto">
+      <label>Dictale este código al otro</label>
+      <b id="sala-clave">····</b>
+      <span>Cuatro letras. Se pueden escribir en minúscula.</span>
+    </div>
+
     <div class="receta" id="sala-receta">
-      <p><b>Uno solo abre la sala:</b> doble clic en <code>Jugar de a dos.bat</code>
-        (en Mac, <code>jugar-de-a-dos.command</code>). Se abre una ventana negra y el
-        navegador solo. Esa ventana queda abierta mientras juegan.</p>
-      <p><b>El otro</b> escribe en su navegador la dirección que dice la ventana negra,
-        del tipo <code>http://192.168.0.7:8099</code>, y entra acá.</p>
-      <p>Tienen que estar en <b>la misma red</b> —el mismo wifi—. El primero que llega
-        lleva la columna del oeste y toca el clarín.</p>
+      <p>Uno hace <b>Crear sala</b> y le sale un código. El otro abre la misma
+        página, lo escribe y entra. Nada que instalar.</p>
+      <p>Anda por el mismo wifi o por datos, no hace falta que estén cerca.
+        El que crea la sala lleva la columna del oeste y toca el clarín.</p>
+      <p class="chico">¿La red del colegio no deja? Está el camino sin internet:
+        doble clic en <code>Jugar de a dos.bat</code> y entrar por la dirección
+        que imprime.</p>
     </div>
 
     <div id="sala-manual" class="oculto">

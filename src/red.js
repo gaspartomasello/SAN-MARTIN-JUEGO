@@ -58,6 +58,11 @@ import { Soldado } from './soldados.js';
 import { Caballo } from './caballo.js';
 import { Canon } from './canon.js';
 import { PLAZA_ESTE } from './pinza.js';
+// PeerJS entra como import de efecto: es un IIFE que deja window.Peer puesto.
+// Va por acá y no por un <script> en el html porque el empaquetador arma un
+// archivo único a partir del grafo de módulos, y un script suelto quedaría
+// como una referencia rota al abrirlo con doble clic.
+import '../vendor/peerjs.min.js';
 import {
   empaquetarMundo, desempaquetarMundo, poseANumero, numeroAPose, pesoDelParte,
   B_VIVO, B_MONTADO, B_RODILLA, B_ANDANDO, B_LANCERO, B_CUBIERTO, B_QUEBRADO,
@@ -79,6 +84,7 @@ export function armarRed (ctx) {
 
   // ------------------------------------------------------------------ estado
   let cable = null;
+  let peer = null;                   // el enganche con el directorio de salas
   let rol = null;                    // 'anfitrion' | 'invitado' | null
   let fase = 'suelto';               // suelto · llamando · esperando · listo · caido
   let hayCompanero = false;
@@ -121,7 +127,12 @@ export function armarRed (ctx) {
   // Se conecta al mismo servidor del que salió la página. Si el archivo se
   // abrió a mano —file://, sin servidor— no hay a dónde conectarse y hay que
   // decirlo así, porque es el error más fácil de cometer.
-  red.conectar = function (direccion) {
+  // `silencioso` es para el tanteo de arranque: si la página la sirve una sala
+  // local hay que engancharse sola, pero si no la sirve ninguna —un servidor
+  // estático cualquiera— el fallo NO es un error del jugador. Dejarlo en
+  // «caído» pinta un cartel rojo de «no contesta nadie» arriba de la pantalla
+  // donde está el camino que sí funciona, y parece que el juego está roto.
+  red.conectar = function (direccion, silencioso) {
     if (cable) return;
     let url = direccion;
     if (!url) {
@@ -133,23 +144,164 @@ export function armarRed (ctx) {
       }
       url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
     }
-    avisarFase('llamando');
-    try { cable = new WebSocket(url); } catch (e) { avisarFase('caido', 'No se pudo abrir el cable: ' + e.message); return; }
+    if (!silencioso) avisarFase('llamando');
+    const fallo = (m) => avisarFase(silencioso ? 'suelto' : 'caido', silencioso ? '' : m);
+    try { cable = new WebSocket(url); } catch (e) { fallo('No se pudo abrir el cable: ' + e.message); return; }
     cable.binaryType = 'arraybuffer';
     cable.onopen = () => { /* el servidor contesta con el rol */ };
     cable.onmessage = ev => {
       if (typeof ev.data === 'string') { bytesRecibidos += ev.data.length; recibirTexto(ev.data); }
       else { bytesRecibidos += ev.data.byteLength; recibirMundo(ev.data); }
     };
-    cable.onerror = () => { if (fase === 'llamando') avisarFase('caido', 'No contesta nadie en ' + url); };
+    cable.onerror = () => { if (fase === 'llamando' || silencioso) fallo('No contesta nadie en ' + url); };
     cable.onclose = () => {
+      const habia = !!rol;
       cable = null;
+      if (silencioso && !habia) { avisarFase('suelto'); return; }
       if (fase !== 'caido') avisarFase('caido', 'Se cortó el cable con la sala.');
     };
   };
 
+  // =========================================================================
+  // LA SALA POR CÓDIGO · dos clicks, sin instalar nada
+  // =========================================================================
+  //
+  // El otro camino —levantar `herramientas/servidor.mjs` en una máquina— sigue
+  // entero y es el que anda sin internet. Pero pide Node instalado y un doble
+  // clic en un archivo que hay que tener bajado, y esto lo van a abrir chicos
+  // en una escuela desde el link: si hay un paso más, no hay partida.
+  //
+  // Acá uno hace «Crear sala», le sale un código de cuatro letras y el otro lo
+  // escribe. Los dos navegadores se enganchan DIRECTO entre sí por WebRTC: el
+  // parte de la batalla —ciento trece kilobytes por segundo— no pasa por
+  // ningún servidor ajeno. Lo único que se usa de afuera es el DIRECTORIO,
+  // para decir «la sala ABCD soy yo»: unos kilobytes al principio y nada más.
+  //
+  // LO QUE NO SE PUEDE, y por eso hay código y no una lista de salas: una
+  // página web no puede ver las otras máquinas de la red. No hay broadcast ni
+  // escaneo, los navegadores lo prohíben a propósito. El código es lo más
+  // cerca que se llega, y en la práctica es un renglón que se dicta en voz
+  // alta.
+
+  // Sin I, O, 0 ni 1: se dicta en voz alta y se escribe a mano.
+  const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const PREFIJO = 'clarin-san-lorenzo-';
+  const LARGO = 4;
+
+  function codigoNuevo () {
+    let c = '';
+    for (let i = 0; i < LARGO; i++) c += ALFABETO[Math.floor(Math.random() * ALFABETO.length)];
+    return c;
+  }
+
+  // Que entrar mal escrito no sea un fracaso: mayúsculas, sin espacios, y las
+  // confusiones de dictar letras mandadas a la que sí existe en el alfabeto.
+  red.limpiarCodigo = function (t) {
+    return String(t || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+      .replace(/[0O]/g, 'Q').replace(/[1I]/g, 'J').slice(0, LARGO);
+  };
+
+  // El adaptador. De acá para arriba nadie sabe que esto no es un WebSocket:
+  // mismo molde —readyState, send, close— y los mismos mensajes que mandaba el
+  // servidor, sintetizados de este lado.
+  function cableDePar (conn) {
+    const c = {
+      readyState: 0,
+      send (d) { try { conn.send(d); } catch { /* se cortó */ } },
+      close () { try { conn.close(); } catch { /* ya estaba */ } },
+      onclose: null
+    };
+    conn.on('data', d => {
+      if (typeof d === 'string') { bytesRecibidos += d.length; recibirTexto(d); return; }
+      const buf = d instanceof ArrayBuffer ? d : (d && d.buffer) || null;
+      if (!buf) return;
+      bytesRecibidos += buf.byteLength;
+      recibirMundo(buf);
+    });
+    const cortar = () => { if (c.readyState === 3) return; c.readyState = 3; if (c.onclose) c.onclose(); };
+    conn.on('close', cortar);
+    conn.on('error', cortar);
+    return c;
+  }
+
+  // Los errores vienen en inglés y en jerga. Traducidos, y sobre todo: qué hacer.
+  function errorClaro (e) {
+    const t = (e && e.type) || '';
+    if (t === 'peer-unavailable') return 'No hay ninguna sala con ese código. Fijate que esté bien escrito y que el otro la haya creado recién.';
+    if (t === 'unavailable-id') return 'Ese código ya está tomado. Volvé y creá la sala de nuevo.';
+    if (t === 'network' || t === 'server-error' || t === 'socket-error') {
+      return 'No se pudo llegar al directorio de salas. Puede ser la red: probá con los datos del celular, o jugá por red local con «Jugar de a dos».';
+    }
+    if (t === 'browser-incompatible') return 'Este navegador no sirve para jugar de a dos. Probá con Chrome o Edge.';
+    return 'Se cortó la conexión' + (t ? ' (' + t + ')' : '') + '.';
+  }
+
+  function armarPeer (id) {
+    if (!window.Peer) { avisarFase('caido', 'No cargó la parte de red del juego. Recargá la página.'); return null; }
+    const p = new window.Peer(id, { debug: 0 });
+    p.on('error', e => avisarFase('caido', errorClaro(e)));
+    return p;
+  }
+
+  // ---- crear la sala: sos San Martín y esperás ----
+  red.crearSala = function () {
+    if (peer || cable) return;
+    red.codigo = codigoNuevo();
+    avisarFase('llamando');
+    peer = armarPeer(PREFIJO + red.codigo);
+    if (!peer) return;
+    peer.on('open', () => { rol = 'anfitrion'; hayCompanero = false; avisarFase('esperando'); });
+    peer.on('connection', conn => {
+      if (cable) { conn.close(); return; }      // por ahora, de a dos
+      cable = cableDePar(conn);
+      conn.on('open', () => {
+        cable.readyState = 1;
+        hayCompanero = true;
+        armarCompanero();
+        proximoId = 1; porId.clear(); ultimoSello = -1;
+        avisarFase('listo');
+        hud.mostrarAviso('Entró el otro escuadrón', 'bien');
+      });
+      cable.onclose = () => {
+        cable = null; hayCompanero = false;
+        soltarCompanero();
+        cabezaRemota.vivo = false;
+        avisarFase('esperando', 'Se fue el otro jugador.');
+        hud.mostrarAviso('Se fue Bermúdez', 'malo');
+      };
+    });
+  };
+
+  // ---- entrar a una sala: sos Bermúdez ----
+  red.entrarASala = function (codigo) {
+    if (peer || cable) return;
+    const c = red.limpiarCodigo(codigo);
+    if (c.length !== LARGO) { avisarFase('caido', 'El código es de cuatro letras.'); return; }
+    red.codigo = c;
+    avisarFase('llamando');
+    peer = armarPeer();
+    if (!peer) return;
+    peer.on('open', () => {
+      const conn = peer.connect(PREFIJO + c, { reliable: true });
+      cable = cableDePar(conn);
+      conn.on('open', () => {
+        cable.readyState = 1;
+        rol = 'invitado'; hayCompanero = true;
+        armarCompanero();
+        avisarFase('listo');
+      });
+      cable.onclose = () => {
+        cable = null; hayCompanero = false;
+        avisarFase('caido', 'Se cortó con San Martín.');
+        hud.decir('Se cayó la máquina que llevaba la batalla. Ya no viene ningún parte.', 8);
+      };
+    });
+  };
+
   red.cortar = function () {
     if (cable) { const c = cable; cable = null; c.onclose = null; c.close(); }
+    if (peer) { const p = peer; peer = null; try { p.destroy(); } catch { /* ya estaba */ } }
+    red.codigo = null;
     rol = null; hayCompanero = false;
     avisarFase('suelto');
   };
