@@ -178,7 +178,18 @@ export class ArmaFuego {
   guardar () { this.guardada = true; this.grupo.visible = false; this.cargando = false; this.tGolpe = -1; }
 
   _duracion (id) {
-    return PASOS[id].dur * this.cfg.cargaMult * this.penalPostura;
+    // CON LA CARGA SOLA EL ANDAR NO LA FRENA. penalCargaMontado multiplica por
+    // 3,4 al galope, y eso convertía los tres segundos en diez: el número que
+    // se pidió dejaba de ser el número que pasa. El penal sigue entero para la
+    // carga a mano, que es donde significa algo —ahí estás vos con la baqueta
+    // arriba de un caballo al trote— pero la que se hace sola no la frena:
+    // pediste tres segundos y son tres, montado o no.
+    //
+    // El mínimo es contra 1 y no contra el penal a secas: agachado se carga
+    // MÁS rápido y eso se conserva, y tirado sigue sin poder —de eso se ocupa
+    // la puerta de arriba, que mira penalPostura en crudo—.
+    const postura = this.sola ? Math.min(1, this.penalPostura) : this.penalPostura;
+    return PASOS[id].dur * this.cfg.cargaMult * postura;
   }
 
   _ventana (id) {

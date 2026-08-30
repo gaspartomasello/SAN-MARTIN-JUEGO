@@ -33086,7 +33086,8 @@ var ArmaFuego = class {
     this.tGolpe = -1;
   }
   _duracion(id) {
-    return PASOS[id].dur * this.cfg.cargaMult * this.penalPostura;
+    const postura = this.sola ? Math.min(1, this.penalPostura) : this.penalPostura;
+    return PASOS[id].dur * this.cfg.cargaMult * postura;
   }
   _ventana(id) {
     const d = this._duracion(id) + this.penal;

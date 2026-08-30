@@ -40,13 +40,13 @@ const r = await pag.evaluate(() => {
   // que no cobre torpeza por no marcar el ritmo —no estás mirando el arma— y
   // que a pie con el arma en la mano NO pase nada de eso, que es donde el
   // minijuego vale.
-  function sola (guardada) {
+  function sola (guardada, penalCarga = 1) {
     t.dejarDescargada();
     t.guardada = guardada;
     t.cargando = false;
     let seg = 0;
     for (let i = 0; i < 120 * 40 && !t.lista; i++) {
-      t.actualizar(dt, { apuntando: false, presion: 0, penalCarga: 1, dispersion: 1, sola: true });
+      t.actualizar(dt, { apuntando: false, presion: 0, penalCarga, dispersion: 1, sola: true });
       seg += dt;
     }
     const r = { seg: +seg.toFixed(2), lista: t.lista, torpezas: t.penal > 0 };
@@ -55,6 +55,19 @@ const r = await pag.evaluate(() => {
   }
   const solaGuardada = sola(true);
   const solaEnMano = sola(false);
+  // AL GALOPE TIENE QUE SEGUIR SIENDO TRES. penalCargaMontado vale 3,4 a galope
+  // y multiplicaba el ciclo hasta diez segundos: el número pedido dejaba de ser
+  // el número que pasa. La carga sola lo ignora; la de a mano no.
+  const solaAlGalope = sola(false, 3.4);
+  const aManoAlGalope = (() => {
+    t.dejarDescargada(); t.cargando = true;
+    let seg = 0;
+    for (let i = 0; i < 120 * 40 && !t.lista; i++) {
+      t.actualizar(dt, { apuntando: false, presion: 0, penalCarga: 3.4, dispersion: 1, sola: false });
+      seg += dt;
+    }
+    return { seg: +seg.toFixed(2), lista: t.lista };
+  })();
 
   // y a mano, guardada, no arranca sola ni loca
   t.dejarDescargada(); t.guardada = true; t.cargando = false;
@@ -85,7 +98,7 @@ const r = await pag.evaluate(() => {
   const H = window.juego.humo;
   const T = window.THREE_TEST || null;
   H.soltar({ x: 0, y: 1.5, z: -10, clone(){return this;}, copy(){return this;} }, { x:0,y:0,z:-1, clone(){return this;}, multiplyScalar(){return this;} }, { cantidad: 2 });
-  return { perfecto, torpe, bajoPresion, solaGuardada, solaEnMano, aMano,
+  return { perfecto, torpe, bajoPresion, solaGuardada, solaEnMano, solaAlGalope, aManoAlGalope, aMano,
     trasTiro, mitad, trasSoltar, retoma };
 });
 console.log(JSON.stringify(r, null, 2));
