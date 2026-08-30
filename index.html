@@ -45,6 +45,21 @@
     background:radial-gradient(ellipse 78% 74% at center,rgba(0,0,0,0) 46%,rgba(150,26,20,.62) 100%);
     animation:pulsoMetralla .55s ease-in-out infinite}
   @keyframes pulsoMetralla{0%,100%{filter:brightness(.75)}50%{filter:brightness(1.35)}}
+  /* SE CIERRAN LOS OJOS. No es sólo negro: la vista se va de foco primero y el
+     negro entra después, y entra desde arriba y desde abajo como un párpado.
+     Un corte a negro dice «terminó la partida»; esto dice «se está muriendo». */
+  #lienzo{transition:filter 3.2s ease-in}
+  #lienzo.ojos{filter:blur(14px) saturate(.25) brightness(.55)}
+  #parpados{position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;
+            transition:opacity 2.4s ease-in;
+            background:radial-gradient(ellipse 120% 78% at 50% 50%,
+              rgba(0,0,0,0) 34%, rgba(0,0,0,.55) 62%, rgba(0,0,0,.98) 88%)}
+  #parpados.si{opacity:1}
+  /* Y EL HUD SE VA CON LOS OJOS. Un moribundo no lee cuántos cartuchos le
+     quedan: si el mundo se nubla y la interfaz sigue nítida encima, lo que se
+     lee es un filtro puesto arriba de un juego y no un hombre que se muere. */
+  #hud{transition:opacity 1.6s ease-in}
+  #hud.ojos{opacity:0}
   /* el fundido a negro del acto Cabral: tapa el cambio de cuerpo */
   #fundido{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:0;
            background:#000;transition:opacity .9s linear}
@@ -295,6 +310,7 @@
 <div id="humo-pantalla"></div>
 <div id="vineta"></div>
 <div id="velocidad"></div>
+<div id="parpados"></div>
 <div id="fundido"></div>
 <div id="frase"></div>
 <div id="forcejeo"><i></i><b>ESPACIO</b></div>

@@ -45,6 +45,21 @@
     background:radial-gradient(ellipse 78% 74% at center,rgba(0,0,0,0) 46%,rgba(150,26,20,.62) 100%);
     animation:pulsoMetralla .55s ease-in-out infinite}
   @keyframes pulsoMetralla{0%,100%{filter:brightness(.75)}50%{filter:brightness(1.35)}}
+  /* SE CIERRAN LOS OJOS. No es sólo negro: la vista se va de foco primero y el
+     negro entra después, y entra desde arriba y desde abajo como un párpado.
+     Un corte a negro dice «terminó la partida»; esto dice «se está muriendo». */
+  #lienzo{transition:filter 3.2s ease-in}
+  #lienzo.ojos{filter:blur(14px) saturate(.25) brightness(.55)}
+  #parpados{position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;
+            transition:opacity 2.4s ease-in;
+            background:radial-gradient(ellipse 120% 78% at 50% 50%,
+              rgba(0,0,0,0) 34%, rgba(0,0,0,.55) 62%, rgba(0,0,0,.98) 88%)}
+  #parpados.si{opacity:1}
+  /* Y EL HUD SE VA CON LOS OJOS. Un moribundo no lee cuántos cartuchos le
+     quedan: si el mundo se nubla y la interfaz sigue nítida encima, lo que se
+     lee es un filtro puesto arriba de un juego y no un hombre que se muere. */
+  #hud{transition:opacity 1.6s ease-in}
+  #hud.ojos{opacity:0}
   /* el fundido a negro del acto Cabral: tapa el cambio de cuerpo */
   #fundido{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:0;
            background:#000;transition:opacity .9s linear}
@@ -295,6 +310,7 @@
 <div id="humo-pantalla"></div>
 <div id="vineta"></div>
 <div id="velocidad"></div>
+<div id="parpados"></div>
 <div id="fundido"></div>
 <div id="frase"></div>
 <div id="forcejeo"><i></i><b>ESPACIO</b></div>
@@ -28169,6 +28185,12 @@ var REGEN_ESPERA = 4.5;
 var REGEN_TASA = 21;
 var VENDA_CURA = 48;
 var VENDA_TIEMPO = 1.4;
+var ALTURA_CAIDO = 0.62;
+var CAER_CABEZA = 1.6;
+var VUELO = 26;
+var VUELO_RAPIDO = 62;
+var VUELO_PISO = 1.2;
+var VUELO_TECHO = 90;
 var CAMPO_X = 120;
 var CAMPO_Z0 = -105;
 var CAMPO_Z1 = 78;
@@ -28188,6 +28210,8 @@ var Jugador = class {
     this.caidoEn = null;
     this.yawAtrapado = 0;
     this.pitchAtrapado = -0.08;
+    this.espectador = false;
+    this.murioEn = null;
     this.postura = "pie";
     this.altura = POSTURAS.pie.altura;
     this.pies = 0;
@@ -28220,6 +28244,49 @@ var Jugador = class {
   get cfgPostura() {
     return POSTURAS[this.postura];
   }
+  // El vuelo del espectador. Sin gravedad, sin choques y sin postura: mirás a
+  // donde mirás y vas para allá. Rápido, porque el campo tiene doscientos
+  // cuarenta metros de lado y una batalla dura tres minutos.
+  _volar(dt, teclas) {
+    const t = teclas;
+    const rapido = t.has("ShiftLeft") || t.has("ShiftRight");
+    const v = (rapido ? VUELO_RAPIDO : VUELO) * dt;
+    const cy = Math.cos(this.pitch);
+    const fx = -Math.sin(this.yaw) * cy, fy = Math.sin(this.pitch), fz = -Math.cos(this.yaw) * cy;
+    const dx = Math.cos(this.yaw), dz = -Math.sin(this.yaw);
+    let mx = 0, my = 0, mz = 0;
+    if (t.has("KeyW")) {
+      mx += fx;
+      my += fy;
+      mz += fz;
+    }
+    if (t.has("KeyS")) {
+      mx -= fx;
+      my -= fy;
+      mz -= fz;
+    }
+    if (t.has("KeyD")) {
+      mx += dx;
+      mz += dz;
+    }
+    if (t.has("KeyA")) {
+      mx -= dx;
+      mz -= dz;
+    }
+    if (t.has("Space")) my += 1;
+    if (t.has("ControlLeft") || t.has("ControlRight")) my -= 1;
+    const l = Math.hypot(mx, my, mz);
+    if (l > 1e-3) {
+      this.pos.x += mx / l * v;
+      this.pos.y += my / l * v;
+      this.pos.z += mz / l * v;
+    }
+    this.pos.x = Math.max(-CAMPO_X, Math.min(CAMPO_X, this.pos.x));
+    this.pos.z = Math.max(CAMPO_Z0, Math.min(CAMPO_Z1, this.pos.z));
+    this.pos.y = Math.max(VUELO_PISO, Math.min(VUELO_TECHO, this.pos.y));
+    this.trauma = Math.max(0, this.trauma - dt * 2);
+    this._aplicarCamara(dt, 0);
+  }
   mirar(dx, dy, sens) {
     this.yaw -= dx * sens;
     this.pitch -= dy * sens;
@@ -28243,7 +28310,30 @@ var Jugador = class {
     this.vendando = VENDA_TIEMPO;
     return true;
   }
+  // ESPECTADOR. En una partida de a dos el que muere no puede quedarse mirando
+  // el pasto veinte minutos ni obligar a los otros a esperarlo: se sale del
+  // cuerpo y se mira la batalla desde arriba, volando.
+  //
+  // Y se sale del cuerpo de verdad. Nadie te ve —lo que queda en el campo es
+  // tu cadáver, donde caíste, y ahí se queda—, no chocás con nada, no tapás a
+  // nadie y la tropa no te apunta: para la IA un muerto no existe, que ya era
+  // así. Volar sin estorbar es lo que hace que mirar no sea un castigo.
+  espiar() {
+    if (this.espectador) return false;
+    this.espectador = true;
+    this.murioEn = { x: this.pos.x, z: this.pos.z };
+    this.monta = null;
+    this.atrapado = 0;
+    this.caidoEn = null;
+    this.postura = "pie";
+    this.velY = 0;
+    this.enElAire = false;
+    this.pos.y = Math.max(this.pos.y, 6);
+    return true;
+  }
   revivir() {
+    this.espectador = false;
+    this.murioEn = null;
     this.vida = this.vidaMax;
     this.aliento = 100;
     this.vendas = 3;
@@ -28327,8 +28417,24 @@ var Jugador = class {
     return true;
   }
   actualizar(dt, teclas, apuntando, cargando) {
+    if (this.espectador) {
+      this._volar(dt, teclas);
+      return;
+    }
     if (!this.vivo) {
       this.trauma = Math.max(0, this.trauma - dt * 0.5);
+      if (this.atrapado > 0 && this.caidoEn) {
+        this.atrapado += dt;
+        this.pos.x = this.caidoEn.x;
+        this.pos.z = this.caidoEn.z;
+        this.pies = 0;
+        this.altura += (ALTURA_CAIDO - this.altura) * Math.min(1, CAER_CABEZA * dt);
+        this.pos.y = this.altura;
+        let g = this.yawAtrapado - this.yaw;
+        g = Math.atan2(Math.sin(g), Math.cos(g));
+        this.yaw += g * Math.min(1, 1.1 * dt);
+        this.pitch += (this.pitchAtrapado - this.pitch) * Math.min(1, 1.1 * dt);
+      }
       this._aplicarCamara(dt, 0);
       return;
     }
@@ -32496,6 +32602,7 @@ var Hud = class {
     this.remate = $("#remate");
     this.velocidad = $("#velocidad");
     this.fundido = $("#fundido");
+    this.parpados = $("#parpados");
     this.metralla = $("#metralla");
     this.frase = $("#frase");
     this.forcejeo = $("#forcejeo");
@@ -32537,7 +32644,48 @@ var Hud = class {
   // pie once metros más atrás no se puede hacer con un corte, se ve el truco.
   fundir(a, segundos) {
     this.fundido.style.transition = `opacity ${segundos || 0.9}s linear`;
+    void this.fundido.offsetHeight;
     this.fundido.style.opacity = String(a);
+  }
+  // SE CIERRAN LOS OJOS. Tres cosas encadenadas y ninguna es un corte a negro:
+  // la vista se va de foco, el campo se apaga desde los bordes como un párpado
+  // que baja, y recién al final entra el negro. Un corte dice «terminó la
+  // partida»; esto dice «se está muriendo», que no es lo mismo.
+  cerrarLosOjos(seg) {
+    const t = seg || 6;
+    const l = document.getElementById("lienzo");
+    if (l) {
+      l.style.transitionDuration = (t * 0.55).toFixed(2) + "s";
+      l.classList.add("ojos");
+    }
+    const h = document.getElementById("hud");
+    if (h) {
+      h.style.transitionDuration = (t * 0.28).toFixed(2) + "s";
+      h.classList.add("ojos");
+    }
+    if (this.parpados) {
+      this.parpados.style.transitionDuration = (t * 0.42).toFixed(2) + "s";
+      this.parpados.classList.add("si");
+    }
+    setTimeout(() => this.fundir(1, t * 0.42), t * 0.5 * 1e3);
+  }
+  // y se vuelven a abrir
+  abrirLosOjos() {
+    const l = document.getElementById("lienzo");
+    if (l) {
+      l.style.transitionDuration = "0.5s";
+      l.classList.remove("ojos");
+    }
+    const h = document.getElementById("hud");
+    if (h) {
+      h.style.transitionDuration = "0.5s";
+      h.classList.remove("ojos");
+    }
+    if (this.parpados) {
+      this.parpados.style.transitionDuration = "0.5s";
+      this.parpados.classList.remove("si");
+    }
+    this.fundir(0, 0.5);
   }
   destello(f) {
     this.flash.style.transition = "none";
@@ -32576,7 +32724,7 @@ var Hud = class {
       this.tFrase -= dt;
       if (this.tFrase <= 0) this.frase.classList.remove("si");
     }
-    const barra = datos.atrapado > 0 || datos.empujando;
+    const barra = datos.atrapado > 0 && datos.vida > 0 || datos.empujando;
     this.forcejeo.classList.toggle("si", barra);
     if (barra) this.forcejeo.querySelector("i").style.setProperty(
       "--f",
@@ -34284,6 +34432,8 @@ function armarMando(ctx) {
         break;
       case "Enter":
         if (!jugador2.vivo) {
+          jugador2.liberar();
+          hud2.abrirLosOjos();
           jugador2.revivir();
           if (!red2.activo) campo2.limpiarCampo();
           arsenal2.reponer();
@@ -34298,6 +34448,7 @@ function armarMando(ctx) {
   });
   addEventListener("mousedown", (ev) => {
     if (!bloqueado) return;
+    if (jugador2.espectador) return;
     if (ev.button === 0) {
       const a = arsenal2.actual();
       if (a && a.cargando) {
@@ -35100,10 +35251,11 @@ function armarRed(ctx) {
   red2.cabezaCompanero = () => cabezaRemota.vivo ? cabezaRemota : null;
   function mandarCuerpo() {
     const c = montado2() ? jugador2.monta : null;
+    const p = jugador2.espectador && jugador2.murioEn ? jugador2.murioEn : jugador2.pos;
     mandar({
       t: "yo",
-      x: +jugador2.pos.x.toFixed(2),
-      z: +jugador2.pos.z.toFixed(2),
+      x: +p.x.toFixed(2),
+      z: +p.z.toFixed(2),
       yaw: +jugador2.yaw.toFixed(3),
       vivo: jugador2.vivo,
       vida: Math.round(jugador2.vida),
@@ -35646,6 +35798,7 @@ function armarRed(ctx) {
 
 // src/main.js
 var lienzo = document.createElement("canvas");
+lienzo.id = "lienzo";
 document.body.insertBefore(lienzo, document.body.firstChild);
 var render = new WebGLRenderer({ canvas: lienzo, antialias: true, powerPreference: "high-performance" });
 render.setPixelRatio(Math.min(devicePixelRatio, 1.75));
@@ -35788,7 +35941,29 @@ var moral = armarMoral({
 });
 campo.alFormar = () => moral.reiniciar();
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
-jugador.alMorir = () => hud.mostrarAviso("Fuera de combate", "malo");
+var ULTIMAS = [
+  "Ser\xE1s lo que debas ser, o no ser\xE1s nada.",
+  "Seamos libres, que lo dem\xE1s no importa nada.",
+  "De lo que son capaces mis granaderos, s\xF3lo yo lo s\xE9; quien los iguale habr\xE1, quien los exceda, no.",
+  "Se puede quitar la vida a un hombre, pero no el honor.",
+  "La Patria no hace un soldado para que la deshonre."
+];
+jugador.alMorir = () => {
+  hud.mostrarAviso("Fuera de combate", "malo");
+  if (red.activo) {
+    if (jugador.espiar()) {
+      hud.decir("Ca\xEDste. Mir\xE1 c\xF3mo termina: WASD para volar, Shift para ir r\xE1pido, Espacio y Control para subir y bajar. Enter para volver a la pelea.", 9);
+    }
+    return;
+  }
+  if (jugador.atrapado <= 0) {
+    jugador.atrapar(jugador.pos.x, jugador.pos.z, jugador.yaw + 1.15);
+    jugador.pitchAtrapado = 0.5;
+  }
+  jugador.sacudir(0.8);
+  hud.cerrarLosOjos(7);
+  setTimeout(() => hud.decir(ULTIMAS[Math.floor(Math.random() * ULTIMAS.length)], 9), 2200);
+};
 var acto = new ActoCabral({
   escena,
   humo,
@@ -35941,7 +36116,7 @@ function cuadro() {
   const embalado = montado() && !quiereApuntar ? Math.max(0, (jugador.monta.vel - 4.2) / 6) : 0;
   pasadaVel.dibujar(Math.min(1, embalado), montado() ? jugador.monta.rumbo : null);
   const mundoInfo = { calls: pasadaVel.ultimaInfo.calls, tris: pasadaVel.ultimaInfo.tris };
-  escenaArma.visible = jugador.atrapado <= 0;
+  escenaArma.visible = jugador.atrapado <= 0 && !jugador.espectador;
   pasadaArma.dibujar(quiereApuntar ? 1 : 0);
   const info = {
     calls: mundoInfo.calls + pasadaArma.ultimaInfo.calls + 2,

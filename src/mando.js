@@ -94,6 +94,8 @@ export function armarMando (ctx) {
       case 'F3': hud.verDepurar = !hud.verDepurar; break;
       case 'Enter':
         if (!jugador.vivo) {
+          jugador.liberar();
+          hud.abrirLosOjos();
           jugador.revivir();
           // EN RED EL CAMPO NO ES TUYO. Barrerlo acá haría dos destrozos: al
           // invitado le borraría los títeres que el anfitrión sigue moviendo
@@ -114,6 +116,9 @@ export function armarMando (ctx) {
   // ------------------------------ mouse ------------------------------
   addEventListener('mousedown', ev => {
     if (!bloqueado) return;
+    // El espectador mira: no dispara, no sablea y no marca la carga. Si no,
+    // se pelearía la batalla desde cuarenta metros de altura.
+    if (jugador.espectador) return;
     if (ev.button === 0) {
       const a = arsenal.actual();
       // mientras cargás, el click marca el tiempo en vez de disparar

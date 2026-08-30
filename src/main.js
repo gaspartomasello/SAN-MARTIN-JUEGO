@@ -48,6 +48,7 @@ import { VOLTEO, OFICIO, METRALLA_CABALLO, CAIDA } from './balance.js';
 // el escenario
 // ---------------------------------------------------------------------------
 const lienzo = document.createElement('canvas');
+lienzo.id = 'lienzo';          // para que el HUD le pueda nublar la vista al morir
 document.body.insertBefore(lienzo, document.body.firstChild);
 
 const render = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, powerPreference: 'high-performance' });
@@ -190,7 +191,45 @@ const moral = armarMoral({
 campo.alFormar = () => moral.reiniciar();
 
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
-jugador.alMorir = () => hud.mostrarAviso('Fuera de combate', 'malo');
+// AL MORIR EN UNA PARTIDA DE A DOS SE PASA A MIRAR, no a esperar. En solitario
+// no: ahí morirte es el final de tu partida y volvés con Enter cuando quieras,
+// sin nadie a quien hacer esperar. En red los otros siguen peleando y quedarte
+// veinte minutos mirando el pasto desde donde caíste no es un modo de juego.
+// LAS ÚLTIMAS PALABRAS. Son de él, no inventadas, y se sortea una: morir tres
+// veces y leer tres veces lo mismo convierte una frase en un cartel.
+const ULTIMAS = [
+  'Serás lo que debas ser, o no serás nada.',
+  'Seamos libres, que lo demás no importa nada.',
+  'De lo que son capaces mis granaderos, sólo yo lo sé; quien los iguale habrá, quien los exceda, no.',
+  'Se puede quitar la vida a un hombre, pero no el honor.',
+  'La Patria no hace un soldado para que la deshonre.'
+];
+
+jugador.alMorir = () => {
+  hud.mostrarAviso('Fuera de combate', 'malo');
+
+  // EN RED SE PASA A MIRAR, porque los otros siguen peleando y no se los puede
+  // hacer esperar. En solitario no hay a quién esperar y lo que corresponde es
+  // lo otro: que se te caiga la cabeza al pasto y se te cierren los ojos.
+  if (red.activo) {
+    if (jugador.espiar()) {
+      hud.decir('Caíste. Mirá cómo termina: WASD para volar, Shift para ir rápido, ' +
+        'Espacio y Control para subir y bajar. Enter para volver a la pelea.', 9);
+    }
+    return;
+  }
+
+  // La cabeza cae de costado y queda mirando al cielo. Es la misma máquina de
+  // estar tirado bajo el caballo —atrapar y pitchAtrapado—, que ya sabe poner
+  // la cámara a sesenta centímetros del pasto y girarla despacio.
+  if (jugador.atrapado <= 0) {
+    jugador.atrapar(jugador.pos.x, jugador.pos.z, jugador.yaw + 1.15);
+    jugador.pitchAtrapado = 0.50;
+  }
+  jugador.sacudir(0.8);
+  hud.cerrarLosOjos(7);
+  setTimeout(() => hud.decir(ULTIMAS[Math.floor(Math.random() * ULTIMAS.length)], 9), 2200);
+};
 
 // EL ACTO CABRAL. Arranca la primera vez que te matan el caballo estando
 // montado. No es un guion aparte: es la consecuencia de la mecánica.
@@ -422,7 +461,7 @@ function cuadro () {
   pasadaVel.dibujar(Math.min(1, embalado), montado() ? jugador.monta.rumbo : null);
   const mundoInfo = { calls: pasadaVel.ultimaInfo.calls, tris: pasadaVel.ultimaInfo.tris };
   // debajo del caballo no se sostiene nada: la capa del arma se apaga
-  escenaArma.visible = jugador.atrapado <= 0;
+  escenaArma.visible = jugador.atrapado <= 0 && !jugador.espectador;
   pasadaArma.dibujar(quiereApuntar ? 1 : 0);
   const info = {
     calls: mundoInfo.calls + pasadaArma.ultimaInfo.calls + 2,   // los dos blits de pantalla completa

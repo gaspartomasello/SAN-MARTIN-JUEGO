@@ -43,6 +43,17 @@ const VENDA_TIEMPO = 1.4;
 // dos veces —una acá y otra en caballo.js— y al ensanchar el campo se movió
 // uno solo: a pie llegabas al 96 y montado seguías chocando contra el 62, que
 // es justo el caso que importa, porque flanquear se flanquea a caballo.
+// El vuelo del espectador. El campo mide doscientos cuarenta de lado y una
+// batalla dura tres minutos: si se cruza despacio, mirar es un castigo.
+// Lo que tarda la cabeza en llegar al pasto: casi un segundo, no un cuadro.
+const ALTURA_CAIDO = 0.62;
+const CAER_CABEZA = 1.6;
+
+const VUELO = 26;             // metros por segundo
+const VUELO_RAPIDO = 62;      // con Shift, para cruzar el campo de punta a punta
+const VUELO_PISO = 1.2;       // no se entierra
+const VUELO_TECHO = 90;       // ni se va a la estratósfera
+
 export const CAMPO_X = 120;
 export const CAMPO_Z0 = -105;   // el río
 export const CAMPO_Z1 = 78;     // el fondo del convento
@@ -67,6 +78,9 @@ export class Jugador {
     this.caidoEn = null;
     this.yawAtrapado = 0;
     this.pitchAtrapado = -0.08;
+    // ---- espectador: muerto en una partida de a dos, mirando el resto
+    this.espectador = false;
+    this.murioEn = null;        // dónde quedó el cuerpo, que no se mueve más
     this.postura = 'pie';
     this.altura = POSTURAS.pie.altura;
     this.pies = 0;           // altura del suelo bajo los pies
@@ -98,6 +112,41 @@ export class Jugador {
   get maltrecho () { return this.vida < 32; }
   get cfgPostura () { return POSTURAS[this.postura]; }
 
+  // El vuelo del espectador. Sin gravedad, sin choques y sin postura: mirás a
+  // donde mirás y vas para allá. Rápido, porque el campo tiene doscientos
+  // cuarenta metros de lado y una batalla dura tres minutos.
+  _volar (dt, teclas) {
+    const t = teclas;
+    const rapido = t.has('ShiftLeft') || t.has('ShiftRight');
+    const v = (rapido ? VUELO_RAPIDO : VUELO) * dt;
+
+    // adelante sale de dónde estás mirando, cabeceo incluido: si mirás abajo,
+    // bajás. Es lo que espera cualquiera que haya volado en un juego.
+    const cy = Math.cos(this.pitch);
+    const fx = -Math.sin(this.yaw) * cy, fy = Math.sin(this.pitch), fz = -Math.cos(this.yaw) * cy;
+    const dx = Math.cos(this.yaw), dz = -Math.sin(this.yaw);
+
+    let mx = 0, my = 0, mz = 0;
+    if (t.has('KeyW')) { mx += fx; my += fy; mz += fz; }
+    if (t.has('KeyS')) { mx -= fx; my -= fy; mz -= fz; }
+    if (t.has('KeyD')) { mx += dx; mz += dz; }
+    if (t.has('KeyA')) { mx -= dx; mz -= dz; }
+    if (t.has('Space')) my += 1;
+    if (t.has('ControlLeft') || t.has('ControlRight')) my -= 1;
+
+    const l = Math.hypot(mx, my, mz);
+    if (l > 0.001) {
+      this.pos.x += (mx / l) * v;
+      this.pos.y += (my / l) * v;
+      this.pos.z += (mz / l) * v;
+    }
+    this.pos.x = Math.max(-CAMPO_X, Math.min(CAMPO_X, this.pos.x));
+    this.pos.z = Math.max(CAMPO_Z0, Math.min(CAMPO_Z1, this.pos.z));
+    this.pos.y = Math.max(VUELO_PISO, Math.min(VUELO_TECHO, this.pos.y));
+    this.trauma = Math.max(0, this.trauma - dt * 2);
+    this._aplicarCamara(dt, 0);
+  }
+
   mirar (dx, dy, sens) {
     this.yaw -= dx * sens;
     this.pitch -= dy * sens;
@@ -123,7 +172,31 @@ export class Jugador {
     return true;
   }
 
+  // ESPECTADOR. En una partida de a dos el que muere no puede quedarse mirando
+  // el pasto veinte minutos ni obligar a los otros a esperarlo: se sale del
+  // cuerpo y se mira la batalla desde arriba, volando.
+  //
+  // Y se sale del cuerpo de verdad. Nadie te ve —lo que queda en el campo es
+  // tu cadáver, donde caíste, y ahí se queda—, no chocás con nada, no tapás a
+  // nadie y la tropa no te apunta: para la IA un muerto no existe, que ya era
+  // así. Volar sin estorbar es lo que hace que mirar no sea un castigo.
+  espiar () {
+    if (this.espectador) return false;
+    this.espectador = true;
+    this.murioEn = { x: this.pos.x, z: this.pos.z };
+    this.monta = null;
+    this.atrapado = 0;
+    this.caidoEn = null;
+    this.postura = 'pie';
+    this.velY = 0;
+    this.enElAire = false;
+    this.pos.y = Math.max(this.pos.y, 6);
+    return true;
+  }
+
   revivir () {
+    this.espectador = false;
+    this.murioEn = null;
     this.vida = this.vidaMax;
     this.aliento = 100;
     this.vendas = 3;
@@ -214,8 +287,29 @@ export class Jugador {
   }
 
   actualizar (dt, teclas, apuntando, cargando) {
+    if (this.espectador) { this._volar(dt, teclas); return; }
+    // ---- MUERTO ----
+    //
+    // La cabeza CAE, no aparece abajo. El corte —de altura de ojos a sesenta
+    // centímetros en un cuadro— se lee como un cambio de cámara y no como un
+    // cuerpo que se desploma; bajándola en poco menos de un segundo, con el
+    // cuello girando de costado y la vista subiendo al cielo, se lee como lo
+    // que es. Y sí: `atrapar` ya tenía toda esta máquina, pero vivía después
+    // de este return y por eso nunca corría para un muerto.
     if (!this.vivo) {
       this.trauma = Math.max(0, this.trauma - dt * 0.5);
+      if (this.atrapado > 0 && this.caidoEn) {
+        this.atrapado += dt;
+        this.pos.x = this.caidoEn.x;
+        this.pos.z = this.caidoEn.z;
+        this.pies = 0;
+        this.altura += (ALTURA_CAIDO - this.altura) * Math.min(1, CAER_CABEZA * dt);
+        this.pos.y = this.altura;
+        let g = this.yawAtrapado - this.yaw;
+        g = Math.atan2(Math.sin(g), Math.cos(g));
+        this.yaw += g * Math.min(1, 1.1 * dt);
+        this.pitch += (this.pitchAtrapado - this.pitch) * Math.min(1, 1.1 * dt);
+      }
       this._aplicarCamara(dt, 0);
       return;
     }

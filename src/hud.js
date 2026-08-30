@@ -18,6 +18,7 @@ export class Hud {
     this.remate = $('#remate');
     this.velocidad = $('#velocidad');
     this.fundido = $('#fundido');
+    this.parpados = $('#parpados');
     this.metralla = $('#metralla');
     this.frase = $('#frase');
     this.forcejeo = $('#forcejeo');
@@ -62,7 +63,39 @@ export class Hud {
   // pie once metros más atrás no se puede hacer con un corte, se ve el truco.
   fundir (a, segundos) {
     this.fundido.style.transition = `opacity ${segundos || 0.9}s linear`;
+    // OJO: cambiar la transición y el valor en el mismo tick hace que el
+    // navegador salte al final en vez de animar —agrupa los dos cambios en un
+    // solo recálculo y no le queda un valor de partida—. Leer una propiedad
+    // que obliga a calcular el layout, en el medio, es lo que lo separa en dos.
+    void this.fundido.offsetHeight;
     this.fundido.style.opacity = String(a);
+  }
+
+  // SE CIERRAN LOS OJOS. Tres cosas encadenadas y ninguna es un corte a negro:
+  // la vista se va de foco, el campo se apaga desde los bordes como un párpado
+  // que baja, y recién al final entra el negro. Un corte dice «terminó la
+  // partida»; esto dice «se está muriendo», que no es lo mismo.
+  cerrarLosOjos (seg) {
+    const t = seg || 6;
+    const l = document.getElementById('lienzo');
+    if (l) { l.style.transitionDuration = (t * 0.55).toFixed(2) + 's'; l.classList.add('ojos'); }
+    const h = document.getElementById('hud');
+    if (h) { h.style.transitionDuration = (t * 0.28).toFixed(2) + 's'; h.classList.add('ojos'); }
+    if (this.parpados) {
+      this.parpados.style.transitionDuration = (t * 0.42).toFixed(2) + 's';
+      this.parpados.classList.add('si');
+    }
+    setTimeout(() => this.fundir(1, t * 0.42), t * 0.5 * 1000);
+  }
+
+  // y se vuelven a abrir
+  abrirLosOjos () {
+    const l = document.getElementById('lienzo');
+    if (l) { l.style.transitionDuration = '0.5s'; l.classList.remove('ojos'); }
+    const h = document.getElementById('hud');
+    if (h) { h.style.transitionDuration = '0.5s'; h.classList.remove('ojos'); }
+    if (this.parpados) { this.parpados.style.transitionDuration = '0.5s'; this.parpados.classList.remove('si'); }
+    this.fundir(0, 0.5);
   }
 
   destello (f) {
@@ -114,7 +147,9 @@ export class Hud {
     // La misma barra dice dos cosas opuestas: tirado bajo el caballo es lo que
     // NO alcanza, y de pie empujándolo es lo que sí. Es a propósito que sea la
     // misma: el jugador ya aprendió a mirarla en el peor momento del juego.
-    const barra = datos.atrapado > 0 || datos.empujando;
+    // y no cuando estás muerto: ahí `atrapado` es la cámara cayéndose al pasto,
+    // no una pierna abajo de un caballo, y no hay nada que forcejear
+    const barra = (datos.atrapado > 0 && datos.vida > 0) || datos.empujando;
     this.forcejeo.classList.toggle('si', barra);
     if (barra) this.forcejeo.querySelector('i').style.setProperty('--f',
       (Math.min(1, datos.forcejeo || 0) * 100).toFixed(0) + '%');

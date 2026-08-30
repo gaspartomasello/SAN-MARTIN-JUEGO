@@ -224,9 +224,13 @@ export function armarRed (ctx) {
   // ---------------------------------------------------------- mi propio cuerpo
   function mandarCuerpo () {
     const c = montado() ? jugador.monta : null;
+    // EL CADÁVER SE QUEDA DONDE CAYÓ. Mientras mirás la batalla volando, lo que
+    // se manda por el cable es el sitio donde te mataron y no dónde está la
+    // cámara: si no, el otro vería tu cuerpo muerto paseándose por el cielo.
+    const p = jugador.espectador && jugador.murioEn ? jugador.murioEn : jugador.pos;
     mandar({
       t: 'yo',
-      x: +jugador.pos.x.toFixed(2), z: +jugador.pos.z.toFixed(2),
+      x: +p.x.toFixed(2), z: +p.z.toFixed(2),
       yaw: +jugador.yaw.toFixed(3),
       vivo: jugador.vivo, vida: Math.round(jugador.vida),
       pose: poseDelJugador(),

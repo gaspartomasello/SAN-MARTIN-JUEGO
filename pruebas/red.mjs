@@ -349,6 +349,57 @@ ok('la batalla entera entra cómoda en una red de casa',
   Math.max(grande[0].kbs, grande[1].kbs) < 300,
   `${Math.max(grande[0].kbs, grande[1].kbs)} KB/s`);
 
+// ---------------------------------------------------------------------------
+// 5 · EL QUE CAE MIRA, NO ESPERA
+// ---------------------------------------------------------------------------
+//
+// Va último a propósito: mata al invitado, así que no puede correr antes de las
+// comprobaciones de arriba. En una partida de a dos el que muere no puede
+// quedarse veinte minutos mirando el pasto ni obligar a los otros a esperarlo:
+// vuela por encima del campo hasta que la batalla termina. Y vuela SIN QUE LO
+// VEAN: lo que queda abajo es su cadáver, donde cayó, y ahí se queda —si se
+// mandara la posición de la cámara, el otro vería un muerto paseándose por el
+// cielo—.
+const esp = await inv.evaluate(async () => {
+  const j = window.juego, r = {};
+  j.jugador.revivir();
+  j.jugador.pos.set(9, 1.68, -12);
+  j.jugador.recibir(999, null);
+  r.espectador = j.jugador.espectador;
+  r.murioEn = j.jugador.murioEn;
+  r.arriba = j.jugador.pos.y;
+  const t = new Set(['KeyW']);
+  j.jugador.yaw = 0; j.jugador.pitch = 0;
+  const z0 = j.jugador.pos.z;
+  for (let i = 0; i < 60; i++) j.jugador.actualizar(1 / 60, t, false, false);
+  r.volo = Math.abs(j.jugador.pos.z - z0);
+  r.cuerpoQuieto = { x: j.jugador.murioEn.x, z: j.jugador.murioEn.z };
+  r.camaraLejos = Math.hypot(j.jugador.pos.x - 9, j.jugador.pos.z + 12);
+  return r;
+});
+ok('el invitado que cae pasa a mirar', esp.espectador);
+ok('y despega del piso', esp.arriba >= 6, `y=${esp.arriba.toFixed(1)}`);
+ok('vuela, y rápido', esp.volo > 20, `${esp.volo.toFixed(0)} m en un segundo`);
+ok('pero su cuerpo se queda donde cayó', esp.camaraLejos > 20 &&
+  Math.abs(esp.cuerpoQuieto.x - 9) < 0.01 && Math.abs(esp.cuerpoQuieto.z + 12) < 0.01,
+  `cámara a ${esp.camaraLejos.toFixed(0)} m del cuerpo`);
+
+// Y EL ANFITRIÓN LO VE MUERTO Y QUIETO, NO VOLANDO. Se espera a que el títere
+// LLEGUE, no una cantidad de milisegundos: el parte sale veinte veces por
+// segundo y el cuerpo se interpola hasta el sitio nuevo, así que un sleep fijo
+// mide la suerte del momento y no lo que se quiere probar.
+await anf.waitForFunction(() => {
+  const c = window.juego.red.companero;
+  return c && !c.vivo && Math.hypot(c.pos.x - 9, c.pos.z + 12) < 3;
+}, null, { timeout: 15000 }).catch(() => {});
+const visto = await anf.evaluate(() => {
+  const c = window.juego.red.companero;
+  return c ? { vivo: c.vivo, x: +c.pos.x.toFixed(1), z: +c.pos.z.toFixed(1) } : null;
+});
+ok('y del otro lado se lo ve caído y quieto en el sitio',
+  visto && !visto.vivo && Math.abs(visto.x - 9) < 3 && Math.abs(visto.z + 12) < 3,
+  JSON.stringify(visto));
+
 for (const [e, n, x] of out) console.log(e.padEnd(4), n.padEnd(52), x);
 const mal = out.filter(x => x[0] === 'MAL').length;
 console.log(`\n${out.filter(x => x[0] === 'OK ').length} bien, ${mal} mal`);
