@@ -5,7 +5,7 @@ const pag = await nav.newPage({ viewport: { width: 900, height: 620 } });
 const errs = [];
 pag.on('pageerror', e => errs.push(e.message));
 await pag.goto('http://localhost:8099/index.html', { waitUntil: 'load' });
-await pag.waitForTimeout(1200); await pag.click('#modo-campo'); await pag.waitForTimeout(1600);
+await pag.waitForFunction(() => !!window.juego, null, { timeout: 90000 }); await pag.click('#modo-campo'); await pag.waitForTimeout(1600);
 
 const r = await pag.evaluate(() => {
   const j = window.juego, out = [];

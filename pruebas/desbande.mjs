@@ -28,7 +28,7 @@ const nav = await chromium.launch({ executablePath: process.env.CHROMIUM,
 const pag = await nav.newPage({ viewport: { width: 800, height: 540 } });
 const errs = []; pag.on('pageerror', e => errs.push(e.message));
 await pag.goto('http://localhost:8099/index.html', { waitUntil: 'load' });
-await pag.waitForTimeout(1200); await pag.click('#modo-campo'); await pag.waitForTimeout(1800);
+await pag.waitForFunction(() => !!window.juego, null, { timeout: 90000 }); await pag.click('#modo-campo'); await pag.waitForTimeout(1800);
 
 // EL DESGLOSE. La moral anota por hombre por qué le baja el ánimo (s.porQue).
 // Promediado sobre los realistas vivos cada quince segundos, dice de una ojeada

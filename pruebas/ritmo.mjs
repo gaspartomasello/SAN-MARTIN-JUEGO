@@ -4,7 +4,7 @@ const nav = await chromium.launch({ executablePath: process.env.CHROMIUM || unde
 const pag = await nav.newPage({ viewport: { width: 800, height: 600 } });
 pag.on('pageerror', e => console.log('[EXCEPCION]', e.message));
 await pag.goto((process.env.URL || 'http://localhost:8099') + '/index.html', { waitUntil: 'load' });
-await pag.waitForTimeout(2000);
+await pag.waitForFunction(() => !!window.juego, null, { timeout: 90000 });
 
 const r = await pag.evaluate(() => {
   const t = window.juego.arma;
