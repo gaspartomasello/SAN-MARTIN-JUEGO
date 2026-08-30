@@ -32,11 +32,89 @@ const nav = await chromium.launch({ executablePath: process.env.CHROMIUM,
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox',
     '--autoplay-policy=no-user-gesture-required'] });
 
+// ---------------------------------------------------------------------------
+// 0 · LA SALA, ANTES QUE NADA Y SIN CARGAR EL JUEGO
+// ---------------------------------------------------------------------------
+//
+// Esto va primero y con una página en blanco a propósito: una sala rota tiene
+// que fallar en diez segundos y no después de armar dos batallas enteras. Y lo
+// que se prueba —quién es quién, qué pasa con el tercero, y sobre todo si el
+// que queda se entera de que el otro se fue— no necesita un solo granadero.
+//
+// El agujero que encontró esta prueba: el aviso de «se fue» colgaba de una
+// bandera que la trama de cierre ya había bajado, así que sólo avisaba cuando
+// alguien se iba MAL —un cable, un wifi cortado—. Cerrar la pestaña, que es lo
+// que hace todo el mundo, dejaba el lugar tomado por un muerto y la sala
+// inservible hasta reiniciar el servidor.
+{
+  const navSala = await chromium.launch({ executablePath: process.env.CHROMIUM, args: ['--no-sandbox'] });
+  const pag = await navSala.newPage();
+  await pag.goto('about:blank');
+  const r = await pag.evaluate(async (puerto) => {
+    const out = [];
+    const ok = (n, cond, extra) => out.push([cond ? 'OK ' : 'MAL', n, extra === undefined ? '' : extra]);
+    const abiertas = [];
+    const abrirWs = () => new Promise(res => {
+      const ws = new WebSocket('ws://localhost:' + puerto);
+      const yo = { ws, mensajes: [] };
+      ws.onmessage = e => { try { yo.mensajes.push(JSON.parse(e.data)); } catch { /* binario */ } };
+      ws.onopen = () => res(yo);
+      abiertas.push(yo);
+    });
+    const esperar = (yo, t, ms = 4000) => new Promise(res => {
+      const desde = Date.now();
+      const i = setInterval(() => {
+        const m = yo.mensajes.filter(x => x.t === t).pop();
+        if (m || Date.now() - desde > ms) { clearInterval(i); res(m || null); }
+      }, 25);
+    });
+
+    const uno = await abrirWs();
+    const m1 = await esperar(uno, 'sala');
+    ok('el primero es el anfitrión', m1 && m1.rol === 'anfitrion', m1 && m1.rol);
+    ok('y la sala todavía no está completa', m1 && !m1.completa);
+
+    const dos = await abrirWs();
+    const m2 = await esperar(dos, 'sala');
+    ok('el segundo es el invitado', m2 && m2.rol === 'invitado', m2 && m2.rol);
+    ok('y ahí sí está completa', m2 && !!m2.completa);
+    ok('al primero le avisan que entró el otro', (await esperar(uno, 'par')) !== null);
+
+    const tres = await abrirWs();
+    ok('el tercero rebota, y con motivo', (await esperar(tres, 'lleno')) !== null);
+
+    uno.ws.send(JSON.stringify({ t: 'aviso', texto: 'probando', tipo: 'bien' }));
+    const paso = await esperar(dos, 'aviso');
+    ok('lo que manda uno le llega al otro', paso && paso.texto === 'probando');
+
+    dos.ws.close();
+    const salio = await esperar(uno, 'par', 6000);
+    ok('al que queda le avisan que el otro se fue', salio && salio.entra === false,
+      JSON.stringify(salio));
+
+    // y el lugar queda libre de verdad: si no, la sala muere con el primero
+    // que cierre la pestaña y hay que reiniciar el servidor
+    const cuatro = await abrirWs();
+    const m4 = await esperar(cuatro, 'sala');
+    ok('y su lugar queda libre para otro', m4 && m4.rol === 'invitado',
+      m4 ? m4.rol : 'no entró');
+
+    for (const a of abiertas) { try { a.ws.close(); } catch { /* ya estaba */ } }
+    return out;
+  }, PUERTO);
+  await navSala.close();
+  for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(44), x);
+  const malSala = r.filter(x => x[0] === 'MAL').length;
+  console.log(`  la sala: ${r.length - malSala} bien, ${malSala} mal\n`);
+  if (malSala) { cerrar(); process.exit(1); }
+  await new Promise(r2 => setTimeout(r2, 400));
+}
+
 const errs = [];
 async function abrir (quien) {
   const p = await nav.newPage({ viewport: { width: 700, height: 460 } });
   p.on('pageerror', e => errs.push(`${quien}: ${e.message}`));
-  await p.goto(`http://localhost:${PUERTO}/index.html`, { waitUntil: 'load' });
+  await p.goto(`http://localhost:${PUERTO}/index.html`, { waitUntil: 'load', timeout: 120000 });
   await p.waitForFunction('window.juego && window.juego.red', null, { timeout: 25000 });
   return p;
 }

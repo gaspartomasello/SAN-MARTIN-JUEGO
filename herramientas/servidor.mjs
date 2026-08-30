@@ -23,6 +23,7 @@
 // (RFC 6455, si a alguien le interesa el detalle.)
 
 import http from 'node:http';
+import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -93,6 +94,7 @@ function abrazar (pedido, enchufe, cabeza) {
       cn.vivo = false;
       try { enchufe.end(trama(0x8, Buffer.from(motivo || '', 'utf8'))); } catch { /* ya estaba caído */ }
       enchufe.destroy();
+      adios();
     }
   };
 
@@ -122,7 +124,26 @@ function abrazar (pedido, enchufe, cabeza) {
       else if (cn.alBinario) cn.alBinario(completo);
     }
   });
-  const adios = () => { if (cn.vivo) { cn.vivo = false; if (cn.alCerrar) cn.alCerrar(); } };
+  // EL QUE SE VA TIENE QUE LIBERAR SU LUGAR, y esto estaba roto de la peor
+  // manera: sólo fallaba cuando el otro se iba BIEN.
+  //
+  // El aviso colgaba de `cn.vivo`, y `cerrar()` —que es lo que corre cuando
+  // llega la trama de cierre, o sea cuando alguien cierra la pestaña— ya lo
+  // había puesto en false. Así que `adios` no avisaba a nadie: el lugar
+  // quedaba tomado por un muerto, el compañero se quedaba mirando un campo
+  // congelado sin que nadie le dijera nada, y la sala no aceptaba a nadie más
+  // hasta reiniciar el servidor. Una desconexión sucia —un cable, un wifi que
+  // se corta— sí avisaba, porque ahí `cerrar()` no llega a correr.
+  //
+  // Ahora el aviso tiene su propia guarda y sale una sola vez, venga por donde
+  // venga: trama de cierre, socket cerrado o error.
+  let avisado = false;
+  const adios = () => {
+    if (avisado) return;
+    avisado = true;
+    cn.vivo = false;
+    if (cn.alCerrar) cn.alCerrar();
+  };
   enchufe.on('close', adios);
   enchufe.on('error', adios);
   return cn;
@@ -217,6 +238,44 @@ function direccionesDeRed () {
   return salida;
 }
 
+// ABRIR EL NAVEGADOR SOLO. El que levanta la sala ya hizo doble clic en un
+// archivo; pedirle además que copie una dirección a mano es una oportunidad más
+// de que algo salga mal. Si no se puede abrir no pasa nada: la dirección está
+// impresa acá arriba.
+function abrirNavegador (url) {
+  const cmd = process.platform === 'win32' ? 'cmd'
+    : process.platform === 'darwin' ? 'open' : 'xdg-open';
+  const args = process.platform === 'win32' ? ['/c', 'start', '""', url] : [url];
+  // OJO: spawn avisa el fallo por un EVENTO, no por una excepción, así que un
+  // try/catch no alcanza. Sin el manejador, una máquina sin xdg-open —o sea
+  // media Linux— tumbaba la sala entera al abrirla. Si no se puede abrir el
+  // navegador no pasa nada: la dirección está impresa acá arriba.
+  try {
+    const p = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+    p.on('error', () => {});
+    p.unref();
+  } catch { /* que se copie la dirección a mano */ }
+}
+
+// Y SI EL PUERTO ESTÁ OCUPADO, se dice en castellano. Node tira un volcado de
+// veinte líneas con «EADDRINUSE» que no le dice nada a nadie, y la causa casi
+// siempre es la misma y tiene arreglo de una: ya hay una sala abierta.
+servidor.on('error', e => {
+  console.log('');
+  if (e.code === 'EADDRINUSE') {
+    console.log(`  Ya hay una sala abierta en el puerto ${PUERTO}.`);
+    console.log('  Cerrá la otra ventana negra y volvé a intentar,');
+    console.log('  o entrá directamente a http://localhost:' + PUERTO);
+  } else if (e.code === 'EACCES') {
+    console.log(`  El sistema no deja abrir el puerto ${PUERTO}.`);
+    console.log('  Probá con otro: node herramientas/servidor.mjs 8100');
+  } else {
+    console.log('  No se pudo abrir la sala: ' + e.message);
+  }
+  console.log('');
+  process.exitCode = 1;
+});
+
 servidor.listen(PUERTO, () => {
   const ips = direccionesDeRed();
   console.log('');
@@ -232,6 +291,8 @@ servidor.listen(PUERTO, () => {
   console.log('');
   console.log('  Los dos abren esa dirección y eligen «Los dos costados».');
   console.log('  El primero que entra es el anfitrión y lleva la columna del oeste.');
-  console.log('  Ctrl+C para cerrar la sala.');
   console.log('');
+  console.log('  Dejá esta ventana abierta mientras juegan. Se cierra con Ctrl+C.');
+  console.log('');
+  abrirNavegador(`http://localhost:${PUERTO}`);
 });
