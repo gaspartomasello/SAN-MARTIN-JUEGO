@@ -236,16 +236,50 @@ export function armarRed (ctx) {
     return 'Se cortó la conexión' + (t ? ' (' + t + ')' : '') + '.';
   }
 
+  // UN INTENTO FALLIDO NO ES UNA PARTIDA, y confundirlos dejaba la pantalla
+  // muerta al primer código mal escrito.
+  //
+  // `entrarASala` arma el cable ANTES de que la conexión se abra —`cableDePar`
+  // envuelve la `conn` en el mismo molde que un WebSocket, y eso existe desde
+  // el primer momento aunque del otro lado no haya nadie—. Así que un código
+  // errado dejaba dos cosas puestas: el `peer` vivo y un cable en cero. El
+  // guardián de la entrada —«si ya hay peer o cable, no hagas nada»— los leía
+  // como una partida en curso y el intento siguiente, con el código BUENO,
+  // salía por ahí sin llamar a nadie. La pantalla no mentía: de verdad no
+  // estaba intentando nada. Quedaba sólo recargar la página.
+  //
+  // Lo que frena un intento nuevo es una partida de verdad y nada más. Todo lo
+  // demás —restos de una llamada que no prosperó— se tira y se vuelve a probar
+  // las veces que haga falta, que es lo que va a hacer cualquiera que se
+  // equivoque al copiar cuatro letras dictadas en voz alta.
+  function jugando () { return !!cable && cable.readyState === 1; }
+
+  function desarmar () {
+    if (cable) { const c = cable; cable = null; c.onclose = null; c.close(); }
+    if (peer) { const p = peer; peer = null; try { p.destroy(); } catch { /* ya estaba */ } }
+    red.codigo = null;
+    rol = null;
+    hayCompanero = false;
+  }
+
+  // Avisar el error SIN dejar la puerta trabada. Si ya se estaba jugando el
+  // error es del cable y no se toca nada; si no, se limpia para el próximo.
+  function fallar (m) {
+    if (!jugando()) desarmar();
+    avisarFase('caido', m);
+  }
+
   function armarPeer (id) {
     if (!window.Peer) { avisarFase('caido', 'No cargó la parte de red del juego. Recargá la página.'); return null; }
     const p = new window.Peer(id, { debug: 0 });
-    p.on('error', e => avisarFase('caido', errorClaro(e)));
+    p.on('error', e => fallar(errorClaro(e)));
     return p;
   }
 
   // ---- crear la sala: sos San Martín y esperás ----
   red.crearSala = function () {
-    if (peer || cable) return;
+    if (jugando()) return;
+    desarmar();
     red.codigo = codigoNuevo();
     avisarFase('llamando');
     peer = armarPeer(PREFIJO + red.codigo);
@@ -274,7 +308,8 @@ export function armarRed (ctx) {
 
   // ---- entrar a una sala: sos Bermúdez ----
   red.entrarASala = function (codigo) {
-    if (peer || cable) return;
+    if (jugando()) return;
+    desarmar();
     const c = red.limpiarCodigo(codigo);
     if (c.length !== LARGO) { avisarFase('caido', 'El código es de cuatro letras.'); return; }
     red.codigo = c;
@@ -290,7 +325,12 @@ export function armarRed (ctx) {
         armarCompanero();
         avisarFase('listo');
       });
+      // SE CORTÓ ANTES DE EMPEZAR O DESPUÉS: no es lo mismo y no se dice igual.
+      // Sin abrir —`rol` todavía en null— fue un intento que no prosperó y hay
+      // que dejar todo limpio para el próximo código. Abierto, se cayó la
+      // máquina que llevaba la batalla y eso sí es el final de la partida.
       cable.onclose = () => {
+        if (rol !== 'invitado') { fallar('No se pudo entrar a esa sala. Fijate el código y probá de nuevo.'); return; }
         cable = null; hayCompanero = false;
         avisarFase('caido', 'Se cortó con San Martín.');
         hud.decir('Se cayó la máquina que llevaba la batalla. Ya no viene ningún parte.', 8);
@@ -299,10 +339,7 @@ export function armarRed (ctx) {
   };
 
   red.cortar = function () {
-    if (cable) { const c = cable; cable = null; c.onclose = null; c.close(); }
-    if (peer) { const p = peer; peer = null; try { p.destroy(); } catch { /* ya estaba */ } }
-    red.codigo = null;
-    rol = null; hayCompanero = false;
+    desarmar();
     avisarFase('suelto');
   };
 

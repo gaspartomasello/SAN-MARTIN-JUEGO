@@ -119,6 +119,79 @@ async function abrir (quien) {
   return p;
 }
 
+// ---------------------------------------------------------------------------
+// 0 bis · UN CÓDIGO MAL ESCRITO NO PUEDE TRABAR LA PUERTA
+// ---------------------------------------------------------------------------
+//
+// Cuatro letras dictadas en voz alta se copian mal, y eso está previsto: sale
+// el cartel de «no hay ninguna sala con ese código». Lo que no estaba previsto
+// es lo que pasaba DESPUÉS.
+//
+// `entrarASala` arma el cable ANTES de que la conexión se abra —`cableDePar`
+// envuelve la conexión en el molde de un WebSocket, y ese objeto existe desde
+// el primer momento aunque del otro lado no conteste nadie—. Así que el
+// intento fallido dejaba dos cosas puestas: el peer vivo y un cable en cero. Y
+// el guardián de la entrada, «si ya hay peer o cable no hagas nada», los leía
+// como una partida en curso: el segundo intento, con el código BUENO, salía
+// por ahí sin llamar a nadie. Quedaba el cartel del error viejo en pantalla y
+// ninguna forma de seguir salvo recargar la página.
+//
+// Se prueba con un directorio de mentira y sin red: lo que importa acá es el
+// estado en el que queda el juego, no el directorio.
+{
+  const pag = await abrir('reintento');
+  const r = await pag.evaluate(async () => {
+    const out = [];
+    const ok = (n, cond, extra) => out.push([cond ? 'OK ' : 'MAL', n, extra === undefined ? '' : extra]);
+    const red = window.juego.red;
+    let armados = 0;
+    let romper = null;
+    // Un directorio de mentira: abre, deja pedir una sala, y falla igual que
+    // el de verdad cuando el código no existe.
+    window.Peer = function () {
+      armados++;
+      const oyentes = {};
+      this.on = (ev, f) => { (oyentes[ev] = oyentes[ev] || []).push(f); };
+      this.destroy = () => {};
+      this.connect = () => ({ on: () => {}, send: () => {}, close: () => {} });
+      setTimeout(() => { for (const f of (oyentes.open || [])) f(); }, 10);
+      romper = t => { for (const f of (oyentes.error || [])) f({ type: t }); };
+    };
+    const esperarFase = (f, ms = 3000) => new Promise(res => {
+      const desde = Date.now();
+      const i = setInterval(() => {
+        if (red.parte().fase === f || Date.now() - desde > ms) { clearInterval(i); res(red.parte().fase); }
+      }, 20);
+    });
+
+    red.cortar();
+    red.entrarASala('ABCD');
+    await esperarFase('llamando', 1000);
+    // el respiro es lo que reproduce el bicho: sin él la conexión —y el cable
+    // a medio armar que la envuelve— todavía no existe
+    await new Promise(r2 => setTimeout(r2, 80));
+    romper('peer-unavailable');
+    ok('el código que no existe avisa y no conecta', red.parte().fase === 'caido', red.parte().fase);
+    ok('y lo dice en castellano', /ninguna sala con ese código/.test(red.parte().motivo), red.parte().motivo);
+
+    const antes = armados;
+    red.entrarASala('WXYZ');
+    const f2 = await esperarFase('llamando', 2000);
+    ok('el segundo intento SÍ vuelve a llamar', f2 === 'llamando', f2);
+    ok('y llama de nuevo al directorio', armados === antes + 1, `${armados - antes} llamadas`);
+    ok('con el código nuevo puesto', red.codigo === 'WXYZ', String(red.codigo));
+
+    red.cortar();
+    ok('y volver atrás lo deja suelto', red.parte().fase === 'suelto', red.parte().fase);
+    return out;
+  });
+  await pag.close();
+  for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(44), x);
+  const malCod = r.filter(x => x[0] === 'MAL').length;
+  console.log(`  el reintento: ${r.length - malCod} bien, ${malCod} mal\n`);
+  if (malCod) { cerrar(); process.exit(1); }
+}
+
 // El anfitrión entra PRIMERO: el que llega primero a la sala es el que lleva
 // la batalla, y eso es parte de lo que se prueba.
 const anf = await abrir('anfitrión');

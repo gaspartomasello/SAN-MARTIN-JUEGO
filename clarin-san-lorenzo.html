@@ -37478,17 +37478,44 @@ function armarRed(ctx) {
     if (t === "browser-incompatible") return "Este navegador no sirve para jugar de a dos. Prob\xE1 con Chrome o Edge.";
     return "Se cort\xF3 la conexi\xF3n" + (t ? " (" + t + ")" : "") + ".";
   }
+  function jugando() {
+    return !!cable && cable.readyState === 1;
+  }
+  function desarmar() {
+    if (cable) {
+      const c = cable;
+      cable = null;
+      c.onclose = null;
+      c.close();
+    }
+    if (peer) {
+      const p = peer;
+      peer = null;
+      try {
+        p.destroy();
+      } catch {
+      }
+    }
+    red2.codigo = null;
+    rol = null;
+    hayCompanero = false;
+  }
+  function fallar(m) {
+    if (!jugando()) desarmar();
+    avisarFase("caido", m);
+  }
   function armarPeer(id) {
     if (!window.Peer) {
       avisarFase("caido", "No carg\xF3 la parte de red del juego. Recarg\xE1 la p\xE1gina.");
       return null;
     }
     const p = new window.Peer(id, { debug: 0 });
-    p.on("error", (e) => avisarFase("caido", errorClaro(e)));
+    p.on("error", (e) => fallar(errorClaro(e)));
     return p;
   }
   red2.crearSala = function() {
-    if (peer || cable) return;
+    if (jugando()) return;
+    desarmar();
     red2.codigo = codigoNuevo();
     avisarFase("llamando");
     peer = armarPeer(PREFIJO + red2.codigo);
@@ -37525,7 +37552,8 @@ function armarRed(ctx) {
     });
   };
   red2.entrarASala = function(codigo) {
-    if (peer || cable) return;
+    if (jugando()) return;
+    desarmar();
     const c = red2.limpiarCodigo(codigo);
     if (c.length !== LARGO) {
       avisarFase("caido", "El c\xF3digo es de cuatro letras.");
@@ -37546,6 +37574,10 @@ function armarRed(ctx) {
         avisarFase("listo");
       });
       cable.onclose = () => {
+        if (rol !== "invitado") {
+          fallar("No se pudo entrar a esa sala. Fijate el c\xF3digo y prob\xE1 de nuevo.");
+          return;
+        }
         cable = null;
         hayCompanero = false;
         avisarFase("caido", "Se cort\xF3 con San Mart\xEDn.");
@@ -37554,23 +37586,7 @@ function armarRed(ctx) {
     });
   };
   red2.cortar = function() {
-    if (cable) {
-      const c = cable;
-      cable = null;
-      c.onclose = null;
-      c.close();
-    }
-    if (peer) {
-      const p = peer;
-      peer = null;
-      try {
-        p.destroy();
-      } catch {
-      }
-    }
-    red2.codigo = null;
-    rol = null;
-    hayCompanero = false;
+    desarmar();
     avisarFase("suelto");
   };
   red2.alCambiar = (f) => {
