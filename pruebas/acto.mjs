@@ -127,6 +127,40 @@ const r = await pag.evaluate(() => {
     `a ${Math.hypot(j.jugador.pos.x - caiste.x, j.jugador.pos.z - caiste.z).toFixed(1)} m`);
   ok('y el San Martín del suelo ya no está', !j.soldados.some(s => s.esSanMartin));
   ok('no se repite', !acto.puedeArrancar(c));
+
+  // ---- EL RELOJ DEL 3 DE FEBRERO ----
+  //
+  // Al minuto del clarín pasa, te maten el caballo o no. Antes el acto dependía
+  // de cómo te estuviera yendo: jugando bien no lo veías nunca.
+  acto.hecho = false; acto.corriendo = false; acto.tClarin = 0;
+  acto.enBatalla = true;
+  const c2 = j.caballos.find(x => x.vivo && !x.montado) || j.caballo;
+  c2.vivo = true; c2.vida = 18; c2.caida = 0; c2.pos.set(0, 0, -30);
+  j.jugador.liberar(); j.jugador.vida = 100; j.jugador.montar(c2);
+
+  acto.contar(30, false, c2);
+  ok('sin clarín el reloj no corre', acto.tClarin === 0);
+  acto.contar(30, true, c2);
+  ok('con el clarín corre', acto.tClarin === 30);
+  ok('y a los 30 s todavía no pasa nada', !acto.activo);
+
+  // a pie no puede pasar: sin caballo encima no hay pierna aprisionada
+  const guarda = j.jugador.monta;
+  j.jugador.monta = null;
+  acto.contar(40, true, null);
+  ok('a pie espera, no salta solo', !acto.activo && acto.tClarin > 60);
+  j.jugador.monta = guarda;
+
+  acto.contar(0, true, c2);
+  ok('y salta apenas volvés a montar', acto.activo);
+  ok('con el caballo muerto encima, como fue', !c2.vivo);
+
+  // y en el campo de práctica no corre
+  acto.hecho = false; acto.corriendo = false; acto.tClarin = 0;
+  acto.enBatalla = false;
+  acto.contar(90, true, c2);
+  ok('en el campo de práctica no pasa', acto.tClarin === 0 && !acto.activo);
+
   return out;
 });
 for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(42), x);

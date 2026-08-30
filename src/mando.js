@@ -10,7 +10,7 @@
 // juego, está en el archivo equivocado.
 
 export function armarMando (ctx) {
-  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano } = ctx;
+  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto } = ctx;
 
   const teclas = new Set();
   const sensibilidad = 0.0021;
@@ -197,6 +197,9 @@ export function armarMando (ctx) {
     sonido.iniciar();
     empezado = true;
     tSoltado = 0;
+    // El acto Cabral es del 3 de febrero, no del campo de práctica: sólo se le
+    // pone el reloj cuando se entra por la batalla.
+    if (acto) acto.enBatalla = modo === 'batalla';
     if (modo === 'batalla') campo.formarPinza();
     lienzo.requestPointerLock();
   }

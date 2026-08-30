@@ -31498,6 +31498,7 @@ var FRASE = "Muero contento, hemos batido al enemigo.";
 var T_CAIDA = 2.5;
 var T_FUNDIDO = 1;
 var T_AMENAZA = 1.2;
+var T_FORZADO = 60;
 var LEVANTE_SUBE = 0.085;
 var LEVANTE_CAE = 0.16;
 var LEVANTE_CERCA = 2.6;
@@ -31523,6 +31524,8 @@ var ActoCabral = class {
     this.levante = 0;
     this.lento = 1;
     this.fase = null;
+    this.enBatalla = false;
+    this.tClarin = 0;
     this.vidaSanMartin = 100;
     this._paso = 0;
     this._space = false;
@@ -31544,6 +31547,17 @@ var ActoCabral = class {
   // el caballo estando montado —que es como pasó—.
   puedeArrancar(caballo) {
     return !this.hecho && !this.corriendo && !!caballo && this.ctx.jugador.vivo;
+  }
+  // El reloj de la batalla. Si al minuto vas A PIE no pasa todavía: sin caballo
+  // encima no hay pierna aprisionada y el acto no tendría de qué hablar. Queda
+  // esperando y salta apenas volvés a montar.
+  contar(dt, tocado, caballo) {
+    if (!this.enBatalla || this.hecho || this.corriendo || !tocado) return;
+    this.tClarin += dt;
+    if (this.tClarin < T_FORZADO) return;
+    if (!caballo || !caballo.vivo) return;
+    caballo.recibir(caballo.vida);
+    this.arrancar(caballo);
   }
   arrancar(caballo) {
     const { jugador: jugador2, hud: hud2, sonido: sonido2 } = this.ctx;
@@ -34153,7 +34167,7 @@ function armarGentio({ jugador: jugador2, soldados: soldados2, caballos: caballo
 
 // src/mando.js
 function armarMando(ctx) {
-  const { lienzo: lienzo2, jugador: jugador2, sable: sable2, arsenal: arsenal2, campo: campo2, combate: combate2, pinza: pinza2, hud: hud2, sonido: sonido2, red: red2, plano: plano2 } = ctx;
+  const { lienzo: lienzo2, jugador: jugador2, sable: sable2, arsenal: arsenal2, campo: campo2, combate: combate2, pinza: pinza2, hud: hud2, sonido: sonido2, red: red2, plano: plano2, acto: acto2 } = ctx;
   const teclas = /* @__PURE__ */ new Set();
   const sensibilidad = 21e-4;
   let bloqueado = false;
@@ -34350,6 +34364,7 @@ function armarMando(ctx) {
     sonido2.iniciar();
     empezado = true;
     tSoltado = 0;
+    if (acto2) acto2.enBatalla = modo === "batalla";
     if (modo === "batalla") campo2.formarPinza();
     lienzo2.requestPointerLock();
   }
@@ -35811,7 +35826,7 @@ pinza.alTocar = () => {
   );
 };
 var plano = armarPlano({ hud });
-var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano });
+var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto });
 addEventListener("resize", () => {
   camara.aspect = innerWidth / innerHeight;
   camara.updateProjectionMatrix();
@@ -35858,6 +35873,7 @@ function simular(dt) {
       if (campo.caballo === c) campo.caballo = null;
     }
   }
+  if (!red.esInvitado) acto.contar(dt, pinza.tocado, jugador.monta);
   if (jugador.monta && !jugador.monta.vivo) {
     const c = jugador.monta;
     if (!red.esInvitado && acto.puedeArrancar(c)) {

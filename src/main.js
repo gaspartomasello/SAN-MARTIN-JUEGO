@@ -233,7 +233,7 @@ pinza.alTocar = () => {
 };
 
 const plano = armarPlano({ hud });
-const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano });
+const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto });
 
 addEventListener('resize', () => {
   camara.aspect = innerWidth / innerHeight;
@@ -315,6 +315,8 @@ function simular (dt) {
   }
   // Si te matan el caballo te vas al suelo. Y la PRIMERA vez que pasa estando
   // montado no te levantás: la pierna queda debajo. Ahí arranca el acto.
+  // el reloj del 3 de febrero: al minuto del clarín, la metralla
+  if (!red.esInvitado) acto.contar(dt, pinza.tocado, jugador.monta);
   if (jugador.monta && !jugador.monta.vivo) {
     const c = jugador.monta;
     // EL ACTO CABRAL ES DE SAN MARTÍN. Cabral no se murió por cualquiera: se

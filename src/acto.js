@@ -47,6 +47,18 @@ const T_FUNDIDO = 1.0;      // lo que tarda el negro en cerrarse
 // irreparable —no puede rematarlo— pero lo vas a ver parado encima.
 const T_AMENAZA = 1.2;      // desde que sos Cabral, el español encara
 
+// EL CAÑONAZO LLEGA IGUAL, Y LLEGA AL MINUTO DEL CLARÍN.
+//
+// Antes el acto dependía de que te mataran el caballo, o sea de cómo te
+// estuviera yendo: si jugabas bien no pasaba nunca y te perdías lo único que
+// de verdad ocurrió ese día. Pero en San Lorenzo la metralla volteó el caballo
+// de San Martín y eso no fue una consecuencia de la pelea, fue lo que pasó.
+// Así que pasa: al minuto del toque, haya doscientos hombres en pie o veinte.
+//
+// Sólo en la batalla. En el campo de práctica no —ahí no hay 3 de febrero que
+// respetar— y en red tampoco, que ya estaba resuelto en main.js.
+const T_FORZADO = 60;
+
 // EL LEVANTE. Media tonelada no se levanta de un toque: son unos catorce
 // espacios seguidos, y si parás se te vuelve a caer más rápido de lo que sube.
 // La proporción entre SUBE y CAE es lo que hace que se sienta pesado sin ser
@@ -80,6 +92,8 @@ export class ActoCabral {
     this.levante = 0;         // cuánto subió el caballo, de 0 a 1
     this.lento = 1;           // el multiplicador de tiempo que lee main.js
     this.fase = null;
+    this.enBatalla = false;   // lo pone mando.js al entrar por el botón de la batalla
+    this.tClarin = 0;
     this.vidaSanMartin = 100;
     this._paso = 0;
     this._space = false;
@@ -99,6 +113,18 @@ export class ActoCabral {
   // el caballo estando montado —que es como pasó—.
   puedeArrancar (caballo) {
     return !this.hecho && !this.corriendo && !!caballo && this.ctx.jugador.vivo;
+  }
+
+  // El reloj de la batalla. Si al minuto vas A PIE no pasa todavía: sin caballo
+  // encima no hay pierna aprisionada y el acto no tendría de qué hablar. Queda
+  // esperando y salta apenas volvés a montar.
+  contar (dt, tocado, caballo) {
+    if (!this.enBatalla || this.hecho || this.corriendo || !tocado) return;
+    this.tClarin += dt;
+    if (this.tClarin < T_FORZADO) return;
+    if (!caballo || !caballo.vivo) return;
+    caballo.recibir(caballo.vida);      // la metralla
+    this.arrancar(caballo);
   }
 
   arrancar (caballo) {
