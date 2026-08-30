@@ -54,6 +54,8 @@ const nav = await chromium.launch({ executablePath: process.env.CHROMIUM,
     const out = [];
     const ok = (n, cond, extra) => out.push([cond ? 'OK ' : 'MAL', n, extra === undefined ? '' : extra]);
     const abiertas = [];
+    // en el momento del techo hay tres adentro: el anfitrión, el tres y el cuatro
+    const sala1Cuantos = () => 3;
     const abrirWs = () => new Promise(res => {
       const ws = new WebSocket('ws://localhost:' + puerto);
       const yo = { ws, mensajes: [] };
@@ -72,32 +74,60 @@ const nav = await chromium.launch({ executablePath: process.env.CHROMIUM,
     const uno = await abrirWs();
     const m1 = await esperar(uno, 'sala');
     ok('el primero es el anfitrión', m1 && m1.rol === 'anfitrion', m1 && m1.rol);
+    ok('y le toca el número cero', m1 && m1.j === 0, m1 && String(m1.j));
     ok('y la sala todavía no está completa', m1 && !m1.completa);
 
     const dos = await abrirWs();
     const m2 = await esperar(dos, 'sala');
     ok('el segundo es el invitado', m2 && m2.rol === 'invitado', m2 && m2.rol);
+    ok('y es el jugador uno, que es Bermúdez', m2 && m2.j === 1, m2 && String(m2.j));
     ok('y ahí sí está completa', m2 && !!m2.completa);
-    ok('al primero le avisan que entró el otro', (await esperar(uno, 'par')) !== null);
+    const entro2 = await esperar(uno, 'par');
+    ok('al anfitrión le avisan quién entró', entro2 && entro2.entra === true && entro2.j === 1,
+      JSON.stringify(entro2));
 
+    // EL TERCERO YA NO REBOTA: es un granadero. Esto es lo que cambió.
     const tres = await abrirWs();
-    ok('el tercero rebota, y con motivo', (await esperar(tres, 'lleno')) !== null);
+    const m3 = await esperar(tres, 'sala');
+    ok('el tercero entra, y es el jugador dos', m3 && m3.j === 2, m3 ? String(m3.j) : 'rebotó');
 
-    uno.ws.send(JSON.stringify({ t: 'aviso', texto: 'probando', tipo: 'bien' }));
-    const paso = await esperar(dos, 'aviso');
-    ok('lo que manda uno le llega al otro', paso && paso.texto === 'probando');
+    // ---- el encaminado, que es lo único que el servidor mira del sobre ----
+    uno.ws.send(JSON.stringify({ t: 'aviso', texto: 'a todos', tipo: 'bien' }));
+    const t2 = await esperar(dos, 'aviso');
+    const t3 = await esperar(tres, 'aviso');
+    ok('sin «para», lo del anfitrión llega a todos',
+      t2 && t2.texto === 'a todos' && t3 && t3.texto === 'a todos');
+
+    uno.ws.send(JSON.stringify({ t: 'frase', texto: 'sólo al dos', para: 2 }));
+    const s3 = await esperar(tres, 'frase', 1500);
+    const s2 = await esperar(dos, 'frase', 600);
+    ok('con «para», llega a ese y a nadie más', s3 && s3.texto === 'sólo al dos' && s2 === null,
+      `dos: ${s2 ? 'le llegó' : 'nada'}`);
+
+    // Y DE VUELTA, EL REMITENTE. Es lo único que el anfitrión no puede saber
+    // por su cuenta: por acá todos le llegan por el mismo caño.
+    tres.ws.send(JSON.stringify({ t: 'reunir' }));
+    const vuelta = await esperar(uno, 'reunir');
+    ok('lo del invitado sube al anfitrión con el remitente puesto',
+      vuelta && vuelta.de === 2, JSON.stringify(vuelta));
 
     dos.ws.close();
     const salio = await esperar(uno, 'par', 6000);
-    ok('al que queda le avisan que el otro se fue', salio && salio.entra === false,
+    ok('al anfitrión le avisan que se fue, y cuál', salio && salio.entra === false && salio.j === 1,
       JSON.stringify(salio));
 
     // y el lugar queda libre de verdad: si no, la sala muere con el primero
     // que cierre la pestaña y hay que reiniciar el servidor
     const cuatro = await abrirWs();
     const m4 = await esperar(cuatro, 'sala');
-    ok('y su lugar queda libre para otro', m4 && m4.rol === 'invitado',
-      m4 ? m4.rol : 'no entró');
+    ok('y su lugar queda libre para otro', m4 && m4.j === 1, m4 ? String(m4.j) : 'no entró');
+
+    // el techo: diez adentro y el que sobra rebota con motivo
+    const sobra = [];
+    for (let k = sala1Cuantos(); k < 10; k++) sobra.push(await abrirWs());
+    for (const a of sobra) await esperar(a, 'sala');
+    const once = await abrirWs();
+    ok('el número once rebota, y con motivo', (await esperar(once, 'lleno')) !== null);
 
     for (const a of abiertas) { try { a.ws.close(); } catch { /* ya estaba */ } }
     return out;
@@ -244,14 +274,13 @@ await anf.evaluate(() => window.juego.red.formarBatalla(8, 24));
 // corre el mundo de verdad —juego.simular— a paso fijo, alternando, y entre
 // tanda y tanda se le deja al navegador el respiro que necesita para entregar
 // lo que llegó por el cable.
-async function latir (segundos, dt = 1 / 30) {
+async function latir (segundos, dt = 1 / 30, paginas = null) {
+  const todas = paginas || [anf, inv];
   const cuadros = Math.round(segundos / dt);
   for (let i = 0; i < cuadros; i += 6) {
     const n = Math.min(6, cuadros - i);
-    await Promise.all([
-      anf.evaluate(([n, dt]) => { for (let k = 0; k < n; k++) window.juego.simular(dt); }, [n, dt]),
-      inv.evaluate(([n, dt]) => { for (let k = 0; k < n; k++) window.juego.simular(dt); }, [n, dt])
-    ]);
+    await Promise.all(todas.map(p =>
+      p.evaluate(([n, dt]) => { for (let k = 0; k < n; k++) window.juego.simular(dt); }, [n, dt])));
     await anf.waitForTimeout(12);
   }
 }
@@ -423,7 +452,98 @@ ok('la batalla entera entra cómoda en una red de casa',
   `${Math.max(grande[0].kbs, grande[1].kbs)} KB/s`);
 
 // ---------------------------------------------------------------------------
-// 5 · EL QUE CAE MIRA, NO ESPERA
+// 5 · EL TERCERO ES UN GRANADERO, Y OCUPA UN PUESTO
+// ---------------------------------------------------------------------------
+//
+// Acá está lo que cambia de verdad al pasar de dos a diez, y no es la
+// conexión: es que el escuadrón NO CREZCA. Un jugador que se suma tiene que
+// sacarle el lugar a un bot, no ponerse al lado. Si se pone al lado, a los seis
+// jugadores San Lorenzo se pelea con ciento veintiséis granaderos, que es otra
+// batalla —y una que se gana más fácil—.
+//
+// Se prueba con tres navegadores de verdad, contra el servidor de verdad, y lo
+// que se mira es la cuenta: el mismo número de granaderos en el campo antes y
+// después de que entre el tercero.
+// Y SE VUELVE A FORMAR CHICO ANTES DE ABRIR LA TERCERA PÁGINA. Recién corrió
+// la batalla entera —375 hombres por dos navegadores con render por software—
+// y en ese estado el tercero tardaba más de dos minutos en cargar y la prueba
+// se caía por reloj. No es un problema del juego: es que tres Chromium sin
+// placa de video no entran en una máquina. Con la formación chica carga solo.
+await anf.evaluate(() => window.juego.red.formarBatalla(8, 24));
+await latir(0.8);
+
+const antesDelTercero = await anf.evaluate(() => ({
+  granaderos: window.juego.soldados.filter(s => s.bando === 'granadero').length,
+  oeste: window.juego.pinza.oeste.hombres.length,
+  este: window.juego.pinza.este.hombres.length
+}));
+
+const tres = await abrir('granadero');
+// la columna se elige ANTES de entrar: es lo primero que dice al conectarse
+await tres.evaluate(() => window.juego.red.elegirColumna('este'));
+await tres.click('#modo-red');
+await tres.waitForFunction("window.juego.red.parte().fase === 'listo'", null, { timeout: 15000 })
+  .catch(() => {});
+await tres.waitForTimeout(300);
+
+const pt = await tres.evaluate(() => window.juego.red.parte());
+ok('el tercero entra y es granadero', pt.j === 2 && !pt.manda, `j=${pt.j} manda=${pt.manda}`);
+ok('le respetaron la columna que pidió', pt.columna === 'este', pt.columna);
+ok('y se llama como un granadero, no como un jefe', /Granadero/.test(pt.nombre), pt.nombre);
+ok('los tres se ven en el padrón de la sala', (pt.jugadores || []).length === 3,
+  String((pt.jugadores || []).length));
+
+await tres.click('#sala-entrar');
+await tres.waitForSelector('#plano:not(.oculto)', { timeout: 10000 });
+await tres.click('#plano-entrar');
+await tres.waitForTimeout(300);
+
+// se rearma con los tres adentro: es el armado el que reparte los puestos
+await anf.evaluate(() => window.juego.red.formarBatalla(8, 24));
+await latir(2, 1 / 30, [anf, inv, tres]);
+
+const conElTercero = await anf.evaluate(() => ({
+  granaderos: window.juego.soldados.filter(s => s.bando === 'granadero').length,
+  oeste: window.juego.pinza.oeste.hombres.length,
+  este: window.juego.pinza.este.hombres.length,
+  pares: window.juego.red.pares.length,
+  enSoldados: window.juego.red.pares.filter(p => window.juego.soldados.includes(p.soldado)).length
+}));
+out.push(['—', 'el escuadrón, antes y después',
+  `${JSON.stringify(antesDelTercero)} → ${JSON.stringify(conElTercero)}`]);
+ok('el escuadrón no crece cuando entra un jugador',
+  conElTercero.granaderos === antesDelTercero.granaderos,
+  `${antesDelTercero.granaderos} → ${conElTercero.granaderos}`);
+ok('el granadero le sacó el puesto a un bot de SU columna',
+  conElTercero.este === conElTercero.oeste - 1,
+  `oeste ${conElTercero.oeste} · este ${conElTercero.este}`);
+ok('el anfitrión lleva el cuerpo de los otros dos', conElTercero.pares === 2,
+  String(conElTercero.pares));
+// si no están en `soldados`, los realistas no los eligen de blanco: son
+// fantasmas a los que nadie ataca, que es la peor manera de acompañar a
+// alguien a una batalla
+ok('y los dos están en el campo, para que les tiren', conElTercero.enSoldados === 2,
+  String(conElTercero.enSoldados));
+
+const seVen = await Promise.all([anf, inv, tres].map(p => p.evaluate(() => ({
+  pares: window.juego.red.pares.length,
+  montados: window.juego.red.pares.filter(x => x.soldado.montado).length
+}))));
+ok('cada uno ve a los otros dos, y montados',
+  seVen.every(v => v.pares === 2 && v.montados === 2), JSON.stringify(seVen));
+
+// La Q es de quien manda una columna. Un granadero no manda: hay que decírselo,
+// y sobre todo NO hay que dejar que le desarme la formación a nadie.
+const qs = await Promise.all([anf, inv, tres].map(p =>
+  p.evaluate(() => window.juego.red.reunir())));
+ok('la Q del granadero no manda nada', qs[2] === 'tropa', String(qs[2]));
+ok('y la de las dos cabezas sí', qs[0] !== 'tropa' && qs[1] !== 'tropa', JSON.stringify(qs));
+
+await tres.close();
+await latir(0.6);
+
+// ---------------------------------------------------------------------------
+// 6 · EL QUE CAE MIRA, NO ESPERA
 // ---------------------------------------------------------------------------
 //
 // Va último a propósito: mata al invitado, así que no puede correr antes de las

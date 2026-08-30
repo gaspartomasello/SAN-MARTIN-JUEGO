@@ -204,9 +204,9 @@
   details.ayuda summary::before{content:'▸ ';color:var(--bronce)}
   details.ayuda[open] summary::before{content:'▾ '}
 
-  /* ---- la sala de dos ----
-     La pinza son dos columnas. Hasta acá una la llevaba el jugador y la otra
-     la máquina; con esto la otra la puede llevar otra persona. */
+  /* ---- la sala ----
+     La pinza son dos columnas. Las dos cabezas son personas y el resto de los
+     que entran son granaderos: eligen columna y ocupan el puesto de un bot. */
   /* ---- el plano de la batalla ----
      Desde adentro de un cuerpo la pinza no se ve: se ve pasto y casacas. El
      plano va antes de entrar, y va sobre papel y no sobre la pantalla oscura
@@ -274,9 +274,29 @@
   @keyframes latido{0%,100%{opacity:1}50%{opacity:.35}}
   .luz b{font-weight:600;letter-spacing:.13em;text-transform:uppercase;font-size:12.5px}
   .luz span{color:#8B97A1;font-size:13px;letter-spacing:.02em;line-height:1.5}
-  .papeles{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(230,226,214,.13);
-    border:1px solid rgba(230,226,214,.13);margin-bottom:20px}
-  @media (max-width:620px){.papeles{grid-template-columns:1fr}}
+  .papeles{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(230,226,214,.13);
+    border:1px solid rgba(230,226,214,.13);margin-bottom:16px}
+  @media (max-width:760px){.papeles{grid-template-columns:1fr}}
+  /* la sala en vivo: quién está adentro, en orden de llegada */
+  #sala-gente{display:none;margin-bottom:18px;border:1px solid rgba(230,226,214,.13);background:#161D25}
+  #sala-gente.hay{display:block}
+  #sala-gente h4{margin:0;padding:12px 16px 9px;color:#8B97A1;font-size:11px;letter-spacing:.17em;
+    text-transform:uppercase;font-weight:600}
+  #sala-gente ul{margin:0;padding:0 16px 13px;list-style:none;display:flex;flex-direction:column;gap:6px}
+  #sala-gente li{display:flex;align-items:baseline;gap:10px;font-size:13.5px;color:#B9C2CA}
+  #sala-gente li b{font-weight:400;font-family:"Libre Caslon Display",Georgia,serif;font-size:15.5px}
+  #sala-gente li em{font-style:normal;color:#6C7681;font-size:11px;letter-spacing:.15em;
+    text-transform:uppercase;margin-left:auto;white-space:nowrap}
+  #sala-gente li.vos{color:var(--bronce)}
+  #sala-gente li.vos em{color:var(--bronce);opacity:.75}
+  /* con qué columna carga el que entra */
+  #sala-conquien{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:4px}
+  #sala-conquien>span{color:#6C7681;font-size:11.5px;letter-spacing:.17em;text-transform:uppercase}
+  button.col{background:transparent;color:#8B97A1;border:1px solid rgba(230,226,214,.22);
+    padding:9px 15px;font-size:13px}
+  button.col.va{border-color:var(--bronce);color:var(--bronce);background:rgba(178,140,80,.10)}
+  #sala-conquien i{font-style:normal;color:#6C7681;font-size:11.5px;line-height:1.55;
+    max-width:46ch;text-align:center}
   .papel{background:#161D25;padding:14px 17px;opacity:.42;transition:opacity .2s}
   .papel.vos{opacity:1;background:#1B242E}
   .papel i{display:block;font-style:normal;color:#D9696C;font-weight:600;font-size:10.5px;
@@ -476,27 +496,35 @@
 <div id="sala" class="oculto">
   <div class="caja">
     <div class="franja"><i></i><i></i><i></i></div>
-    <div class="eyebrow">Dos jugadores · con un código</div>
+    <div class="eyebrow">Hasta diez jugadores · con un código</div>
     <h1>Los dos costados</h1>
     <p class="sub">Las dos columnas salieron a la vez por los dos costados del convento.
-      Una la lleva cada uno.</p>
+      Una cabeza cada una, y atrás los granaderos.</p>
 
     <div class="luz" id="sala-luz"><i></i><div><b id="sala-titulo">Buscando la sala</b>
       <span id="sala-detalle">…</span></div></div>
 
     <div class="papeles">
       <div class="papel" id="papel-anfitrion">
-        <i>Columna del oeste · anfitrión</i>
+        <i>Columna del oeste · el primero</i>
         <b>José de San Martín</b>
         <span>Lleva la batalla en su máquina y <em>toca el clarín</em>.
-          Es el que entra primero a la sala.</span>
+          Es el que crea la sala.</span>
       </div>
       <div class="papel" id="papel-invitado">
-        <i>Columna del este · invitado</i>
+        <i>Columna del este · el segundo</i>
         <b>Capitán Justo Bermúdez</b>
         <span>Sesenta granaderos del otro lado. Sale cuando suena el clarín.</span>
       </div>
+      <div class="papel" id="papel-tropa">
+        <i>Del tercero en adelante</i>
+        <b>Granaderos</b>
+        <span>Eligen con qué columna cargan y ocupan el puesto de uno de los
+          sesenta. No mandan: siguen.</span>
+      </div>
     </div>
+
+    <div id="sala-gente"><h4>En la sala</h4><ul></ul></div>
 
     <div id="sala-elegir">
       <button id="sala-crear">Crear sala</button>
@@ -505,6 +533,15 @@
         <input id="sala-codigo" type="text" spellcheck="false" autocomplete="off"
                maxlength="4" placeholder="····">
         <button id="sala-unirse" class="flojo">Entrar</button>
+      </div>
+      <div id="sala-conquien">
+        <span>¿Con qué columna cargás?</span>
+        <div class="fila">
+          <button id="col-oeste" class="col va">Con San Martín · oeste</button>
+          <button id="col-este" class="col">Con Bermúdez · este</button>
+        </div>
+        <i>Al segundo que entra le toca ser Bermúdez igual: esa columna
+          necesita jefe. Del tercero en adelante se elige de verdad.</i>
       </div>
     </div>
 
@@ -515,10 +552,12 @@
     </div>
 
     <div class="receta" id="sala-receta">
-      <p>Uno hace <b>Crear sala</b> y le sale un código. El otro abre la misma
-        página, lo escribe y entra. Nada que instalar.</p>
+      <p>Uno hace <b>Crear sala</b> y le sale un código. Los demás abren la misma
+        página, lo escriben y entran. Nada que instalar.</p>
       <p>Anda por el mismo wifi o por datos, no hace falta que estén cerca.
-        El que crea la sala lleva la columna del oeste y toca el clarín.</p>
+        Entran hasta diez: por red local van cómodos, y por internet el que
+        crea la sala manda una copia de la batalla a cada uno, así que de a
+        tres o cuatro anda mejor.</p>
       <p class="chico">¿La red del colegio no deja? Está el camino sin internet:
         doble clic en <code>Jugar de a dos.bat</code> y entrar por la dirección
         que imprime.</p>
@@ -536,7 +575,7 @@
       <button id="sala-entrar" disabled>Salir al campo</button>
       <button id="sala-volver" class="flojo">Volver</button>
     </div>
-    <div class="pie">El anfitrión forma las dos columnas al entrar · Esc para soltar el mouse</div>
+    <div class="pie">El que creó la sala forma las columnas al entrar · Esc para soltar el mouse</div>
   </div>
 </div>
 

@@ -433,12 +433,17 @@ export class Pinza {
   // LA COLUMNA DE CADA UNO. San Martín sale por el oeste y Bermúdez por el
   // este; en solitario hay un solo jugador y es San Martín. La orden de
   // reunirse es de quien manda la columna, así que cada máquina llama a la
-  // suya: el que juega de invitado es Bermúdez, y la del este es la de él.
-  tuya (esInvitado) { return esInvitado ? this.este : this.oeste; }
+  // suya.
+  //
+  // Se pide por NOMBRE y no por «¿sos el invitado?», que es lo que decía antes.
+  // Con dos jugadores las dos preguntas daban lo mismo; con más, no: un
+  // granadero es invitado y no manda ninguna columna, y puede estar cargando
+  // con la del oeste. Quién manda qué lo sabe el padrón de la sala, no el rol.
+  tuya (quien) { return (quien === 'este' || quien === true) ? this.este : this.oeste; }
 
   // «¡A mí!» Devuelve false si no hay a quién llamar, para que el aviso del HUD
   // pueda decir por qué.
-  reunir (esInvitado) { return this.viva && this.tocado && this.tuya(esInvitado).reunirse(); }
+  reunir (quien) { return this.viva && this.tocado && this.tuya(quien).reunirse(); }
 
   desarmar () {
     for (const c of this.columnas) {

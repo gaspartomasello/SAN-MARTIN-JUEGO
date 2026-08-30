@@ -79,12 +79,19 @@ export function armarMando (ctx) {
       // ¡A MÍ! La columna corta la pelea y se vuelve a formar atrás tuyo. Se
       // suelta sola cuando la volvés a llevar al choque.
       case 'KeyQ': {
-        if (!pinza.viva || !pinza.tocado) { hud.mostrarAviso('No hay columna que llamar', 'malo'); break; }
         if (!montado()) { hud.mostrarAviso('A pie no te siguen: montá', 'malo'); break; }
-        // cada uno llama a la suya: San Martín a la del oeste, Bermúdez a la del este
-        if (pinza.reunir(!!(red && red.esInvitado))) {
-          sonido.grito(); hud.mostrarAviso('¡A mí, granaderos!', 'bien');
-        }
+        // CADA UNO LLAMA A LA SUYA, Y NO SIEMPRE LA TIENE ACÁ. Del lado de un
+        // invitado `pinza.viva` es false —los sesenta le llegan como títeres
+        // sueltos, no como formación—, así que la comprobación de acá lo
+        // frenaba antes de intentar nada y la Q era de San Martín y de nadie
+        // más. Ahora la orden se la pide a la red, que sabe si esta máquina
+        // manda la columna o si hay que mandar el pedido por el cable.
+        const llamada = red ? red.reunir() : pinza.reunir('oeste');
+        if (llamada === 'tropa') { hud.mostrarAviso('Vos no mandás la columna: seguí a tu jefe', 'malo'); break; }
+        // mandada por el cable: el aviso lo va a traer el que lleva la batalla
+        if (llamada === 'mandado') { sonido.grito(); break; }
+        if (llamada) { sonido.grito(); hud.mostrarAviso('¡A mí, granaderos!', 'bien'); break; }
+        if (!pinza.viva || !pinza.tocado) hud.mostrarAviso('No hay columna que llamar', 'malo');
         else hud.mostrarAviso('Ya vienen', 'malo');
         break;
       }
@@ -234,28 +241,53 @@ export function armarMando (ctx) {
   const manual = document.getElementById('sala-manual');
   const papeles = {
     anfitrion: document.getElementById('papel-anfitrion'),
-    invitado: document.getElementById('papel-invitado')
+    invitado: document.getElementById('papel-invitado'),
+    tropa: document.getElementById('papel-tropa')
   };
+  const cajaGente = document.getElementById('sala-gente');
+  const listaGente = cajaGente.querySelector('ul');
 
   const CARTELES = {
     suelto: ['Sala cerrada', 'Nadie está llamando.'],
     llamando: ['Buscando la sala', 'Golpeando la puerta del servidor…'],
-    esperando: ['Falta el otro escuadrón', 'Ya estás adentro. Que el otro abra la misma dirección.'],
-    listo: ['Los dos escuadrones en la sala', 'Cuando quieras, al campo.'],
+    esperando: ['Todavía no llegó nadie', 'Ya estás adentro. Que los demás abran la misma página.'],
+    listo: ['La sala está armada', 'Cuando quieras, al campo.'],
     caido: ['No hay sala', '']
   };
 
   function pintarSala (p) {
     const [t, d] = CARTELES[p.fase] || CARTELES.suelto;
-    titulo.textContent = p.fase === 'listo' && p.rol
-      ? (p.rol === 'anfitrion' ? 'Sos San Martín · columna del oeste' : 'Sos Bermúdez · columna del este')
+    const adentro = p.fase === 'listo' || p.fase === 'esperando';
+    // El nombre recién cuando el padrón llegó: entre que se abre el cable y
+    // que llega hay un momento en que uno todavía no sabe qué número le tocó,
+    // y anunciar «sos San Martín» ahí es mentirle al que acaba de entrar.
+    titulo.textContent = adentro && p.ubicado
+      ? 'Sos ' + p.nombre + ' · columna del ' + p.columna
       : t;
-    detalle.textContent = p.motivo || d;
+    detalle.textContent = p.motivo || (p.fase === 'listo' && p.cuantos > 2
+      ? 'Son ' + p.cuantos + ' en la sala. Cuando quieras, al campo.' : d);
     luz.classList.toggle('va', p.fase === 'listo');
     luz.classList.toggle('espera', p.fase === 'llamando' || p.fase === 'esperando');
     luz.classList.toggle('mal', p.fase === 'caido');
     papeles.anfitrion.classList.toggle('vos', p.rol === 'anfitrion');
-    papeles.invitado.classList.toggle('vos', p.rol === 'invitado');
+    papeles.invitado.classList.toggle('vos', p.rol === 'invitado' && p.j === 1);
+    papeles.tropa.classList.toggle('vos', p.rol === 'invitado' && p.j >= 2);
+
+    // EL PADRÓN EN VIVO. Con dos alcanzaban dos tarjetas fijas; con diez hay
+    // que ver quién está, porque de eso depende si conviene esperar a uno más.
+    const quienes = p.jugadores || [];
+    cajaGente.classList.toggle('hay', quienes.length > 0);
+    listaGente.textContent = '';
+    for (const g of quienes) {
+      const li = document.createElement('li');
+      const b = document.createElement('b');
+      b.textContent = g.nombre + (g.vos ? ' (vos)' : '');
+      const em = document.createElement('em');
+      em.textContent = (g.manda ? 'lleva la del ' : 'granadero · ') + g.columna;
+      li.append(b, em);
+      if (g.vos) li.classList.add('vos');
+      listaGente.append(li);
+    }
     manual.classList.toggle('oculto', p.fase !== 'caido' || !puedeHaberSalaLocal);
     // Los dos botones se ven mientras no estés en una sala; el código grande,
     // sólo cuando lo creaste y estás esperando a que entre alguien.
@@ -269,6 +301,16 @@ export function armarMando (ctx) {
     entrar.textContent = p.rol === 'anfitrion'
       ? 'Formar las columnas y salir al campo'
       : 'Salir al campo';
+  }
+
+  // CON QUÉ COLUMNA CARGA EL QUE ENTRA. Se elige antes de escribir el código,
+  // que es el único momento en que se puede: después ya hay un puesto ocupado.
+  // Al segundo se lo hace Bermúdez igual —esa columna necesita jefe— y eso lo
+  // dice el cartel de abajo en vez de aparecer como una sorpresa al entrar.
+  function pintarColumna () {
+    const este = red.pedida === 'este';
+    document.getElementById('col-oeste').classList.toggle('va', !este);
+    document.getElementById('col-este').classList.toggle('va', este);
   }
 
   // ¿PUEDE haber una sala local? Es el camino del «Jugar de a dos»: ahí el
@@ -303,6 +345,11 @@ export function armarMando (ctx) {
   const clave = document.getElementById('sala-clave');
   const campoCodigo = document.getElementById('sala-codigo');
 
+  for (const [id, col] of [['col-oeste', 'oeste'], ['col-este', 'este']]) {
+    document.getElementById(id).addEventListener('click', () => { red.elegirColumna(col); pintarColumna(); });
+  }
+  pintarColumna();
+
   document.getElementById('sala-crear').addEventListener('click', () => red.crearSala());
   const unirse = () => red.entrarASala(campoCodigo.value);
   document.getElementById('sala-unirse').addEventListener('click', unirse);
@@ -322,7 +369,7 @@ export function armarMando (ctx) {
   entrar.addEventListener('click', () => {
     pantallaSala.classList.add('oculto');
     // el mismo plano, con la columna del otro marcada según a quién le tocó
-    plano.mostrar(red.esInvitado ? 'este' : 'oeste', 250, () => {
+    plano.mostrar(red.columna, 250, () => {
       sonido.iniciar();
       empezado = true;
       tSoltado = 0;

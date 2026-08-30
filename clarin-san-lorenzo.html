@@ -204,9 +204,9 @@
   details.ayuda summary::before{content:'▸ ';color:var(--bronce)}
   details.ayuda[open] summary::before{content:'▾ '}
 
-  /* ---- la sala de dos ----
-     La pinza son dos columnas. Hasta acá una la llevaba el jugador y la otra
-     la máquina; con esto la otra la puede llevar otra persona. */
+  /* ---- la sala ----
+     La pinza son dos columnas. Las dos cabezas son personas y el resto de los
+     que entran son granaderos: eligen columna y ocupan el puesto de un bot. */
   /* ---- el plano de la batalla ----
      Desde adentro de un cuerpo la pinza no se ve: se ve pasto y casacas. El
      plano va antes de entrar, y va sobre papel y no sobre la pantalla oscura
@@ -274,9 +274,29 @@
   @keyframes latido{0%,100%{opacity:1}50%{opacity:.35}}
   .luz b{font-weight:600;letter-spacing:.13em;text-transform:uppercase;font-size:12.5px}
   .luz span{color:#8B97A1;font-size:13px;letter-spacing:.02em;line-height:1.5}
-  .papeles{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(230,226,214,.13);
-    border:1px solid rgba(230,226,214,.13);margin-bottom:20px}
-  @media (max-width:620px){.papeles{grid-template-columns:1fr}}
+  .papeles{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(230,226,214,.13);
+    border:1px solid rgba(230,226,214,.13);margin-bottom:16px}
+  @media (max-width:760px){.papeles{grid-template-columns:1fr}}
+  /* la sala en vivo: quién está adentro, en orden de llegada */
+  #sala-gente{display:none;margin-bottom:18px;border:1px solid rgba(230,226,214,.13);background:#161D25}
+  #sala-gente.hay{display:block}
+  #sala-gente h4{margin:0;padding:12px 16px 9px;color:#8B97A1;font-size:11px;letter-spacing:.17em;
+    text-transform:uppercase;font-weight:600}
+  #sala-gente ul{margin:0;padding:0 16px 13px;list-style:none;display:flex;flex-direction:column;gap:6px}
+  #sala-gente li{display:flex;align-items:baseline;gap:10px;font-size:13.5px;color:#B9C2CA}
+  #sala-gente li b{font-weight:400;font-family:"Libre Caslon Display",Georgia,serif;font-size:15.5px}
+  #sala-gente li em{font-style:normal;color:#6C7681;font-size:11px;letter-spacing:.15em;
+    text-transform:uppercase;margin-left:auto;white-space:nowrap}
+  #sala-gente li.vos{color:var(--bronce)}
+  #sala-gente li.vos em{color:var(--bronce);opacity:.75}
+  /* con qué columna carga el que entra */
+  #sala-conquien{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:4px}
+  #sala-conquien>span{color:#6C7681;font-size:11.5px;letter-spacing:.17em;text-transform:uppercase}
+  button.col{background:transparent;color:#8B97A1;border:1px solid rgba(230,226,214,.22);
+    padding:9px 15px;font-size:13px}
+  button.col.va{border-color:var(--bronce);color:var(--bronce);background:rgba(178,140,80,.10)}
+  #sala-conquien i{font-style:normal;color:#6C7681;font-size:11.5px;line-height:1.55;
+    max-width:46ch;text-align:center}
   .papel{background:#161D25;padding:14px 17px;opacity:.42;transition:opacity .2s}
   .papel.vos{opacity:1;background:#1B242E}
   .papel i{display:block;font-style:normal;color:#D9696C;font-weight:600;font-size:10.5px;
@@ -476,27 +496,35 @@
 <div id="sala" class="oculto">
   <div class="caja">
     <div class="franja"><i></i><i></i><i></i></div>
-    <div class="eyebrow">Dos jugadores · con un código</div>
+    <div class="eyebrow">Hasta diez jugadores · con un código</div>
     <h1>Los dos costados</h1>
     <p class="sub">Las dos columnas salieron a la vez por los dos costados del convento.
-      Una la lleva cada uno.</p>
+      Una cabeza cada una, y atrás los granaderos.</p>
 
     <div class="luz" id="sala-luz"><i></i><div><b id="sala-titulo">Buscando la sala</b>
       <span id="sala-detalle">…</span></div></div>
 
     <div class="papeles">
       <div class="papel" id="papel-anfitrion">
-        <i>Columna del oeste · anfitrión</i>
+        <i>Columna del oeste · el primero</i>
         <b>José de San Martín</b>
         <span>Lleva la batalla en su máquina y <em>toca el clarín</em>.
-          Es el que entra primero a la sala.</span>
+          Es el que crea la sala.</span>
       </div>
       <div class="papel" id="papel-invitado">
-        <i>Columna del este · invitado</i>
+        <i>Columna del este · el segundo</i>
         <b>Capitán Justo Bermúdez</b>
         <span>Sesenta granaderos del otro lado. Sale cuando suena el clarín.</span>
       </div>
+      <div class="papel" id="papel-tropa">
+        <i>Del tercero en adelante</i>
+        <b>Granaderos</b>
+        <span>Eligen con qué columna cargan y ocupan el puesto de uno de los
+          sesenta. No mandan: siguen.</span>
+      </div>
     </div>
+
+    <div id="sala-gente"><h4>En la sala</h4><ul></ul></div>
 
     <div id="sala-elegir">
       <button id="sala-crear">Crear sala</button>
@@ -505,6 +533,15 @@
         <input id="sala-codigo" type="text" spellcheck="false" autocomplete="off"
                maxlength="4" placeholder="····">
         <button id="sala-unirse" class="flojo">Entrar</button>
+      </div>
+      <div id="sala-conquien">
+        <span>¿Con qué columna cargás?</span>
+        <div class="fila">
+          <button id="col-oeste" class="col va">Con San Martín · oeste</button>
+          <button id="col-este" class="col">Con Bermúdez · este</button>
+        </div>
+        <i>Al segundo que entra le toca ser Bermúdez igual: esa columna
+          necesita jefe. Del tercero en adelante se elige de verdad.</i>
       </div>
     </div>
 
@@ -515,10 +552,12 @@
     </div>
 
     <div class="receta" id="sala-receta">
-      <p>Uno hace <b>Crear sala</b> y le sale un código. El otro abre la misma
-        página, lo escribe y entra. Nada que instalar.</p>
+      <p>Uno hace <b>Crear sala</b> y le sale un código. Los demás abren la misma
+        página, lo escriben y entran. Nada que instalar.</p>
       <p>Anda por el mismo wifi o por datos, no hace falta que estén cerca.
-        El que crea la sala lleva la columna del oeste y toca el clarín.</p>
+        Entran hasta diez: por red local van cómodos, y por internet el que
+        crea la sala manda una copia de la batalla a cada uno, así que de a
+        tres o cuatro anda mejor.</p>
       <p class="chico">¿La red del colegio no deja? Está el camino sin internet:
         doble clic en <code>Jugar de a dos.bat</code> y entrar por la dirección
         que imprime.</p>
@@ -536,7 +575,7 @@
       <button id="sala-entrar" disabled>Salir al campo</button>
       <button id="sala-volver" class="flojo">Volver</button>
     </div>
-    <div class="pie">El anfitrión forma las dos columnas al entrar · Esc para soltar el mouse</div>
+    <div class="pie">El que creó la sala forma las columnas al entrar · Esc para soltar el mouse</div>
   </div>
 </div>
 
@@ -32602,14 +32641,19 @@ var Pinza = class {
   // LA COLUMNA DE CADA UNO. San Martín sale por el oeste y Bermúdez por el
   // este; en solitario hay un solo jugador y es San Martín. La orden de
   // reunirse es de quien manda la columna, así que cada máquina llama a la
-  // suya: el que juega de invitado es Bermúdez, y la del este es la de él.
-  tuya(esInvitado) {
-    return esInvitado ? this.este : this.oeste;
+  // suya.
+  //
+  // Se pide por NOMBRE y no por «¿sos el invitado?», que es lo que decía antes.
+  // Con dos jugadores las dos preguntas daban lo mismo; con más, no: un
+  // granadero es invitado y no manda ninguna columna, y puede estar cargando
+  // con la del oeste. Quién manda qué lo sabe el padrón de la sala, no el rol.
+  tuya(quien) {
+    return quien === "este" || quien === true ? this.este : this.oeste;
   }
   // «¡A mí!» Devuelve false si no hay a quién llamar, para que el aviso del HUD
   // pueda decir por qué.
-  reunir(esInvitado) {
-    return this.viva && this.tocado && this.tuya(esInvitado).reunirse();
+  reunir(quien) {
+    return this.viva && this.tocado && this.tuya(quien).reunirse();
   }
   desarmar() {
     for (const c of this.columnas) {
@@ -34450,18 +34494,26 @@ function armarMando(ctx) {
       // ¡A MÍ! La columna corta la pelea y se vuelve a formar atrás tuyo. Se
       // suelta sola cuando la volvés a llevar al choque.
       case "KeyQ": {
-        if (!pinza2.viva || !pinza2.tocado) {
-          hud2.mostrarAviso("No hay columna que llamar", "malo");
-          break;
-        }
         if (!montado2()) {
           hud2.mostrarAviso("A pie no te siguen: mont\xE1", "malo");
           break;
         }
-        if (pinza2.reunir(!!(red2 && red2.esInvitado))) {
+        const llamada = red2 ? red2.reunir() : pinza2.reunir("oeste");
+        if (llamada === "tropa") {
+          hud2.mostrarAviso("Vos no mand\xE1s la columna: segu\xED a tu jefe", "malo");
+          break;
+        }
+        if (llamada === "mandado") {
+          sonido2.grito();
+          break;
+        }
+        if (llamada) {
           sonido2.grito();
           hud2.mostrarAviso("\xA1A m\xED, granaderos!", "bien");
-        } else hud2.mostrarAviso("Ya vienen", "malo");
+          break;
+        }
+        if (!pinza2.viva || !pinza2.tocado) hud2.mostrarAviso("No hay columna que llamar", "malo");
+        else hud2.mostrarAviso("Ya vienen", "malo");
         break;
       }
       case "KeyB":
@@ -34586,24 +34638,42 @@ function armarMando(ctx) {
   const manual = document.getElementById("sala-manual");
   const papeles = {
     anfitrion: document.getElementById("papel-anfitrion"),
-    invitado: document.getElementById("papel-invitado")
+    invitado: document.getElementById("papel-invitado"),
+    tropa: document.getElementById("papel-tropa")
   };
+  const cajaGente = document.getElementById("sala-gente");
+  const listaGente = cajaGente.querySelector("ul");
   const CARTELES = {
     suelto: ["Sala cerrada", "Nadie est\xE1 llamando."],
     llamando: ["Buscando la sala", "Golpeando la puerta del servidor\u2026"],
-    esperando: ["Falta el otro escuadr\xF3n", "Ya est\xE1s adentro. Que el otro abra la misma direcci\xF3n."],
-    listo: ["Los dos escuadrones en la sala", "Cuando quieras, al campo."],
+    esperando: ["Todav\xEDa no lleg\xF3 nadie", "Ya est\xE1s adentro. Que los dem\xE1s abran la misma p\xE1gina."],
+    listo: ["La sala est\xE1 armada", "Cuando quieras, al campo."],
     caido: ["No hay sala", ""]
   };
   function pintarSala(p) {
     const [t, d] = CARTELES[p.fase] || CARTELES.suelto;
-    titulo.textContent = p.fase === "listo" && p.rol ? p.rol === "anfitrion" ? "Sos San Mart\xEDn \xB7 columna del oeste" : "Sos Berm\xFAdez \xB7 columna del este" : t;
-    detalle.textContent = p.motivo || d;
+    const adentro = p.fase === "listo" || p.fase === "esperando";
+    titulo.textContent = adentro && p.ubicado ? "Sos " + p.nombre + " \xB7 columna del " + p.columna : t;
+    detalle.textContent = p.motivo || (p.fase === "listo" && p.cuantos > 2 ? "Son " + p.cuantos + " en la sala. Cuando quieras, al campo." : d);
     luz.classList.toggle("va", p.fase === "listo");
     luz.classList.toggle("espera", p.fase === "llamando" || p.fase === "esperando");
     luz.classList.toggle("mal", p.fase === "caido");
     papeles.anfitrion.classList.toggle("vos", p.rol === "anfitrion");
-    papeles.invitado.classList.toggle("vos", p.rol === "invitado");
+    papeles.invitado.classList.toggle("vos", p.rol === "invitado" && p.j === 1);
+    papeles.tropa.classList.toggle("vos", p.rol === "invitado" && p.j >= 2);
+    const quienes = p.jugadores || [];
+    cajaGente.classList.toggle("hay", quienes.length > 0);
+    listaGente.textContent = "";
+    for (const g of quienes) {
+      const li = document.createElement("li");
+      const b = document.createElement("b");
+      b.textContent = g.nombre + (g.vos ? " (vos)" : "");
+      const em = document.createElement("em");
+      em.textContent = (g.manda ? "lleva la del " : "granadero \xB7 ") + g.columna;
+      li.append(b, em);
+      if (g.vos) li.classList.add("vos");
+      listaGente.append(li);
+    }
     manual.classList.toggle("oculto", p.fase !== "caido" || !puedeHaberSalaLocal);
     if (elegir) elegir.classList.toggle("oculto", p.fase !== "suelto" && p.fase !== "caido");
     if (claveCaja) {
@@ -34613,6 +34683,11 @@ function armarMando(ctx) {
     }
     entrar.disabled = p.fase !== "listo";
     entrar.textContent = p.rol === "anfitrion" ? "Formar las columnas y salir al campo" : "Salir al campo";
+  }
+  function pintarColumna() {
+    const este = red2.pedida === "este";
+    document.getElementById("col-oeste").classList.toggle("va", !este);
+    document.getElementById("col-este").classList.toggle("va", este);
   }
   const puedeHaberSalaLocal = location.protocol === "http:" && !!location.host;
   function abrirSala() {
@@ -34633,6 +34708,13 @@ function armarMando(ctx) {
   const claveCaja = document.getElementById("sala-codigo-grande");
   const clave = document.getElementById("sala-clave");
   const campoCodigo = document.getElementById("sala-codigo");
+  for (const [id, col] of [["col-oeste", "oeste"], ["col-este", "este"]]) {
+    document.getElementById(id).addEventListener("click", () => {
+      red2.elegirColumna(col);
+      pintarColumna();
+    });
+  }
+  pintarColumna();
   document.getElementById("sala-crear").addEventListener("click", () => red2.crearSala());
   const unirse = () => red2.entrarASala(campoCodigo.value);
   document.getElementById("sala-unirse").addEventListener("click", unirse);
@@ -34650,7 +34732,7 @@ function armarMando(ctx) {
   });
   entrar.addEventListener("click", () => {
     pantallaSala.classList.add("oculto");
-    plano2.mostrar(red2.esInvitado ? "este" : "oeste", 250, () => {
+    plano2.mostrar(red2.columna, 250, () => {
       sonido2.iniciar();
       empezado = true;
       tSoltado = 0;
@@ -37325,8 +37407,17 @@ var PARTE = 1 / 20;
 var CUERPO = 1 / 30;
 var SEGUIR = 15;
 var CERCA_TIRO = 90;
+var MAX_JUGADORES = 10;
+var FRENTE_COL = 4;
+var ANCHO_COL = 2.6;
+var FONDO_COL = 3.4;
 function corto(a) {
   return Math.atan2(Math.sin(a), Math.cos(a));
+}
+function nombreDeJugador(j) {
+  if (j === 0) return "Jos\xE9 de San Mart\xEDn";
+  if (j === 1) return "Capit\xE1n Justo Berm\xFAdez";
+  return "Granadero " + (j - 1) + "\xBA";
 }
 function armarRed(ctx) {
   const {
@@ -37346,13 +37437,15 @@ function armarRed(ctx) {
     poseDelJugador: poseDelJugador2,
     intentarVoltear
   } = ctx;
-  let cable = null;
   let peer = null;
   let rol = null;
   let fase = "suelto";
-  let hayCompanero = false;
   let motivo = "";
   let alCambiar = null;
+  let yo = 0;
+  let quiero = "oeste";
+  let cable = null;
+  const enchufes = /* @__PURE__ */ new Map();
   const cola = [];
   let tParte = 0, tCuerpo = 0, sello = 0;
   let ultimoSello = -1;
@@ -37360,17 +37453,44 @@ function armarRed(ctx) {
   let proximoId = 1;
   const porId = /* @__PURE__ */ new Map();
   const vistos = /* @__PURE__ */ new Set();
-  let companero = null;
-  let cabalgadura = null;
-  const cabezaRemota = { x: PLAZA_ESTE.x, z: PLAZA_ESTE.z, rumbo: PLAZA_ESTE.rumbo, andar: 0, vivo: true };
+  const gente = /* @__PURE__ */ new Map();
+  const pares = /* @__PURE__ */ new Map();
   const red2 = {};
   const _v = new Vector3();
   const _d = new Vector3();
+  function salidas() {
+    if (enchufes.size) return [...enchufes.values()];
+    return cable ? [cable] : [];
+  }
   function mandar(obj) {
-    if (!cable || cable.readyState !== 1) return;
     const txt = JSON.stringify(obj);
-    bytesMandados += txt.length;
-    cable.send(txt);
+    for (const c of salidas()) {
+      if (c.readyState !== 1) continue;
+      bytesMandados += txt.length;
+      c.send(txt);
+    }
+  }
+  function mandarA(j, obj) {
+    obj.para = j;
+    if (enchufes.size) {
+      const c = enchufes.get(j);
+      if (!c || c.readyState !== 1) return;
+      const txt = JSON.stringify(obj);
+      bytesMandados += txt.length;
+      c.send(txt);
+      return;
+    }
+    mandar(obj);
+  }
+  function mandarMundo(buf) {
+    for (const c of salidas()) {
+      if (c.readyState !== 1) continue;
+      bytesMandados += buf.byteLength;
+      c.send(buf);
+    }
+  }
+  function hayGente() {
+    return gente.size > 1;
   }
   function avisarFase(f, por) {
     fase = f;
@@ -37378,17 +37498,26 @@ function armarRed(ctx) {
     if (alCambiar) alCambiar(red2.parte());
   }
   red2.conectar = function(direccion, silencioso) {
-    if (cable) return;
+    if (jugando()) return;
+    if (!silencioso) desarmar();
+    else if (cable) return;
     let url = direccion;
     if (!url) {
       if (!location.host) {
-        avisarFase("caido", "Este archivo se abri\xF3 suelto, sin servidor. Para jugar de a dos hay que levantar la sala con \xABnode herramientas/servidor.mjs\xBB y entrar por la direcci\xF3n que imprime.");
+        avisarFase("caido", "Este archivo se abri\xF3 suelto, sin servidor. Para jugar entre varios hay que levantar la sala con \xABnode herramientas/servidor.mjs\xBB y entrar por la direcci\xF3n que imprime.");
         return;
       }
       url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
     }
     if (!silencioso) avisarFase("llamando");
-    const fallo = (m) => avisarFase(silencioso ? "suelto" : "caido", silencioso ? "" : m);
+    const fallo = (m) => {
+      if (silencioso) {
+        desarmar();
+        avisarFase("suelto");
+        return;
+      }
+      fallar(m);
+    };
     try {
       cable = new WebSocket(url);
     } catch (e) {
@@ -37417,7 +37546,10 @@ function armarRed(ctx) {
         avisarFase("suelto");
         return;
       }
-      if (fase !== "caido") avisarFase("caido", "Se cort\xF3 el cable con la sala.");
+      if (fase !== "caido") {
+        vaciarSala("Se cort\xF3 el cable con la sala.");
+        avisarFase("caido", "Se cort\xF3 el cable con la sala.");
+      }
     };
   };
   const ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -37431,7 +37563,11 @@ function armarRed(ctx) {
   red2.limpiarCodigo = function(t) {
     return String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/[0O]/g, "Q").replace(/[1I]/g, "J").slice(0, LARGO);
   };
-  function cableDePar(conn) {
+  red2.elegirColumna = function(c) {
+    quiero = c === "este" ? "este" : "oeste";
+  };
+  Object.defineProperty(red2, "pedida", { get: () => quiero });
+  function cableDePar(conn, de) {
     const c = {
       readyState: 0,
       send(d) {
@@ -37451,7 +37587,7 @@ function armarRed(ctx) {
     conn.on("data", (d) => {
       if (typeof d === "string") {
         bytesRecibidos += d.length;
-        recibirTexto(d);
+        recibirTexto(d, de);
         return;
       }
       const buf = d instanceof ArrayBuffer ? d : d && d.buffer || null;
@@ -37479,9 +37615,16 @@ function armarRed(ctx) {
     return "Se cort\xF3 la conexi\xF3n" + (t ? " (" + t + ")" : "") + ".";
   }
   function jugando() {
-    return !!cable && cable.readyState === 1;
+    if (cable && cable.readyState === 1) return true;
+    for (const c of enchufes.values()) if (c.readyState === 1) return true;
+    return false;
   }
   function desarmar() {
+    for (const c of enchufes.values()) {
+      c.onclose = null;
+      c.close();
+    }
+    enchufes.clear();
     if (cable) {
       const c = cable;
       cable = null;
@@ -37498,7 +37641,8 @@ function armarRed(ctx) {
     }
     red2.codigo = null;
     rol = null;
-    hayCompanero = false;
+    yo = 0;
+    vaciarSala();
   }
   function fallar(m) {
     if (!jugando()) desarmar();
@@ -37522,32 +37666,32 @@ function armarRed(ctx) {
     if (!peer) return;
     peer.on("open", () => {
       rol = "anfitrion";
-      hayCompanero = false;
+      yo = 0;
+      anotarGente(0, "oeste");
       avisarFase("esperando");
     });
     peer.on("connection", (conn) => {
-      if (cable) {
-        conn.close();
+      const j = numeroLibre();
+      if (!j) {
+        try {
+          conn.on("open", () => {
+            conn.send(JSON.stringify({ t: "lleno" }));
+            setTimeout(() => conn.close(), 80);
+          });
+        } catch {
+        }
         return;
       }
-      cable = cableDePar(conn);
+      const c = cableDePar(conn, j);
+      enchufes.set(j, c);
       conn.on("open", () => {
-        cable.readyState = 1;
-        hayCompanero = true;
-        armarCompanero();
-        proximoId = 1;
-        porId.clear();
-        ultimoSello = -1;
-        avisarFase("listo");
-        hud2.mostrarAviso("Entr\xF3 el otro escuadr\xF3n", "bien");
+        c.readyState = 1;
+        mandarA(j, { t: "sos", j });
+        entraJugador(j);
       });
-      cable.onclose = () => {
-        cable = null;
-        hayCompanero = false;
-        soltarCompanero();
-        cabezaRemota.vivo = false;
-        avisarFase("esperando", "Se fue el otro jugador.");
-        hud2.mostrarAviso("Se fue Berm\xFAdez", "malo");
+      c.onclose = () => {
+        enchufes.delete(j);
+        seVaJugador(j);
       };
     });
   };
@@ -37569,9 +37713,8 @@ function armarRed(ctx) {
       conn.on("open", () => {
         cable.readyState = 1;
         rol = "invitado";
-        hayCompanero = true;
-        armarCompanero();
-        avisarFase("listo");
+        mandar({ t: "quiero", columna: quiero });
+        avisarFase("esperando");
       });
       cable.onclose = () => {
         if (rol !== "invitado") {
@@ -37579,7 +37722,7 @@ function armarRed(ctx) {
           return;
         }
         cable = null;
-        hayCompanero = false;
+        vaciarSala();
         avisarFase("caido", "Se cort\xF3 con San Mart\xEDn.");
         hud2.decir("Se cay\xF3 la m\xE1quina que llevaba la batalla. Ya no viene ning\xFAn parte.", 8);
       };
@@ -37592,72 +37735,178 @@ function armarRed(ctx) {
   red2.alCambiar = (f) => {
     alCambiar = f;
   };
-  red2.parte = () => ({
-    fase,
-    rol,
-    motivo,
-    companero: hayCompanero,
-    kbs: cableKBs,
-    nombre: rol === "invitado" ? "Capit\xE1n Justo Berm\xFAdez" : "Jos\xE9 de San Mart\xEDn",
-    columna: rol === "invitado" ? "este" : "oeste"
-  });
-  Object.defineProperty(red2, "activo", { get: () => rol !== null && fase !== "caido" });
-  Object.defineProperty(red2, "esAnfitrion", { get: () => rol === "anfitrion" });
-  Object.defineProperty(red2, "esInvitado", { get: () => rol === "invitado" });
-  Object.defineProperty(red2, "listo", { get: () => fase === "listo" });
-  function armarCompanero() {
-    if (companero) return;
-    const plaza = rol === "anfitrion" ? PLAZA_ESTE : { x: -40, z: 54, rumbo: 0 };
-    cabalgadura = new Caballo(escena2, [], new Vector3(plaza.x, 0, plaza.z));
-    cabalgadura.rumbo = plaza.rumbo;
-    cabalgadura.titere = true;
-    cabalgadura.humo = humo2;
-    cabalgadura._sinRed = true;
-    companero = new Soldado(
+  function numeroLibre() {
+    for (let j = 1; j < MAX_JUGADORES; j++) if (!gente.has(j)) return j;
+    return 0;
+  }
+  function columnaPara(j, pedida) {
+    if (j === 0) return "oeste";
+    if (j === 1) return "este";
+    return pedida === "este" ? "este" : "oeste";
+  }
+  function anotarGente(j, columna, puesto) {
+    gente.set(j, { j, columna, puesto: puesto || 0, nombre: nombreDeJugador(j) });
+  }
+  function difundirGente() {
+    mandar({ t: "gente", lista: [...gente.values()].map((g) => ({ j: g.j, columna: g.columna, puesto: g.puesto })) });
+  }
+  function entraJugador(j) {
+    anotarGente(j, columnaPara(j, "oeste"), 0);
+    sincronizarPares();
+    difundirGente();
+    avisarFase("listo");
+    hud2.mostrarAviso("Entr\xF3 " + nombreDeJugador(j), "bien");
+  }
+  function seVaJugador(j) {
+    const g = gente.get(j);
+    gente.delete(j);
+    soltarPar(j);
+    sincronizarPares();
+    difundirGente();
+    if (!hayGente()) avisarFase("esperando", "Se quedaron sin compa\xF1\xEDa.");
+    hud2.mostrarAviso("Se fue " + (g ? g.nombre : "un jugador"), "malo");
+  }
+  function recibirGente(lista) {
+    gente.clear();
+    for (const g of lista) anotarGente(g.j, g.columna, g.puesto);
+    sincronizarPares();
+    if (fase !== "listo" && gente.size) avisarFase(hayGente() ? "listo" : "esperando");
+    if (alCambiar) alCambiar(red2.parte());
+  }
+  function vaciarSala(por) {
+    for (const j of [...pares.keys()]) soltarPar(j);
+    gente.clear();
+    porId.clear();
+    ultimoSello = -1;
+    if (por && alCambiar) alCambiar(red2.parte());
+  }
+  function liberarPuesto(nombreCol) {
+    const c = pinza2[nombreCol];
+    if (!c || !c.hombres.length) return 0;
+    for (let i = c.hombres.length - 1; i >= 0; i--) {
+      const h = c.hombres[i];
+      if (h === c.jefe || !h.vivo) continue;
+      c.hombres.splice(i, 1);
+      const k = soldados2.indexOf(h);
+      if (k >= 0) soldados2.splice(k, 1);
+      const m = h.monta;
+      h.monta = null;
+      if (m) {
+        m.jinete = null;
+        m.montado = false;
+        const q = caballos2.indexOf(m);
+        if (q >= 0) caballos2.splice(q, 1);
+        m.quitar();
+      }
+      h.plaza = null;
+      h.quitar();
+      return i;
+    }
+    return c.hombres.length;
+  }
+  function sitioDePuesto(nombreCol, puesto) {
+    const plaza = nombreCol === "este" ? PLAZA_ESTE : PLAZA_OESTE;
+    const lat = (puesto % FRENTE_COL - (FRENTE_COL - 1) / 2) * ANCHO_COL;
+    const atras = Math.floor(puesto / FRENTE_COL) * FONDO_COL;
+    return { x: plaza.x + lat, z: plaza.z + atras, rumbo: plaza.rumbo };
+  }
+  function armarPar(j) {
+    if (pares.has(j) || j === yo) return pares.get(j) || null;
+    const g = gente.get(j);
+    if (!g) return null;
+    const p0 = sitioDePuesto(g.columna, g.puesto);
+    const caballo = new Caballo(escena2, [], new Vector3(p0.x, 0, p0.z));
+    caballo.rumbo = p0.rumbo;
+    caballo.titere = true;
+    caballo.humo = humo2;
+    caballo._sinRed = true;
+    const soldado = new Soldado(
       escena2,
       humo2,
       sonido2,
-      new Vector3(plaza.x, 0, plaza.z),
+      new Vector3(p0.x, 0, p0.z),
       "granadero",
       { colisiones: [], lancero: true }
     );
-    companero.titere = true;
-    companero._sinRed = true;
-    companero.monta = cabalgadura;
-    cabalgadura.montado = true;
-    cabalgadura.jinete = companero;
-    companero.fig.montura = true;
-    companero.fig.poner("lanzaAlto");
-    companero._sentar();
-    soldados2.push(companero);
-    const doler = (cual, extra) => (carga) => {
-      mandar({
+    soldado.titere = true;
+    soldado._sinRed = true;
+    soldado._par = j;
+    soldado.monta = caballo;
+    caballo.montado = true;
+    caballo.jinete = soldado;
+    soldado.fig.montura = true;
+    soldado.fig.poner("lanzaAlto");
+    soldado._sentar();
+    soldados2.push(soldado);
+    const par = {
+      j,
+      soldado,
+      caballo,
+      cabeza: { x: p0.x, z: p0.z, rumbo: p0.rumbo, andar: 0, vivo: true }
+    };
+    pares.set(j, par);
+    const doler = (cual) => (carga) => {
+      mandarA(j, {
         t: "golpe",
         dano: carga.dano || 0,
         volteo: carga.volteo || 0,
         aturdir: carga.aturdir || 0,
-        de: cual,
-        ...extra
+        de: cual
       });
       return false;
     };
-    companero.alCastigo = doler("hombre");
-    cabalgadura.alCastigo = doler("caballo");
+    soldado.alCastigo = doler("hombre");
+    caballo.alCastigo = doler("caballo");
+    return par;
   }
-  function soltarCompanero() {
-    if (!companero) return;
-    const i = soldados2.indexOf(companero);
+  function soltarPar(j) {
+    const par = pares.get(j);
+    if (!par) return;
+    pares.delete(j);
+    const i = soldados2.indexOf(par.soldado);
     if (i >= 0) soldados2.splice(i, 1);
-    companero.quitar();
-    companero = null;
-    cabalgadura = null;
+    par.soldado.monta = null;
+    par.caballo.jinete = null;
+    par.caballo.quitar();
+    par.soldado.quitar();
   }
-  red2.cabezaCompanero = () => cabezaRemota.vivo ? cabezaRemota : null;
+  function sincronizarPares() {
+    for (const j of [...pares.keys()]) if (!gente.has(j) || j === yo) soltarPar(j);
+    for (const g of gente.values()) if (g.j !== yo) armarPar(g.j);
+    acomodarColumnas();
+  }
+  function jefeDeColumna(nombreCol) {
+    for (const g of gente.values()) if (g.puesto === 0 && g.columna === nombreCol) return g;
+    return null;
+  }
+  function acomodarColumnas() {
+    if (!pinza2.viva) return;
+    for (const nombreCol of ["oeste", "este"]) {
+      const c = pinza2[nombreCol];
+      const g = jefeDeColumna(nombreCol);
+      if (g && g.j === yo) {
+        c.jefe = null;
+        c.remota = null;
+        continue;
+      }
+      if (g) {
+        c.jefe = null;
+        c.remota = () => {
+          const par = pares.get(g.j);
+          return par && par.cabeza.vivo ? par.cabeza : null;
+        };
+        continue;
+      }
+      c.remota = null;
+      if (!c.jefe) c.jefe = c.hombres.find((h) => h.vivo && h.montado && !h.quebrado) || null;
+    }
+  }
   function mandarCuerpo() {
     const c = montado2() ? jugador2.monta : null;
     const p = jugador2.espectador && jugador2.murioEn ? jugador2.murioEn : jugador2.pos;
     mandar({
       t: "yo",
+      j: yo,
       x: +p.x.toFixed(2),
       z: +p.z.toFixed(2),
       yaw: +jugador2.yaw.toFixed(3),
@@ -37675,57 +37924,66 @@ function armarRed(ctx) {
     });
   }
   function recibirCuerpo(m) {
-    if (!companero) armarCompanero();
-    companero._destino = companero._destino || { x: m.x, y: 0, z: m.z, rumbo: m.yaw };
-    const d = companero._destino;
+    const j = m.j;
+    if (j === void 0 || j === yo) return;
+    const par = pares.get(j) || armarPar(j);
+    if (!par) return;
+    const { soldado, caballo, cabeza } = par;
+    par.destino = par.destino || { x: m.x, y: 0, z: m.z, rumbo: m.yaw };
+    const d = par.destino;
     d.x = m.x;
     d.z = m.z;
     d.rumbo = m.yaw + Math.PI;
-    companero.vivo = m.vivo;
-    companero.vida = m.vida;
-    companero.fig.poner(m.pose || "lanzaAlto");
-    if (!m.vivo) companero.caida = Math.min(1, companero.caida + 0.06);
-    else companero.caida = 0;
+    soldado.vivo = m.vivo;
+    soldado.vida = m.vida;
+    soldado.fig.poner(m.pose || "lanzaAlto");
+    if (!m.vivo) soldado.caida = Math.min(1, soldado.caida + 0.06);
+    else soldado.caida = 0;
     if (m.m && m.cvivo) {
-      if (!companero.monta) {
-        companero.monta = cabalgadura;
-        cabalgadura.vivo = true;
-        cabalgadura.caida = 0;
-        cabalgadura.montado = true;
-        companero.fig.montura = true;
+      if (!soldado.monta) {
+        soldado.monta = caballo;
+        caballo.vivo = true;
+        caballo.caida = 0;
+        caballo.montado = true;
+        soldado.fig.montura = true;
       }
-      cabalgadura._destino = cabalgadura._destino || { x: m.cx, z: m.cz, rumbo: m.cr };
-      const e = cabalgadura._destino;
+      par.destinoCaballo = par.destinoCaballo || { x: m.cx, z: m.cz, rumbo: m.cr };
+      const e = par.destinoCaballo;
       e.x = m.cx;
       e.z = m.cz;
       e.rumbo = m.cr;
-      cabalgadura.vel = m.cv;
-      cabalgadura.andar = m.ca;
-      cabalgadura.alto = m.ch;
-      cabezaRemota.x = m.cx;
-      cabezaRemota.z = m.cz;
-      cabezaRemota.rumbo = m.cr;
-      cabezaRemota.andar = m.ca;
-      cabezaRemota.vivo = m.vivo;
+      caballo.vel = m.cv;
+      caballo.andar = m.ca;
+      caballo.alto = m.ch;
+      cabeza.x = m.cx;
+      cabeza.z = m.cz;
+      cabeza.rumbo = m.cr;
+      cabeza.andar = m.ca;
+      cabeza.vivo = m.vivo;
     } else {
-      if (companero.monta) {
-        companero.monta = null;
-        companero.fig.montura = false;
-        cabalgadura.montado = false;
+      if (soldado.monta) {
+        soldado.monta = null;
+        soldado.fig.montura = false;
+        caballo.montado = false;
       }
-      if (!m.cvivo) cabalgadura.vivo = false;
-      cabezaRemota.vivo = false;
+      if (!m.cvivo) caballo.vivo = false;
+      cabeza.vivo = false;
     }
   }
   function bautizar(o, clase, extra) {
     o._red = proximoId++;
     if (proximoId > 65e3) proximoId = 1;
     porId.set(o._red, o);
-    cola.push({ t: "nace", id: o._red, clase, ...extra });
+    o._carta = { t: "nace", id: o._red, clase, ...extra };
+    cola.push(o._carta);
+  }
+  function presentar(j) {
+    for (const o of porId.values()) if (o._carta) mandarA(j, { ...o._carta });
   }
   function despedir(o) {
     if (!o._red) return;
     porId.delete(o._red);
+    o._carta = null;
     cola.push({ t: "quitar", ids: [o._red] });
     o._red = 0;
   }
@@ -37760,7 +38018,10 @@ function armarRed(ctx) {
     for (const s of soldados2) if (s._red) vistos.add(s._red);
     for (const p of canones2) if (p._red) vistos.add(p._red);
     let idos = null;
-    for (const id of porId.keys()) if (!vistos.has(id)) (idos = idos || []).push(id);
+    for (const [id, o] of porId) if (!vistos.has(id)) {
+      (idos = idos || []).push(id);
+      o._carta = null;
+    }
     if (idos) {
       for (const id of idos) porId.delete(id);
       cola.push({ t: "quitar", ids: idos });
@@ -37809,11 +38070,10 @@ function armarRed(ctx) {
       });
     }
     sello = sello + 1 & 4294967295;
-    const buf = empaquetarMundo(sello, bufH, bufB, bufC);
-    bytesMandados += buf.byteLength;
-    cable.send(buf);
+    mandarMundo(empaquetarMundo(sello, bufH, bufB, bufC));
   }
   function nacer(m) {
+    if (porId.has(m.id)) return;
     let o = null;
     if (m.clase === "caballo") {
       o = new Caballo(escena2, [], new Vector3(m.x, 0, m.z));
@@ -37948,7 +38208,7 @@ function armarRed(ctx) {
       c.rumbo += corto(d.rumbo - c.rumbo) * k;
     }
     for (const s of soldados2) {
-      if (!s.titere || !s._destino || s.montado) continue;
+      if (s._par || !s.titere || !s._destino || s.montado) continue;
       const d = s._destino;
       s.pos.x += (d.x - s.pos.x) * k;
       s.pos.z += (d.z - s.pos.z) * k;
@@ -37956,61 +38216,72 @@ function armarRed(ctx) {
       s.malla.rotation.y += corto(d.rumbo - s.malla.rotation.y) * k;
     }
   };
-  red2.seguirCompanero = function(dt) {
-    if (!companero || dt <= 0) return;
+  red2.seguirPares = function(dt) {
+    if (!pares.size || dt <= 0) return;
     const k = 1 - Math.exp(-SEGUIR * dt);
-    if (companero._destino && !companero.montado) {
-      const d = companero._destino;
-      companero.pos.x += (d.x - companero.pos.x) * k;
-      companero.pos.z += (d.z - companero.pos.z) * k;
-      companero.malla.rotation.y += corto(d.rumbo - companero.malla.rotation.y) * k;
-    }
-    if (cabalgadura) {
-      if (cabalgadura._destino) {
-        const d = cabalgadura._destino;
-        cabalgadura.pos.x += (d.x - cabalgadura.pos.x) * k;
-        cabalgadura.pos.z += (d.z - cabalgadura.pos.z) * k;
-        cabalgadura.rumbo += corto(d.rumbo - cabalgadura.rumbo) * k;
+    for (const par of pares.values()) {
+      const { soldado, caballo } = par;
+      if (par.destino && !soldado.montado) {
+        const d = par.destino;
+        soldado.pos.x += (d.x - soldado.pos.x) * k;
+        soldado.pos.z += (d.z - soldado.pos.z) * k;
+        soldado.malla.rotation.y += corto(d.rumbo - soldado.malla.rotation.y) * k;
       }
-      cabalgadura.actualizarTitere(dt);
+      if (par.destinoCaballo) {
+        const d = par.destinoCaballo;
+        caballo.pos.x += (d.x - caballo.pos.x) * k;
+        caballo.pos.z += (d.z - caballo.pos.z) * k;
+        caballo.rumbo += corto(d.rumbo - caballo.rumbo) * k;
+      }
+      caballo.actualizarTitere(dt);
     }
   };
-  function recibirTexto(txt) {
+  red2.seguirCompanero = red2.seguirPares;
+  function recibirTexto(txt, deCable) {
     let m;
     try {
       m = JSON.parse(txt);
     } catch {
       return;
     }
+    const de = deCable !== void 0 ? deCable : m.de;
+    if (m.para !== void 0 && m.para !== yo) {
+      if (rol === "anfitrion") mandarA(m.para, m);
+      return;
+    }
     switch (m.t) {
+      // ---- del servidor de sala ----
       case "sala":
         rol = m.rol;
-        hayCompanero = !!m.completa;
-        avisarFase(hayCompanero ? "listo" : "esperando");
-        break;
-      case "lleno":
-        avisarFase("caido", "La sala ya tiene dos. San Lorenzo se pele\xF3 entre dos columnas, no tres.");
-        break;
-      case "par":
-        hayCompanero = m.entra;
-        if (m.entra) {
-          armarCompanero();
-          if (rol === "anfitrion") {
-            proximoId = 1;
-            porId.clear();
-            ultimoSello = -1;
-          }
-          avisarFase("listo");
-          hud2.mostrarAviso("Entr\xF3 el otro escuadr\xF3n", "bien");
+        yo = m.j || 0;
+        if (rol === "anfitrion") {
+          anotarGente(0, "oeste");
+          difundirGente();
+          avisarFase(hayGente() ? "listo" : "esperando");
         } else {
-          soltarCompanero();
-          cabezaRemota.vivo = false;
-          avisarFase("esperando", "Se fue el otro jugador.");
-          hud2.mostrarAviso(rol === "invitado" ? "Se cort\xF3 con San Mart\xEDn" : "Se fue Berm\xFAdez", "malo");
-          if (rol === "invitado") hud2.decir("Se cay\xF3 la m\xE1quina que llevaba la batalla. Ya no viene ning\xFAn parte.", 8);
+          mandar({ t: "quiero", columna: quiero });
+          avisarFase("esperando");
         }
         break;
-      // ---- del anfitrión al invitado ----
+      case "par":
+        if (rol !== "anfitrion" || m.j === void 0) break;
+        if (m.entra) entraJugador(m.j);
+        else seVaJugador(m.j);
+        break;
+      case "lleno":
+        fallar("La sala est\xE1 llena: ya son " + MAX_JUGADORES + ".");
+        break;
+      // ---- el padrón de la sala ----
+      case "sos":
+        yo = m.j;
+        break;
+      case "gente":
+        if (rol !== "anfitrion") recibirGente(m.lista);
+        break;
+      case "quiero":
+        if (rol === "anfitrion" && de !== void 0) elegirlo(de, m.columna);
+        break;
+      // ---- del anfitrión a los invitados ----
       case "batalla":
         armarInvitado(m);
         break;
@@ -38042,7 +38313,7 @@ function armarRed(ctx) {
       case "clarin":
         sonido2.clarin();
         break;
-      // ---- del invitado al anfitrión ----
+      // ---- de los invitados al anfitrión ----
       case "da\xF1o": {
         const o = porId.get(m.id);
         if (!o) break;
@@ -38050,16 +38321,61 @@ function armarRed(ctx) {
         if (m.dano) o.recibir(m.dano, null, m.volteo || 0);
         break;
       }
+      // «¡A MÍ!» DE LA OTRA MÁQUINA. El que lleva una columna puede reunirla
+      // aunque la columna viva acá: la orden viaja y la ejecuta el que simula.
+      // Sin esto la Q era de San Martín y de nadie más, porque del lado del
+      // invitado `pinza.viva` es false —los sesenta le llegan como títeres
+      // sueltos, no como formación— y la orden se perdía sin decir nada.
+      case "reunir": {
+        if (rol !== "anfitrion" || de === void 0) break;
+        const g = gente.get(de);
+        if (!g || g.puesto !== 0) break;
+        if (pinza2.reunir(g.columna)) mandarA(de, { t: "aviso", texto: "\xA1A m\xED, granaderos!", tipo: "bien" });
+        else mandarA(de, {
+          t: "aviso",
+          tipo: "malo",
+          texto: pinza2.viva && pinza2.tocado ? "Ya vienen" : "No hay columna que llamar"
+        });
+        break;
+      }
       // ---- en los dos sentidos ----
       case "yo":
-        recibirCuerpo(m);
+        recibirCuerpo(de !== void 0 ? { ...m, j: de } : m);
+        if (rol === "anfitrion" && de !== void 0 && hayGente()) mandar({ ...m, j: de, de: void 0 });
         break;
       case "tiro":
         verTiro(m);
+        if (rol === "anfitrion" && de !== void 0) mandar({ ...m, j: de, de: void 0 });
         break;
     }
   }
+  function elegirlo(j, columna) {
+    const g = gente.get(j);
+    if (!g) return;
+    const nueva = columnaPara(j, columna === "este" ? "este" : "oeste");
+    if (nueva === g.columna && (!pinza2.viva || g.colocado)) {
+      if (pinza2.viva) colocarYMandar(j);
+      return;
+    }
+    g.columna = nueva;
+    colocarYMandar(j);
+  }
+  function colocarYMandar(j) {
+    const g = gente.get(j);
+    if (!g) return;
+    if (pinza2.viva) {
+      if (g.j >= 2) g.puesto = liberarPuesto(g.columna);
+      g.colocado = true;
+    }
+    sincronizarPares();
+    difundirGente();
+    if (pinza2.viva) {
+      mandarBatalla(j);
+      presentar(j);
+    }
+  }
   function verTiro(m) {
+    if (m.j === yo) return;
     _v.set(m.o[0], m.o[1], m.o[2]);
     if (_v.distanceTo(jugador2.pos) > CERCA_TIRO) return;
     _d.set(m.d[0], m.d[1], m.d[2]);
@@ -38097,24 +38413,45 @@ function armarRed(ctx) {
       hud2.mostrarAviso("\xA1Te dieron!", "malo");
     }
   }
-  red2.formarBatalla = function(porColumna, realistas) {
-    soltarCompanero();
+  let formacion = { porColumna: 60, realistas: 250 };
+  function mandarBatalla(j) {
+    const g = gente.get(j);
+    if (!g) return;
+    mandarA(j, {
+      t: "batalla",
+      porColumna: formacion.porColumna,
+      realistas: formacion.realistas,
+      j,
+      columna: g.columna,
+      puesto: g.puesto,
+      manda: g.puesto === 0,
+      plaza: sitioDePuesto(g.columna, g.puesto)
+    });
+  }
+  red2.formarBatalla = function(porColumna = 60, realistas = 250) {
+    for (const j of [...pares.keys()]) soltarPar(j);
     const r = campo2.formarPinza(porColumna, realistas);
-    pinza2.este.jefe = null;
-    pinza2.este.remota = red2.cabezaCompanero;
-    armarCompanero();
-    cabezaRemota.x = PLAZA_ESTE.x;
-    cabezaRemota.z = PLAZA_ESTE.z;
-    cabezaRemota.rumbo = PLAZA_ESTE.rumbo;
-    cabezaRemota.andar = 0;
-    cabezaRemota.vivo = true;
-    pinza2.este.plantar();
-    mandar({ t: "batalla", porColumna, realistas });
-    hud2.decir("Berm\xFAdez est\xE1 del otro lado del convento con sus sesenta. El clar\xEDn lo toc\xE1s vos: cuando toque, salen las dos columnas a la vez.", 9);
+    formacion = { porColumna, realistas };
+    for (const g of [...gente.values()].sort((a, b) => a.j - b.j)) {
+      if (g.j === yo) continue;
+      g.puesto = g.j <= 1 ? 0 : liberarPuesto(g.columna);
+      g.colocado = true;
+    }
+    sincronizarPares();
+    difundirGente();
+    for (const c of pinza2.columnas) c.plantar();
+    for (const g of gente.values()) if (g.j !== yo) mandarBatalla(g.j);
+    const conBermudez = gente.has(1);
+    const tropa = [...gente.values()].filter((g) => g.j >= 2).length;
+    if (conBermudez) {
+      hud2.decir("Berm\xFAdez est\xE1 del otro lado del convento con sus sesenta. El clar\xEDn lo toc\xE1s vos: cuando toque, salen las dos columnas a la vez." + (tropa ? " Y con ustedes cargan " + tropa + " granaderos de carne y hueso." : ""), 9);
+    } else if (tropa) {
+      hud2.decir("Con vos cargan " + tropa + " granaderos de carne y hueso. La columna del este la lleva un sargento. El clar\xEDn lo toc\xE1s vos.", 9);
+    }
     return r;
   };
   function armarInvitado(m) {
-    soltarCompanero();
+    for (const j of [...pares.keys()]) soltarPar(j);
     for (const s of soldados2) s.quitar();
     soldados2.length = 0;
     if (jugador2.monta) jugador2.desmontar();
@@ -38124,60 +38461,76 @@ function armarRed(ctx) {
     canones2.length = 0;
     porId.clear();
     ultimoSello = -1;
-    const mio = campo2.nuevoCaballo(new Vector3(PLAZA_ESTE.x, 0, PLAZA_ESTE.z), PLAZA_ESTE.rumbo);
+    if (m.j !== void 0) yo = m.j;
+    const plaza = m.plaza || PLAZA_ESTE;
+    const mio = campo2.nuevoCaballo(new Vector3(plaza.x, 0, plaza.z), plaza.rumbo);
     mio._sinRed = true;
     campo2.caballo = mio;
     jugador2.montar(mio);
-    jugador2.pos.set(PLAZA_ESTE.x, jugador2.pos.y, PLAZA_ESTE.z);
-    jugador2.yaw = PLAZA_ESTE.rumbo + Math.PI;
+    jugador2.pos.set(plaza.x, jugador2.pos.y, plaza.z);
+    jugador2.yaw = plaza.rumbo + Math.PI;
     jugador2.pitch = -0.04;
     campo2.oleadas = false;
-    armarCompanero();
-    if (companero) {
-      companero.pos.set(-40, 0, 54);
-      if (cabalgadura) cabalgadura.pos.set(-40, 0, 54);
-    }
+    sincronizarPares();
     avisarFase("esperando");
-    hud2.mostrarAviso("Sos el capit\xE1n Justo Berm\xFAdez \xB7 columna del este", "bien");
-    hud2.decir("San Mart\xEDn est\xE1 del otro lado del convento. \xC9l toca el clar\xEDn; cuando suene, sal\xEDs vos con tus sesenta por este costado.", 9);
+    if (m.manda) {
+      hud2.mostrarAviso("Sos el capit\xE1n Justo Berm\xFAdez \xB7 columna del este", "bien");
+      hud2.decir("San Mart\xEDn est\xE1 del otro lado del convento. \xC9l toca el clar\xEDn; cuando suene, sal\xEDs vos con tus sesenta por este costado.", 9);
+    } else {
+      const donde = m.columna === "este" ? "del este, la del capit\xE1n Berm\xFAdez" : "del oeste, la de San Mart\xEDn";
+      hud2.mostrarAviso("Sos granadero \xB7 columna " + (m.columna === "este" ? "del este" : "del oeste"), "bien");
+      hud2.decir("Est\xE1s en la fila de la columna " + donde + ". No mand\xE1s vos: cuando suene el clar\xEDn, sal\xEDs con ellos y no te separes.", 9);
+    }
   }
   red2.avisarTiro = function(origen, dir) {
     if (!red2.activo) return;
     mandar({
       t: "tiro",
+      j: yo,
       o: [+origen.x.toFixed(2), +origen.y.toFixed(2), +origen.z.toFixed(2)],
       d: [+dir.x.toFixed(3), +dir.y.toFixed(3), +dir.z.toFixed(3)]
     });
   };
   red2.avisarTiroTropa = function(origen, dir) {
-    if (rol !== "anfitrion" || !hayCompanero) return;
+    if (rol !== "anfitrion" || !hayGente()) return;
     mandar({
       t: "tiro",
       tropa: 1,
+      j: yo,
       o: [+origen.x.toFixed(2), +origen.y.toFixed(2), +origen.z.toFixed(2)],
       d: [+dir.x.toFixed(3), +dir.y.toFixed(3), +dir.z.toFixed(3)]
     });
   };
   red2.avisarCanon = function(canon) {
-    if (rol !== "anfitrion" || !hayCompanero) return;
+    if (rol !== "anfitrion" || !hayGente()) return;
     mandar({ t: "canon", id: canon._red || 0 });
   };
   red2.contar = function(texto, tipo, frase) {
-    if (rol !== "anfitrion" || !hayCompanero) return;
+    if (rol !== "anfitrion" || !hayGente()) return;
     if (texto) mandar({ t: "aviso", texto, tipo });
     if (frase) mandar({ t: "frase", texto: frase, seg: 6 });
   };
   red2.contarClarin = function() {
-    if (rol === "anfitrion" && hayCompanero) mandar({ t: "clarin" });
+    if (rol === "anfitrion" && hayGente()) mandar({ t: "clarin" });
+  };
+  red2.reunir = function() {
+    const mio = gente.get(yo);
+    if (mio && mio.puesto !== 0) return "tropa";
+    const col = mio ? mio.columna : "oeste";
+    if (rol === "invitado") {
+      mandar({ t: "reunir" });
+      return "mandado";
+    }
+    return pinza2.reunir(col);
   };
   red2.latir = function(dt) {
-    if (!cable || cable.readyState !== 1 || !rol) return;
+    if (!rol || !salidas().length) return;
     tCuerpo += dt;
     if (tCuerpo >= CUERPO) {
       tCuerpo = 0;
-      if (hayCompanero) mandarCuerpo();
+      if (hayGente()) mandarCuerpo();
     }
-    if (rol === "anfitrion" && hayCompanero) {
+    if (rol === "anfitrion" && hayGente()) {
       tParte += dt;
       if (tParte >= PARTE) {
         tParte = 0;
@@ -38194,9 +38547,51 @@ function armarRed(ctx) {
       tMedir = 0;
     }
   };
+  red2.parte = () => {
+    const mio = gente.get(yo);
+    return {
+      fase,
+      rol,
+      motivo,
+      kbs: cableKBs,
+      companero: hayGente(),
+      j: yo,
+      // ¿ya sé quién soy? Entre que se abre el cable y que llega el padrón hay
+      // un momento en que no, y ahí no se puede anunciar ningún nombre.
+      ubicado: gente.has(yo),
+      nombre: nombreDeJugador(yo),
+      columna: mio ? mio.columna : yo === 1 ? "este" : rol === "invitado" ? quiero : "oeste",
+      manda: !mio || mio.puesto === 0,
+      cuantos: gente.size,
+      tope: MAX_JUGADORES,
+      jugadores: [...gente.values()].sort((a, b) => a.j - b.j).map((g) => ({ j: g.j, nombre: g.nombre, columna: g.columna, manda: g.puesto === 0, vos: g.j === yo }))
+    };
+  };
+  Object.defineProperty(red2, "activo", { get: () => rol !== null && fase !== "caido" });
+  Object.defineProperty(red2, "esAnfitrion", { get: () => rol === "anfitrion" });
+  Object.defineProperty(red2, "esInvitado", { get: () => rol === "invitado" });
+  Object.defineProperty(red2, "listo", { get: () => fase === "listo" });
+  Object.defineProperty(red2, "yo", { get: () => yo });
+  Object.defineProperty(red2, "columna", { get: () => {
+    const g = gente.get(yo);
+    return g ? g.columna : rol === "invitado" ? quiero : "oeste";
+  } });
+  Object.defineProperty(red2, "mandaColumna", { get: () => {
+    const g = gente.get(yo);
+    return !g || g.puesto === 0;
+  } });
+  Object.defineProperty(red2, "cuantos", { get: () => gente.size });
+  Object.defineProperty(red2, "pares", { get: () => [...pares.values()] });
+  Object.defineProperty(red2, "companero", { get: () => {
+    const p = pares.values().next().value;
+    return p ? p.soldado : null;
+  } });
+  Object.defineProperty(red2, "hayCompanero", { get: () => pares.size > 0 });
+  red2.cabezaCompanero = () => {
+    const p = pares.get(1);
+    return p && p.cabeza.vivo ? p.cabeza : null;
+  };
   red2.pesoDelParte = pesoDelParte;
-  Object.defineProperty(red2, "companero", { get: () => companero });
-  Object.defineProperty(red2, "hayCompanero", { get: () => hayCompanero });
   return red2;
 }
 
@@ -38443,7 +38838,7 @@ function simular(dt) {
   const arma = arsenal.actual();
   const quiereApuntar = arsenal.quiereApuntar();
   red.aplicar(dt);
-  red.seguirCompanero(dt);
+  red.seguirPares(dt);
   gentio.repartir();
   for (let i = caballos.length - 1; i >= 0; i--) {
     const c = caballos[i];

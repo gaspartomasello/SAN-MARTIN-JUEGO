@@ -185,43 +185,96 @@ function escribir (enchufe, dato) {
 }
 
 // ---------------------------------------------------------------------------
-// LA SALA. Dos lugares: el que llega primero es el anfitrión.
+// LA SALA. Diez lugares, y el que llega primero es el anfitrión.
 // ---------------------------------------------------------------------------
 //
 // El anfitrión simula la batalla entera. Por eso no da lo mismo quién es
-// quién: si el anfitrión se va, la batalla se termina para los dos, y hay que
-// decirlo en vez de dejar al invitado mirando un campo congelado.
-const sala = { anfitrion: null, invitado: null };
+// quién: si el anfitrión se va, la batalla se termina para todos, y hay que
+// decirlo en vez de dejar a los demás mirando un campo congelado.
+//
+// ESTO YA NO ES UN CABLE PELADO, Y NO SE PUEDE EVITAR. Con dos jugadores el
+// servidor podía pasar todo de uno al otro sin mirarlo: sólo había un destino
+// posible. Con más, la red es una ESTRELLA —cada invitado habla con el
+// anfitrión y con nadie más— y hacen falta las dos únicas cosas que sólo el
+// servidor sabe:
+//
+//   `de`    DE QUIÉN VINO. Por el código el anfitrión lo sabe porque cada
+//           invitado llega por su propio caño; acá todos llegan por caños
+//           distintos pero el anfitrión tiene uno solo, así que si el servidor
+//           no lo estampa, no hay forma de saber quién habló.
+//   `para`  A QUIÉN VA. Lo pone el anfitrión y el servidor lo obedece. Sin
+//           `para`, a todos.
+//
+// Sigue sin saber qué es un granadero, ni cuánto duele un lanzazo, ni quién
+// ganó. Mira dos campos de un sobre, no la carta.
+const MAX = 10;
+const sala = new Map();          // número de jugador → conexión
 
-function otro (cn) { return cn === sala.anfitrion ? sala.invitado : sala.anfitrion; }
-
+function anfitrion () { return sala.get(0) || null; }
 function avisar (cn, obj) { if (cn && cn.vivo) cn.mandar(JSON.stringify(obj)); }
 
 servidor.on('upgrade', (pedido, enchufe, cabeza) => {
   const cn = abrazar(pedido, enchufe, cabeza);
   if (!cn) return;
 
-  if (!sala.anfitrion) { sala.anfitrion = cn; cn.rol = 'anfitrion'; }
-  else if (!sala.invitado) { sala.invitado = cn; cn.rol = 'invitado'; }
-  else {
+  let j = -1;
+  for (let k = 0; k < MAX; k++) if (!sala.has(k)) { j = k; break; }
+  if (j < 0) {
     avisar(cn, { t: 'lleno' });
     setTimeout(() => cn.cerrar('sala llena'), 60);
-    console.log('· alguien quiso entrar y la sala ya tenía dos');
+    console.log(`· alguien quiso entrar y la sala ya tenía ${MAX}`);
     return;
   }
+  sala.set(j, cn);
+  cn.j = j;
+  cn.rol = j === 0 ? 'anfitrion' : 'invitado';
 
-  console.log(`· entra el ${cn.rol}` + (sala.anfitrion && sala.invitado ? '  — la sala está completa' : ''));
-  avisar(cn, { t: 'sala', rol: cn.rol, completa: !!(sala.anfitrion && sala.invitado) });
-  avisar(otro(cn), { t: 'par', entra: true, rol: cn.rol });
+  console.log(`· entra el jugador ${j} (${cn.rol})  — ${sala.size} en la sala`);
+  avisar(cn, { t: 'sala', rol: cn.rol, j, completa: sala.size > 1 });
+  if (j > 0) avisar(anfitrion(), { t: 'par', entra: true, j, rol: cn.rol });
 
-  // el cable: todo lo que llega de uno sale por el otro, sin mirarlo
-  cn.alTexto = txt => { const o = otro(cn); if (o && o.vivo) o.mandar(txt); };
-  cn.alBinario = buf => { const o = otro(cn); if (o && o.vivo) o.mandar(buf); };
+  cn.alTexto = txt => {
+    if (j === 0) {
+      // del anfitrión: lo que lleva `para` va a uno; lo demás, a todos
+      let para;
+      try { para = JSON.parse(txt).para; } catch { /* que lo tire el que reciba */ }
+      if (para === undefined || para === null) {
+        for (const [k, c] of sala) { if (k !== 0 && c.vivo) c.mandar(txt); }
+      } else {
+        const c = sala.get(para);
+        if (c && c.vivo) c.mandar(txt);
+      }
+      return;
+    }
+    // de un invitado: siempre al anfitrión, con el remitente estampado. Se
+    // mete la clave al principio del sobre en vez de armar el objeto de nuevo:
+    // son treinta cartas por segundo por jugador y no hay nada que interpretar.
+    const a = anfitrion();
+    if (!a || !a.vivo) return;
+    a.mandar(txt.length > 2 && txt[0] === '{' ? '{"de":' + j + ',' + txt.slice(1) : txt);
+  };
+  // el parte del mundo, en binario: sale del anfitrión y va a todos
+  cn.alBinario = buf => {
+    if (j !== 0) return;
+    for (const [k, c] of sala) { if (k !== 0 && c.vivo) c.mandar(buf); }
+  };
   cn.alCerrar = () => {
-    console.log(`· se fue el ${cn.rol}`);
-    const o = otro(cn);
-    if (cn === sala.anfitrion) sala.anfitrion = null; else sala.invitado = null;
-    avisar(o, { t: 'par', entra: false, rol: cn.rol });
+    sala.delete(j);
+    // SI SE VA EL QUE SIMULA, SE ACABÓ PARA TODOS. Dejarlos conectados a una
+    // sala sin batalla es dejarlos mirando un campo congelado sin que nadie se
+    // los diga; se les avisa y se los cierra, y arman otra.
+    if (j === 0) {
+      console.log('· se fue el anfitrión: la sala se cierra');
+      const quedan = [...sala.values()];
+      sala.clear();
+      for (const c of quedan) {
+        avisar(c, { t: 'par', entra: false, j: 0, rol: 'anfitrion' });
+        setTimeout(() => c.cerrar('se fue el anfitrión'), 60);
+      }
+      return;
+    }
+    console.log(`· se fue el jugador ${j}  — quedan ${sala.size}`);
+    avisar(anfitrion(), { t: 'par', entra: false, j, rol: cn.rol });
   };
 });
 
@@ -279,7 +332,7 @@ servidor.on('error', e => {
 servidor.listen(PUERTO, () => {
   const ips = direccionesDeRed();
   console.log('');
-  console.log('  EL CLARÍN DE SAN LORENZO · sala de dos');
+  console.log('  EL CLARÍN DE SAN LORENZO · sala de hasta diez');
   console.log('  ─────────────────────────────────────────────');
   console.log(`  En esta máquina:   http://localhost:${PUERTO}`);
   if (ips.length) {
@@ -289,8 +342,9 @@ servidor.listen(PUERTO, () => {
     console.log('  (no encontré ninguna dirección de red: revisá el wifi o el cable)');
   }
   console.log('');
-  console.log('  Los dos abren esa dirección y eligen «Los dos costados».');
-  console.log('  El primero que entra es el anfitrión y lleva la columna del oeste.');
+  console.log('  Todos abren esa dirección y eligen «Los dos costados».');
+  console.log('  El primero es San Martín y lleva la columna del oeste; el segundo,');
+  console.log('  Bermúdez y la del este. Del tercero en adelante, granaderos.');
   console.log('');
   console.log('  Dejá esta ventana abierta mientras juegan. Se cierra con Ctrl+C.');
   console.log('');

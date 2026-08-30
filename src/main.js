@@ -333,7 +333,7 @@ function simular (dt) {
   // antes de que nadie los mire: el jinete se sienta sobre el caballo de este
   // cuadro, no sobre el del anterior.
   red.aplicar(dt);
-  red.seguirCompanero(dt);
+  red.seguirPares(dt);
 
   // se reparte ANTES de mover a nadie: el que está lejos no arma el cuerpo
   gentio.repartir();
