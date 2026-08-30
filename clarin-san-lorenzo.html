@@ -29321,28 +29321,42 @@ function vestir(taller, h, c, piel, pelo, sombrero) {
     taller.add(h.cabeza, caja(0.02, 0.07, 0.055), pelo, { p: [s * 0.094, 0.15, -0.012] });
   }
   if (sombrero === "bicornio") {
-    taller.add(h.cabeza, cil(0.128, 0.152, 0.135, 12), NEGRO, { p: [0, 0.335, 0] });
-    taller.add(
-      h.cabeza,
-      cil(0.2, 0.2, 0.022, 16),
-      NEGRO,
-      { p: [0, 0.272, 0], s: [1.42, 1, 0.62] }
-    );
+    taller.add(h.cabeza, cil(0.126, 0.136, 0.1, 12), NEGRO, { p: [0, 0.285, 0] });
     for (const s2 of [-1, 1]) {
-      taller.add(
-        h.cabeza,
-        caja(0.3, 0.115, 0.02),
-        NEGRO,
-        { p: [0, 0.318, s2 * 0.088], r: [s2 * 0.42, 0, 0] }
-      );
+      taller.add(h.cabeza, caja(0.024, 0.19, 0.31), NEGRO, { p: [s2 * 0.05, 0.355, 0] });
+      for (const z of [-1, 1]) {
+        taller.add(
+          h.cabeza,
+          caja(0.024, 0.23, 0.135),
+          NEGRO,
+          { p: [s2 * 0.05, 0.455, z * 0.088], r: [z * 0.34, 0, 0] }
+        );
+        taller.add(
+          h.cabeza,
+          caja(0.028, 0.01, 0.13),
+          LATON,
+          { p: [s2 * 0.05, 0.565, z * 0.125], r: [z * 0.34, 0, 0], metal: true }
+        );
+      }
     }
     taller.add(
       h.cabeza,
-      cil(0.05, 0.05, 0.014, 10),
-      c.vivo,
-      { p: [-0.148, 0.318, 0], r: [0, 0, Math.PI / 2] }
+      cil(0.044, 0.044, 0.012, 10),
+      15262418,
+      { p: [0.068, 0.4, -0.045], r: [0, 0, Math.PI / 2] }
     );
-    taller.add(h.cabeza, cil(0.014, 0.04, 0.16, 7), c.penacho, { p: [-0.145, 0.4, 0] });
+    taller.add(
+      h.cabeza,
+      cil(0.026, 0.026, 0.016, 10),
+      7645656,
+      { p: [0.07, 0.4, -0.045], r: [0, 0, Math.PI / 2] }
+    );
+    taller.add(
+      h.cabeza,
+      caja(0.014, 0.135, 0.016),
+      LATON,
+      { p: [0.066, 0.455, -0.045], r: [0, 0, -0.16], metal: true }
+    );
   } else if (c.morrion) {
     taller.add(h.cabeza, cil(0.126, 0.117, 0.3, 12), NEGRO, { p: [0, 0.415, 0] });
     taller.add(h.cabeza, cil(0.122, 0.122, 0.026, 12), NEGRO, { p: [0, 0.272, 0] });

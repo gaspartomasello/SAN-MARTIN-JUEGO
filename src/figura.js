@@ -225,21 +225,32 @@ function vestir (taller, h, c, piel, pelo, sombrero) {
     // que ENCONTRARLO tirado entre ciento veinte granaderos vestidos igual.
     // Sin una silueta distinta, buscarlo es buscar a cualquiera.
     //
-    // Se lleva en batalla, o sea de lado a lado. Lo que lo hace legible a
-    // veinte metros no es el detalle: es que sea ANCHO y CHATO donde el
-    // morrión es angosto y alto.
-    taller.add(h.cabeza, cil(0.128, 0.152, 0.135, 12), NEGRO, { p: [0, 0.335, 0] });
-    taller.add(h.cabeza, cil(0.20, 0.20, 0.022, 16), NEGRO,
-      { p: [0, 0.272, 0], s: [1.42, 1, 0.62] });
-    // las dos puntas, levantadas adelante y atrás del ala
+    // VA DE ADELANTE HACIA ATRÁS, no de lado a lado. La primera versión lo puso
+    // en batalla —ancho y chato— y queda otro sombrero: el del retrato es
+    // angosto de frente y sube en dos puntas, adelante y atrás. De costado es
+    // una media luna parada; de frente, un bonete. Esa es la silueta.
+    taller.add(h.cabeza, cil(0.126, 0.136, 0.10, 12), NEGRO, { p: [0, 0.285, 0] });
+    // Cada ala es UNA PIEZA con dos puntas, no dos puntas sueltas. Hechas por
+    // separado quedaban dos cuernos con un hueco en el medio —parecía una
+    // cornamenta y no un sombrero—: el cuerpo del ala tiene que llenar el
+    // valle entre punta y punta, que es lo que le da la media luna.
     for (const s2 of [-1, 1]) {
-      taller.add(h.cabeza, caja(0.30, 0.115, 0.02), NEGRO,
-        { p: [0, 0.318, s2 * 0.088], r: [s2 * 0.42, 0, 0] });
+      taller.add(h.cabeza, caja(0.024, 0.19, 0.31), NEGRO, { p: [s2 * 0.050, 0.355, 0] });
+      for (const z of [-1, 1]) {
+        taller.add(h.cabeza, caja(0.024, 0.23, 0.135), NEGRO,
+          { p: [s2 * 0.050, 0.455, z * 0.088], r: [z * 0.34, 0, 0] });
+        // el galón dorado, un filo fino y no un bloque
+        taller.add(h.cabeza, caja(0.028, 0.010, 0.13), LATON,
+          { p: [s2 * 0.050, 0.565, z * 0.125], r: [z * 0.34, 0, 0], metal: true });
+      }
     }
-    // escarapela y penacho: el único color de toda la silueta
-    taller.add(h.cabeza, cil(0.05, 0.05, 0.014, 10), c.vivo,
-      { p: [-0.148, 0.318, 0], r: [0, 0, Math.PI / 2] });
-    taller.add(h.cabeza, cil(0.014, 0.04, 0.16, 7), c.penacho, { p: [-0.145, 0.40, 0] });
+    // la escarapela celeste y blanca, al costado derecho, con su presilla
+    taller.add(h.cabeza, cil(0.044, 0.044, 0.012, 10), 0xe8e2d2,
+      { p: [0.068, 0.40, -0.045], r: [0, 0, Math.PI / 2] });
+    taller.add(h.cabeza, cil(0.026, 0.026, 0.016, 10), 0x74a9d8,
+      { p: [0.070, 0.40, -0.045], r: [0, 0, Math.PI / 2] });
+    taller.add(h.cabeza, caja(0.014, 0.135, 0.016), LATON,
+      { p: [0.066, 0.455, -0.045], r: [0, 0, -0.16], metal: true });
   } else if (c.morrion) {
     // morrión: alto pero no descomunal. Es la silueta que se lee a cien metros.
     taller.add(h.cabeza, cil(0.126, 0.117, 0.30, 12), NEGRO, { p: [0, 0.415, 0] });
