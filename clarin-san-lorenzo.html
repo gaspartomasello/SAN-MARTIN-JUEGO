@@ -32812,10 +32812,15 @@ function armarCombate(ctx) {
 
 // src/armas.js
 var PASOS = {
-  morder: { nombre: "Morder y verter", dur: 0.8, golpe: true },
-  cebar: { nombre: "Cebar la cazoleta", dur: 0.9, golpe: false },
-  baqueta: { nombre: "Bala y baqueta", dur: 1.2, golpe: true },
-  amartillar: { nombre: "Amartillar", dur: 0.55, golpe: true }
+  // Los cuatro tiempos suman TRES SEGUNDOS justos con cargaMult en 1, que es la
+  // tercerola. La proporción entre ellos es la de antes —la baqueta sigue
+  // siendo el tiempo largo y el amartillar el corto—; lo que se acortó es el
+  // ciclo entero. Y las ventanas del ritmo salen de estas duraciones, así que
+  // se achican solas y no hay nada más que tocar.
+  morder: { nombre: "Morder y verter", dur: 0.7, golpe: true },
+  cebar: { nombre: "Cebar la cazoleta", dur: 0.78, golpe: false },
+  baqueta: { nombre: "Bala y baqueta", dur: 1.04, golpe: true },
+  amartillar: { nombre: "Amartillar", dur: 0.48, golpe: true }
 };
 var SECUENCIA = ["morder", "cebar", "baqueta", "amartillar"];
 var AUTO_CARGA = 0.5;
@@ -32845,7 +32850,7 @@ var ARMAS = {
   pistolon: {
     nombre: "Pistol\xF3n de arz\xF3n",
     escala: 0.68,
-    cargaMult: 0.48,
+    cargaMult: 0.67,
     conoCadera: 5,
     conoApuntado: 2.2,
     golpe: { nombre: "Culatazo", alcance: 1.5, dano: CULATAZO, dur: 0.38 },
@@ -32898,6 +32903,7 @@ var ArmaFuego = class {
     this.esperaTiro = -1;
     this.presion = 0;
     this.penalPostura = 1;
+    this.sola = false;
     this.tGolpe = -1;
     this.golpeAplicado = false;
     this.retroceso = 0;
@@ -33187,6 +33193,7 @@ var ArmaFuego = class {
     this.apuntando = ctx.apuntando && !this.cargando && !this.guardada && this.tGolpe < 0;
     this.presion = ctx.presion;
     this.penalPostura = ctx.penalCarga;
+    this.sola = !!ctx.sola;
     this.dispersionPostura = ctx.dispersion;
     if (this.esperaTiro >= 0) {
       this.esperaTiro -= dt;
@@ -33194,6 +33201,9 @@ var ArmaFuego = class {
         this.esperaTiro = -1;
         this._tirar();
       }
+    }
+    if (this.sola && !this.cargando && this.autoCarga <= 0 && this.tGolpe < 0 && this.penalPostura > 0 && this.paso < this.secuencia.length && (!this.alPedirCarga || this.alPedirCarga())) {
+      this.cargando = true;
     }
     if (this.autoCarga > 0) {
       this.autoCarga -= dt;
@@ -33217,7 +33227,7 @@ var ArmaFuego = class {
       const id = this.pasoActual;
       this.tPaso += dt;
       const d = this._duracion(id) + this.penal;
-      if (PASOS[id].golpe && !this.marcado) {
+      if (PASOS[id].golpe && !this.marcado && !this.sola) {
         const [, b] = this._ventana(id);
         if (this.tPaso > b) {
           this.marcado = "mal";
@@ -33461,6 +33471,7 @@ function armarArsenal(ctx) {
     return yo.apuntando && !!a && !a.cargando && a.tGolpe < 0;
   };
   yo.actualizar = function(dt, cfg) {
+    cfg.sola = !!(jugador2.monta && jugador2.monta.vivo) || yo.conSable();
     armas.tercerola.actualizar(dt, cfg);
     armas.pistolon.actualizar(dt, cfg);
     armas.remington.actualizar(dt, cfg);

@@ -158,6 +158,9 @@ export function armarArsenal (ctx) {
   };
 
   yo.actualizar = function (dt, cfg) {
+    // ¿se carga sola? Montado o con el corvo en la mano: en los dos casos
+    // tenés las manos ocupadas. A pie y con el arma en la mano, no.
+    cfg.sola = !!(jugador.monta && jugador.monta.vivo) || yo.conSable();
     armas.tercerola.actualizar(dt, cfg);
     armas.pistolon.actualizar(dt, cfg);
     armas.remington.actualizar(dt, cfg);

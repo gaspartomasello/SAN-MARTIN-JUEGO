@@ -35,6 +35,37 @@ const r = await pag.evaluate(() => {
   const torpe = correr(false, 0);
   const bajoPresion = correr(true, 1);
 
+  // LA CARGA SOLA. Tres cosas distintas y las tres importan: que avance con el
+  // arma GUARDADA —si no, el sable y las riendas te dejan con el caño vacío—,
+  // que no cobre torpeza por no marcar el ritmo —no estás mirando el arma— y
+  // que a pie con el arma en la mano NO pase nada de eso, que es donde el
+  // minijuego vale.
+  function sola (guardada) {
+    t.dejarDescargada();
+    t.guardada = guardada;
+    t.cargando = false;
+    let seg = 0;
+    for (let i = 0; i < 120 * 40 && !t.lista; i++) {
+      t.actualizar(dt, { apuntando: false, presion: 0, penalCarga: 1, dispersion: 1, sola: true });
+      seg += dt;
+    }
+    const r = { seg: +seg.toFixed(2), lista: t.lista, torpezas: t.penal > 0 };
+    t.guardada = false;
+    return r;
+  }
+  const solaGuardada = sola(true);
+  const solaEnMano = sola(false);
+
+  // y a mano, guardada, no arranca sola ni loca
+  t.dejarDescargada(); t.guardada = true; t.cargando = false;
+  let segAMano = 0;
+  for (let i = 0; i < 120 * 8; i++) {
+    t.actualizar(dt, { apuntando: false, presion: 0, penalCarga: 1, dispersion: 1, sola: false });
+    segAMano += dt;
+  }
+  const aMano = { arrancoSola: t.cargando, lista: t.lista };
+  t.guardada = false;
+
   // disparo
   t.gatillo();
   for (let i = 0; i < 30; i++) t.actualizar(dt, { apuntando: false, presion: 0, penalCarga: 1, dispersion: 1 });
@@ -54,7 +85,8 @@ const r = await pag.evaluate(() => {
   const H = window.juego.humo;
   const T = window.THREE_TEST || null;
   H.soltar({ x: 0, y: 1.5, z: -10, clone(){return this;}, copy(){return this;} }, { x:0,y:0,z:-1, clone(){return this;}, multiplyScalar(){return this;} }, { cantidad: 2 });
-  return { perfecto, torpe, bajoPresion, trasTiro, mitad, trasSoltar, retoma };
+  return { perfecto, torpe, bajoPresion, solaGuardada, solaEnMano, aMano,
+    trasTiro, mitad, trasSoltar, retoma };
 });
 console.log(JSON.stringify(r, null, 2));
 await nav.close();

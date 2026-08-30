@@ -24,10 +24,15 @@ import { CULATAZO, BAYONETAZO } from './balance.js';
 // tardaba veinte segundos y hacía tres disparos por minuto; esto ya era una
 // concesión al que juega, y ahora es una concesión un poco más grande.
 export const PASOS = {
-  morder:     { nombre: 'Morder y verter',        dur: 0.80, golpe: true },
-  cebar:      { nombre: 'Cebar la cazoleta',      dur: 0.90, golpe: false },
-  baqueta:    { nombre: 'Bala y baqueta',         dur: 1.20, golpe: true },
-  amartillar: { nombre: 'Amartillar',             dur: 0.55, golpe: true }
+  // Los cuatro tiempos suman TRES SEGUNDOS justos con cargaMult en 1, que es la
+  // tercerola. La proporción entre ellos es la de antes —la baqueta sigue
+  // siendo el tiempo largo y el amartillar el corto—; lo que se acortó es el
+  // ciclo entero. Y las ventanas del ritmo salen de estas duraciones, así que
+  // se achican solas y no hay nada más que tocar.
+  morder:     { nombre: 'Morder y verter',        dur: 0.70, golpe: true },
+  cebar:      { nombre: 'Cebar la cazoleta',      dur: 0.78, golpe: false },
+  baqueta:    { nombre: 'Bala y baqueta',         dur: 1.04, golpe: true },
+  amartillar: { nombre: 'Amartillar',             dur: 0.48, golpe: true }
 };
 
 export const SECUENCIA = ['morder', 'cebar', 'baqueta', 'amartillar'];
@@ -55,7 +60,7 @@ export const ARMAS = {
     largo: true
   },
   pistolon: {
-    nombre: 'Pistolón de arzón', escala: 0.68, cargaMult: 0.48,
+    nombre: 'Pistolón de arzón', escala: 0.68, cargaMult: 0.67,
     conoCadera: 5.0, conoApuntado: 2.2,
     golpe: { nombre: 'Culatazo', alcance: 1.5, dano: CULATAZO, dur: 0.38 },
     largo: false
@@ -114,6 +119,16 @@ export class ArmaFuego {
     this.esperaTiro = -1;
     this.presion = 0;
     this.penalPostura = 1;      // agachado carga más lento, tirado no se puede
+    // LA CARGA SOLA. A caballo y con el sable en la mano el arma se carga
+    // sin vos: no hay manera de llevar las riendas, el corvo y la baqueta a la
+    // vez, y pedirte la R justo ahí era pedirte que soltaras lo que estabas
+    // haciendo. A pie y con el arma en la mano sigue siendo tuya, con su ritmo
+    // y su castigo, que es donde el minijuego vale.
+    //
+    // No sale gratis: penalCargaMontado la hace 3,4 veces más lenta al galope,
+    // así que cargar arriba del caballo es aflojar el andar. Diez segundos
+    // tendido a galope contra tres al paso.
+    this.sola = false;
 
     this.tGolpe = -1;
     this.golpeAplicado = false;
@@ -389,6 +404,7 @@ export class ArmaFuego {
     this.apuntando = ctx.apuntando && !this.cargando && !this.guardada && this.tGolpe < 0;
     this.presion = ctx.presion;
     this.penalPostura = ctx.penalCarga;
+    this.sola = !!ctx.sola;
     this.dispersionPostura = ctx.dispersion;
 
     if (this.esperaTiro >= 0) {
@@ -399,6 +415,16 @@ export class ArmaFuego {
     // la recarga sola, pasado el retroceso. No se avisa nada si no se puede
     // —cuerpo a tierra, o en pleno puntazo—: se vuelve a intentar al cuadro
     // siguiente y listo. Un aviso por cuadro sería una alarma.
+    // Arranca sola esté guardada o en la mano: montado con la tercerola en la
+    // mano tampoco tenés cómo. Espera a que pase el retroceso —autoCarga— para
+    // que el tiro se lea antes de que la mano vuelva, igual que la carga sola
+    // de siempre.
+    if (this.sola && !this.cargando && this.autoCarga <= 0 && this.tGolpe < 0 &&
+        this.penalPostura > 0 && this.paso < this.secuencia.length &&
+        (!this.alPedirCarga || this.alPedirCarga())) {
+      this.cargando = true;
+    }
+
     if (this.autoCarga > 0) {
       this.autoCarga -= dt;
       if (this.autoCarga <= 0) {
@@ -424,7 +450,8 @@ export class ArmaFuego {
       const id = this.pasoActual;
       this.tPaso += dt;
       const d = this._duracion(id) + this.penal;
-      if (PASOS[id].golpe && !this.marcado) {
+      // y sin castigo por no marcar el ritmo: no estás mirando el arma
+      if (PASOS[id].golpe && !this.marcado && !this.sola) {
         const [, b] = this._ventana(id);
         if (this.tPaso > b) {
           this.marcado = 'mal';
