@@ -117,8 +117,13 @@ function convento (horno, colisiones) {
   // techo a dos aguas: dos prismas inclinados que apoyan en el muro y se
   // juntan en la cumbrera. El techo NO llega hasta el frente: se corta contra
   // la espadaña, que es la que se ve desde el campo.
+  // OJO CON EL SIGNO, que estuvo al revés y hacía una V en vez de un techo.
+  // rotZ positivo levanta la punta del lado +X: para un agua hay que bajarla,
+  // así que la faldón de la derecha va con rotZ NEGATIVO y el de la izquierda
+  // con positivo. Con los signos cambiados el agua cae hacia la cumbrera —o
+  // sea que la lluvia iría al medio del techo— y se ve como una batea.
   for (const s of [-1, 1]) {
-    horno.prisma(IX + s * 3.3, 10.0, IZ + 0.8, 7.4, 0.7, 18.6, s > 0 ? TEJA : TEJA_OSC, 0, s * 0.44);
+    horno.prisma(IX + s * 3.3, 10.0, IZ + 0.8, 7.4, 0.7, 18.6, s > 0 ? TEJA : TEJA_OSC, 0, -s * 0.44);
   }
   horno.caja(IX, 11.5, IZ + 0.8, 1.3, 0.7, 18.8, TEJA_OSC);          // cumbrera
 
@@ -142,6 +147,38 @@ function convento (horno, colisiones) {
   horno.caja(-31, 1.7, Z + 24, 0.8, 3.4, LARGO, CAL);
   horno.caja(31, 1.7, Z + 24, 0.8, 3.4, LARGO, CAL);
 
+  // ---- lo que hace que esto sea un edificio y no una maqueta ----
+  //
+  // Todo lo de arriba es cal blanca plana, y desde el campo se lee como cartón:
+  // no hay una sola línea horizontal que dé escala ni nada que rompa los
+  // cincuenta metros de tapia. Dos cosas lo arreglan, las dos de época y las
+  // dos horneadas en la misma malla, o sea que no cuestan un dibujo más.
+  //
+  // EL ZÓCALO. Piedra en la base de todo lo que es cal. Es lo que se hacía
+  // —la humedad se come el adobe desde abajo— y de paso apoya el edificio en
+  // el suelo en vez de dejarlo flotando sobre el pasto.
+  const zocalo = (x, z, ancho, largo) => horno.caja(x, 0.42, z, ancho + 0.18, 0.84, largo + 0.18, PIEDRA);
+  for (const [x, ancho] of [[-16.5, 19], [16.5, 19]]) zocalo(x, Z, ancho, 0.9);
+  zocalo(IX, IZ, 13, 20);
+  zocalo(14, Z + 8, 22, 15);
+  zocalo(-31, Z + 24, 0.8, LARGO);
+  zocalo(31, Z + 24, 0.8, LARGO);
+
+  // LOS CONTRAFUERTES de la tapia de la huerta. Cincuenta y dos metros de pared
+  // lisa no se sostienen solos ni en la realidad ni en la pantalla: cada tres
+  // metros y medio hay un machón, y son los que le dan ritmo y sombra al muro
+  // por el que entra la pinza.
+  for (const lado of [-1, 1]) {
+    for (let i = 0; i < 13; i++) {
+      const z = Z + 2 + i * 4.0;
+      // POR AFUERA. Puestos del lado de adentro no los ve nadie: el jugador
+      // llega desde el campo y la pinza rodea la tapia por fuera, así que la
+      // cara que se mira es ésa.
+      horno.caja(lado * 31.85, 1.5, z, 1.2, 3.0, 1.5, CAL_SOMBRA);
+      horno.caja(lado * 31.9, 0.42, z, 1.3, 0.84, 1.7, PIEDRA);
+    }
+  }
+
   // colisiones: sólo las caras que importan, no las sesenta cajas
   const caja = (x0, z0, x1, z1, alto) => colisiones.push(
     new THREE.Box3(new THREE.Vector3(Math.min(x0, x1), 0, Math.min(z0, z1)),
@@ -150,8 +187,10 @@ function convento (horno, colisiones) {
   caja(7, Z - 0.5, 26, Z + 0.5, 4.8);
   caja(-19.5, Z + 1, -6.5, Z + 21, 8.8);
   caja(3, Z + 0.5, 25, Z + 15.5, 6.2);
-  caja(-31.4, Z, -30.6, Z + 50, 3.4);
-  caja(30.6, Z, 31.4, Z + 50, 3.4);
+  // La tapia incluye sus contrafuertes: sobresalen un metro para afuera y si la
+  // colisión terminara en la pared, el que va pegado al muro los atravesaría.
+  caja(-32.6, Z, -30.6, Z + 50, 3.4);
+  caja(30.6, Z, 32.6, Z + 50, 3.4);
 }
 
 // Dónde está varada cada chalupa. Lo lee soldados.js por Soldado.botes para

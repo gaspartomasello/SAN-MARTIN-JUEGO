@@ -202,8 +202,21 @@ const ULTIMAS = [
   'Seamos libres, que lo demás no importa nada.',
   'De lo que son capaces mis granaderos, sólo yo lo sé; quien los iguale habrá, quien los exceda, no.',
   'Se puede quitar la vida a un hombre, pero no el honor.',
-  'La Patria no hace un soldado para que la deshonre.'
+  'La Patria no hace un soldado para que la deshonre.',
+  'La soberbia y el desprecio, hijo mío, no son cosa de valientes.',
+  'A la desgracia se la vence con la firmeza.',
+  'Cuando la Patria está en peligro, todo es lícito menos dejarla perecer.'
 ];
+// Y NUNCA DOS VECES SEGUIDAS. Sorteo a secas quiere decir que una de cada
+// ocho muertes repite la anterior, y una frase repetida deja de ser una frase:
+// se lee como un cartel. Se sortea entre las que no son la última.
+let ultimaFrase = -1;
+function frasePostrera () {
+  let i = Math.floor(Math.random() * (ULTIMAS.length - 1));
+  if (i >= ultimaFrase) i++;                  // salta la de la vez pasada
+  ultimaFrase = i % ULTIMAS.length;
+  return ULTIMAS[ultimaFrase];
+}
 
 jugador.alMorir = () => {
   hud.mostrarAviso('Fuera de combate', 'malo');
@@ -228,7 +241,7 @@ jugador.alMorir = () => {
   }
   jugador.sacudir(0.8);
   hud.cerrarLosOjos(7);
-  setTimeout(() => hud.decir(ULTIMAS[Math.floor(Math.random() * ULTIMAS.length)], 9), 2200);
+  setTimeout(() => hud.decir(frasePostrera(), 9), 2200);
 };
 
 // EL ACTO CABRAL. Arranca la primera vez que te matan el caballo estando
