@@ -222,6 +222,107 @@ async function abrir (quien) {
   if (malCod) { cerrar(); process.exit(1); }
 }
 
+// 0 TER · EL DIRECTORIO QUE NO CONTESTA NUNCA
+//
+// El otro bicho de la misma puerta, y peor que el del código mal escrito
+// porque no dice nada: el directorio de salas acepta la conexión y después se
+// queda mudo. No hay error, así que no había cartel; y como los botones se
+// escondían apenas se empezaba a llamar, la pantalla quedaba pelada —sin
+// código, sin botones, con un «golpeando la puerta del servidor…» que no se
+// movía más—. «Toco Crear sala y no aparece nada.» Pasa por datos del celular,
+// que es justo lo que uno prueba cuando el wifi del colegio no deja.
+//
+// Ahora todo intento tiene plazo, se insiste, y la pantalla nunca queda muda.
+{
+  const pag = await abrir('mudo');
+  // la pantalla de la sala tiene que estar a la vista: lo que se prueba acá es
+  // tanto el estado como lo que se ve
+  await pag.click('#modo-red');
+  await pag.waitForTimeout(800);
+  const r = await pag.evaluate(async () => {
+    const out = [];
+    const ok = (n, cond, extra) => out.push([cond ? 'OK ' : 'MAL', n, extra === undefined ? '' : extra]);
+    const red = window.juego.red;
+    const ver = () => ({
+      fase: red.parte().fase,
+      motivo: red.parte().motivo,
+      botones: !document.getElementById('sala-elegir').classList.contains('oculto'),
+      caja: !document.getElementById('sala-codigo-grande').classList.contains('oculto'),
+      clave: document.getElementById('sala-clave').textContent,
+      rotulo: document.getElementById('sala-codigo-grande').querySelector('label').textContent
+    });
+    const dormir = ms => new Promise(res => setTimeout(res, ms));
+
+    // ---- un directorio que ni abre ni falla ----
+    let armados = 0;
+    window.Peer = function () {
+      armados++;
+      this.on = () => {};
+      this.destroy = () => {};
+      this.connect = () => ({ on: () => {}, send: () => {}, close: () => {} });
+    };
+    red.acortarPlazo(120);
+    red.cortar();
+    red.crearSala();
+    await dormir(30);
+    const enCurso = ver();
+    ok('mientras llama, el código YA se ve', enCurso.caja && /^[A-Z]{4}$/.test(enCurso.clave), enCurso.clave);
+    ok('y dice que todavía se está abriendo', /Abriendo/.test(enCurso.rotulo), enCurso.rotulo);
+    ok('y los botones siguen ahí para reintentar', enCurso.botones);
+
+    // ---- se vence el plazo tres veces y recién ahí se rinde ----
+    await dormir(700);
+    const caido = ver();
+    ok('el que no contesta termina en un cartel, no en el limbo', caido.fase === 'caido', caido.fase);
+    ok('y el cartel dice qué pasó', /directorio de salas no contestó/.test(caido.motivo), caido.motivo);
+    ok('antes de rendirse insistió', armados === 3, armados + ' llamadas');
+    ok('y los botones quedan para volver a probar', caido.botones);
+
+    // ---- el mismo directorio, pero que abre a la tercera ----
+    let n = 0;
+    window.Peer = function (id) {
+      const mio = ++n;
+      this.on = (ev, f) => { if (ev === 'open' && mio >= 3) setTimeout(() => f(id), 5); };
+      this.destroy = () => {};
+      this.connect = () => ({ on: () => {}, send: () => {}, close: () => {} });
+    };
+    red.cortar();
+    red.crearSala();
+    await dormir(500);
+    const abierta = ver();
+    ok('insistiendo, la sala se abre igual', abierta.fase === 'esperando', abierta.fase);
+    ok('y recién ahí el código se dicta', /Dictales/.test(abierta.rotulo), abierta.rotulo);
+    ok('con un código de cuatro letras', /^[A-Z]{4}$/.test(abierta.clave), abierta.clave);
+
+    // ---- entrar a una sala que existe pero con la que no se puede hablar ----
+    // El caso de la red que no deja pasar la conexión directa: el directorio
+    // contesta, el código existe, y el apretón de manos no llega nunca. Antes
+    // se quedaba llamando para siempre; ahora se dice, y se dice otra cosa.
+    window.Peer = function (id) {
+      this.on = (ev, f) => { if (ev === 'open') setTimeout(() => f(id || 'x'), 5); };
+      this.destroy = () => {};
+      this.connect = () => ({ on: () => {}, send: () => {}, close: () => {} });
+    };
+    red.cortar();
+    red.entrarASala('ABCD');
+    await dormir(500);
+    const mudo = ver();
+    ok('la mano que no se da también se avisa', mudo.fase === 'caido', mudo.fase);
+    ok('y no se confunde con «no existe esa sala»',
+      /no se pudo abrir la conexión directa/.test(mudo.motivo), mudo.motivo);
+    ok('el que entra no ve ningún código: el código no es suyo', !mudo.caja);
+
+    red.cortar();
+    red.acortarPlazo(9000);
+    return out;
+  });
+  await pag.close();
+  for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(44), x);
+  const malMudo = r.filter(x => x[0] === 'MAL').length;
+  console.log(`  el directorio mudo: ${r.length - malMudo} bien, ${malMudo} mal\n`);
+  if (malMudo) { cerrar(); process.exit(1); }
+}
+
 // El anfitrión entra PRIMERO: el que llega primero a la sala es el que lleva
 // la batalla, y eso es parte de lo que se prueba.
 const anf = await abrir('anfitrión');

@@ -348,13 +348,27 @@ export function armarMando (ctx) {
       listaGente.append(li);
     }
     manual.classList.toggle('oculto', p.fase !== 'caido' || !puedeHaberSalaLocal);
-    // Los dos botones se ven mientras no estés en una sala; el código grande,
-    // sólo cuando lo creaste y estás esperando a que entre alguien.
-    if (elegir) elegir.classList.toggle('oculto', p.fase !== 'suelto' && p.fase !== 'caido');
+    // LOS BOTONES NO SE ESCONDEN MIENTRAS LLAMA. Escondiéndolos, un directorio
+    // que no contesta dejaba la pantalla pelada: sin código, sin botones y con
+    // un «golpeando la puerta» que no se movía más. Si siguen ahí, volver a
+    // tocar «Crear sala» es reintentar, que es lo que uno hace igual.
+    if (elegir) elegir.classList.toggle('oculto', adentro);
+    // El código grande sale apenas se toca el botón: lo elige esta máquina, no
+    // el directorio, así que no hay por qué ocultarlo mientras se abre la
+    // sala. Sí cambia el rótulo, porque hasta que no esté abierta dictarlo no
+    // sirve de nada.
     if (claveCaja) {
-      const mostrar = !!red.codigo && p.rol === 'anfitrion' && p.fase !== 'suelto';
+      const anfitrion = p.rol === 'anfitrion';
+      const mostrar = !!red.codigo && (anfitrion || p.creando);
       claveCaja.classList.toggle('oculto', !mostrar);
-      if (mostrar) clave.textContent = red.codigo;
+      claveCaja.classList.toggle('abriendo', mostrar && !anfitrion);
+      if (mostrar) {
+        clave.textContent = red.codigo;
+        claveRotulo.textContent = anfitrion ? 'Dictales este código a los demás' : 'Abriendo la sala…';
+        clavePie.textContent = anfitrion
+          ? 'Cuatro letras. Se pueden escribir en minúscula.'
+          : 'Apenas esté abierta ya se puede dictar.';
+      }
     }
     entrar.disabled = p.fase !== 'listo';
     entrar.textContent = p.rol === 'anfitrion'
@@ -402,6 +416,8 @@ export function armarMando (ctx) {
   const elegir = document.getElementById('sala-elegir');
   const claveCaja = document.getElementById('sala-codigo-grande');
   const clave = document.getElementById('sala-clave');
+  const claveRotulo = claveCaja && claveCaja.querySelector('label');
+  const clavePie = claveCaja && claveCaja.querySelector('span');
   const campoCodigo = document.getElementById('sala-codigo');
 
   for (const [id, col] of [['col-oeste', 'oeste'], ['col-este', 'este']]) {

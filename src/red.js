@@ -131,6 +131,9 @@ export function armarRed (ctx) {
   let alCambiar = null;              // la portada se entera por acá
   let yo = 0;                        // mi número de jugador; el anfitrión es el 0
   let quiero = 'oeste';              // con qué columna pedí cargar, antes de entrar
+  let creando = false;               // estoy abriendo MI sala: el código ya es mío
+  let reloj = null;                  // el plazo del intento en curso
+  let intentos = 0;                  // cuántas veces le insistí al directorio
 
   // EL CABLE TIENE DOS FORMAS, y de ahí sale todo el encaminado.
   //
@@ -362,7 +365,29 @@ export function armarRed (ctx) {
     return false;
   }
 
+  // NO CONTESTAR NO ES LO MISMO QUE FALLAR, y para el que mira la pantalla es
+  // peor. Un error se dice y se puede volver a probar; una llamada que se
+  // queda colgada deja «golpeando la puerta del servidor…» para siempre, sin
+  // código, sin botones y sin nada que tocar. Pasa de verdad: por datos del
+  // celular el directorio de salas a veces se traga la conexión sin cerrarla,
+  // y el navegador espera callado un par de minutos antes de darse cuenta.
+  //
+  // Así que todo intento tiene plazo. Se vence y se dice qué pasó.
+  let plazo = 9000;
+
+  // Las pruebas lo acortan: mirar veintisiete segundos de reloj para ver
+  // aparecer un cartel no es una prueba, es una siesta.
+  red.acortarPlazo = ms => { plazo = ms; };
+
+  function darPlazo (queHacerSiNo) {
+    clearTimeout(reloj);
+    reloj = setTimeout(queHacerSiNo, plazo);
+  }
+
+  function llegoATiempo () { clearTimeout(reloj); reloj = null; }
+
   function desarmar () {
+    llegoATiempo();
     for (const c of enchufes.values()) { c.onclose = null; c.close(); }
     enchufes.clear();
     if (cable) { const c = cable; cable = null; c.onclose = null; c.close(); }
@@ -370,20 +395,26 @@ export function armarRed (ctx) {
     red.codigo = null;
     rol = null;
     yo = 0;
+    creando = false;
     vaciarSala();
   }
 
   // Avisar el error SIN dejar la puerta trabada. Si ya se estaba jugando el
   // error es del cable y no se toca nada; si no, se limpia para el próximo.
   function fallar (m) {
+    llegoATiempo();
     if (!jugando()) desarmar();
     avisarFase('caido', m);
   }
 
-  function armarPeer (id) {
+  // El `peer` viejo puede seguir tirando errores después de que lo tiramos —el
+  // navegador no lo apaga en el acto—, y un error de un intento abandonado no
+  // tiene que romper el que está en curso. Por eso cada enganche mira si el
+  // que habla sigue siendo el peer de ahora.
+  function armarPeer (id, alFallar) {
     if (!window.Peer) { avisarFase('caido', 'No cargó la parte de red del juego. Recargá la página.'); return null; }
     const p = new window.Peer(id, { debug: 0 });
-    p.on('error', e => fallar(errorClaro(e)));
+    p.on('error', e => { if (peer === p) (alFallar || fallar)(errorClaro(e)); });
     return p;
   }
 
@@ -391,17 +422,33 @@ export function armarRed (ctx) {
   red.crearSala = function () {
     if (jugando()) return;
     desarmar();
+    intentos = 0;
+    abrirLaPropia();
+  };
+
+  // INSISTIR ANTES DE RENDIRSE. El directorio es gratis y falla salteado: el
+  // mismo click que no anduvo anda a la segunda. Y si lo que falló fue el
+  // código —ya tomado— acá sale uno nuevo, que es justo lo que había que
+  // hacer a mano.
+  function abrirLaPropia () {
+    creando = true;
     red.codigo = codigoNuevo();
     avisarFase('llamando');
-    peer = armarPeer(PREFIJO + red.codigo);
-    if (!peer) return;
-    peer.on('open', () => {
+    const p = armarPeer(PREFIJO + red.codigo, deNuevo);
+    peer = p;
+    if (!p) return;
+    darPlazo(() => deNuevo('El directorio de salas no contestó. Puede ser la red: ' +
+      'volvé a tocar «Crear sala», o jugá sin internet con «Jugar de a dos».'));
+    p.on('open', () => {
+      if (peer !== p) return;
+      llegoATiempo();
+      creando = false;
       rol = 'anfitrion';
       yo = 0;
       anotarGente(0, 'oeste');
       avisarFase('esperando');
     });
-    peer.on('connection', conn => {
+    p.on('connection', conn => {
       const j = numeroLibre();
       if (!j) {
         // LA SALA LLENA SE DICE Y SE CIERRA, no se ignora: del otro lado
@@ -427,7 +474,21 @@ export function armarRed (ctx) {
         seVaJugador(j);
       };
     });
-  };
+  }
+
+  const REINTENTOS = 2;
+
+  function deNuevo (m) {
+    llegoATiempo();
+    if (rol) return;                        // la sala ya estaba abierta: no es esto
+    if (intentos++ < REINTENTOS) {
+      if (peer) { const p = peer; peer = null; try { p.destroy(); } catch { /* ya estaba */ } }
+      abrirLaPropia();
+      return;
+    }
+    creando = false;
+    fallar(m);
+  }
 
   // ---- entrar a una sala: sos Bermúdez, o un granadero ----
   red.entrarASala = function (codigo) {
@@ -437,12 +498,26 @@ export function armarRed (ctx) {
     if (c.length !== LARGO) { avisarFase('caido', 'El código es de cuatro letras.'); return; }
     red.codigo = c;
     avisarFase('llamando');
-    peer = armarPeer();
-    if (!peer) return;
-    peer.on('open', () => {
-      const conn = peer.connect(PREFIJO + c, { reliable: true });
+    const p = armarPeer();
+    peer = p;
+    if (!p) return;
+    // DOS ESPERAS DISTINTAS Y DOS MOTIVOS DISTINTOS. La primera es llegar al
+    // directorio; la segunda, que el navegador de uno y el del otro se
+    // encuentren derecho. La segunda es la que se cuelga callada cuando la red
+    // no deja pasar la conexión directa —el colegio, o el celular con el
+    // internet compartido de la compañía—, y ahí no hay error de PeerJS: hay
+    // silencio. Decirlo es la diferencia entre «probá esto otro» y «está roto».
+    darPlazo(() => fallar('El directorio de salas no contestó. Puede ser la red: ' +
+      'probá de nuevo, o jugá sin internet con «Jugar de a dos».'));
+    p.on('open', () => {
+      if (peer !== p) return;
+      darPlazo(() => fallar('La sala ' + c + ' contestó, pero no se pudo abrir la conexión ' +
+        'directa con esa máquina. Suele ser la red: probá los dos por los datos del celular, ' +
+        'o jugá sin internet con «Jugar de a dos».'));
+      const conn = p.connect(PREFIJO + c, { reliable: true });
       cable = cableDePar(conn);
       conn.on('open', () => {
+        llegoATiempo();
         cable.readyState = 1;
         rol = 'invitado';
         mandar({ t: 'quiero', columna: quiero });
@@ -1380,6 +1455,7 @@ export function armarRed (ctx) {
     const mio = gente.get(yo);
     return {
       fase, rol, motivo, kbs: cableKBs,
+      creando,                       // estoy abriendo mi sala: el código ya es mío
       companero: hayGente(),
       j: yo,
       // ¿ya sé quién soy? Entre que se abre el cable y que llega el padrón hay

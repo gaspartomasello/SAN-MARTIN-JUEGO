@@ -337,6 +337,10 @@
     font-weight:400;font-size:clamp(46px,9vw,74px);letter-spacing:.22em;
     color:var(--bronce);line-height:1.1}
   #sala-codigo-grande span{display:block;color:#6C7681;font-size:12px;margin-top:6px}
+  /* mientras la sala se abre el código ya se ve, pero apagado: todavía no
+     sirve dictarlo y el latido dice que algo está pasando */
+  #sala-codigo-grande.abriendo b{color:#6C7681;animation:latir 1.5s ease-in-out infinite}
+  @keyframes latir{0%,100%{opacity:.35}50%{opacity:.8}}
   #sala-receta .chico{color:#6C7681;font-size:12px;margin-top:10px}
   #sala-manual{margin-bottom:18px}
   #sala-manual.oculto{display:none}
@@ -525,6 +529,12 @@
     <div class="luz" id="sala-luz"><i></i><div><b id="sala-titulo">Buscando la sala</b>
       <span id="sala-detalle">…</span></div></div>
 
+    <div id="sala-codigo-grande" class="oculto">
+      <label>Dictale este código al otro</label>
+      <b id="sala-clave">····</b>
+      <span>Cuatro letras. Se pueden escribir en minúscula.</span>
+    </div>
+
     <div class="papeles">
       <div class="papel" id="papel-anfitrion">
         <i>Columna del oeste · el primero</i>
@@ -564,12 +574,6 @@
         <i>Al segundo que entra le toca ser Bermúdez igual: esa columna
           necesita jefe. Del tercero en adelante se elige de verdad.</i>
       </div>
-    </div>
-
-    <div id="sala-codigo-grande" class="oculto">
-      <label>Dictale este código al otro</label>
-      <b id="sala-clave">····</b>
-      <span>Cuatro letras. Se pueden escribir en minúscula.</span>
     </div>
 
     <div class="receta" id="sala-receta">

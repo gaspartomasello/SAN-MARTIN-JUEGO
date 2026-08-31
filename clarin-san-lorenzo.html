@@ -337,6 +337,10 @@
     font-weight:400;font-size:clamp(46px,9vw,74px);letter-spacing:.22em;
     color:var(--bronce);line-height:1.1}
   #sala-codigo-grande span{display:block;color:#6C7681;font-size:12px;margin-top:6px}
+  /* mientras la sala se abre el código ya se ve, pero apagado: todavía no
+     sirve dictarlo y el latido dice que algo está pasando */
+  #sala-codigo-grande.abriendo b{color:#6C7681;animation:latir 1.5s ease-in-out infinite}
+  @keyframes latir{0%,100%{opacity:.35}50%{opacity:.8}}
   #sala-receta .chico{color:#6C7681;font-size:12px;margin-top:10px}
   #sala-manual{margin-bottom:18px}
   #sala-manual.oculto{display:none}
@@ -525,6 +529,12 @@
     <div class="luz" id="sala-luz"><i></i><div><b id="sala-titulo">Buscando la sala</b>
       <span id="sala-detalle">…</span></div></div>
 
+    <div id="sala-codigo-grande" class="oculto">
+      <label>Dictale este código al otro</label>
+      <b id="sala-clave">····</b>
+      <span>Cuatro letras. Se pueden escribir en minúscula.</span>
+    </div>
+
     <div class="papeles">
       <div class="papel" id="papel-anfitrion">
         <i>Columna del oeste · el primero</i>
@@ -564,12 +574,6 @@
         <i>Al segundo que entra le toca ser Bermúdez igual: esa columna
           necesita jefe. Del tercero en adelante se elige de verdad.</i>
       </div>
-    </div>
-
-    <div id="sala-codigo-grande" class="oculto">
-      <label>Dictale este código al otro</label>
-      <b id="sala-clave">····</b>
-      <span>Cuatro letras. Se pueden escribir en minúscula.</span>
     </div>
 
     <div class="receta" id="sala-receta">
@@ -35162,11 +35166,17 @@ function armarMando(ctx) {
       listaGente.append(li);
     }
     manual.classList.toggle("oculto", p.fase !== "caido" || !puedeHaberSalaLocal);
-    if (elegir) elegir.classList.toggle("oculto", p.fase !== "suelto" && p.fase !== "caido");
+    if (elegir) elegir.classList.toggle("oculto", adentro);
     if (claveCaja) {
-      const mostrar = !!red2.codigo && p.rol === "anfitrion" && p.fase !== "suelto";
+      const anfitrion = p.rol === "anfitrion";
+      const mostrar = !!red2.codigo && (anfitrion || p.creando);
       claveCaja.classList.toggle("oculto", !mostrar);
-      if (mostrar) clave.textContent = red2.codigo;
+      claveCaja.classList.toggle("abriendo", mostrar && !anfitrion);
+      if (mostrar) {
+        clave.textContent = red2.codigo;
+        claveRotulo.textContent = anfitrion ? "Dictales este c\xF3digo a los dem\xE1s" : "Abriendo la sala\u2026";
+        clavePie.textContent = anfitrion ? "Cuatro letras. Se pueden escribir en min\xFAscula." : "Apenas est\xE9 abierta ya se puede dictar.";
+      }
     }
     entrar.disabled = p.fase !== "listo";
     entrar.textContent = p.rol === "anfitrion" ? "Formar las columnas y salir al campo" : "Salir al campo";
@@ -35194,6 +35204,8 @@ function armarMando(ctx) {
   const elegir = document.getElementById("sala-elegir");
   const claveCaja = document.getElementById("sala-codigo-grande");
   const clave = document.getElementById("sala-clave");
+  const claveRotulo = claveCaja && claveCaja.querySelector("label");
+  const clavePie = claveCaja && claveCaja.querySelector("span");
   const campoCodigo = document.getElementById("sala-codigo");
   for (const [id, col] of [["col-oeste", "oeste"], ["col-este", "este"]]) {
     document.getElementById(id).addEventListener("click", () => {
@@ -37932,6 +37944,9 @@ function armarRed(ctx) {
   let alCambiar = null;
   let yo = 0;
   let quiero = "oeste";
+  let creando = false;
+  let reloj2 = null;
+  let intentos = 0;
   let cable = null;
   const enchufes = /* @__PURE__ */ new Map();
   const cola = [];
@@ -38107,7 +38122,20 @@ function armarRed(ctx) {
     for (const c of enchufes.values()) if (c.readyState === 1) return true;
     return false;
   }
+  let plazo = 9e3;
+  red2.acortarPlazo = (ms) => {
+    plazo = ms;
+  };
+  function darPlazo(queHacerSiNo) {
+    clearTimeout(reloj2);
+    reloj2 = setTimeout(queHacerSiNo, plazo);
+  }
+  function llegoATiempo() {
+    clearTimeout(reloj2);
+    reloj2 = null;
+  }
   function desarmar() {
+    llegoATiempo();
     for (const c of enchufes.values()) {
       c.onclose = null;
       c.close();
@@ -38130,35 +38158,49 @@ function armarRed(ctx) {
     red2.codigo = null;
     rol = null;
     yo = 0;
+    creando = false;
     vaciarSala();
   }
   function fallar(m) {
+    llegoATiempo();
     if (!jugando()) desarmar();
     avisarFase("caido", m);
   }
-  function armarPeer(id) {
+  function armarPeer(id, alFallar) {
     if (!window.Peer) {
       avisarFase("caido", "No carg\xF3 la parte de red del juego. Recarg\xE1 la p\xE1gina.");
       return null;
     }
     const p = new window.Peer(id, { debug: 0 });
-    p.on("error", (e) => fallar(errorClaro(e)));
+    p.on("error", (e) => {
+      if (peer === p) (alFallar || fallar)(errorClaro(e));
+    });
     return p;
   }
   red2.crearSala = function() {
     if (jugando()) return;
     desarmar();
+    intentos = 0;
+    abrirLaPropia();
+  };
+  function abrirLaPropia() {
+    creando = true;
     red2.codigo = codigoNuevo();
     avisarFase("llamando");
-    peer = armarPeer(PREFIJO + red2.codigo);
-    if (!peer) return;
-    peer.on("open", () => {
+    const p = armarPeer(PREFIJO + red2.codigo, deNuevo);
+    peer = p;
+    if (!p) return;
+    darPlazo(() => deNuevo("El directorio de salas no contest\xF3. Puede ser la red: volv\xE9 a tocar \xABCrear sala\xBB, o jug\xE1 sin internet con \xABJugar de a dos\xBB."));
+    p.on("open", () => {
+      if (peer !== p) return;
+      llegoATiempo();
+      creando = false;
       rol = "anfitrion";
       yo = 0;
       anotarGente(0, "oeste");
       avisarFase("esperando");
     });
-    peer.on("connection", (conn) => {
+    p.on("connection", (conn) => {
       const j = numeroLibre();
       if (!j) {
         try {
@@ -38182,7 +38224,26 @@ function armarRed(ctx) {
         seVaJugador(j);
       };
     });
-  };
+  }
+  const REINTENTOS = 2;
+  function deNuevo(m) {
+    llegoATiempo();
+    if (rol) return;
+    if (intentos++ < REINTENTOS) {
+      if (peer) {
+        const p = peer;
+        peer = null;
+        try {
+          p.destroy();
+        } catch {
+        }
+      }
+      abrirLaPropia();
+      return;
+    }
+    creando = false;
+    fallar(m);
+  }
   red2.entrarASala = function(codigo) {
     if (jugando()) return;
     desarmar();
@@ -38193,12 +38254,17 @@ function armarRed(ctx) {
     }
     red2.codigo = c;
     avisarFase("llamando");
-    peer = armarPeer();
-    if (!peer) return;
-    peer.on("open", () => {
-      const conn = peer.connect(PREFIJO + c, { reliable: true });
+    const p = armarPeer();
+    peer = p;
+    if (!p) return;
+    darPlazo(() => fallar("El directorio de salas no contest\xF3. Puede ser la red: prob\xE1 de nuevo, o jug\xE1 sin internet con \xABJugar de a dos\xBB."));
+    p.on("open", () => {
+      if (peer !== p) return;
+      darPlazo(() => fallar("La sala " + c + " contest\xF3, pero no se pudo abrir la conexi\xF3n directa con esa m\xE1quina. Suele ser la red: prob\xE1 los dos por los datos del celular, o jug\xE1 sin internet con \xABJugar de a dos\xBB."));
+      const conn = p.connect(PREFIJO + c, { reliable: true });
       cable = cableDePar(conn);
       conn.on("open", () => {
+        llegoATiempo();
         cable.readyState = 1;
         rol = "invitado";
         mandar({ t: "quiero", columna: quiero });
@@ -39042,6 +39108,8 @@ function armarRed(ctx) {
       rol,
       motivo,
       kbs: cableKBs,
+      creando,
+      // estoy abriendo mi sala: el código ya es mío
       companero: hayGente(),
       j: yo,
       // ¿ya sé quién soy? Entre que se abre el cable y que llega el padrón hay
