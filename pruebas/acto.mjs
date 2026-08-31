@@ -78,8 +78,39 @@ const r = await pag.evaluate(() => {
   comun.quitar(); j.soldados.splice(j.soldados.indexOf(comun), 1);
   const lejos = sm ? Math.hypot(sm.pos.x - j.jugador.pos.x, sm.pos.z - j.jugador.pos.z) : 0;
   ok('arrancás lejos de él, hay que ir', lejos > 8, `a ${lejos.toFixed(1)} m`);
-  ok('donde caíste es donde quedó él',
-    !!sm && Math.hypot(sm.pos.x - caiste.x, sm.pos.z - caiste.z) < 0.5);
+  // TIRADO Y BAJO EL ANIMAL, que es lo que estaba mal: nacía donde había
+  // quedado la CÁMARA y de pie, porque ni `tirado` ni `aturdido` acuestan a
+  // nadie —lo único que tumba a un soldado es estar muerto—. El general
+  // esperaba parado abajo de un caballo volcado.
+  const alCaballo = sm ? Math.hypot(sm.pos.x - c.pos.x, sm.pos.z - c.pos.z) : 99;
+  ok('queda pegado al caballo, no donde estaba la cámara', alCaballo < 1.1,
+    `a ${alCaballo.toFixed(2)} m del animal`);
+  ok('y en el sitio donde caíste', !!sm && Math.hypot(sm.pos.x - caiste.x, sm.pos.z - caiste.z) < 1.5);
+  ok('y TIRADO, no parado', !!sm && sm.tendido === true && sm.fig.raiz.rotation.z > 1.2,
+    sm ? `rotación ${sm.fig.raiz.rotation.z.toFixed(2)} rad` : '—');
+
+  // EL CABALLO DE SAN MARTÍN ES EL CREMA. Es lo único que lo distingue de los
+  // otros ciento diecinueve, que van vestidos igual.
+  const tropero = j.soltarSoldado('granadero', { montado: true });
+  ok('el caballo del jugador es el crema y el de la tropa no',
+    c.crema === true && !!tropero.monta && tropero.monta.crema === false,
+    `jugador=${c.crema} · tropa=${tropero.monta && tropero.monta.crema}`);
+  tropero.quitar(); j.soldados.splice(j.soldados.indexOf(tropero), 1);
+
+  // LO QUE HAY QUE MIRAR, MARCADO. Sin esto el acto es buscar a Wally entre
+  // ciento veinte hombres vestidos igual, con humo y ocho segundos de reloj.
+  ok('hay una vara de luz sobre él', !!acto.baliza &&
+    Math.hypot(acto.baliza.position.x - (sm ? sm.pos.x : 0), acto.baliza.position.z - (sm ? sm.pos.z : 0)) < 0.2);
+  ok('y se ve por encima de todo', !!acto.baliza && acto.baliza.userData.mat.depthTest === false);
+  ok('el caballo tiene contorno', !!acto.contorno && acto.contorno.children.length > 0,
+    acto.contorno ? `${acto.contorno.children.length} piezas` : '—');
+  // y el contorno cuelga del hueso que se inclina al levantar: sube con él
+  ok('y el contorno cuelga del caballo, así que sube con él',
+    !!acto.contorno && acto.contorno.parent === c.raiz);
+
+  ok('el corazón late aunque Cabral esté entero', acto.pulsoAlto === true);
+  const rotLejos = acto.rotulo;
+  ok('la barra dice dónde está', /SAN MART[IÍ]N · \d+ M/.test(rotLejos || ''), rotLejos);
 
   paso(2);
   ok('el español que lo iba a rematar aparece', j.soldados.some(s => s.esRealista));
@@ -101,10 +132,42 @@ const r = await pag.evaluate(() => {
   paso(0.2);
   ok('al lado sí se puede empujar', acto.puedeEmpujar);
 
+  ok('y ahí la barra dice qué apretar', acto.rotulo === 'ESPACIO, MUCHAS VECES', acto.rotulo);
+
+  // EMPUJANDO NO SE SALTA. El espacio es fuerza contra medio caballo; si además
+  // saltara, el sargento daría brincos arriba de un hombre tirado en el pasto
+  // mientras lo levanta. Se prueba con teclas de verdad, que es de donde salía
+  // el salto: `jugador.actualizar` no salta solo, lo llamaba el mando.
+  let saltos = 0;
+  const saltarOriginal = j.jugador.saltar.bind(j.jugador);
+  j.jugador.saltar = () => { saltos++; return saltarOriginal(); };
+  const altura0 = j.jugador.pos.y;
+  for (let i = 0; i < 20; i++) {
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
+    paso(1 / 30);
+  }
+  ok('machacar el espacio no lo hace saltar', saltos === 0, `${saltos} saltos`);
+  ok('se queda en el lugar haciendo fuerza', Math.abs(j.jugador.pos.y - altura0) < 0.02,
+    `y ${altura0.toFixed(2)} → ${j.jugador.pos.y.toFixed(2)}`);
+  j.jugador.saltar = saltarOriginal;
+
   // una sola pulsación no alcanza: hay que machacar
+  acto.levante = 0;
   teclas.add('Space'); paso(1 / 60); teclas.delete('Space'); paso(0.5);
   ok('un solo espacio no lo levanta', acto.levante < 0.5 && acto.fase === 'cabral',
     `barra ${acto.levante.toFixed(2)}`);
+
+  // Y CUESTA. Media tonelada no se levanta de un toque: contando lo que se cae
+  // mientras machacás, son unos treinta espacios. Se cuentan de verdad.
+  acto.levante = 0;
+  let golpes = 0;
+  for (let i = 0; i < 60 * 12 && acto.fase === 'cabral'; i++) {
+    if (i % 6 === 0) { teclas.add('Space'); golpes++; } else teclas.delete('Space');
+    paso(1 / 60);
+  }
+  teclas.delete('Space');
+  ok('levantarlo cuesta más de veinte espacios', golpes > 20, `${golpes} espacios`);
 
   machacar(6);
   ok('machacando sí sale', acto.fase === 'cine', `fase ${acto.fase} · barra ${acto.levante.toFixed(2)}`);
@@ -119,8 +182,24 @@ const r = await pag.evaluate(() => {
     j.jugador.atrapado > 0 && j.jugador.pitchAtrapado > 0.4,
     `pitch ${j.jugador.pitchAtrapado.toFixed(2)}`);
 
+  ok('levantado el caballo, se apagan las marcas', !acto.baliza && !acto.contorno);
+
+  // A CABRAL SE LO MATA COMO A CUALQUIERA Y SE TIENE QUE VER IGUAL: la vista
+  // que se nubla y se cierra, el sonido que se va con ella. Antes era un corte
+  // a negro y se leía como el final de una escena, no como un hombre muriendo.
+  paso(6);
+  const lienzo = document.getElementById('lienzo');
+  ok('a Cabral se le cierran los ojos, como a San Martín',
+    lienzo.classList.contains('ojos'), lienzo.className);
+  ok('y el sonido se va con ellos', j.sonido.muriendo === true);
+  // pero SIN los botones: el que se muere es él y la partida sigue
+  ok('y sin botones, porque no hay nada que elegir',
+    document.getElementById('caido').classList.contains('oculto'));
+
   paso(12);
   ok('el acto termina', !acto.activo);
+  ok('y al volver a ser vos, los ojos se abren',
+    !lienzo.classList.contains('ojos') && j.sonido.muriendo === false);
   ok('y el tiempo vuelve a correr normal', acto.lento === 1);
   ok('volvés a ser San Martín, en su lugar',
     Math.hypot(j.jugador.pos.x - caiste.x, j.jugador.pos.z - caiste.z) < 1.5,

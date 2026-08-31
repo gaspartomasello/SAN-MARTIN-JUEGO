@@ -593,7 +593,9 @@ export function armarRed (ctx) {
     const g = gente.get(j);
     if (!g) return null;
     const p0 = sitioDePuesto(g.columna, g.puesto);
-    const caballo = new Caballo(escena, [], new THREE.Vector3(p0.x, 0, p0.z));
+    // San Martín monta el crema de este lado también: si no, el jugador cero
+    // se vería igual que cualquiera desde las otras máquinas.
+    const caballo = new Caballo(escena, [], new THREE.Vector3(p0.x, 0, p0.z), { crema: j === 0 });
     caballo.rumbo = p0.rumbo;
     caballo.titere = true;
     caballo.humo = humo;

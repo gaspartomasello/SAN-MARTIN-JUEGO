@@ -16,6 +16,17 @@ import { CAMPO_X, CAMPO_Z0, CAMPO_Z1 } from './jugador.js';
 
 const PELAJE = 0x54392a;
 const PELAJE_CLARO = 0x6b4a34;
+// EL CABALLO DE SAN MARTÍN. Entre ciento veinte animales todos del mismo
+// color, el jefe no se distingue de nadie: en la carga da igual, pero el día
+// que hay que ENCONTRARLO —el acto de Cabral, o una partida de a varios— hace
+// falta que el ojo lo agarre de una. Un crema entre castaños se ve desde el
+// otro lado del campo, y no es un invento: los oficiales montaban lo que
+// tenían y el pelaje era lo primero por lo que se los nombraba.
+// La crin y las patas quedan oscuras a propósito —así queda un palomino y no
+// una mancha clara— y son las mismas para todos, así que no hay dos colores
+// que mantener sincronizados.
+const CREMA = 0xcbb489;
+const CREMA_CLARO = 0xe3d5b6;
 const CRIN = 0x1d1712;
 const CASCO = 0x2b2723;
 const BLANCO = 0xd8d2c4;
@@ -98,13 +109,13 @@ function esqueleto () {
   return { raiz, h };
 }
 
-function vestir (taller, h) {
+function vestir (taller, h, pel, claro) {
   const c = h.cuerpo;
   // barril: un cilindro tumbado, más ancho en las costillas que en la grupa
-  taller.add(c, cil(0.34, 0.30, 1.42, 12), PELAJE, { p: [0, 0, 0.04], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.86] });
-  taller.add(c, bola(0.33, 10), PELAJE, { p: [0, 0.02, -0.62], s: [1, 1.02, 0.8] });    // pecho
-  taller.add(c, bola(0.32, 10), PELAJE, { p: [0, 0.10, 0.66], s: [1, 1, 0.85] });       // grupa
-  taller.add(c, cil(0.19, 0.26, 0.30, 10), PELAJE_CLARO, { p: [0, -0.24, -0.30], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.7] });
+  taller.add(c, cil(0.34, 0.30, 1.42, 12), pel, { p: [0, 0, 0.04], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.86] });
+  taller.add(c, bola(0.33, 10), pel, { p: [0, 0.02, -0.62], s: [1, 1.02, 0.8] });    // pecho
+  taller.add(c, bola(0.32, 10), pel, { p: [0, 0.10, 0.66], s: [1, 1, 0.85] });       // grupa
+  taller.add(c, cil(0.19, 0.26, 0.30, 10), claro, { p: [0, -0.24, -0.30], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.7] });
 
   // montura: mandil de granadero, silla y estribos
   taller.add(c, caja(0.78, 0.03, 0.86), MANTA, { p: [0, 0.31, 0.10] });
@@ -121,20 +132,20 @@ function vestir (taller, h) {
   taller.add(c, caja(0.72, 0.06, 0.09), 0xbdb49c, { p: [0, -0.03, -0.02], s: [1, 5.5, 1] });
 
   // cuello y crin
-  taller.add(h.cuello, cil(0.145, 0.215, CUELLO, 10), PELAJE, { p: [0, -CUELLO / 2, 0], s: [0.82, 1, 1] });
+  taller.add(h.cuello, cil(0.145, 0.215, CUELLO, 10), pel, { p: [0, -CUELLO / 2, 0], s: [0.82, 1, 1] });
   taller.add(h.cuello, caja(0.055, CUELLO * 0.96, 0.15), CRIN, { p: [0, -CUELLO / 2, -0.10] });
   taller.add(h.cuello, caja(0.05, 0.14, 0.12), CRIN, { p: [0, -CUELLO - 0.04, -0.08] });   // tupé
 
   // Cabeza. Se dibuja a lo largo de −Y como si fuera un miembro: así el hueso
   // la apunta solo y no hay que componer tres rotaciones a ojo.
   const k = h.cabeza;
-  taller.add(k, cil(0.10, 0.135, 0.34, 9), PELAJE, { p: [0, -0.17, 0], s: [0.82, 1, 1] });
-  taller.add(k, bola(0.092, 8), PELAJE, { p: [0, -0.35, -0.01], s: [0.85, 0.9, 1] });      // hocico
+  taller.add(k, cil(0.10, 0.135, 0.34, 9), pel, { p: [0, -0.17, 0], s: [0.82, 1, 1] });
+  taller.add(k, bola(0.092, 8), pel, { p: [0, -0.35, -0.01], s: [0.85, 0.9, 1] });      // hocico
   taller.add(k, caja(0.05, 0.30, 0.03), BLANCO, { p: [0, -0.22, -0.098] });                // lucero
-  taller.add(k, bola(0.075, 8), PELAJE, { p: [0, -0.02, 0.02], s: [1, 0.9, 1.1] });        // testuz
+  taller.add(k, bola(0.075, 8), pel, { p: [0, -0.02, 0.02], s: [1, 0.9, 1.1] });        // testuz
   for (const s2 of [-1, 1]) {
     taller.add(k, bola(0.03, 6), 0x171310, { p: [s2 * 0.088, -0.10, -0.045] });            // ojo
-    taller.add(k, cil(0.006, 0.03, 0.11, 6), PELAJE, { p: [s2 * 0.055, 0.09, 0.03], r: [-0.25, 0, s2 * 0.26] });
+    taller.add(k, cil(0.006, 0.03, 0.11, 6), pel, { p: [s2 * 0.055, 0.09, 0.03], r: [-0.25, 0, s2 * 0.26] });
     taller.add(k, bola(0.022, 6), 0x120e0b, { p: [s2 * 0.035, -0.40, -0.045] });           // ollares
   }
   // cabezada
@@ -157,7 +168,7 @@ function vestir (taller, h) {
   for (const n of ['DI', 'DD', 'TI', 'TD']) {
     const alto = h['alto' + n], bajo = h['bajo' + n];
     const trasera = n[0] === 'T';
-    taller.add(alto, cil(trasera ? 0.15 : 0.115, 0.075, PATA_ALTA, 8), PELAJE,
+    taller.add(alto, cil(trasera ? 0.15 : 0.115, 0.075, PATA_ALTA, 8), pel,
       { p: [0, -PATA_ALTA / 2, 0], s: [1, 1, trasera ? 1.35 : 1] });
     taller.add(bajo, cil(0.062, 0.048, PATA_BAJA, 8), CRIN, { p: [0, -PATA_BAJA / 2, 0] });
     taller.add(bajo, cil(0.07, 0.075, 0.09, 8), CASCO, { p: [0, -PATA_BAJA - 0.03, 0] });
@@ -165,10 +176,15 @@ function vestir (taller, h) {
 }
 
 export class Caballo {
-  constructor (escena, colisiones, pos) {
+  // `op.crema` es el pelaje de San Martín. Va acá y no en un método aparte
+  // porque el color está COCINADO en los vértices de la malla —ver Taller en
+  // figura.js—: se elige al armar el animal o no se elige más.
+  constructor (escena, colisiones, pos, op) {
     const { raiz, h } = esqueleto();
     const taller = new Taller();
-    vestir(taller, h);
+    const crema = !!(op && op.crema);
+    vestir(taller, h, crema ? CREMA : PELAJE, crema ? CREMA_CLARO : PELAJE_CLARO);
+    this.crema = crema;
     this.mallas = taller.cocinar();
     this.raiz = raiz;
     this.h = h;

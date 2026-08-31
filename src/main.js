@@ -460,7 +460,8 @@ function simular (dt) {
   // que hace que un fusil a ochenta metros no suene igual que uno al lado.
   sonido.actualizar(dt, {
     oyente: jugador.pos,
-    vida: jugador.vida,
+    // El pulso de Cabral no mide su vida: mide lo que está haciendo.
+    vida: acto.pulsoAlto ? 22 : jugador.vida,
     vivo: jugador.vivo && !jugador.espectador,
     montado: montado(),
     vel: montado() ? jugador.monta.vel : 0
@@ -516,8 +517,11 @@ function cuadro () {
     atrapado: jugador.atrapado,
     // La barra sale también cuando SOS Cabral empujando el caballo, que es el
     // único momento en que se forcejea sin estar atrapado.
-    empujando: acto.puedeEmpujar,
+    // La barra sale durante TODO el tramo de Cabral y no sólo al lado del
+    // caballo: mientras corrés es donde dice a cuántos metros está.
+    empujando: acto.fase === 'cabral' || acto.puedeEmpujar,
     forcejeo: acto.forcejeo,
+    rotulo: acto.rotulo,
     vida: jugador.vida,
     regenerando: jugador.tSinDano > 4.5 && jugador.vida < 100,
     vendas: jugador.vendas,

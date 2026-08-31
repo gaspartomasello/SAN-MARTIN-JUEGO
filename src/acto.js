@@ -59,12 +59,13 @@ const T_AMENAZA = 1.2;      // desde que sos Cabral, el español encara
 // respetar— y en red tampoco, que ya estaba resuelto en main.js.
 const T_FORZADO = 60;
 
-// EL LEVANTE. Media tonelada no se levanta de un toque: son unos catorce
-// espacios seguidos, y si parás se te vuelve a caer más rápido de lo que sube.
-// La proporción entre SUBE y CAE es lo que hace que se sienta pesado sin ser
-// injusto; si CAE fuera mayor que SUBE, no habría manera.
-const LEVANTE_SUBE = 0.085;   // por cada golpe de espacio
-const LEVANTE_CAE = 0.16;     // por segundo sin apretar
+// EL LEVANTE. Media tonelada no se levanta de un toque, y ahora cuesta lo que
+// tiene que costar: contando lo que se cae mientras machacás, son unos treinta
+// espacios y cinco o seis segundos de fuerza. La proporción entre SUBE y CAE
+// es lo que hace que se sienta pesado sin ser injusto; si CAE le ganara a lo
+// que sube un machaque normal, no habría manera y sería otra cosa.
+const LEVANTE_SUBE = 0.062;   // por cada golpe de espacio
+const LEVANTE_CAE = 0.19;     // por segundo sin apretar
 const LEVANTE_CERCA = 2.6;    // hay que estar al lado para empujar
 
 // LA CINEMÁTICA, en cámara lenta y ya sin teclas. Los tiempos son de reloj
@@ -73,7 +74,10 @@ const LENTO = 0.42;
 const C_HERIDO = 0.6;       // el segundo español le entra con la bayoneta
 const C_CAE = 1.4;          // la cámara se va al suelo
 const C_FRASE = 2.6;
-const C_NEGRO = 6.0;        // empieza a cerrarse el negro
+// Se cierran los ojos, no se corta a negro, y por eso empieza antes: el
+// párpado tarda 6,6 s de reloj lento y tiene que terminar justo en C_FIN.
+const C_NEGRO = 4.6;
+const C_OJOS = 6.6;         // lo que dura el cierre, en el mismo reloj lento
 const C_FIN = 7.4;          // y volvés a ser San Martín
 
 export class ActoCabral {
@@ -98,9 +102,31 @@ export class ActoCabral {
     this._paso = 0;
     this._space = false;
     this._tc = 0;             // reloj de la cinemática, aparte
+    this.baliza = null;       // la vara de luz sobre San Martín
+    this.contorno = null;     // el borde del caballo que hay que levantar
+    this._brillo = null;      // los dos materiales, para latirlos juntos
   }
 
   get activo () { return this.corriendo; }
+
+  // EL CORAZÓN DE CABRAL. Mientras sos él el pulso va alto aunque la vida esté
+  // entera: no estás herido, estás corriendo a sacar a un hombre de abajo de
+  // medio caballo con un español encima. Es el único momento del juego en que
+  // el corazón no mide la vida sino lo que está pasando.
+  get pulsoAlto () { return this.fase === 'cabral'; }
+
+  // Lo que dice la barra. Antes de llegar, dónde está; al lado, qué apretar.
+  // Es lo único que hace falta para no tener que revisar el campo hombre por
+  // hombre: la vara de luz dice cuál es y esto dice cuánto falta.
+  get rotulo () {
+    if (this.fase !== 'cabral') return null;
+    if (this.puedeEmpujar) return 'ESPACIO, MUCHAS VECES';
+    const sm = this.sanmartin;
+    if (!sm) return null;
+    const { jugador } = this.ctx;
+    const d = Math.hypot(sm.pos.x - jugador.pos.x, sm.pos.z - jugador.pos.z);
+    return 'SAN MARTÍN · ' + Math.max(1, Math.round(d)) + ' M';
+  }
   // ¿lo tenés al lado como para empujar el animal?
   get puedeEmpujar () {
     if (this.fase !== 'cabral' || !this.sanmartin) return false;
@@ -135,6 +161,7 @@ export class ActoCabral {
     this.forcejeo = 0;
     this.caballo = caballo;
     this.fase = 'caida';
+    this._apagarMarcas();       // por si quedó algo de un acto anterior
     this.levante = 0;
     this.lento = 1;
     this._paso = 0;
@@ -191,14 +218,33 @@ export class ActoCabral {
     // en plena cinemática y cuando volvés a ser él estás a ocho metros del
     // caballo, mirando cualquier cosa. El sitio donde caíste es el sitio donde
     // volvés.
-    this.sitio = { x: jx, z: jz };
-    this.sanmartin = this._traer('granadero', jx, jz, { sombrero: 'bicornio' });
+    //
+    // TIRADO, Y CONTRA EL BARRIL DEL ANIMAL. Estaba de pie, y era lo que más
+    // rompía la escena: el cuerpo nacía donde vos habías caído y ni `tirado`
+    // ni `aturdido` acuestan a nadie —lo único que tumba a un soldado es estar
+    // muerto—, así que el general esperaba PARADO abajo de un caballo volcado.
+    // Ahora se lo pone del lado para el que se desplomó el animal, acostado a
+    // lo largo, y `tendido` le fija la pose hasta que lo saques.
+    const c = this.caballo;
+    const rum = c ? c.rumbo : 0;
+    const lado = c ? c.lado : 1;
+    const ax = c ? c.pos.x : jx, az = c ? c.pos.z : jz;
+    this.sitio = { x: ax + Math.cos(rum) * 0.55 * lado, z: az - Math.sin(rum) * 0.55 * lado };
+    this.sanmartin = this._traer('granadero', this.sitio.x, this.sitio.z, { sombrero: 'bicornio' });
     this.sanmartin.esSanMartin = true;
     this.sanmartin.vida = 99;
     this.sanmartin.tirado = 999;        // no se levanta hasta que lo saques
     this.sanmartin.aturdido = 999;
-    this.sanmartin.fig.poner('aturdido');
+    this.sanmartin.tendido = true;      // y no se PARA hasta que lo saques
+    this.sanmartin.malla.rotation.y = rum;
     this.sanmartin.alGolpear = null;
+
+    // LO QUE HAY QUE MIRAR, MARCADO. Ciento veinte hombres vestidos igual en
+    // un campo con humo: sin esto el acto es un juego de buscar a Wally con
+    // ocho segundos de reloj. La vara dice CUÁL de todos, el borde del caballo
+    // dice QUÉ hay que levantar, y la barra dice cuánto falta para llegar.
+    this.baliza = this._baliza(this.sitio.x, this.sitio.z);
+    if (c) this.contorno = this._contornear(c);
 
     // y vos pasás a ser el sargento, once metros y medio por detrás
     jugador.liberar();
@@ -214,7 +260,8 @@ export class ActoCabral {
 
   // Y LA VUELTA. Se muere Cabral, no vos: el juego sigue con San Martín.
   _serSanMartin () {
-    const { jugador, hud, soldados } = this.ctx;
+    const { jugador, hud, soldados, sonido } = this.ctx;
+    this._apagarMarcas();
     const s = this.sanmartin;
     if (s) {
       const p = this.sitio || s.pos;
@@ -230,8 +277,84 @@ export class ActoCabral {
     this.lento = 1;
     this.corriendo = false;
     this.fase = null;
-    hud.fundir(0, 1.2);
+    // los ojos que se cerraron eran los de Cabral; los que se abren son los
+    // tuyos, y el sonido vuelve con ellos
+    hud.abrirLosOjos();
+    sonido.revivir();
     hud.decir('Juan Bautista Cabral · sargento de Granaderos · hijo de esclavos', 6);
+  }
+
+  // LA VARA DE LUZ. No consulta la profundidad —`depthTest: false`— así que se
+  // ve por encima del humo, de los cuerpos y de los otros ciento diecinueve
+  // granaderos. Es lo único del juego que se dibuja atravesando el mundo, y se
+  // justifica porque acá el problema no es ver: es ENCONTRAR.
+  _baliza (x, z) {
+    // CELESTE, y las dos marcas del mismo color. Es el de la escarapela, así
+    // que no queda como un cartel de videojuego pegado encima de 1813, y
+    // contra el pasto seco y el crema del caballo es lo que más salta.
+    const mat = new THREE.MeshBasicMaterial({ color: 0x74c7ec, transparent: true,
+      opacity: 0.7, depthTest: false, depthWrite: false });
+    const g = new THREE.Group();
+    // ARRANCA POR ENCIMA DEL CUERPO. Desde el suelo la vara le pasa por el
+    // medio al hombre y al animal —no consulta la profundidad— y de cerca eso
+    // es una raya atravesando justo lo que uno vino a mirar.
+    const haz = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.4, 6), mat);
+    haz.position.y = 3.1;
+    const punta = new THREE.Mesh(new THREE.ConeGeometry(0.30, 0.55, 4), mat);
+    punta.position.y = 1.25;
+    punta.rotation.x = Math.PI;          // la punta mirando al hombre
+    g.add(haz, punta);
+    g.position.set(x, 0, z);
+    g.renderOrder = 999;
+    this.ctx.escena.add(g);
+    g.userData.mat = mat;
+    g.userData.punta = punta;
+    return g;
+  }
+
+  // EL BORDE DEL CABALLO. Una copia de las mismas mallas un poco más grande y
+  // dibujada por dentro (`BackSide`): el original la tapa entera salvo en la
+  // silueta, y lo que queda es un contorno. Sí consulta la profundidad, porque
+  // un contorno que atraviesa las cosas deja de ser un contorno.
+  //
+  // Va COLGADA DE `raiz`, que es el hueso que el acto inclina para levantar el
+  // animal: así el borde sube con el caballo sin una línea de código más.
+  _contornear (caballo) {
+    if (!caballo.mallas || !caballo.mallas.length) return null;
+    // El mismo celeste, y GRUESO: con un cinco por ciento de margen y color
+    // ámbar el borde no se veía sobre un caballo crema, que es justo el que
+    // hay que levantar. Un contorno que no se distingue del animal no marca
+    // nada.
+    const mat = new THREE.MeshBasicMaterial({ color: 0x74c7ec, side: THREE.BackSide,
+      transparent: true, opacity: 0.95, depthWrite: false });
+    const capa = new THREE.Group();
+    caballo.raiz.updateWorldMatrix(true, true);
+    const inv = new THREE.Matrix4().copy(caballo.raiz.matrixWorld).invert();
+    for (const m of caballo.mallas) {
+      m.updateWorldMatrix(true, false);
+      const copia = new THREE.Mesh(m.geometry, mat);
+      copia.matrix.multiplyMatrices(inv, m.matrixWorld);
+      copia.matrix.decompose(copia.position, copia.quaternion, copia.scale);
+      copia.scale.multiplyScalar(1.11);
+      capa.add(copia);
+    }
+    caballo.raiz.add(capa);
+    capa.userData.mat = mat;
+    return capa;
+  }
+
+  // Se apagan cuando ya no hacen falta: levantado el caballo no hay nada que
+  // buscar ni nada que empujar, y dejarlos encendidos en la cinemática le
+  // pondría un cartel de videojuego a la única parte que no lo es.
+  _apagarMarcas () {
+    for (const o of [this.baliza, this.contorno]) {
+      if (!o) continue;
+      if (o.parent) o.parent.remove(o);
+      const mat = o.userData && o.userData.mat;
+      if (mat) mat.dispose();
+    }
+    this.baliza = null;
+    this.contorno = null;
   }
 
   _traer (bando, x, z, op) {
@@ -288,6 +411,14 @@ export class ActoCabral {
         hud.decir('ESPACIO, muchas veces', 3.4);
       }
 
+      // el latido de las marcas: no llaman la atención quietas
+      const pulso = 0.5 + 0.5 * Math.sin(this.t * 4.2);
+      if (this.baliza) {
+        this.baliza.userData.mat.opacity = 0.48 + 0.32 * pulso;
+        this.baliza.userData.punta.position.y = 1.25 + pulso * 0.28;
+      }
+      if (this.contorno) this.contorno.userData.mat.opacity = 0.55 + 0.35 * pulso;
+
       if (this.caballo) {
         this.caballo.actualizado = true;      // que el bucle no le pise la pose
         this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * (1 - this.levante * 0.42);
@@ -302,7 +433,9 @@ export class ActoCabral {
           this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * 0.58;
           this.caballo.raiz.position.y = 0.30;
         }
-        if (sm) { sm.tirado = 1.2; sm.aturdido = 1.2; sm.fig.poner('marcha'); }
+        this._apagarMarcas();
+        // ya está afuera: se lo suelta de la pose fija y se para
+        if (sm) { sm.tendido = false; sm.tirado = 1.2; sm.aturdido = 1.2; sm.fig.poner('marcha'); }
         if (this.verdugo && this.verdugo.vivo) { this.verdugo.recibir(99); sonido.impactoCarne(); }
         hud.mostrarAviso('¡Libre!', 'bien');
         this.fase = 'cine';
@@ -324,6 +457,7 @@ export class ActoCabral {
       this.segundo.fig.poner('estocada');
       jugador.sacudir(1.2);
       sonido.impactoCarne();
+      sonido.ensordecer(1.1);
       hud.mostrarAviso('¡La bayoneta!', 'malo');
     }
 
@@ -340,9 +474,16 @@ export class ActoCabral {
       hud.decir(FRASE, 5.2);
     }
 
+    // A CABRAL SE LO MATA COMO A CUALQUIERA, Y SE VE IGUAL. Antes era un corte
+    // a negro y se leía como el final de una escena; ahora es la misma muerte
+    // que la tuya —la vista que se nubla y se cierra, el sonido que se va con
+    // ella—, porque es exactamente lo mismo que pasa: se está muriendo un
+    // hombre. Sin los botones, eso sí: el que se muere es él y la partida
+    // sigue, así que no hay nada que elegir.
     if (this._tc >= C_NEGRO && this._paso < 4) {
       this._paso = 4;
-      hud.fundir(1, 1.2);
+      hud.cerrarLosOjos(C_OJOS, false);
+      sonido.morir(C_OJOS);
     }
 
     // se para, pero no se mueve del sitio: el acto todavía no terminó

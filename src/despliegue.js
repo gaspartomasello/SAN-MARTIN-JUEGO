@@ -58,8 +58,8 @@ export function armarDespliegue (ctx) {
   campo.parapetos = parapetos;
 
   // ------------------------------ caballos ------------------------------
-  function nuevoCaballo (pos, rumbo) {
-    const c = new Caballo(escena, mundo.colisiones, pos);
+  function nuevoCaballo (pos, rumbo, op) {
+    const c = new Caballo(escena, mundo.colisiones, pos, op);
     c.rumbo = rumbo || 0;
     // Los cascos levantan tierra por el MISMO sistema que el humo de pólvora,
     // así que la polvareda de una carga tapa la vista de verdad —la tuya y la
@@ -76,7 +76,10 @@ export function armarDespliegue (ctx) {
       const i = caballos.indexOf(campo.caballo);
       if (i >= 0) caballos.splice(i, 1);
     }
-    campo.caballo = nuevoCaballo(new THREE.Vector3(2.6, 0, 2.0), Math.PI);
+    // EL TUYO ES EL CREMA. Es lo único que distingue a San Martín de los otros
+    // ciento diecinueve granaderos, que van vestidos igual: cuando hay que
+    // encontrarlo tirado en el pasto, el pelaje del animal es lo que se ve.
+    campo.caballo = nuevoCaballo(new THREE.Vector3(2.6, 0, 2.0), Math.PI, { crema: true });
   };
 
   // El caballo suelto más cercano. Si a un lancero le voltearon el jinete, su
@@ -236,7 +239,8 @@ export function armarDespliegue (ctx) {
     // y vos vas a la cabeza de la del oeste, montado, en el punto del que
     // cuelga la formación: los sesenta se plantan detrás tuyo
     if (!(jugador.monta && jugador.monta.vivo)) {
-      campo.caballo = nuevoCaballo(new THREE.Vector3(PLAZA_OESTE.x, 0, PLAZA_OESTE.z), PLAZA_OESTE.rumbo);
+      campo.caballo = nuevoCaballo(new THREE.Vector3(PLAZA_OESTE.x, 0, PLAZA_OESTE.z), PLAZA_OESTE.rumbo,
+        { crema: true });
       jugador.montar(campo.caballo);
     }
     jugador.monta.pos.set(PLAZA_OESTE.x, 0, PLAZA_OESTE.z);

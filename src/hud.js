@@ -75,7 +75,10 @@ export class Hud {
   // la vista se va de foco, el campo se apaga desde los bordes como un párpado
   // que baja, y recién al final entra el negro. Un corte dice «terminó la
   // partida»; esto dice «se está muriendo», que no es lo mismo.
-  cerrarLosOjos (seg) {
+  // `conBotones` en false es para el acto: ahí los ojos que se cierran son los
+  // de Cabral, no los tuyos. Se muere él, la partida sigue, y no hay nada que
+  // elegir —ofrecer «volver a empezar» ahí sería decir que se terminó—.
+  cerrarLosOjos (seg, conBotones = true) {
     const t = seg || 6;
     const l = document.getElementById('lienzo');
     if (l) { l.style.transitionDuration = (t * 0.55).toFixed(2) + 's'; l.classList.add('ojos'); }
@@ -87,7 +90,7 @@ export class Hud {
     }
     setTimeout(() => this.fundir(1, t * 0.42), t * 0.5 * 1000);
     // los botones, recién cuando la pantalla ya está negra
-    this.mostrarCaido(true, t * 0.96);
+    if (conBotones) this.mostrarCaido(true, t * 0.96);
   }
 
   // LOS BOTONES DEL QUE CAYÓ. Van al final del fundido y no al principio: una
@@ -171,8 +174,17 @@ export class Hud {
     // no una pierna abajo de un caballo, y no hay nada que forcejear
     const barra = (datos.atrapado > 0 && datos.vida > 0) || datos.empujando;
     this.forcejeo.classList.toggle('si', barra);
-    if (barra) this.forcejeo.querySelector('i').style.setProperty('--f',
-      (Math.min(1, datos.forcejeo || 0) * 100).toFixed(0) + '%');
+    if (barra) {
+      this.forcejeo.querySelector('i').style.setProperty('--f',
+        (Math.min(1, datos.forcejeo || 0) * 100).toFixed(0) + '%');
+      // El rótulo lo escribe quien sabe qué se está forcejeando. Siendo Cabral
+      // dice a cuántos metros está San Martín hasta que llegás, y ahí pasa a
+      // decir qué apretar: es lo que evita tener que revisar el campo hombre
+      // por hombre con un español encima.
+      const rot = this.forcejeo.querySelector('b');
+      const txt = datos.rotulo || 'ESPACIO';
+      if (rot.textContent !== txt) rot.textContent = txt;
+    }
 
     this.tomar.style.opacity = datos.puedeTomarFusil ? '1' : '0';
 

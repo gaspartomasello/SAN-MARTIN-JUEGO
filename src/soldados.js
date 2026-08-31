@@ -230,6 +230,11 @@ export class Soldado {
     this.ultimoVisto = new THREE.Vector3().copy(pos);
     this.objetivo = null;
     this.caida = 0;
+    // TENDIDO: vivo pero en el suelo, y con la pose puesta desde afuera. Lo
+    // usa el acto para San Martín bajo el caballo. No alcanzaba con `tirado` ni
+    // con `aturdido`: lo único que acuesta a un soldado es estar muerto, así
+    // que el general esperaba PARADO abajo de un animal volcado.
+    this.tendido = false;
     this.tieneFusil = this.bando === 'realista';
     this.alDisparar = null;
     this.alGolpear = null;
@@ -674,6 +679,14 @@ export class Soldado {
 
   actualizar (dt, jugador, soldados) {
     if (this.titere) return this.actualizarTitere(dt);
+    // Tendido: no es un cadáver —está vivo y se va a levantar— pero tampoco un
+    // hombre de pie que se anima solo. Mientras dure, la pose la lleva el que
+    // lo puso ahí. Va antes que todo, como `poseFija` en el caballo.
+    if (this.tendido) {
+      this.fig.desplomar(1);
+      this.malla.position.y = -0.10;
+      return;
+    }
     if (!this.vivo) {
       this.caida = Math.min(1, this.caida + dt * 2.6);
       const e = 1 - Math.pow(1 - this.caida, 3);

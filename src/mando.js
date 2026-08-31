@@ -32,6 +32,11 @@ export function armarMando (ctx) {
     switch (ev.code) {
       case 'KeyR': arsenal.cargar(); break;
       case 'Space': {
+        // EMPUJANDO NO SE SALTA. Durante el acto el espacio es fuerza contra
+        // medio caballo, y si además saltara, el sargento daría brincos arriba
+        // de un hombre tirado en el pasto mientras lo levanta. Se queda en el
+        // lugar haciendo fuerza, que es lo que se está haciendo.
+        if (acto && acto.activo) { ev.preventDefault(); break; }
         // A caballo el espacio no salta a vos: bate al caballo. Y no batís
         // parado —hace falta trote— porque un caballo tampoco salta parado.
         if (montado()) {
