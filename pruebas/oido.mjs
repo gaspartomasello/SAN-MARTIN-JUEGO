@@ -33,7 +33,7 @@ const r = await pag.evaluate(() => {
   s._ruido = (dur, gan, tipo, frec, q, op) => { visto.ruidos.push({ gan, frec, cuando: (op && op.cuando) || 0 }); return _r(dur, gan, tipo, frec, q, op); };
   s._tono = (f, ff, dur, gan, tipo, op) => { visto.tonos.push({ gan, cuando: (op && op.cuando) || 0 }); return _t(f, ff, dur, gan, tipo, op); };
   const _l = s._latido.bind(s), _c = s._casco.bind(s);
-  s._latido = f => { visto.latidos++; };
+  s._latido = f => { visto.latidos++; _l(f); };
   s._casco = (f, p) => { visto.cascos.push(visto.reloj); };
   // el pitido es el único oscilador que va a `interno`: se lo cuenta ahí
   const _con = AudioNode.prototype.connect;
@@ -65,22 +65,40 @@ const r = await pag.evaluate(() => {
   ok('a doscientos metros no se programa nada', fuera === 0, String(fuera));
 
   // =======================================================================
-  // 2 · EL TIRO DE LA FILA DE ATRÁS NO TE DEJA SORDO
+  // 2 · DISPARAR NO TOCA EL OÍDO
   // =======================================================================
-  // Éste es el bicho que buscaba la prueba: `disparo` cerraba el filtro de
-  // aturdimiento SIEMPRE, viniera de donde viniera. Con doscientos cincuenta
-  // fusiles el filtro no se abría nunca y todo el juego sonaba tapado.
-  limpiar();
-  s.tPitido = 0;
+  // Hubo un pitido de oído acá y duró una versión: sonaba en CADA tiro propio,
+  // o sea cada tres segundos durante quince minutos, y cualquier cosa que suene
+  // en cada tiro deja de ser un efecto y pasa a ser el juego.
+  //
+  // Y abajo de eso estaba el bicho que esta prueba cuida de verdad: `disparo`
+  // cerraba el filtro de aturdimiento SIEMPRE, viniera de donde viniera. Con
+  // seiscientos cincuenta tiros por batalla se reponía a los dos segundos y el
+  // siguiente lo volvía a cerrar: el juego entero sonaba tapado en el tiroteo.
+  //
+  // Así que la regla ahora es una sola y es fácil de mirar: NINGÚN disparo
+  // toca el oído. Sólo lo que te pasa a vos.
+  let sordeces = 0;
+  const _e = s.ensordecer.bind(s);
+  s.ensordecer = f => { sordeces++; return _e(f); };
+
+  limpiar(); sordeces = 0;
+  s.disparo();                                       // el tuyo, pegado a la oreja
+  ok('tu propio tiro no te deja sordo', sordeces === 0, String(sordeces));
   for (let i = 0; i < 40; i++) s.disparo({ x: (i % 20) - 10, y: 1.5, z: 25 + i });
-  ok('cuarenta tiros de la tropa y ningún pitido', (visto.internos || 0) === 0,
-    String(visto.internos || 0));
-  limpiar(); s.tPitido = 0;
+  ok('ni cuarenta de la tropa', sordeces === 0, String(sordeces));
   s.disparo({ x: 0, y: 1.7, z: 2 });
-  ok('pero uno a dos metros sí', (visto.internos || 0) > 0, String(visto.internos || 0));
-  limpiar();
-  s.disparo({ x: 0, y: 1.7, z: 2 });
-  ok('y dos seguidos no apilan pitidos', (visto.internos || 0) === 0, String(visto.internos || 0));
+  ok('ni el que te pasa al lado', sordeces === 0, String(sordeces));
+
+  sordeces = 0;
+  s.golpeRecibido(1.25);
+  ok('pero que te bajen del caballo, sí', sordeces === 1, String(sordeces));
+  sordeces = 0;
+  s.canon({ x: 0, y: 1, z: 10 });
+  ok('y una pieza a diez metros, también', sordeces === 1, String(sordeces));
+  sordeces = 0;
+  s.canon({ x: 0, y: 1, z: 110 });
+  ok('la misma pieza a ciento diez metros, no', sordeces === 0, String(sordeces));
 
   // =======================================================================
   // 3 · EL CORAZÓN
@@ -96,6 +114,11 @@ const r = await pag.evaluate(() => {
   const tocado = latidosEn(40, 4);
   const alBorde = latidosEn(6, 4);
   ok('sano no se oye el corazón', sano === 0, String(sano));
+  // EL CORAZÓN VA POR DENTRO. `interno` esquiva la sordina y el filtro, así que
+  // un golpe cerca te tapa el mundo y no te tapa el pulso. Sacado el pitido,
+  // es lo único que sale por ahí, y por eso se puede contar.
+  ok('y sale por dentro, no por la mezcla del campo', (visto.internos || 0) > 0,
+    `${visto.internos || 0} nodos a interno`);
   ok('herido late', tocado > 0.9 && tocado < 2.4, `${(tocado * 60).toFixed(0)} por minuto`);
   ok('y al borde late más rápido', alBorde > tocado * 1.3,
     `${(tocado * 60).toFixed(0)} → ${(alBorde * 60).toFixed(0)} por minuto`);

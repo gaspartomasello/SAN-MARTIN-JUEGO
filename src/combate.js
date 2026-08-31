@@ -76,8 +76,8 @@ export function armarCombate (ctx) {
     jugador.recibir(CAIDA, new THREE.Vector3(0, 0, 1));
     jugador.sacudir(0.9);
     // CAERSE DE UN CABALLO NO ES QUE TE PEGUEN. Vas a dos metros del piso y a
-    // diez metros por segundo: el golpe te deja unos segundos sin mundo, con el
-    // pitido puesto. Es el aviso más fuerte que da el juego y tiene que doler.
+    // diez metros por segundo: el golpe te deja unos segundos sin mundo. Es el
+    // aviso más fuerte que da el juego y tiene que doler.
     sonido.golpeRecibido(1.25);
     c.andar = 3;                 // el caballo se dispara sin jinete
     hud.mostrarAviso(aviso || '¡Te voltearon!', 'malo');

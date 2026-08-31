@@ -28037,7 +28037,6 @@ var Sonido = class {
     this.faseCorazon = 0;
     this.faseCasco = 0;
     this.ultimoCasco = -1;
-    this.tPitido = 0;
     this.muriendo = false;
   }
   iniciar() {
@@ -28184,7 +28183,6 @@ var Sonido = class {
       0.6,
       { cuando: w + 0.08 + (1 - aire) * 0.16, ataque: 0.035 }
     );
-    if (l.d < 6) this.ensordecer(0.18 + 0.4 * (1 - l.d / 6));
   }
   fogonazo() {
     if (!this.ctx) return;
@@ -28368,18 +28366,21 @@ var Sonido = class {
     }
   }
   // =========================================================================
-  // EL PITIDO — lo que suena cuando te revienta algo al lado
+  // EL OÍDO SATURADO — y por qué acá NO hay ningún pitido
   // =========================================================================
   //
-  // No es «bajar el volumen». Un fogonazo cerca satura el oído y lo que queda
-  // son tres cosas a la vez, y ninguna sirve sola:
+  // Hubo uno: un tono agudo adentro de la cabeza, de los de película de
+  // guerra. En el papel estaba bien y en la mano era insoportable, y el motivo
+  // no es el tono sino CADA CUÁNTO. Un fusil se dispara cada tres segundos
+  // durante quince minutos, y cualquier cosa que suene en cada tiro deja de
+  // ser un efecto y pasa a ser el juego. Fuera por ahora.
   //
-  //   · el mundo se AGACHA de golpe (sordina) y sube despacio;
-  //   · pierde los AGUDOS (filtro), que es lo que lo hace sonar «a través de
-  //     algo» en vez de simplemente más bajo;
-  //   · y adentro de la cabeza queda un TONO agudo que se va solo. Ése va por
-  //     `interno`: no lo tapan ni la sordina ni el filtro, porque no está
-  //     afuera. Es lo que hace que de golpe lo único que se oiga seas vos.
+  // Lo que queda es lo que no se nota como efecto y sí se siente: el mundo se
+  // AGACHA de golpe y sube despacio, y mientras tanto pierde los AGUDOS, que
+  // es lo que lo hace sonar «a través de algo» en vez de simplemente más bajo.
+  //
+  // Y ya no lo dispara ningún tiro, ni el tuyo. Sólo lo que te pasa a vos: un
+  // balazo encajado, un volteo, una pieza cerca.
   ensordecer(fuerza = 1) {
     if (!this.ctx) return;
     const f = Math.max(0.12, Math.min(1.4, fuerza));
@@ -28390,23 +28391,6 @@ var Sonido = class {
     this.sordina.gain.setValueAtTime(piso, t);
     this.sordina.gain.setTargetAtTime(1, t + 0.06, dur * 0.32);
     this.aturdir(0.5 + f * 1.7);
-    if (t < this.tPitido) return;
-    this.tPitido = t + dur * 0.55;
-    for (const [frec, peso] of [[4180, 0.07], [6320, 0.026]]) {
-      const o = this.ctx.createOscillator();
-      o.type = "sine";
-      const hz = frec * (0.95 + Math.random() * 0.1);
-      o.frequency.setValueAtTime(hz, t);
-      o.frequency.linearRampToValueAtTime(hz * 0.93, t + dur);
-      const g = this.ctx.createGain();
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(peso * f, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(6e-4, t + dur);
-      o.connect(g);
-      g.connect(this.interno);
-      o.start(t);
-      o.stop(t + dur + 0.05);
-    }
   }
   // =========================================================================
   // EL LATIDO Y LOS CASCOS — los dos sonidos que no son un evento
