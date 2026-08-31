@@ -517,9 +517,10 @@ function cuadro () {
     atrapado: jugador.atrapado,
     // La barra sale también cuando SOS Cabral empujando el caballo, que es el
     // único momento en que se forcejea sin estar atrapado.
-    // La barra sale durante TODO el tramo de Cabral y no sólo al lado del
-    // caballo: mientras corrés es donde dice a cuántos metros está.
-    empujando: acto.fase === 'cabral' || acto.puedeEmpujar,
+    // La barra, sólo al lado del caballo: es lo único que se puede llenar. Los
+    // metros van sin barra —ver `rotulo`—, que una barra vacía al lado de un
+    // número dice que ese número se está llenando, y no es eso.
+    empujando: acto.puedeEmpujar,
     forcejeo: acto.forcejeo,
     rotulo: acto.rotulo,
     vida: jugador.vida,

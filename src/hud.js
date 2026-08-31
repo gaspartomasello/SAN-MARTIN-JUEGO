@@ -172,18 +172,21 @@ export class Hud {
     // misma: el jugador ya aprendió a mirarla en el peor momento del juego.
     // y no cuando estás muerto: ahí `atrapado` es la cámara cayéndose al pasto,
     // no una pierna abajo de un caballo, y no hay nada que forcejear
+    // LA BARRA Y EL RÓTULO SON DOS COSAS. La barra sale cuando hay algo que
+    // llenar —forcejeando bajo el caballo, o empujando el de San Martín— y el
+    // rótulo puede salir solo: siendo Cabral, mientras corrés, dice a cuántos
+    // metros está. Iban juntos y la barra acompañaba a los metros toda la
+    // corrida, vacía; una barra vacía al lado de un número dice que ese número
+    // se está llenando, que no es lo que pasa.
     const barra = (datos.atrapado > 0 && datos.vida > 0) || datos.empujando;
-    this.forcejeo.classList.toggle('si', barra);
-    if (barra) {
-      this.forcejeo.querySelector('i').style.setProperty('--f',
-        (Math.min(1, datos.forcejeo || 0) * 100).toFixed(0) + '%');
-      // El rótulo lo escribe quien sabe qué se está forcejeando. Siendo Cabral
-      // dice a cuántos metros está San Martín hasta que llegás, y ahí pasa a
-      // decir qué apretar: es lo que evita tener que revisar el campo hombre
-      // por hombre con un español encima.
+    const rotulo = datos.rotulo || (barra ? 'ESPACIO' : '');
+    this.forcejeo.classList.toggle('si', barra || !!rotulo);
+    this.forcejeo.classList.toggle('sinbarra', !barra);
+    if (barra) this.forcejeo.querySelector('i').style.setProperty('--f',
+      (Math.min(1, datos.forcejeo || 0) * 100).toFixed(0) + '%');
+    if (rotulo) {
       const rot = this.forcejeo.querySelector('b');
-      const txt = datos.rotulo || 'ESPACIO';
-      if (rot.textContent !== txt) rot.textContent = txt;
+      if (rot.textContent !== rotulo) rot.textContent = rotulo;
     }
 
     this.tomar.style.opacity = datos.puedeTomarFusil ? '1' : '0';

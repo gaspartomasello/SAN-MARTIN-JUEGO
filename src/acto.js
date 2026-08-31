@@ -59,13 +59,17 @@ const T_AMENAZA = 1.2;      // desde que sos Cabral, el español encara
 // respetar— y en red tampoco, que ya estaba resuelto en main.js.
 const T_FORZADO = 60;
 
-// EL LEVANTE. Media tonelada no se levanta de un toque, y ahora cuesta lo que
-// tiene que costar: contando lo que se cae mientras machacás, son unos treinta
-// espacios y cinco o seis segundos de fuerza. La proporción entre SUBE y CAE
-// es lo que hace que se sienta pesado sin ser injusto; si CAE le ganara a lo
-// que sube un machaque normal, no habría manera y sería otra cosa.
-const LEVANTE_SUBE = 0.062;   // por cada golpe de espacio
-const LEVANTE_CAE = 0.19;     // por segundo sin apretar
+// EL LEVANTE. Media tonelada no se levanta de un toque: son unos catorce
+// espacios seguidos, y si parás se te vuelve a caer más rápido de lo que sube.
+// La proporción entre SUBE y CAE es lo que hace que se sienta pesado sin ser
+// injusto; si CAE fuera mayor que SUBE, no habría manera.
+//
+// SE PROBÓ SUBIRLO —0,062 y 0,19— y quedó peor. Con esos números el levante
+// pasa de «machacar rápido» a «machacar mucho rato», que no es lo mismo: lo
+// que tiene que costar es la INTENSIDAD y no la duración, porque son unos
+// segundos en los que hay un español encima. Volvió a los de antes.
+const LEVANTE_SUBE = 0.085;   // por cada golpe de espacio
+const LEVANTE_CAE = 0.16;     // por segundo sin apretar
 const LEVANTE_CERCA = 2.6;    // hay que estar al lado para empujar
 
 // LA CINEMÁTICA, en cámara lenta y ya sin teclas. Los tiempos son de reloj

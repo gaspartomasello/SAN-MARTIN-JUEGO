@@ -46,6 +46,9 @@
   #forcejeo{position:fixed;left:50%;transform:translateX(-50%);bottom:26%;z-index:12;
     width:230px;pointer-events:none;opacity:0;transition:opacity .35s ease;text-align:center}
   #forcejeo.si{opacity:1}
+  /* los metros hasta San Martín salen sin barra: no hay nada que llenar */
+  #forcejeo.sinbarra i{display:none}
+  #forcejeo.sinbarra b{margin-top:0}
   #forcejeo i{display:block;height:7px;background:rgba(255,255,255,.14);
     border:1px solid rgba(255,255,255,.3);position:relative}
   #forcejeo i::after{content:'';position:absolute;left:0;top:0;bottom:0;

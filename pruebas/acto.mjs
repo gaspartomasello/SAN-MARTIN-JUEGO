@@ -126,6 +126,24 @@ const r = await pag.evaluate(() => {
   };
   machacar(2);
   ok('de lejos no se levanta nada', acto.levante === 0, `barra ${acto.levante.toFixed(2)}`);
+  ok('y de lejos la barra no sale, sólo los metros', !acto.puedeEmpujar && /\d+ M$/.test(acto.rotulo || ''),
+    acto.rotulo);
+
+  // CABRAL SALTA, que es lo que sabe hacer cualquiera de a pie. La primera
+  // versión de esto le apagaba el salto durante TODO el acto para que el
+  // espacio no lo hiciera brincar mientras empujaba, y de paso le sacaba once
+  // metros de correr como una persona.
+  let saltos = 0;
+  const saltarOriginal = j.jugador.saltar.bind(j.jugador);
+  j.jugador.saltar = () => { saltos++; return saltarOriginal(); };
+  const espacio = () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
+  };
+  j.jugador.aliento = 100;
+  espacio(); paso(0.1);
+  ok('corriendo hasta él, Cabral salta como cualquiera', saltos === 1, `${saltos} saltos`);
+  paso(1.2);                      // que caiga antes de seguir
 
   // te acercás
   if (sm) j.jugador.pos.set(sm.pos.x + 1.2, j.jugador.pos.y, sm.pos.z);
@@ -134,20 +152,16 @@ const r = await pag.evaluate(() => {
 
   ok('y ahí la barra dice qué apretar', acto.rotulo === 'ESPACIO, MUCHAS VECES', acto.rotulo);
 
-  // EMPUJANDO NO SE SALTA. El espacio es fuerza contra medio caballo; si además
-  // saltara, el sargento daría brincos arriba de un hombre tirado en el pasto
-  // mientras lo levanta. Se prueba con teclas de verdad, que es de donde salía
-  // el salto: `jugador.actualizar` no salta solo, lo llamaba el mando.
-  let saltos = 0;
-  const saltarOriginal = j.jugador.saltar.bind(j.jugador);
-  j.jugador.saltar = () => { saltos++; return saltarOriginal(); };
+  // PERO AL LADO DEL CABALLO NO. Ahí el espacio es fuerza contra media
+  // tonelada, y si además saltara, el sargento daría brincos arriba de un
+  // hombre tirado en el pasto mientras lo levanta. Se prueba con teclas de
+  // verdad, que es de donde salía el salto: `jugador.actualizar` no salta
+  // solo, lo llamaba el mando.
+  saltos = 0;
+  j.jugador.aliento = 100;
   const altura0 = j.jugador.pos.y;
-  for (let i = 0; i < 20; i++) {
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
-    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
-    paso(1 / 30);
-  }
-  ok('machacar el espacio no lo hace saltar', saltos === 0, `${saltos} saltos`);
+  for (let i = 0; i < 12; i++) { espacio(); paso(1 / 30); }
+  ok('empujando el caballo, en cambio, no salta', saltos === 0, `${saltos} saltos`);
   ok('se queda en el lugar haciendo fuerza', Math.abs(j.jugador.pos.y - altura0) < 0.02,
     `y ${altura0.toFixed(2)} → ${j.jugador.pos.y.toFixed(2)}`);
   j.jugador.saltar = saltarOriginal;
@@ -158,16 +172,27 @@ const r = await pag.evaluate(() => {
   ok('un solo espacio no lo levanta', acto.levante < 0.5 && acto.fase === 'cabral',
     `barra ${acto.levante.toFixed(2)}`);
 
-  // Y CUESTA. Media tonelada no se levanta de un toque: contando lo que se cae
-  // mientras machacás, son unos treinta espacios. Se cuentan de verdad.
+  // Y SOSTENER LA TECLA TAMPOCO, que es la regla de todo esto: no se levanta
+  // medio caballo apoyándose, se levanta machacando. Sube DE GOLPE con cada
+  // pulsación y baja sola, así que con la tecla hundida cuatro segundos la
+  // barra queda donde la dejó el primer golpe y de ahí se cae.
+  acto.levante = 0;
+  teclas.add('Space');
+  paso(4);
+  teclas.delete('Space');
+  ok('y tener la tecla apretada no levanta nada', acto.levante < 0.2 && acto.fase === 'cabral',
+    `barra ${acto.levante.toFixed(2)} en 4 s`);
+
+  // MACHACANDO RÁPIDO SÍ, y en poco: son unos segundos con un español encima,
+  // así que lo que tiene que costar es la intensidad y no la duración.
   acto.levante = 0;
   let golpes = 0;
-  for (let i = 0; i < 60 * 12 && acto.fase === 'cabral'; i++) {
+  for (let i = 0; i < 60 * 8 && acto.fase === 'cabral'; i++) {
     if (i % 6 === 0) { teclas.add('Space'); golpes++; } else teclas.delete('Space');
     paso(1 / 60);
   }
   teclas.delete('Space');
-  ok('levantarlo cuesta más de veinte espacios', golpes > 20, `${golpes} espacios`);
+  ok('machacando rápido sale en unos pocos golpes', golpes > 6 && golpes < 22, `${golpes} espacios`);
 
   machacar(6);
   ok('machacando sí sale', acto.fase === 'cine', `fase ${acto.fase} · barra ${acto.levante.toFixed(2)}`);

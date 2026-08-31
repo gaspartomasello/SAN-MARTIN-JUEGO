@@ -46,6 +46,9 @@
   #forcejeo{position:fixed;left:50%;transform:translateX(-50%);bottom:26%;z-index:12;
     width:230px;pointer-events:none;opacity:0;transition:opacity .35s ease;text-align:center}
   #forcejeo.si{opacity:1}
+  /* los metros hasta San Martín salen sin barra: no hay nada que llenar */
+  #forcejeo.sinbarra i{display:none}
+  #forcejeo.sinbarra b{margin-top:0}
   #forcejeo i{display:block;height:7px;background:rgba(255,255,255,.14);
     border:1px solid rgba(255,255,255,.3);position:relative}
   #forcejeo i::after{content:'';position:absolute;left:0;top:0;bottom:0;
@@ -31996,8 +31999,8 @@ var T_CAIDA = 2.5;
 var T_FUNDIDO = 1;
 var T_AMENAZA = 1.2;
 var T_FORZADO = 60;
-var LEVANTE_SUBE = 0.062;
-var LEVANTE_CAE = 0.19;
+var LEVANTE_SUBE = 0.085;
+var LEVANTE_CAE = 0.16;
 var LEVANTE_CERCA = 2.6;
 var LENTO = 0.42;
 var C_HERIDO = 0.6;
@@ -33254,15 +33257,16 @@ var Hud = class {
       if (this.tFrase <= 0) this.frase.classList.remove("si");
     }
     const barra = datos.atrapado > 0 && datos.vida > 0 || datos.empujando;
-    this.forcejeo.classList.toggle("si", barra);
-    if (barra) {
-      this.forcejeo.querySelector("i").style.setProperty(
-        "--f",
-        (Math.min(1, datos.forcejeo || 0) * 100).toFixed(0) + "%"
-      );
+    const rotulo = datos.rotulo || (barra ? "ESPACIO" : "");
+    this.forcejeo.classList.toggle("si", barra || !!rotulo);
+    this.forcejeo.classList.toggle("sinbarra", !barra);
+    if (barra) this.forcejeo.querySelector("i").style.setProperty(
+      "--f",
+      (Math.min(1, datos.forcejeo || 0) * 100).toFixed(0) + "%"
+    );
+    if (rotulo) {
       const rot = this.forcejeo.querySelector("b");
-      const txt2 = datos.rotulo || "ESPACIO";
-      if (rot.textContent !== txt2) rot.textContent = txt2;
+      if (rot.textContent !== rotulo) rot.textContent = rotulo;
     }
     this.tomar.style.opacity = datos.puedeTomarFusil ? "1" : "0";
     const al = datos.aliento;
@@ -34877,7 +34881,7 @@ function armarMando(ctx) {
         arsenal2.cargar();
         break;
       case "Space": {
-        if (acto2 && acto2.activo) {
+        if (acto2 && acto2.puedeEmpujar) {
           ev.preventDefault();
           break;
         }
@@ -39441,9 +39445,10 @@ function cuadro() {
     atrapado: jugador.atrapado,
     // La barra sale también cuando SOS Cabral empujando el caballo, que es el
     // único momento en que se forcejea sin estar atrapado.
-    // La barra sale durante TODO el tramo de Cabral y no sólo al lado del
-    // caballo: mientras corrés es donde dice a cuántos metros está.
-    empujando: acto.fase === "cabral" || acto.puedeEmpujar,
+    // La barra, sólo al lado del caballo: es lo único que se puede llenar. Los
+    // metros van sin barra —ver `rotulo`—, que una barra vacía al lado de un
+    // número dice que ese número se está llenando, y no es eso.
+    empujando: acto.puedeEmpujar,
     forcejeo: acto.forcejeo,
     rotulo: acto.rotulo,
     vida: jugador.vida,
