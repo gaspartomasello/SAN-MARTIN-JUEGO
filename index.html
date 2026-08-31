@@ -31,6 +31,17 @@
     font-size:21px;letter-spacing:.03em;color:#f2ead6;
     text-shadow:0 2px 14px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.8);padding:0 8%}
   #frase.si{opacity:1}
+  /* ---- caíste ----
+     Va DEBAJO de la frase de San Martín y no encima: la frase es el final de
+     la escena y los botones son lo que viene después. Aparecen recién cuando
+     la pantalla ya está negra, para no cortar el fundido con una interfaz. */
+  #caido{position:fixed;left:0;right:0;bottom:6%;z-index:13;text-align:center;
+    pointer-events:none;opacity:0;transition:opacity 1.1s ease}
+  #caido.si{opacity:1}
+  #caido.oculto{display:none}
+  #caido button{pointer-events:auto;padding:13px 26px;font-size:12.5px;margin:0 5px}
+  #caido .nota{margin-top:14px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:#6C7681}
   /* el forcejeo: una barra que sube y se vuelve a caer, porque no alcanza */
   #forcejeo{position:fixed;left:50%;transform:translateX(-50%);bottom:26%;z-index:12;
     width:230px;pointer-events:none;opacity:0;transition:opacity .35s ease;text-align:center}
@@ -145,6 +156,7 @@
   #pausa .volver{display:inline-block;font-weight:600;text-transform:uppercase;
     letter-spacing:.18em;font-size:13px;color:#0F141A;background:var(--bronce);
     padding:14px 30px}
+  #pausa-menu{margin-top:22px;padding:11px 22px;font-size:12px}
   #pausa .nota{margin-top:20px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
     color:#5E6A75}
 
@@ -350,6 +362,11 @@
 <div id="parpados"></div>
 <div id="fundido"></div>
 <div id="frase"></div>
+<div id="caido" class="oculto">
+  <button id="caido-otra">Volver a empezar</button>
+  <button id="caido-menu" class="flojo">Menú principal</button>
+  <div class="nota">o Enter para ponerte en pie donde caíste</div>
+</div>
 <div id="forcejeo"><i></i><b>ESPACIO</b></div>
 <div id="metralla"></div>
 <div id="sangre"></div>
@@ -378,6 +395,7 @@
     <p>El mouse es tuyo otra vez. La batalla espera: nadie avanza ni te tira hasta que vuelvas.</p>
     <span class="volver">Volver al combate</span>
     <div class="nota">clic en cualquier parte · Esc para soltar el mouse</div>
+    <button id="pausa-menu" class="flojo">Menú principal</button>
   </div>
 </div>
 

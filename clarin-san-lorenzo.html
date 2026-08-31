@@ -31,6 +31,17 @@
     font-size:21px;letter-spacing:.03em;color:#f2ead6;
     text-shadow:0 2px 14px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.8);padding:0 8%}
   #frase.si{opacity:1}
+  /* ---- caíste ----
+     Va DEBAJO de la frase de San Martín y no encima: la frase es el final de
+     la escena y los botones son lo que viene después. Aparecen recién cuando
+     la pantalla ya está negra, para no cortar el fundido con una interfaz. */
+  #caido{position:fixed;left:0;right:0;bottom:6%;z-index:13;text-align:center;
+    pointer-events:none;opacity:0;transition:opacity 1.1s ease}
+  #caido.si{opacity:1}
+  #caido.oculto{display:none}
+  #caido button{pointer-events:auto;padding:13px 26px;font-size:12.5px;margin:0 5px}
+  #caido .nota{margin-top:14px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:#6C7681}
   /* el forcejeo: una barra que sube y se vuelve a caer, porque no alcanza */
   #forcejeo{position:fixed;left:50%;transform:translateX(-50%);bottom:26%;z-index:12;
     width:230px;pointer-events:none;opacity:0;transition:opacity .35s ease;text-align:center}
@@ -145,6 +156,7 @@
   #pausa .volver{display:inline-block;font-weight:600;text-transform:uppercase;
     letter-spacing:.18em;font-size:13px;color:#0F141A;background:var(--bronce);
     padding:14px 30px}
+  #pausa-menu{margin-top:22px;padding:11px 22px;font-size:12px}
   #pausa .nota{margin-top:20px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
     color:#5E6A75}
 
@@ -350,6 +362,11 @@
 <div id="parpados"></div>
 <div id="fundido"></div>
 <div id="frase"></div>
+<div id="caido" class="oculto">
+  <button id="caido-otra">Volver a empezar</button>
+  <button id="caido-menu" class="flojo">Menú principal</button>
+  <div class="nota">o Enter para ponerte en pie donde caíste</div>
+</div>
 <div id="forcejeo"><i></i><b>ESPACIO</b></div>
 <div id="metralla"></div>
 <div id="sangre"></div>
@@ -378,6 +395,7 @@
     <p>El mouse es tuyo otra vez. La batalla espera: nadie avanza ni te tira hasta que vuelvas.</p>
     <span class="volver">Volver al combate</span>
     <div class="nota">clic en cualquier parte · Esc para soltar el mouse</div>
+    <button id="pausa-menu" class="flojo">Menú principal</button>
   </div>
 </div>
 
@@ -27998,24 +28016,50 @@ var Fuego = class {
 };
 
 // src/audio.js
+var VEL_SONIDO = 343;
+var ALCANCE = 145;
+var COMPASES = {
+  paso: [0, 0.25, 0.5, 0.75],
+  trote: [0, 0.5],
+  galope: [0, 0.13, 0.29, 0.42]
+};
+var VIDA_CORAZON = 55;
 var Sonido = class {
   constructor() {
     this.ctx = null;
     this.master = null;
+    this.sordina = null;
     this.filtro = null;
+    this.interno = null;
+    this.apagon = null;
     this.ruido = null;
+    this.oyente = { x: 0, y: 1.7, z: 0 };
+    this.faseCorazon = 0;
+    this.faseCasco = 0;
+    this.ultimoCasco = -1;
+    this.tPitido = 0;
+    this.muriendo = false;
   }
   iniciar() {
     if (this.ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     this.ctx = new AC();
+    this.apagon = this.ctx.createGain();
+    this.apagon.gain.value = 1;
+    this.apagon.connect(this.ctx.destination);
     this.filtro = this.ctx.createBiquadFilter();
     this.filtro.type = "lowpass";
     this.filtro.frequency.value = 2e4;
+    this.filtro.connect(this.apagon);
+    this.sordina = this.ctx.createGain();
+    this.sordina.gain.value = 1;
+    this.sordina.connect(this.filtro);
     this.master = this.ctx.createGain();
     this.master.gain.value = 0.55;
-    this.master.connect(this.filtro);
-    this.filtro.connect(this.ctx.destination);
+    this.master.connect(this.sordina);
+    this.interno = this.ctx.createGain();
+    this.interno.gain.value = 1;
+    this.interno.connect(this.apagon);
     const n = this.ctx.sampleRate * 2;
     this.ruido = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
     const d = this.ruido.getChannelData(0);
@@ -28024,47 +28068,123 @@ var Sonido = class {
   get t() {
     return this.ctx.currentTime;
   }
-  _ruido(dur, gan, tipo, frec, q) {
+  // `op.cuando` retrasa el sonido —para la distancia y para los ecos— y
+  // `op.ataque` es lo que tarda en llegar al máximo. El ataque no es un detalle
+  // de mezcla: cuatro milésimas ya redondean el chasquido de un fusil y lo
+  // convierten en un golpe. Un latigazo necesita una.
+  _ruido(dur, gan, tipo, frec, q, op) {
     const s = this.ctx.createBufferSource();
     s.buffer = this.ruido;
     s.loop = true;
+    const desde = Math.random() * 1.5;
     const f = this.ctx.createBiquadFilter();
     f.type = tipo || "bandpass";
-    f.frequency.value = frec || 1200;
+    f.frequency.value = Math.max(20, Math.min(2e4, frec || 1200));
     f.Q.value = q || 1;
     const g = this.ctx.createGain();
-    const t = this.t;
+    const t = this.t + (op && op.cuando || 0);
+    const ata = op && op.ataque || 4e-3;
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(gan, t + 4e-3);
+    g.gain.linearRampToValueAtTime(gan, t + ata);
     g.gain.exponentialRampToValueAtTime(8e-4, t + dur);
     s.connect(f);
     f.connect(g);
-    g.connect(this.master);
-    s.start(t);
+    g.connect(op && op.a || this.master);
+    s.start(t, desde);
     s.stop(t + dur + 0.05);
     return g;
   }
-  _tono(frec, frecFin, dur, gan, tipo) {
+  _tono(frec, frecFin, dur, gan, tipo, op) {
     const o = this.ctx.createOscillator();
     o.type = tipo || "sine";
     const g = this.ctx.createGain();
-    const t = this.t;
+    const t = this.t + (op && op.cuando || 0);
     o.frequency.setValueAtTime(frec, t);
     if (frecFin) o.frequency.exponentialRampToValueAtTime(frecFin, t + dur);
     g.gain.setValueAtTime(gan, t);
     g.gain.exponentialRampToValueAtTime(8e-4, t + dur);
     o.connect(g);
-    g.connect(this.master);
+    g.connect(op && op.a || this.master);
     o.start(t);
     o.stop(t + dur + 0.02);
   }
+  // Dónde están tus oídos, una vez por cuadro.
+  oir(p) {
+    this.oyente.x = p.x;
+    this.oyente.y = p.y;
+    this.oyente.z = p.z;
+  }
+  // Qué le hace la distancia a un sonido. Devuelve null si está tan lejos que
+  // no vale la pena programar nada: en una batalla de doscientos cincuenta
+  // fusiles eso es la mitad de los tiros.
+  _lejania(origen) {
+    if (!origen) return { d: 0, gan: 1, aire: 1, retardo: 0 };
+    const d = Math.hypot(
+      origen.x - this.oyente.x,
+      (origen.y === void 0 ? this.oyente.y : origen.y) - this.oyente.y,
+      origen.z - this.oyente.z
+    );
+    if (d > ALCANCE) return null;
+    return {
+      d,
+      gan: 1 / (1 + Math.pow(d / 11, 1.55)),
+      aire: Math.max(0.1, 1 - d / 130),
+      retardo: d / VEL_SONIDO
+    };
+  }
   // --- eventos del juego ---
-  disparo() {
+  // EL TIRO. Antes era un golpe grave y un siseo, los dos igual de fuertes
+  // vinieran de donde vinieran, y con el filtro de aturdimiento puesto en cada
+  // uno. Eso último era lo peor y no se notaba como un bug: con seiscientos
+  // cincuenta tiros por batalla el filtro se reponía a los dos segundos y el
+  // tiro siguiente lo volvía a cerrar, así que en pleno tiroteo el juego entero
+  // sonaba tapado y no había manera de saber por qué.
+  //
+  // Un fusil de chispa son TRES cosas encadenadas, y la distancia se lleva las
+  // primeras antes que las últimas:
+  //
+  //   1. el chasquido — dos milésimas, todo el espectro. Es lo que lo hace
+  //      sonar a tiro. Es lo primero que se pierde, y por eso el mismo fusil a
+  //      diez metros es un latigazo y a ochenta es un «pum» redondo.
+  //   2. el cuerpo — la pólvora negra empujando; el golpe que se siente.
+  //   3. la cola — el rebote contra el convento y la barranca. Al revés que
+  //      las otras dos, cuanto más lejos MÁS dura y más tarde llega.
+  //
+  // Y el oído sólo se resiente si fue al lado tuyo, que es lo que pasa de
+  // verdad: el de la fila de atrás no te deja sordo.
+  disparo(origen) {
     if (!this.ctx) return;
-    this._ruido(0.42, 0.95, "lowpass", 2400, 0.7);
-    this._tono(160, 42, 0.32, 0.75, "square");
-    this._tono(70, 30, 0.5, 0.5, "sine");
-    this.aturdir(0.75);
+    const l = this._lejania(origen);
+    if (!l) return;
+    const c = l.gan, aire = l.aire, w = l.retardo;
+    const azar = 0.88 + Math.random() * 0.24;
+    this._ruido(
+      0.055,
+      0.85 * c * aire * aire,
+      "highpass",
+      1500 * aire + 300,
+      0.7,
+      { cuando: w, ataque: 12e-4 }
+    );
+    this._ruido(
+      0.26 * (2 - aire),
+      0.8 * c,
+      "lowpass",
+      (1600 * aire + 260) * azar,
+      0.8,
+      { cuando: w, ataque: 3e-3 }
+    );
+    this._tono(188 * azar, 44, 0.26, 0.66 * c, "square", { cuando: w });
+    this._tono(78 * azar, 30, 0.44, 0.5 * c, "sine", { cuando: w });
+    this._ruido(
+      0.45 + (1 - aire) * 1,
+      0.15 * c,
+      "lowpass",
+      620 * aire + 150,
+      0.6,
+      { cuando: w + 0.08 + (1 - aire) * 0.16, ataque: 0.035 }
+    );
+    if (l.d < 6) this.ensordecer(0.18 + 0.4 * (1 - l.d / 6));
   }
   fogonazo() {
     if (!this.ctx) return;
@@ -28138,18 +28258,17 @@ var Sonido = class {
   }
   // El cañón. No es un disparo más fuerte: es otra cosa. Un golpe grave que
   // se siente en el pecho, con la cola larga del eco sobre el río.
-  canon() {
+  canon(origen) {
     if (!this.ctx) return;
+    const l = this._lejania(origen);
+    if (!l) return;
+    const c = l.gan, w = l.retardo;
     const t = this.t;
-    this._ruido(1.4, 0.9, "lowpass", 380, 0.7);
-    this._tono(70, 26, 1.1, 0.85, "sine");
-    this._tono(120, 40, 0.5, 0.5, "square");
-    setTimeout(() => {
-      if (this.ctx) {
-        this._ruido(1.1, 0.28, "lowpass", 260, 0.7);
-      }
-    }, 480);
-    this.aturdir(2.6);
+    this._ruido(1.4, 0.9 * c, "lowpass", 380, 0.7, { cuando: w, ataque: 2e-3 });
+    this._tono(70, 26, 1.1, 0.85 * c, "sine", { cuando: w });
+    this._tono(120, 40, 0.5, 0.5 * c, "square", { cuando: w });
+    this._ruido(1.1, 0.28 * c, "lowpass", 260, 0.7, { cuando: w + 0.48, ataque: 0.04 });
+    if (l.d < 45) this.ensordecer(1.35 * (1 - l.d / 45) + 0.2);
     return t;
   }
   // la metralla pasando cerca: perdigones cortando el aire
@@ -28159,11 +28278,14 @@ var Sonido = class {
       this._tono(900, 260, 0.3, 0.14, "sawtooth");
     }
   }
-  golpeRecibido() {
-    if (this.ctx) {
-      this._tono(90, 45, 0.35, 0.6, "sine");
-      this.aturdir(1.6);
-    }
+  // TE DIERON. El golpe sordo del plomo contra el cuerpo, y el oído que se te
+  // va. `fuerza` separa el balazo que aguantás —un pitido corto— del que te
+  // saca de la silla, que es el que te deja sin mundo unos segundos.
+  golpeRecibido(fuerza = 0.45) {
+    if (!this.ctx) return;
+    this._tono(90, 45, 0.35, 0.6, "sine");
+    this._ruido(0.18, 0.28, "lowpass", 520, 1, { ataque: 2e-3 });
+    this.ensordecer(fuerza);
   }
   // EL CLARÍN. El que le da el nombre al juego.
   //
@@ -28244,6 +28366,190 @@ var Sonido = class {
       this._tono(320, 140, 0.4, 0.22, "sawtooth");
       this._ruido(0.35, 0.2, "bandpass", 800, 1.2);
     }
+  }
+  // =========================================================================
+  // EL PITIDO — lo que suena cuando te revienta algo al lado
+  // =========================================================================
+  //
+  // No es «bajar el volumen». Un fogonazo cerca satura el oído y lo que queda
+  // son tres cosas a la vez, y ninguna sirve sola:
+  //
+  //   · el mundo se AGACHA de golpe (sordina) y sube despacio;
+  //   · pierde los AGUDOS (filtro), que es lo que lo hace sonar «a través de
+  //     algo» en vez de simplemente más bajo;
+  //   · y adentro de la cabeza queda un TONO agudo que se va solo. Ése va por
+  //     `interno`: no lo tapan ni la sordina ni el filtro, porque no está
+  //     afuera. Es lo que hace que de golpe lo único que se oiga seas vos.
+  ensordecer(fuerza = 1) {
+    if (!this.ctx) return;
+    const f = Math.max(0.12, Math.min(1.4, fuerza));
+    const dur = 1 + f * 3.4;
+    const t = this.t;
+    const piso = Math.max(0.1, 0.78 - f * 0.62);
+    this.sordina.gain.cancelScheduledValues(t);
+    this.sordina.gain.setValueAtTime(piso, t);
+    this.sordina.gain.setTargetAtTime(1, t + 0.06, dur * 0.32);
+    this.aturdir(0.5 + f * 1.7);
+    if (t < this.tPitido) return;
+    this.tPitido = t + dur * 0.55;
+    for (const [frec, peso] of [[4180, 0.07], [6320, 0.026]]) {
+      const o = this.ctx.createOscillator();
+      o.type = "sine";
+      const hz = frec * (0.95 + Math.random() * 0.1);
+      o.frequency.setValueAtTime(hz, t);
+      o.frequency.linearRampToValueAtTime(hz * 0.93, t + dur);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(peso * f, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(6e-4, t + dur);
+      o.connect(g);
+      g.connect(this.interno);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    }
+  }
+  // =========================================================================
+  // EL LATIDO Y LOS CASCOS — los dos sonidos que no son un evento
+  // =========================================================================
+  //
+  // Todo lo demás de este archivo lo dispara algo que pasó. Estos dos son
+  // continuos y hay que llevarlos por tiempo, así que main.js los mueve una
+  // vez por cuadro. No se crea un nodo por cuadro: se crean por latido y por
+  // casco, que a galope tendido son ocho por segundo.
+  actualizar(dt, e) {
+    if (!this.ctx || !e || !(dt > 0)) return;
+    if (e.oyente) this.oir(e.oyente);
+    this._corazon(dt, e);
+    this._cascos(dt, e);
+  }
+  // EL CORAZÓN. No es ambiente: es información, y es la única que no ocupa un
+  // rincón de la pantalla. Cuando la vida baja de la mitad se empieza a oír, y
+  // cuanto peor estás más rápido late —de setenta y cuatro pulsaciones a
+  // ciento sesenta y seis—. Sirve justo cuando no estás mirando la barra:
+  // corriendo de espaldas, con humo, buscando dónde meterte.
+  //
+  // Muriéndote afloja hasta cuarenta y se apaga con todo lo demás. Un corazón
+  // que sigue a ciento sesenta mientras se te cierran los ojos no dice que te
+  // estás yendo: dice que la pantalla se trabó.
+  _corazon(dt, e) {
+    const vida = Math.max(0, Math.min(100, e.vida === void 0 ? 100 : e.vida));
+    if (vida >= VIDA_CORAZON && !this.muriendo) {
+      this.faseCorazon = 0;
+      return;
+    }
+    const apuro = Math.max(0, 1 - vida / VIDA_CORAZON);
+    let ppm = 74 + apuro * 92;
+    let fuerza = 0.09 + apuro * 0.46;
+    if (this.muriendo) {
+      ppm = 40;
+      fuerza = 0.3;
+    }
+    this.faseCorazon += dt * (ppm / 60);
+    if (this.faseCorazon < 1) return;
+    this.faseCorazon -= 1;
+    if (this.faseCorazon > 2) this.faseCorazon = 0;
+    this._latido(fuerza);
+  }
+  // Un latido son DOS golpes y no uno: el «lub» de las válvulas grandes y el
+  // «dub» más corto y un poco más agudo, a ciento sesenta milésimas. Con uno
+  // solo suena a bombo.
+  _latido(f) {
+    const t = this.t;
+    for (const [espera, frec, dur, peso] of [[0, 52, 0.2, 1], [0.16, 63, 0.13, 0.6]]) {
+      const o = this.ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.setValueAtTime(frec, t + espera);
+      o.frequency.exponentialRampToValueAtTime(frec * 0.55, t + espera + dur);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0, t + espera);
+      g.gain.linearRampToValueAtTime(f * peso, t + espera + 0.014);
+      g.gain.exponentialRampToValueAtTime(6e-4, t + espera + dur);
+      o.connect(g);
+      g.connect(this.interno);
+      o.start(t + espera);
+      o.stop(t + espera + dur + 0.03);
+    }
+  }
+  // LOS CASCOS DE TU CABALLO. Sólo el tuyo: ciento veinte caballos sonando
+  // cada uno lo suyo es ruido blanco caro, y de todos modos lo que hace falta
+  // es sentir el andar que llevás VOS, que es la única decisión que estás
+  // tomando mientras cargás.
+  //
+  // El compás lo pone el andar (ver COMPASES arriba) y va por la velocidad
+  // REAL y no por el andar pedido, igual que el resto del juego: el que acaba
+  // de bajar de galope todavía suena a galope hasta que el animal afloja.
+  _cascos(dt, e) {
+    const v = e.montado && e.vivo ? e.vel : 0;
+    if (!(v > 0.7)) {
+      this.faseCasco = 0;
+      this.ultimoCasco = -1;
+      return;
+    }
+    const compas = v > 6.4 ? COMPASES.galope : v > 3.1 ? COMPASES.trote : COMPASES.paso;
+    const zancadas = 0.52 + v * 0.165;
+    this.faseCasco += dt * zancadas;
+    while (this.faseCasco >= 1) {
+      this.faseCasco -= 1;
+      this.ultimoCasco = -1;
+    }
+    const fuerza = Math.min(1, 0.34 + v / 11);
+    for (let i = 0; i < compas.length; i++) {
+      if (i <= this.ultimoCasco || this.faseCasco < compas[i]) continue;
+      this.ultimoCasco = i;
+      this._casco(fuerza, i === 0);
+    }
+  }
+  // Un casco en tierra seca: el golpe grave, y encima el raspón de la arena.
+  // El azar por golpe es lo que lo saca de metrónomo —ocho por segundo
+  // idénticos se oyen como una máquina, no como un animal—.
+  _casco(fuerza, primero) {
+    const azar = 0.84 + Math.random() * 0.32;
+    const p = primero ? 1.25 : 1;
+    this._ruido(0.085, 0.21 * fuerza * p, "lowpass", 240 * azar, 1.1, { ataque: 15e-4 });
+    this._tono(96 * azar, 44, 0.09, 0.17 * fuerza * p, "sine");
+    this._ruido(0.05, 0.05 * fuerza, "bandpass", 2600 * azar, 1.4, { ataque: 2e-3 });
+  }
+  // =========================================================================
+  // LA MUERTE, EN EL OÍDO
+  // =========================================================================
+  //
+  // Va del brazo con `hud.cerrarLosOjos` y con el mismo número de segundos, y
+  // eso es todo el efecto: si el sonido se corta antes que la vista, se lee
+  // como que se colgó; si sigue después de que la pantalla está negra, se lee
+  // como que hay otra pantalla en camino.
+  //
+  // Y no es bajar el volumen: primero se pierden los agudos —el mundo se va
+  // yendo lejos—, después queda un retumbo, y recién al final el silencio. Se
+  // apaga TODO, también el corazón, que para eso está en `apagón` como el
+  // resto.
+  morir(seg = 7) {
+    if (!this.ctx) return;
+    this.muriendo = true;
+    const t = this.t;
+    this.apagon.gain.cancelScheduledValues(t);
+    this.apagon.gain.setValueAtTime(1, t);
+    this.apagon.gain.setValueAtTime(1, t + seg * 0.16);
+    this.apagon.gain.exponentialRampToValueAtTime(8e-4, t + seg * 0.95);
+    this.filtro.frequency.cancelScheduledValues(t);
+    this.filtro.frequency.setValueAtTime(9e3, t);
+    this.filtro.frequency.exponentialRampToValueAtTime(170, t + seg * 0.8);
+    this.sordina.gain.cancelScheduledValues(t);
+    this.sordina.gain.setValueAtTime(1, t);
+  }
+  // y se vuelve en pie
+  revivir() {
+    if (!this.ctx) return;
+    this.muriendo = false;
+    this.faseCorazon = 0;
+    const t = this.t;
+    this.apagon.gain.cancelScheduledValues(t);
+    this.apagon.gain.setValueAtTime(8e-4, t);
+    this.apagon.gain.exponentialRampToValueAtTime(1, t + 0.55);
+    this.sordina.gain.cancelScheduledValues(t);
+    this.sordina.gain.setValueAtTime(1, t);
+    this.filtro.frequency.cancelScheduledValues(t);
+    this.filtro.frequency.setValueAtTime(1800, t);
+    this.filtro.frequency.exponentialRampToValueAtTime(2e4, t + 0.5);
   }
   // sordera momentánea: filtro pasabajos que se abre de a poco
   aturdir(fuerza) {
@@ -29632,7 +29938,7 @@ function sableAlCinto(taller, cadera) {
   return g;
 }
 var HOMBRO_L = { D: new Vector3(0.215, HOMBRO, 0), I: new Vector3(-0.215, HOMBRO, 0) };
-var ALCANCE = (BRAZO + ANTEBRAZO) * 0.985;
+var ALCANCE2 = (BRAZO + ANTEBRAZO) * 0.985;
 var suj = (v, a, b) => Math.max(a, Math.min(b, v));
 var POSES = {
   // armas terciadas: cruzada sobre el pecho, las dos manos puestas. Es la
@@ -29858,7 +30164,7 @@ var Figura = class {
       d = 1e-4;
     }
     const dir = dv.divideScalar(d);
-    d = suj(d, Math.abs(BRAZO - ANTEBRAZO) + 0.03, ALCANCE);
+    d = suj(d, Math.abs(BRAZO - ANTEBRAZO) + 0.03, ALCANCE2);
     const A = Math.acos(suj((BRAZO * BRAZO + d * d - ANTEBRAZO * ANTEBRAZO) / (2 * BRAZO * d), -1, 1));
     const perp = t.b.copy(polo).addScaledVector(dir, -polo.dot(dir));
     if (perp.lengthSq() < 1e-6) perp.set(0, 0, 1).addScaledVector(dir, -dir.z);
@@ -29885,7 +30191,7 @@ var Figura = class {
     const S = t.s.copy(HOMBRO_L.I).applyQuaternion(qTorso);
     const w = t.a.copy(manoD).sub(S);
     const b = w.dot(dir);
-    const disc = b * b - (w.lengthSq() - ALCANCE * ALCANCE);
+    const disc = b * b - (w.lengthSq() - ALCANCE2 * ALCANCE2);
     let k = agarre;
     if (disc > 0) k = Math.min(agarre, Math.max(0.1, -b + Math.sqrt(disc)));
     else k = 0.16;
@@ -31650,7 +31956,7 @@ var Soldado = class _Soldado {
   _descargar() {
     const origen = new Vector3(this.pos.x, this.pos.y + (this.rodilla ? 1.02 : 1.38), this.pos.z);
     const dir = new Vector3().subVectors(this.objetivo.pos, origen).normalize();
-    this.sonido.disparo();
+    this.sonido.disparo(origen);
     this.humo.soltar(
       origen.clone().addScaledVector(dir, 0.9),
       dir,
@@ -32758,9 +33064,29 @@ var Hud = class {
       this.parpados.classList.add("si");
     }
     setTimeout(() => this.fundir(1, t * 0.42), t * 0.5 * 1e3);
+    this.mostrarCaido(true, t * 0.96);
+  }
+  // LOS BOTONES DEL QUE CAYÓ. Van al final del fundido y no al principio: una
+  // interfaz encima de la vista que se apaga corta la escena justo donde no
+  // hay que cortarla. Primero se termina de morir y después se decide.
+  mostrarCaido(si, seg) {
+    const caja3 = document.getElementById("caido");
+    if (!caja3) return;
+    clearTimeout(this._tCaido);
+    if (!si) {
+      caja3.classList.remove("si");
+      caja3.classList.add("oculto");
+      return;
+    }
+    this._tCaido = setTimeout(() => {
+      caja3.classList.remove("oculto");
+      void caja3.offsetHeight;
+      caja3.classList.add("si");
+    }, Math.max(0, (seg || 0) * 1e3));
   }
   // y se vuelven a abrir
   abrirLosOjos() {
+    this.mostrarCaido(false);
     const l = document.getElementById("lienzo");
     if (l) {
       l.style.transitionDuration = "0.5s";
@@ -32924,7 +33250,7 @@ function armarCombate(ctx) {
     jugador2.desmontar();
     jugador2.recibir(CAIDA, new Vector3(0, 0, 1));
     jugador2.sacudir(0.9);
-    sonido2.golpeRecibido();
+    sonido2.golpeRecibido(1.25);
     c.andar = 3;
     hud2.mostrarAviso(aviso || "\xA1Te voltearon!", "malo");
     return true;
@@ -32935,7 +33261,7 @@ function armarCombate(ctx) {
     if (Math.random() < riesgo) return voltear(aviso);
     jugador2.agarre = Math.max(0, jugador2.agarre - AGARRE_AFLOJA);
     jugador2.sacudir(0.45 + (1 - jugador2.agarre) * 0.35);
-    sonido2.golpeRecibido();
+    sonido2.golpeRecibido(0.55 + (1 - jugador2.agarre) * 0.3);
     hud2.mostrarAviso(jugador2.agarre < 0.45 ? "\xA1Te vas de la silla!" : "Te tambaleaste", "malo");
     return false;
   }
@@ -33887,7 +34213,7 @@ var BRONCE_OSC = 7164196;
 var CURE\u00D1A = 4873274;
 var HIERRO2 = 3947062;
 var RAYO = 6244910;
-var ALCANCE2 = 78;
+var ALCANCE3 = 78;
 var CONO = 0.36;
 var AVISO = 2.1;
 var APUNTAR = 1.4;
@@ -34015,14 +34341,14 @@ var Canon = class {
   fuerzaSobre(punto) {
     const dx = punto.x - this.pos.x, dz = punto.z - this.pos.z;
     const d = Math.hypot(dx, dz);
-    if (d > ALCANCE2 || d < 1.5) return 0;
+    if (d > ALCANCE3 || d < 1.5) return 0;
     const ang2 = Math.atan2(dx / d, dz / d);
     const mio = this.rumbo + Math.PI;
     let dif = ang2 - mio;
     dif = Math.abs(Math.atan2(Math.sin(dif), Math.cos(dif)));
     if (dif > CONO) return 0;
     const centrado = 1 - dif / CONO * 0.5;
-    const cerca = 1 - Math.pow(d / ALCANCE2, 1.4);
+    const cerca = 1 - Math.pow(d / ALCANCE3, 1.4);
     return centrado * cerca;
   }
   actualizar(dt, candidatos) {
@@ -34053,7 +34379,7 @@ var Canon = class {
     let mejor = null, mejorD = Infinity;
     for (const c of candidatos) {
       const d = Math.hypot(c.pos.x - this.pos.x, c.pos.z - this.pos.z);
-      if (d > ALCANCE2 || d < 6) continue;
+      if (d > ALCANCE3 || d < 6) continue;
       const peso = d * (c.montado ? 0.55 : 1);
       if (peso < mejorD) {
         mejorD = peso;
@@ -34097,7 +34423,7 @@ var Canon = class {
     this.recarga = RECARGA2;
     const b = this.boca().clone();
     const dir = this._humoDir.set(-Math.sin(this.rumbo), 0.06, -Math.cos(this.rumbo)).normalize();
-    this.sonido.canon();
+    this.sonido.canon(this.pos);
     this.humo.soltar(b, dir, {
       cantidad: 26,
       vida: 13,
@@ -34529,15 +34855,7 @@ function armarMando(ctx) {
         hud2.verDepurar = !hud2.verDepurar;
         break;
       case "Enter":
-        if (!jugador2.vivo) {
-          jugador2.liberar();
-          hud2.abrirLosOjos();
-          jugador2.revivir();
-          if (!red2.activo) campo2.limpiarCampo();
-          arsenal2.reponer();
-          campo2.ponerCaballo();
-          hud2.mostrarAviso("En pie", "bien");
-        }
+        ponerseEnPie();
         break;
     }
   });
@@ -34572,7 +34890,9 @@ function armarMando(ctx) {
     if (!bloqueado) return;
     jugador2.mirar(ev.movementX || 0, ev.movementY || 0, sensibilidad);
   });
+  let estaCaido = false;
   function mostrarPausa(si) {
+    if (si && estaCaido) return;
     pantallaPausa.classList.toggle("oculto", !si);
     document.body.style.cursor = si ? "default" : "none";
   }
@@ -34588,16 +34908,53 @@ function armarMando(ctx) {
       arsenal2.apuntando = false;
       sable2.bajarGuardia();
       tSoltado = performance.now();
-      if (empezado) mostrarPausa(true);
+      if (empezado && !estaCaido) mostrarPausa(true);
     } else {
       mostrarPausa(false);
     }
   });
   document.addEventListener("pointerlockerror", () => {
     bloqueado = false;
-    if (empezado) mostrarPausa(true);
+    if (empezado && !estaCaido) mostrarPausa(true);
   });
   pantallaPausa.addEventListener("click", pedirMouse);
+  function caiste() {
+    estaCaido = true;
+    mostrarPausa(false);
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
+  function ponerseEnPie() {
+    if (jugador2.vivo) return false;
+    estaCaido = false;
+    jugador2.liberar();
+    hud2.abrirLosOjos();
+    sonido2.revivir();
+    jugador2.revivir();
+    if (!red2.activo) campo2.limpiarCampo();
+    arsenal2.reponer();
+    campo2.ponerCaballo();
+    hud2.mostrarAviso("En pie", "bien");
+    return true;
+  }
+  function volverAEmpezar() {
+    const rearmar = !red2.activo && acto2 && acto2.enBatalla;
+    if (!ponerseEnPie()) return;
+    if (rearmar) {
+      campo2.formarPinza();
+      arsenal2.reponer();
+      hud2.mostrarAviso("De vuelta detr\xE1s del convento \xB7 [T] toca el clar\xEDn", "bien");
+    }
+    pedirMouse();
+  }
+  function alMenu() {
+    location.reload();
+  }
+  document.getElementById("caido-otra").addEventListener("click", volverAEmpezar);
+  document.getElementById("caido-menu").addEventListener("click", alMenu);
+  document.getElementById("pausa-menu").addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    alMenu();
+  });
   function soltarMouse() {
     teclas.clear();
     arsenal2.apuntando = false;
@@ -34744,6 +35101,7 @@ function armarMando(ctx) {
     teclas,
     arrancar,
     abrirSala,
+    caiste,
     // el mundo no corre con la pausa puesta, pero se sigue dibujando
     get enPausa() {
       return empezado && !bloqueado;
@@ -38293,7 +38651,7 @@ function armarRed(ctx) {
         break;
       case "canon": {
         const c = porId.get(m.id);
-        sonido2.canon();
+        sonido2.canon(c ? c.pos : null);
         if (c) {
           _v.set(c.pos.x - Math.sin(c.rumbo) * 1.6, 0.85, c.pos.z - Math.cos(c.rumbo) * 1.6);
           _d.set(-Math.sin(c.rumbo), 0.12, -Math.cos(c.rumbo));
@@ -38379,7 +38737,7 @@ function armarRed(ctx) {
     _v.set(m.o[0], m.o[1], m.o[2]);
     if (_v.distanceTo(jugador2.pos) > CERCA_TIRO) return;
     _d.set(m.d[0], m.d[1], m.d[2]);
-    sonido2.disparo();
+    sonido2.disparo(_v);
     humo2.soltar(
       _v.clone().addScaledVector(_d, 0.9),
       _d,
@@ -38771,6 +39129,8 @@ jugador.alMorir = () => {
   }
   jugador.sacudir(0.8);
   hud.cerrarLosOjos(7);
+  sonido.morir(7);
+  mando.caiste();
   setTimeout(() => hud.decir(frasePostrera(), 9), 2200);
 };
 var acto = new ActoCabral({
@@ -38911,6 +39271,13 @@ function simular(dt) {
     for (const c of canones) c.actualizar(dt, candidatos);
   }
   campo.actualizarOleadas(dt);
+  sonido.actualizar(dt, {
+    oyente: jugador.pos,
+    vida: jugador.vida,
+    vivo: jugador.vivo && !jugador.espectador,
+    montado: montado(),
+    vel: montado() ? jugador.monta.vel : 0
+  });
   luzBoca.intensity = Math.max(0, luzBoca.intensity - dt * 260);
   red.latir(dt);
   return { presion, arma, quiereApuntar };
@@ -38983,6 +39350,7 @@ window.juego = {
   red,
   moral,
   plano,
+  sonido,
   balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
   // el mundo
   jugador,

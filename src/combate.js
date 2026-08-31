@@ -75,7 +75,10 @@ export function armarCombate (ctx) {
     jugador.desmontar();
     jugador.recibir(CAIDA, new THREE.Vector3(0, 0, 1));
     jugador.sacudir(0.9);
-    sonido.golpeRecibido();
+    // CAERSE DE UN CABALLO NO ES QUE TE PEGUEN. Vas a dos metros del piso y a
+    // diez metros por segundo: el golpe te deja unos segundos sin mundo, con el
+    // pitido puesto. Es el aviso más fuerte que da el juego y tiene que doler.
+    sonido.golpeRecibido(1.25);
     c.andar = 3;                 // el caballo se dispara sin jinete
     hud.mostrarAviso(aviso || '¡Te voltearon!', 'malo');
     return true;
@@ -92,7 +95,8 @@ export function armarCombate (ctx) {
     if (Math.random() < riesgo) return voltear(aviso);
     jugador.agarre = Math.max(0, jugador.agarre - AGARRE_AFLOJA);
     jugador.sacudir(0.45 + (1 - jugador.agarre) * 0.35);
-    sonido.golpeRecibido();
+    // te tambaleaste pero seguís arriba: el oído se resiente y se recompone
+    sonido.golpeRecibido(0.55 + (1 - jugador.agarre) * 0.3);
     hud.mostrarAviso(jugador.agarre < 0.45 ? '¡Te vas de la silla!' : 'Te tambaleaste', 'malo');
     return false;
   }

@@ -19,6 +19,7 @@
     "balance": "node pruebas/balance.mjs",
     "tablas": "RAPIDO=1 node pruebas/balance.mjs",
     "fuego": "node pruebas/fuego.mjs",
+    "oido": "node pruebas/oido.mjs",
     "desbande": "node pruebas/desbande.mjs",
     "pruebas": "node -e \"const s=require('fs').readdirSync('pruebas').filter(x=>x.endsWith('.mjs')).map(x=>x.slice(0,-4));console.log('Correr una: CHROMIUM=<ruta al chrome> node pruebas/<nombre>.mjs');console.log('Sin navegador: npm run tablas\\n');console.log(s.join(' '))\""
   },

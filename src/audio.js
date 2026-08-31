@@ -1,25 +1,90 @@
 // Sonido procedural: nada de archivos, todo sintetizado con Web Audio.
 // La pólvora negra suena a golpe grave + siseo; el metal, a transitorio corto.
+//
+// ---------------------------------------------------------------------------
+// EL GRAFO, Y POR QUÉ SON CUATRO NODOS Y NO UNO
+// ---------------------------------------------------------------------------
+//
+//   lo del campo  →  mezcla  →  sordina  →  filtro  ┐
+//                                                    ├→  apagón  →  parlantes
+//   lo de adentro →  interno ──────────────────────┘
+//
+// Cada efecto mueve UN parámetro y ninguno comparte el suyo con otro. No es
+// prolijidad: dos automatizaciones sobre el mismo AudioParam se pisan, y el
+// resultado no es una mezcla de las dos sino la última que se programó. Con un
+// solo nodo de ganancia, morirse mientras te zumban los oídos apagaba el
+// desvanecimiento —o al revés— según cuál llegara segunda.
+//
+//   sordina  el mundo se agacha cuando te revienta algo al lado
+//   filtro   y pierde los agudos: es lo que hace que suene «a través de algo»
+//   apagón   el desvanecimiento de la muerte, y nada más que eso
+//
+// Y LO DE ADENTRO NO PASA POR AHÍ. El corazón y el pitido del oído no son
+// sonidos del campo: son tuyos. Van por `interno`, que esquiva la sordina y el
+// filtro, así que un cañonazo al lado te tapa el mundo y NO te tapa el pulso.
+// Ese contraste es el efecto: no es que se oiga menos, es que de golpe lo
+// único que se oye sos vos.
+
+// El aire se come los agudos y el sonido tarda en llegar. Las dos cosas juntas
+// son lo que distingue un tiro a diez metros de uno a ochenta, y sin ellas
+// doscientos cincuenta fusiles suenan todos adentro de tu oreja.
+const VEL_SONIDO = 343;          // metros por segundo
+const ALCANCE = 145;             // más lejos que esto no se programa nada
+
+// Los compases de cada andar, en fracción de zancada. Un caballo no hace
+// «tap tap tap»: al paso son cuatro golpes parejos; al trote dos, porque las
+// patas van en diagonal de a pares; al galope tres o cuatro apretados y
+// después un silencio, que es el momento en que el animal está entero en el
+// aire. Ese silencio ES el galope: sin él suena a trote apurado.
+const COMPASES = {
+  paso: [0, 0.25, 0.50, 0.75],
+  trote: [0, 0.50],
+  galope: [0, 0.13, 0.29, 0.42]
+};
+const VIDA_CORAZON = 55;         // de acá para abajo se empieza a oír el pulso
 
 export class Sonido {
   constructor () {
     this.ctx = null;
-    this.master = null;
+    this.master = null;   // la mezcla del campo: todo lo de afuera entra acá
+    this.sordina = null;  // cuánto se agacha el mundo
     this.filtro = null;   // el "aturdimiento" tras el disparo
+    this.interno = null;  // el corazón y el pitido: no los toca nada
+    this.apagon = null;   // el desvanecimiento de la muerte
     this.ruido = null;
+    // dónde están tus oídos. Lo pone main.js una vez por cuadro.
+    this.oyente = { x: 0, y: 1.7, z: 0 };
+    this.faseCorazon = 0;
+    this.faseCasco = 0;
+    this.ultimoCasco = -1;
+    this.tPitido = 0;
+    this.muriendo = false;
   }
 
   iniciar () {
     if (this.ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     this.ctx = new AC();
+    this.apagon = this.ctx.createGain();
+    this.apagon.gain.value = 1;
+    this.apagon.connect(this.ctx.destination);
+
     this.filtro = this.ctx.createBiquadFilter();
     this.filtro.type = 'lowpass';
     this.filtro.frequency.value = 20000;
+    this.filtro.connect(this.apagon);
+
+    this.sordina = this.ctx.createGain();
+    this.sordina.gain.value = 1;
+    this.sordina.connect(this.filtro);
+
     this.master = this.ctx.createGain();
     this.master.gain.value = 0.55;
-    this.master.connect(this.filtro);
-    this.filtro.connect(this.ctx.destination);
+    this.master.connect(this.sordina);
+
+    this.interno = this.ctx.createGain();
+    this.interno.gain.value = 1;
+    this.interno.connect(this.apagon);
 
     // buffer de ruido blanco reutilizable
     const n = this.ctx.sampleRate * 2;
@@ -30,45 +95,104 @@ export class Sonido {
 
   get t () { return this.ctx.currentTime; }
 
-  _ruido (dur, gan, tipo, frec, q) {
+  // `op.cuando` retrasa el sonido —para la distancia y para los ecos— y
+  // `op.ataque` es lo que tarda en llegar al máximo. El ataque no es un detalle
+  // de mezcla: cuatro milésimas ya redondean el chasquido de un fusil y lo
+  // convierten en un golpe. Un latigazo necesita una.
+  _ruido (dur, gan, tipo, frec, q, op) {
     const s = this.ctx.createBufferSource();
     s.buffer = this.ruido;
     s.loop = true;
+    // que no arranque siempre en la misma muestra: si no, dos ruidos cortos
+    // seguidos son el mismo ruido y se oye la repetición
+    const desde = Math.random() * 1.5;
     const f = this.ctx.createBiquadFilter();
     f.type = tipo || 'bandpass';
-    f.frequency.value = frec || 1200;
+    f.frequency.value = Math.max(20, Math.min(20000, frec || 1200));
     f.Q.value = q || 1;
     const g = this.ctx.createGain();
-    const t = this.t;
+    const t = this.t + ((op && op.cuando) || 0);
+    const ata = (op && op.ataque) || 0.004;
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(gan, t + 0.004);
+    g.gain.linearRampToValueAtTime(gan, t + ata);
     g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
-    s.connect(f); f.connect(g); g.connect(this.master);
-    s.start(t); s.stop(t + dur + 0.05);
+    s.connect(f); f.connect(g); g.connect((op && op.a) || this.master);
+    s.start(t, desde); s.stop(t + dur + 0.05);
     return g;
   }
 
-  _tono (frec, frecFin, dur, gan, tipo) {
+  _tono (frec, frecFin, dur, gan, tipo, op) {
     const o = this.ctx.createOscillator();
     o.type = tipo || 'sine';
     const g = this.ctx.createGain();
-    const t = this.t;
+    const t = this.t + ((op && op.cuando) || 0);
     o.frequency.setValueAtTime(frec, t);
     if (frecFin) o.frequency.exponentialRampToValueAtTime(frecFin, t + dur);
     g.gain.setValueAtTime(gan, t);
     g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
-    o.connect(g); g.connect(this.master);
+    o.connect(g); g.connect((op && op.a) || this.master);
     o.start(t); o.stop(t + dur + 0.02);
+  }
+
+  // Dónde están tus oídos, una vez por cuadro.
+  oir (p) { this.oyente.x = p.x; this.oyente.y = p.y; this.oyente.z = p.z; }
+
+  // Qué le hace la distancia a un sonido. Devuelve null si está tan lejos que
+  // no vale la pena programar nada: en una batalla de doscientos cincuenta
+  // fusiles eso es la mitad de los tiros.
+  _lejania (origen) {
+    if (!origen) return { d: 0, gan: 1, aire: 1, retardo: 0 };
+    const d = Math.hypot(origen.x - this.oyente.x,
+      (origen.y === undefined ? this.oyente.y : origen.y) - this.oyente.y,
+      origen.z - this.oyente.z);
+    if (d > ALCANCE) return null;
+    return {
+      d,
+      gan: 1 / (1 + Math.pow(d / 11, 1.55)),
+      aire: Math.max(0.10, 1 - d / 130),
+      retardo: d / VEL_SONIDO
+    };
   }
 
   // --- eventos del juego ---
 
-  disparo () {
+  // EL TIRO. Antes era un golpe grave y un siseo, los dos igual de fuertes
+  // vinieran de donde vinieran, y con el filtro de aturdimiento puesto en cada
+  // uno. Eso último era lo peor y no se notaba como un bug: con seiscientos
+  // cincuenta tiros por batalla el filtro se reponía a los dos segundos y el
+  // tiro siguiente lo volvía a cerrar, así que en pleno tiroteo el juego entero
+  // sonaba tapado y no había manera de saber por qué.
+  //
+  // Un fusil de chispa son TRES cosas encadenadas, y la distancia se lleva las
+  // primeras antes que las últimas:
+  //
+  //   1. el chasquido — dos milésimas, todo el espectro. Es lo que lo hace
+  //      sonar a tiro. Es lo primero que se pierde, y por eso el mismo fusil a
+  //      diez metros es un latigazo y a ochenta es un «pum» redondo.
+  //   2. el cuerpo — la pólvora negra empujando; el golpe que se siente.
+  //   3. la cola — el rebote contra el convento y la barranca. Al revés que
+  //      las otras dos, cuanto más lejos MÁS dura y más tarde llega.
+  //
+  // Y el oído sólo se resiente si fue al lado tuyo, que es lo que pasa de
+  // verdad: el de la fila de atrás no te deja sordo.
+  disparo (origen) {
     if (!this.ctx) return;
-    this._ruido(0.42, 0.95, 'lowpass', 2400, 0.7);
-    this._tono(160, 42, 0.32, 0.75, 'square');
-    this._tono(70, 30, 0.5, 0.5, 'sine');
-    this.aturdir(0.75);
+    const l = this._lejania(origen);
+    if (!l) return;
+    const c = l.gan, aire = l.aire, w = l.retardo;
+    // dos tiros nunca son idénticos: la carga, el pistón, hacia dónde apunta
+    const azar = 0.88 + Math.random() * 0.24;
+
+    this._ruido(0.055, 0.85 * c * aire * aire, 'highpass', 1500 * aire + 300, 0.7,
+      { cuando: w, ataque: 0.0012 });
+    this._ruido(0.26 * (2 - aire), 0.8 * c, 'lowpass', (1600 * aire + 260) * azar, 0.8,
+      { cuando: w, ataque: 0.003 });
+    this._tono(188 * azar, 44, 0.26, 0.66 * c, 'square', { cuando: w });
+    this._tono(78 * azar, 30, 0.44, 0.5 * c, 'sine', { cuando: w });
+    this._ruido(0.45 + (1 - aire) * 1.0, 0.15 * c, 'lowpass', 620 * aire + 150, 0.6,
+      { cuando: w + 0.08 + (1 - aire) * 0.16, ataque: 0.035 });
+
+    if (l.d < 6) this.ensordecer(0.18 + 0.4 * (1 - l.d / 6));
   }
 
   fogonazo () {           // cebó y no salió el tiro: sólo la cazoleta
@@ -132,22 +256,34 @@ export class Sonido {
   }
   // El cañón. No es un disparo más fuerte: es otra cosa. Un golpe grave que
   // se siente en el pecho, con la cola larga del eco sobre el río.
-  canon () {
+  canon (origen) {
     if (!this.ctx) return;
+    const l = this._lejania(origen);
+    if (!l) return;
+    const c = l.gan, w = l.retardo;
     const t = this.t;
-    this._ruido(1.4, 0.9, 'lowpass', 380, 0.7);
-    this._tono(70, 26, 1.1, 0.85, 'sine');
-    this._tono(120, 40, 0.5, 0.5, 'square');
+    this._ruido(1.4, 0.9 * c, 'lowpass', 380, 0.7, { cuando: w, ataque: 0.002 });
+    this._tono(70, 26, 1.1, 0.85 * c, 'sine', { cuando: w });
+    this._tono(120, 40, 0.5, 0.5 * c, 'square', { cuando: w });
     // el eco contra la barranca, medio segundo después y a la mitad
-    setTimeout(() => { if (this.ctx) { this._ruido(1.1, 0.28, 'lowpass', 260, 0.7); } }, 480);
-    this.aturdir(2.6);
+    this._ruido(1.1, 0.28 * c, 'lowpass', 260, 0.7, { cuando: w + 0.48, ataque: 0.04 });
+    // Una pieza de a cuatro a veinte metros te deja sordo; a ciento veinte, no.
+    if (l.d < 45) this.ensordecer(1.35 * (1 - l.d / 45) + 0.2);
     return t;
   }
 
   // la metralla pasando cerca: perdigones cortando el aire
   metralla () { if (this.ctx) { this._ruido(0.45, 0.34, 'highpass', 2100, 1.6); this._tono(900, 260, 0.3, 0.14, 'sawtooth'); } }
 
-  golpeRecibido () { if (this.ctx) { this._tono(90, 45, 0.35, 0.6, 'sine'); this.aturdir(1.6); } }
+  // TE DIERON. El golpe sordo del plomo contra el cuerpo, y el oído que se te
+  // va. `fuerza` separa el balazo que aguantás —un pitido corto— del que te
+  // saca de la silla, que es el que te deja sin mundo unos segundos.
+  golpeRecibido (fuerza = 0.45) {
+    if (!this.ctx) return;
+    this._tono(90, 45, 0.35, 0.6, 'sine');
+    this._ruido(0.18, 0.28, 'lowpass', 520, 1, { ataque: 0.002 });
+    this.ensordecer(fuerza);
+  }
   // EL CLARÍN. El que le da el nombre al juego.
   //
   // Un clarín de caballería no tiene pistones: sólo puede dar las notas de la
@@ -221,6 +357,191 @@ export class Sonido {
   }
 
   grito () { if (this.ctx) { this._tono(320, 140, 0.4, 0.22, 'sawtooth'); this._ruido(0.35, 0.2, 'bandpass', 800, 1.2); } }
+
+  // =========================================================================
+  // EL PITIDO — lo que suena cuando te revienta algo al lado
+  // =========================================================================
+  //
+  // No es «bajar el volumen». Un fogonazo cerca satura el oído y lo que queda
+  // son tres cosas a la vez, y ninguna sirve sola:
+  //
+  //   · el mundo se AGACHA de golpe (sordina) y sube despacio;
+  //   · pierde los AGUDOS (filtro), que es lo que lo hace sonar «a través de
+  //     algo» en vez de simplemente más bajo;
+  //   · y adentro de la cabeza queda un TONO agudo que se va solo. Ése va por
+  //     `interno`: no lo tapan ni la sordina ni el filtro, porque no está
+  //     afuera. Es lo que hace que de golpe lo único que se oiga seas vos.
+  ensordecer (fuerza = 1) {
+    if (!this.ctx) return;
+    const f = Math.max(0.12, Math.min(1.4, fuerza));
+    const dur = 1.0 + f * 3.4;
+    const t = this.t;
+
+    // el mundo se agacha. Se baja de golpe a propósito: un oído saturado no
+    // hace un fundido, se cierra. Lo que lleva tiempo es volver.
+    const piso = Math.max(0.10, 0.78 - f * 0.62);
+    this.sordina.gain.cancelScheduledValues(t);
+    this.sordina.gain.setValueAtTime(piso, t);
+    this.sordina.gain.setTargetAtTime(1, t + 0.06, dur * 0.32);
+
+    // y pierde los agudos
+    this.aturdir(0.5 + f * 1.7);
+
+    // EL TONO NO SE APILA. Con nueve balazos por muerte, sumar un oscilador
+    // por golpe deja un acorde de pitidos que no se va más; mientras uno está
+    // sonando fuerte, el siguiente sólo agacha el mundo.
+    if (t < this.tPitido) return;
+    this.tPitido = t + dur * 0.55;
+    for (const [frec, peso] of [[4180, 0.070], [6320, 0.026]]) {
+      const o = this.ctx.createOscillator();
+      o.type = 'sine';
+      // cada pitido en su nota: siempre el mismo se vuelve un zumbido de tubo
+      const hz = frec * (0.95 + Math.random() * 0.1);
+      o.frequency.setValueAtTime(hz, t);
+      o.frequency.linearRampToValueAtTime(hz * 0.93, t + dur);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(peso * f, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0006, t + dur);
+      o.connect(g); g.connect(this.interno);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+  }
+
+  // =========================================================================
+  // EL LATIDO Y LOS CASCOS — los dos sonidos que no son un evento
+  // =========================================================================
+  //
+  // Todo lo demás de este archivo lo dispara algo que pasó. Estos dos son
+  // continuos y hay que llevarlos por tiempo, así que main.js los mueve una
+  // vez por cuadro. No se crea un nodo por cuadro: se crean por latido y por
+  // casco, que a galope tendido son ocho por segundo.
+  actualizar (dt, e) {
+    if (!this.ctx || !e || !(dt > 0)) return;
+    if (e.oyente) this.oir(e.oyente);
+    this._corazon(dt, e);
+    this._cascos(dt, e);
+  }
+
+  // EL CORAZÓN. No es ambiente: es información, y es la única que no ocupa un
+  // rincón de la pantalla. Cuando la vida baja de la mitad se empieza a oír, y
+  // cuanto peor estás más rápido late —de setenta y cuatro pulsaciones a
+  // ciento sesenta y seis—. Sirve justo cuando no estás mirando la barra:
+  // corriendo de espaldas, con humo, buscando dónde meterte.
+  //
+  // Muriéndote afloja hasta cuarenta y se apaga con todo lo demás. Un corazón
+  // que sigue a ciento sesenta mientras se te cierran los ojos no dice que te
+  // estás yendo: dice que la pantalla se trabó.
+  _corazon (dt, e) {
+    const vida = Math.max(0, Math.min(100, e.vida === undefined ? 100 : e.vida));
+    if (vida >= VIDA_CORAZON && !this.muriendo) { this.faseCorazon = 0; return; }
+    const apuro = Math.max(0, 1 - vida / VIDA_CORAZON);
+    let ppm = 74 + apuro * 92;
+    let fuerza = 0.09 + apuro * 0.46;
+    if (this.muriendo) { ppm = 40; fuerza = 0.30; }
+    this.faseCorazon += dt * (ppm / 60);
+    if (this.faseCorazon < 1) return;
+    this.faseCorazon -= 1;
+    if (this.faseCorazon > 2) this.faseCorazon = 0;   // volvió de una pausa larga
+    this._latido(fuerza);
+  }
+
+  // Un latido son DOS golpes y no uno: el «lub» de las válvulas grandes y el
+  // «dub» más corto y un poco más agudo, a ciento sesenta milésimas. Con uno
+  // solo suena a bombo.
+  _latido (f) {
+    const t = this.t;
+    for (const [espera, frec, dur, peso] of [[0, 52, 0.20, 1], [0.16, 63, 0.13, 0.6]]) {
+      const o = this.ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(frec, t + espera);
+      o.frequency.exponentialRampToValueAtTime(frec * 0.55, t + espera + dur);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0, t + espera);
+      g.gain.linearRampToValueAtTime(f * peso, t + espera + 0.014);
+      g.gain.exponentialRampToValueAtTime(0.0006, t + espera + dur);
+      o.connect(g); g.connect(this.interno);
+      o.start(t + espera); o.stop(t + espera + dur + 0.03);
+    }
+  }
+
+  // LOS CASCOS DE TU CABALLO. Sólo el tuyo: ciento veinte caballos sonando
+  // cada uno lo suyo es ruido blanco caro, y de todos modos lo que hace falta
+  // es sentir el andar que llevás VOS, que es la única decisión que estás
+  // tomando mientras cargás.
+  //
+  // El compás lo pone el andar (ver COMPASES arriba) y va por la velocidad
+  // REAL y no por el andar pedido, igual que el resto del juego: el que acaba
+  // de bajar de galope todavía suena a galope hasta que el animal afloja.
+  _cascos (dt, e) {
+    const v = e.montado && e.vivo ? e.vel : 0;
+    if (!(v > 0.7)) { this.faseCasco = 0; this.ultimoCasco = -1; return; }
+    const compas = v > 6.4 ? COMPASES.galope : v > 3.1 ? COMPASES.trote : COMPASES.paso;
+    const zancadas = 0.52 + v * 0.165;
+    this.faseCasco += dt * zancadas;
+    while (this.faseCasco >= 1) { this.faseCasco -= 1; this.ultimoCasco = -1; }
+    const fuerza = Math.min(1, 0.34 + v / 11);
+    for (let i = 0; i < compas.length; i++) {
+      if (i <= this.ultimoCasco || this.faseCasco < compas[i]) continue;
+      this.ultimoCasco = i;
+      this._casco(fuerza, i === 0);
+    }
+  }
+
+  // Un casco en tierra seca: el golpe grave, y encima el raspón de la arena.
+  // El azar por golpe es lo que lo saca de metrónomo —ocho por segundo
+  // idénticos se oyen como una máquina, no como un animal—.
+  _casco (fuerza, primero) {
+    const azar = 0.84 + Math.random() * 0.32;
+    const p = primero ? 1.25 : 1;
+    this._ruido(0.085, 0.21 * fuerza * p, 'lowpass', 240 * azar, 1.1, { ataque: 0.0015 });
+    this._tono(96 * azar, 44, 0.09, 0.17 * fuerza * p, 'sine');
+    this._ruido(0.05, 0.05 * fuerza, 'bandpass', 2600 * azar, 1.4, { ataque: 0.002 });
+  }
+
+  // =========================================================================
+  // LA MUERTE, EN EL OÍDO
+  // =========================================================================
+  //
+  // Va del brazo con `hud.cerrarLosOjos` y con el mismo número de segundos, y
+  // eso es todo el efecto: si el sonido se corta antes que la vista, se lee
+  // como que se colgó; si sigue después de que la pantalla está negra, se lee
+  // como que hay otra pantalla en camino.
+  //
+  // Y no es bajar el volumen: primero se pierden los agudos —el mundo se va
+  // yendo lejos—, después queda un retumbo, y recién al final el silencio. Se
+  // apaga TODO, también el corazón, que para eso está en `apagón` como el
+  // resto.
+  morir (seg = 7) {
+    if (!this.ctx) return;
+    this.muriendo = true;
+    const t = this.t;
+    this.apagon.gain.cancelScheduledValues(t);
+    this.apagon.gain.setValueAtTime(1, t);
+    this.apagon.gain.setValueAtTime(1, t + seg * 0.16);
+    this.apagon.gain.exponentialRampToValueAtTime(0.0008, t + seg * 0.95);
+    this.filtro.frequency.cancelScheduledValues(t);
+    this.filtro.frequency.setValueAtTime(9000, t);
+    this.filtro.frequency.exponentialRampToValueAtTime(170, t + seg * 0.8);
+    this.sordina.gain.cancelScheduledValues(t);
+    this.sordina.gain.setValueAtTime(1, t);
+  }
+
+  // y se vuelve en pie
+  revivir () {
+    if (!this.ctx) return;
+    this.muriendo = false;
+    this.faseCorazon = 0;
+    const t = this.t;
+    this.apagon.gain.cancelScheduledValues(t);
+    this.apagon.gain.setValueAtTime(0.0008, t);
+    this.apagon.gain.exponentialRampToValueAtTime(1, t + 0.55);
+    this.sordina.gain.cancelScheduledValues(t);
+    this.sordina.gain.setValueAtTime(1, t);
+    this.filtro.frequency.cancelScheduledValues(t);
+    this.filtro.frequency.setValueAtTime(1800, t);
+    this.filtro.frequency.exponentialRampToValueAtTime(20000, t + 0.5);
+  }
 
   // sordera momentánea: filtro pasabajos que se abre de a poco
   aturdir (fuerza) {

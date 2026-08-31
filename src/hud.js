@@ -86,10 +86,30 @@ export class Hud {
       this.parpados.classList.add('si');
     }
     setTimeout(() => this.fundir(1, t * 0.42), t * 0.5 * 1000);
+    // los botones, recién cuando la pantalla ya está negra
+    this.mostrarCaido(true, t * 0.96);
+  }
+
+  // LOS BOTONES DEL QUE CAYÓ. Van al final del fundido y no al principio: una
+  // interfaz encima de la vista que se apaga corta la escena justo donde no
+  // hay que cortarla. Primero se termina de morir y después se decide.
+  mostrarCaido (si, seg) {
+    const caja = document.getElementById('caido');
+    if (!caja) return;
+    clearTimeout(this._tCaido);
+    if (!si) { caja.classList.remove('si'); caja.classList.add('oculto'); return; }
+    this._tCaido = setTimeout(() => {
+      caja.classList.remove('oculto');
+      // el mismo cuidado que en `fundir`: sacar el display y poner la opacidad
+      // en el mismo tick hace que el navegador salte al final sin animar
+      void caja.offsetHeight;
+      caja.classList.add('si');
+    }, Math.max(0, (seg || 0) * 1000));
   }
 
   // y se vuelven a abrir
   abrirLosOjos () {
+    this.mostrarCaido(false);
     const l = document.getElementById('lienzo');
     if (l) { l.style.transitionDuration = '0.5s'; l.classList.remove('ojos'); }
     const h = document.getElementById('hud');

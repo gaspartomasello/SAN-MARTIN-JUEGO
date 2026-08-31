@@ -240,7 +240,13 @@ jugador.alMorir = () => {
     jugador.pitchAtrapado = 0.50;
   }
   jugador.sacudir(0.8);
+  // LOS DOS SENTIDOS SE APAGAN JUNTOS Y CON EL MISMO NÚMERO. Si el sonido se
+  // corta antes que la vista se lee como que se colgó el juego; si sigue
+  // después de que la pantalla está negra, se lee como que falta una pantalla.
   hud.cerrarLosOjos(7);
+  sonido.morir(7);
+  // y se suelta el mouse: con el puntero capturado no hay botón que apretar
+  mando.caiste();
   setTimeout(() => hud.decir(frasePostrera(), 9), 2200);
 };
 
@@ -446,6 +452,20 @@ function simular (dt) {
 
   campo.actualizarOleadas(dt);
 
+  // EL SONIDO QUE NO ES UN EVENTO: el pulso y los cascos de tu caballo. Todo
+  // lo demás lo dispara algo que pasó; estos dos hay que llevarlos por tiempo.
+  // Va con `dt` y no con el reloj pelado, así que la cámara lenta del acto
+  // también le baja el ritmo al corazón, que es lo que corresponde: es el
+  // mismo mundo. Y de paso le dice al sonido dónde están tus oídos, que es lo
+  // que hace que un fusil a ochenta metros no suene igual que uno al lado.
+  sonido.actualizar(dt, {
+    oyente: jugador.pos,
+    vida: jugador.vida,
+    vivo: jugador.vivo && !jugador.espectador,
+    montado: montado(),
+    vel: montado() ? jugador.monta.vel : 0
+  });
+
   luzBoca.intensity = Math.max(0, luzBoca.intensity - dt * 260);
 
   // y al final del cuadro sale por el cable lo que haya para salir
@@ -528,7 +548,7 @@ cuadro();
 // Todo lo que las pruebas y el que quiera hurgar necesitan tocar desde afuera.
 window.juego = {
   // los sistemas, por si hace falta entrar por abajo
-  combate, arsenal, campo, gentio, mando, red, moral, plano,
+  combate, arsenal, campo, gentio, mando, red, moral, plano, sonido,
   balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, render,

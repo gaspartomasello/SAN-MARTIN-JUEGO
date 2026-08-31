@@ -1353,7 +1353,9 @@ export class Soldado {
   _descargar () {
     const origen = new THREE.Vector3(this.pos.x, this.pos.y + (this.rodilla ? 1.02 : 1.38), this.pos.z);
     const dir = new THREE.Vector3().subVectors(this.objetivo.pos, origen).normalize();
-    this.sonido.disparo();
+    // DE DÓNDE SALIÓ, para que el sonido sepa qué está lejos. Sin esto los
+    // doscientos cincuenta fusiles suenan todos adentro de tu oreja.
+    this.sonido.disparo(origen);
     this.humo.soltar(origen.clone().addScaledVector(dir, 0.9), dir,
       { cantidad: 12, vida: 10, empuje: 2.0, radio: 0.28, opacidad: 0.4, claro: 0.45 });
     if (this.alDisparar) this.alDisparar(this, origen, dir, this.objetivo);

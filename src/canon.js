@@ -210,7 +210,7 @@ export class Canon {
     this.recarga = RECARGA;
     const b = this.boca().clone();
     const dir = this._humoDir.set(-Math.sin(this.rumbo), 0.06, -Math.cos(this.rumbo)).normalize();
-    this.sonido.canon();
+    this.sonido.canon(this.pos);
     // el fogonazo: una nube gorda que además tapa el campo por un rato
     this.humo.soltar(b, dir, {
       cantidad: 26, vida: 13, empuje: 7.5, radio: 0.42, opacidad: 0.52, claro: 0.55

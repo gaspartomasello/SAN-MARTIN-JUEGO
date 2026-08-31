@@ -1084,7 +1084,7 @@ export function armarRed (ctx) {
       case 'quitar': quitar(m.ids); break;
       case 'canon': {
         const c = porId.get(m.id);
-        sonido.canon();
+        sonido.canon(c ? c.pos : null);
         if (c) {
           _v.set(c.pos.x - Math.sin(c.rumbo) * 1.6, 0.85, c.pos.z - Math.cos(c.rumbo) * 1.6);
           _d.set(-Math.sin(c.rumbo), 0.12, -Math.cos(c.rumbo));
@@ -1165,7 +1165,7 @@ export function armarRed (ctx) {
     _v.set(m.o[0], m.o[1], m.o[2]);
     if (_v.distanceTo(jugador.pos) > CERCA_TIRO) return;
     _d.set(m.d[0], m.d[1], m.d[2]);
-    sonido.disparo();
+    sonido.disparo(_v);
     humo.soltar(_v.clone().addScaledVector(_d, 0.9), _d,
       { cantidad: m.tropa ? 12 : 16, vida: 10, empuje: 2.0, radio: 0.28, opacidad: 0.4, claro: 0.45 });
     if (!m.tropa) {

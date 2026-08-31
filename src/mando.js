@@ -100,21 +100,7 @@ export function armarMando (ctx) {
       case 'KeyO': campo.alternarOleadas(); break;
       case 'F3': hud.verDepurar = !hud.verDepurar; break;
       case 'Enter':
-        if (!jugador.vivo) {
-          jugador.liberar();
-          hud.abrirLosOjos();
-          jugador.revivir();
-          // EN RED EL CAMPO NO ES TUYO. Barrerlo acá haría dos destrozos: al
-          // invitado le borraría los títeres que el anfitrión sigue moviendo
-          // —y le seguirían llegando partes de hombres que ya no existen—, y
-          // al anfitrión le limpiaría de un plumazo la batalla que el otro
-          // está peleando. En una pelea compartida no se borra a todos porque
-          // uno se cayó: se vuelve a formar y se sigue.
-          if (!red.activo) campo.limpiarCampo();
-          arsenal.reponer();
-          campo.ponerCaballo();
-          hud.mostrarAviso('En pie', 'bien');
-        }
+        ponerseEnPie();
         break;
     }
   });
@@ -151,7 +137,13 @@ export function armarMando (ctx) {
   });
 
   // ------------------------------ el puntero ------------------------------
+  // ESTÁS CAÍDO: el mouse es tuyo pero esto no es una pausa. La pantalla de
+  // «alto el fuego» dice que la batalla espera y nadie te tira, y arriba de un
+  // muerto eso es mentira: lo que hay es el cartel de caído con sus botones.
+  let estaCaido = false;
+
   function mostrarPausa (si) {
+    if (si && estaCaido) return;
     pantallaPausa.classList.toggle('oculto', !si);
     document.body.style.cursor = si ? 'default' : 'none';
   }
@@ -171,16 +163,75 @@ export function armarMando (ctx) {
       arsenal.apuntando = false;
       sable.bajarGuardia();
       tSoltado = performance.now();
-      if (empezado) mostrarPausa(true);
+      if (empezado && !estaCaido) mostrarPausa(true);
     } else {
       mostrarPausa(false);
     }
   });
   document.addEventListener('pointerlockerror', () => {
     bloqueado = false;
-    if (empezado) mostrarPausa(true);
+    if (empezado && !estaCaido) mostrarPausa(true);
   });
   pantallaPausa.addEventListener('click', pedirMouse);
+
+  // ------------------------------ el que cayó ------------------------------
+  //
+  // Caerse suelta el mouse, y eso no es un detalle de interfaz: el juego se
+  // toma el pointer lock entero, así que con el puntero capturado no hay
+  // ningún botón que se pueda apretar. Mientras estás muerto el mouse es tuyo.
+  function caiste () {
+    estaCaido = true;
+    mostrarPausa(false);
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
+
+  // PONERSE EN PIE es levantarse donde caíste. La batalla siguió sin vos.
+  function ponerseEnPie () {
+    if (jugador.vivo) return false;
+    estaCaido = false;
+    jugador.liberar();
+    hud.abrirLosOjos();
+    sonido.revivir();
+    jugador.revivir();
+    // EN RED EL CAMPO NO ES TUYO. Barrerlo acá haría dos destrozos: al
+    // invitado le borraría los títeres que el anfitrión sigue moviendo
+    // —y le seguirían llegando partes de hombres que ya no existen—, y
+    // al anfitrión le limpiaría de un plumazo la batalla que el otro
+    // está peleando. En una pelea compartida no se borra a todos porque
+    // uno se cayó: se vuelve a formar y se sigue.
+    if (!red.activo) campo.limpiarCampo();
+    arsenal.reponer();
+    campo.ponerCaballo();
+    hud.mostrarAviso('En pie', 'bien');
+    return true;
+  }
+
+  // VOLVER A EMPEZAR es otra cosa: si entraste por la batalla, se rearma la
+  // pinza entera y estás de nuevo detrás del convento con los sesenta
+  // esperando el clarín. En red no se rearma nada —la batalla es de todos y la
+  // está simulando el anfitrión; barrerla porque uno se cayó sería sacársela a
+  // los demás—, así que ahí volver a empezar es volver a la pelea.
+  function volverAEmpezar () {
+    const rearmar = !red.activo && acto && acto.enBatalla;
+    if (!ponerseEnPie()) return;
+    if (rearmar) {
+      campo.formarPinza();
+      arsenal.reponer();
+      hud.mostrarAviso('De vuelta detrás del convento · [T] toca el clarín', 'bien');
+    }
+    pedirMouse();
+  }
+
+  // Al menú se vuelve recargando, y es a propósito. Media docena de sistemas
+  // —la batalla, el acto, el arsenal, la sala— tendrían que saber deshacerse
+  // solos y ninguno tiene por qué: no hay nada que guardar, y una partida a
+  // medio desarmar es de donde salen los bichos que no se pueden reproducir.
+  // Y si estabas en una sala, irte al menú es irte de la sala.
+  function alMenu () { location.reload(); }
+
+  document.getElementById('caido-otra').addEventListener('click', volverAEmpezar);
+  document.getElementById('caido-menu').addEventListener('click', alMenu);
+  document.getElementById('pausa-menu').addEventListener('click', ev => { ev.stopPropagation(); alMenu(); });
 
   // Soltar el mouse pase lo que pase. Sin esto el puntero queda capturado y
   // desaparece en las otras pestañas del navegador.
@@ -384,6 +435,7 @@ export function armarMando (ctx) {
     teclas,
     arrancar,
     abrirSala,
+    caiste,
     // el mundo no corre con la pausa puesta, pero se sigue dibujando
     get enPausa () { return empezado && !bloqueado; }
   };
