@@ -569,9 +569,43 @@ export const CABALLO_FLANCO = 2.4;
 
 // LA SOLEDAD. Un hombre en una línea apretada aguanta; el mismo hombre solo,
 // no. Es la otra cara del gentío: la formación no sirve sólo para tirar juntos.
-export const SOLEDAD = 0.12;
+//
+// VALÍA 0,12 Y NO HACÍA NADA. Se cobra escalado por cuántos compañeros faltan
+// —con dos al lado pagabas un tercio—, así que en la batalla medida daba 0,05 a
+// 0,08 por segundo contra 0,30 de APLOMO: al que quedaba solo se le LLENABA el
+// balde. Medido a los quince segundos, cuatro de cada cinco realistas estaban
+// ganando ánimo en vez de perderlo, y al final quedaban diecisiete hombres
+// sueltos peleando por su cuenta que no se iban a quebrar nunca. No aguantaban
+// por temple: estaban fuera del sistema.
+//
+// Ahora pega de verdad, y pega el más grande de todos los términos, pero casi
+// nunca llega a valer entero: hace falta quedarse sin UN solo compañero cerca y
+// además no tener a dónde volver. Esas dos cosas juntas son, efectivamente, lo
+// peor que le puede pasar a un hombre en un campo.
+export const SOLEDAD = 0.42;
 export const JUNTOS_RADIO = 9;
 export const JUNTOS_MINIMO = 3;
+
+// VOLVER CON LOS SUYOS, que es lo que hace un hombre antes de romperse.
+//
+// Un soldado aislado no es un suicida: es alguien que se está retirando. Al
+// que queda solo se le da la salida que tiene en la realidad —dar media vuelta
+// y marchar al pedazo de línea más cercano— y el castigo se le cobra por la
+// DECISIÓN y no por la posición: el que ya volvió grupas paga una fracción; el
+// que se queda de frente y solo, entero. Así el campo se lee de un vistazo —el
+// que camina para atrás se está salvando, el que sigue solo se va a quebrar— y
+// la línea se contrae de a pedazos en vez de deshilacharse.
+//
+// LOS DOS UMBRALES SON DISTINTOS A PROPÓSITO, y es lo mismo que enseña
+// TERQUEDAD más arriba: si se volviera con menos de tres y se soltara con tres,
+// el hombre entraría y saldría del estado cada media vuelta, y doscientos
+// hombres haciendo eso son doscientos hombres temblando en el lugar. Se vuelve
+// con menos de dos, se suelta con cuatro, y no se cambia de idea antes de
+// REUNION_FIRME.
+export const REUNION_SOLO = 2;        // con menos compañeros que esto, va a buscarlos
+export const REUNION_JUNTOS = 4;      // con esto ya se da por reunido
+export const REUNION_FIRME = 2.5;     // segundos mínimos antes de cambiar de idea
+export const SOLEDAD_VOLVIENDO = 0.3; // lo que paga el que ya está volviendo
 
 // ¿Y QUÉ LE DA MIEDO A LA CABALLERÍA, ENTONCES?
 //
