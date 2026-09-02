@@ -323,6 +323,169 @@ async function abrir (quien) {
   if (malMudo) { cerrar(); process.exit(1); }
 }
 
+// ---------------------------------------------------------------------------
+// 0 QUATER · EL CAMINO DEL CÓDIGO, CON DOS NAVEGADORES DE VERDAD
+// ---------------------------------------------------------------------------
+//
+// Todo lo de acá abajo prueba el OTRO camino: el servidor de sala, donde el
+// número de cada uno lo reparte el servidor en la carta de entrada. Por el
+// código no hay servidor que hable: el número se lo dice el anfitrión, y esa
+// diferencia de un renglón es la que tenía roto el modo en red entero.
+//
+// EL BICHO. El anfitrión le manda al que entra «sos el 1» con el sobre puesto
+// —`para: 1`—, y del otro lado el filtro de destinatario compara ese 1 con su
+// propio número, que hasta que llegue esa misma carta vale CERO. Así que la
+// tiraba. El invitado se quedaba creyéndose el cero para siempre, y desde ahí
+// se caía todo lo demás: el parte de la batalla venía marcado «para el 1» y
+// también se tiraba. Se armaba la sala, se veían los dos, se salía al campo
+// y no aparecía un solo granadero. Un campo de tiro con pasto.
+//
+// No lo agarraba ninguna prueba porque por el servidor de sala el número llega
+// en un mensaje SIN sobre, así que ahí `yo` siempre estuvo bien. Por eso este
+// bloque: el directorio es de mentira —el de verdad no se puede alcanzar desde
+// una prueba— pero los dos navegadores, los dos juegos y los dos caños son de
+// verdad, y el apretón de manos pasa por el mismo código que en la escuela.
+{
+  // Un `Peer` que se habla por BroadcastChannel: dos pestañas del MISMO
+  // contexto comparten origen, y con eso alcanza para que una llame a la otra.
+  const PEER_FALSO = `(() => {
+    const nuevoId = () => 'x' + Math.random().toString(36).slice(2, 10);
+    class Cable {
+      constructor (nombre, lado) {
+        this.lado = lado; this.h = {}; this.abierta = false; this.cerrada = false;
+        this.canal = new BroadcastChannel(nombre);
+        this.canal.onmessage = ev => {
+          const m = ev.data;
+          if (m.lado === this.lado) return;
+          if (m.t === 'hola') { this.abrir(); this.canal.postMessage({ lado: this.lado, t: 'hola2' }); }
+          else if (m.t === 'hola2') this.abrir();
+          else if (m.t === 'dato') this.tirar('data', m.d);
+          else if (m.t === 'chau') this.morir();
+        };
+      }
+      abrir () { if (this.abierta) return; this.abierta = true; this.tirar('open'); }
+      on (e, f) { (this.h[e] = this.h[e] || []).push(f); }
+      tirar (e, a) { for (const f of (this.h[e] || [])) f(a); }
+      send (d) { if (!this.cerrada) this.canal.postMessage({ lado: this.lado, t: 'dato', d }); }
+      close () { if (this.cerrada) return; try { this.canal.postMessage({ lado: this.lado, t: 'chau' }); } catch { /* ya estaba */ } this.morir(); }
+      morir () { if (this.cerrada) return; this.cerrada = true; this.tirar('close'); try { this.canal.close(); } catch { /* ya estaba */ } }
+      saludar () { this.canal.postMessage({ lado: this.lado, t: 'hola' }); }
+    }
+    return function PeerFalso (id) {
+      const yo = id || nuevoId();
+      const h = {};
+      let muerto = false;
+      const tirar = (e, a) => { for (const f of (h[e] || [])) f(a); };
+      const dir = new BroadcastChannel('directorio-de-mentira');
+      dir.onmessage = ev => {
+        const m = ev.data;
+        if (muerto || m.t !== 'conectar' || m.a !== yo) return;
+        const c = new Cable(m.canal, 'b');
+        tirar('connection', c);
+        c.saludar();
+      };
+      this.id = yo;
+      this.on = (e, f) => { (h[e] = h[e] || []).push(f); };
+      this.destroy = () => { muerto = true; try { dir.close(); } catch { /* ya estaba */ } };
+      this.connect = (a) => {
+        const canal = 'c' + nuevoId();
+        const c = new Cable(canal, 'a');
+        dir.postMessage({ t: 'conectar', de: yo, a, canal });
+        setTimeout(() => { if (!c.abierta && !muerto) tirar('error', { type: 'peer-unavailable' }); }, 2500);
+        return c;
+      };
+      setTimeout(() => { if (!muerto) tirar('open', yo); }, 20);
+    };
+  })()`;
+
+  const ctx = await nav.newContext({ viewport: { width: 700, height: 460 } });
+  const cargar = async (quien) => {
+    const p = await ctx.newPage();
+    p.on('pageerror', e => errs.push(`${quien}: ${e.message}`));
+    await p.goto(`http://localhost:${PUERTO}/index.html`, { waitUntil: 'load', timeout: 120000 });
+    await p.waitForFunction('window.juego && window.juego.red', null, { timeout: 25000 });
+    // el directorio de mentira se pone DESPUÉS de que cargue el módulo, que es
+    // el que trae el `Peer` de verdad y lo pisaría
+    await p.evaluate(f => { window.Peer = eval(f); }, PEER_FALSO);
+    // la página se sirve por http, así que el juego tantea si hay sala local:
+    // acá no la queremos, queremos el camino del código
+    await p.evaluate(() => window.juego.red.cortar());
+    return p;
+  };
+
+  const r = [];
+  const ok = (n, cond, extra) => r.push([cond ? 'OK ' : 'MAL', n, extra === undefined ? '' : extra]);
+
+  const sm = await cargar('San Martín');
+  const bm = await cargar('Bermúdez');
+
+  // La página la sirve el servidor de sala de la prueba, así que al abrir la
+  // pantalla el juego se engancha solo ahí. Acá no queremos ese camino:
+  // se corta y quedan los botones del código, que es lo que se prueba.
+  for (const p of [sm, bm]) {
+    await p.click('#modo-red');
+    await p.waitForTimeout(600);
+    await p.evaluate(() => window.juego.red.cortar());
+    await p.waitForSelector('#sala-crear:visible', { timeout: 10000 });
+  }
+  await sm.click('#sala-crear');
+  await sm.waitForFunction("window.juego.red.parte().rol === 'anfitrion'", null, { timeout: 10000 });
+  const codigo = await sm.$eval('#sala-clave', e => e.textContent.trim());
+  ok('el anfitrión abre la sala y le sale un código', /^[A-Z]{4}$/.test(codigo), codigo);
+
+  await bm.fill('#sala-codigo', codigo);
+  await bm.click('#sala-unirse');
+  for (const p of [sm, bm]) {
+    await p.waitForFunction("window.juego.red.parte().fase === 'listo'", null, { timeout: 15000 })
+      .catch(() => { /* lo dice la afirmación de abajo */ });
+  }
+
+  const psm = await sm.evaluate(() => window.juego.red.parte());
+  const pbm = await bm.evaluate(() => window.juego.red.parte());
+  ok('los dos se ven en la sala', psm.fase === 'listo' && pbm.fase === 'listo', `${psm.fase} / ${pbm.fase}`);
+  // ESTA ES LA QUE FALLABA. Sin ella todo lo de abajo es humo.
+  ok('y el que entra SABE QUE ES EL UNO', pbm.j === 1, 'se cree el ' + pbm.j);
+  ok('el anfitrión sigue siendo el cero', psm.j === 0, String(psm.j));
+  ok('y por eso sabe a quién juega', pbm.nombre.includes('Bermúdez'), pbm.nombre);
+  ok('los dos cuentan dos', psm.cuantos === 2 && pbm.cuantos === 2, `${psm.cuantos} / ${pbm.cuantos}`);
+
+  // Y AHORA EL CAMPO, EN EL ORDEN EN QUE PASA DE VERDAD: el invitado sale
+  // primero —el botón se le habilita al mismo tiempo— y el anfitrión forma
+  // después. Si el sobre se pierde, lo que sigue es pasto.
+  for (const p of [bm, sm]) {
+    await p.click('#sala-entrar');
+    await p.waitForSelector('#plano:not(.oculto)', { timeout: 10000 });
+    await p.click('#plano-entrar');
+    await p.waitForTimeout(300);
+  }
+  // chica, que son dos navegadores con render por software
+  await sm.evaluate(() => window.juego.red.formarBatalla(6, 12));
+  for (let i = 0; i < 30; i++) {
+    await Promise.all([sm, bm].map(p =>
+      p.evaluate(() => { for (let k = 0; k < 6; k++) window.juego.simular(1 / 30); })));
+    await sm.waitForTimeout(12);
+  }
+
+  const censo = p => p.evaluate(() => ({
+    soldados: window.juego.soldados.length,
+    canones: window.juego.canones.length,
+    columna: window.juego.red.parte().columna
+  }));
+  const csm = await censo(sm), cbm = await censo(bm);
+  r.push(['—', 'anfitrión', JSON.stringify(csm)]);
+  r.push(['—', 'invitado ', JSON.stringify(cbm)]);
+  ok('al invitado le llega la batalla y no un campo vacío', cbm.soldados > 0, String(cbm.soldados));
+  ok('y le llega ENTERA', cbm.soldados === csm.soldados, `${cbm.soldados} contra ${csm.soldados}`);
+  ok('con las dos piezas', cbm.canones === 2, String(cbm.canones));
+  ok('y sale por el costado que le toca', cbm.columna === 'este', cbm.columna);
+
+  await ctx.close();
+  for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(48), x);
+  const malCod2 = r.filter(x => x[0] === 'MAL').length;
+  console.log(`  el camino del código: ${r.length - malCod2} bien, ${malCod2} mal\n`);
+  if (malCod2) { cerrar(); process.exit(1); }
+}
+
 // El anfitrión entra PRIMERO: el que llega primero a la sala es el que lleva
 // la batalla, y eso es parte de lo que se prueba.
 const anf = await abrir('anfitrión');

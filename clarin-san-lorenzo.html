@@ -37974,7 +37974,6 @@ function armarRed(ctx) {
     }
   }
   function mandarA(j, obj) {
-    obj.para = j;
     if (enchufes.size) {
       const c = enchufes.get(j);
       if (!c || c.readyState !== 1) return;
@@ -37983,6 +37982,7 @@ function armarRed(ctx) {
       c.send(txt);
       return;
     }
+    obj.para = j;
     mandar(obj);
   }
   function mandarMundo(buf) {

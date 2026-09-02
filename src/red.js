@@ -186,10 +186,21 @@ export function armarRed (ctx) {
     }
   }
 
-  // A UNO SOLO. Por el código hay un enchufe suyo; por el servidor de sala se
-  // difunde con `para` puesto y el servidor —o el que recibe— lo descarta.
+  // A UNO SOLO, Y EL SOBRE NO SIEMPRE VA. Por el servidor de sala se difunde
+  // con `para` puesto y el que no es el destinatario lo tira. Por el código
+  // hay un enchufe suyo, y ahí el sobre NO se pone: el caño ya es la dirección.
+  //
+  // No es prolijidad: con sobre, el modo por código no funcionaba. La primera
+  // carta que manda el anfitrión es la que le dice al que entró QUÉ NÚMERO ES,
+  // y del otro lado el filtro de destinatario compara ese sobre contra un
+  // número que hasta que llegue esa misma carta vale CERO. Así que la tiraba.
+  // El invitado se quedaba creyéndose el cero para siempre, el parte de la
+  // batalla venía marcado «para el 1» y también se tiraba, y se salía al campo
+  // a un potrero sin un solo granadero.
+  //
+  // El encaminado de un invitado a otro sigue andando: el que manda no tiene
+  // enchufes, así que difunde con sobre, y el anfitrión lo pasa tal cual.
   function mandarA (j, obj) {
-    obj.para = j;
     if (enchufes.size) {
       const c = enchufes.get(j);
       if (!c || c.readyState !== 1) return;
@@ -198,6 +209,7 @@ export function armarRed (ctx) {
       c.send(txt);
       return;
     }
+    obj.para = j;
     mandar(obj);
   }
 
