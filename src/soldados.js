@@ -191,11 +191,6 @@ const CAIDA_JINETE = 14;        // lo que cuesta el golpe contra el suelo
 // viene: acá un hombre ya tiene un motivo para dejar de pelear.
 const HUIDA = 9;                // segundos de sacarse de encima el problema
 const HUIDA_SEGURO = 26;        // a esta distancia del enemigo, se recompone
-// A esta distancia del compañero al que volvió se lo cuenta llegado. Va acá y
-// no en balance.js porque no es un número de pelea: es cuándo un hombre deja de
-// caminar. Tres metros lo dejan bien adentro de los nueve de JUNTOS_RADIO, así
-// que al llegar ya cuenta como acompañado y no como uno pegado al otro.
-const LLEGADA_JUNTOS = 3;
 
 export class Soldado {
   // op.tez      — color de piel fijo (Cabral)
@@ -314,16 +309,6 @@ export class Soldado {
     // no elige blanco ni carga: marcha. Lo escribe la Pinza cada cuadro.
     this.plaza = null;
     this.andarColumna = 0;
-
-    // VOLVER CON LOS SUYOS. Un punto al que marchar cuando quedó solo, o null.
-    // Lo escribe moral.js —el que mira la tropa— y lo lee el avance de acá
-    // abajo. `_amigos` es su última cuenta de compañeros cerca, y la publica
-    // para que el de al lado pueda preguntarle si sirve de punto de reunión sin
-    // volver a contar nada. Arranca en cero: hasta que mire por primera vez
-    // nadie lo toma de ancla, que es el lado seguro.
-    this.reunion = null;
-    this.tReunion = 0;
-    this._amigos = 0;
 
     this.monta = null;
     this.tPasada = 0;
@@ -848,30 +833,6 @@ export class Soldado {
       case 'avanzar': {
         this._parar();
         if (dist < ALCANCE_ACERO) { this._entrarAcero(); break; }
-
-        // VOLVER CON LOS SUYOS. El que quedó solo no sigue de frente: da media
-        // vuelta y marcha al pedazo de línea más cercano. Manda sobre el tiro y
-        // sobre la carga a la bayoneta —el que vuelve no se para a descargar—
-        // pero no sobre el acero, que se resolvió en el renglón de arriba: si
-        // lo alcanzan, pelea, que no queda otra.
-        //
-        // Y VUELVE MARCHANDO, NO CORRIENDO, que es la diferencia que hay que
-        // poder ver de un vistazo: el que corre con la espalda dada es el
-        // quebrado y se fue de la batalla; éste se está reacomodando y en un
-        // rato vuelve a tirar. Si los dos corrieran, el campo no se leería.
-        if (this.reunion) {
-          const rx = this.reunion.x - this.pos.x, rz = this.reunion.z - this.pos.z;
-          const rd = Math.hypot(rx, rz);
-          // llegó: adentro del grupo, y que moral.js decida en su próxima
-          // mirada si esto era línea de verdad o un compañero suelto más
-          if (rd < LLEGADA_JUNTOS) { this.reunion = null; break; }
-          this._girarHacia(Math.atan2(rx / rd, rz / rd) + Math.PI, dt, false);
-          this.fig.poner('marcha');
-          this.pos.x += (rx / rd) * VEL * dt;
-          this.pos.z += (rz / rd) * VEL * dt;
-          andando = true;
-          break;
-        }
 
         // Fusil descargado y el enemigo encima: no se queda a recargar bajo
         // fuego. Baja el arma y se le va a la carrera con la bayoneta puesta.

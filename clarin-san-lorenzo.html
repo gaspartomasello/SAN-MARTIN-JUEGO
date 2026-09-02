@@ -30399,13 +30399,9 @@ var CABALLO_ENCIMA = 0.23;
 var CABALLO_RADIO = 38;
 var CABALLO_LLENO = 2;
 var CABALLO_FLANCO = 2.4;
-var SOLEDAD = 0.42;
+var SOLEDAD = 0.12;
 var JUNTOS_RADIO = 9;
 var JUNTOS_MINIMO = 3;
-var REUNION_SOLO = 2;
-var REUNION_JUNTOS = 4;
-var REUNION_FIRME = 2.5;
-var SOLEDAD_VOLVIENDO = 0.3;
 var HERIDO = 0.1;
 var PIEZA_CALLADA = 4;
 var PIEZA_RADIO = 30;
@@ -31017,7 +31013,6 @@ var PASADA = 3.2;
 var LANZA_CONO = 0.72;
 var HUIDA = 9;
 var HUIDA_SEGURO = 26;
-var LLEGADA_JUNTOS = 3;
 var Soldado = class _Soldado {
   // op.tez      — color de piel fijo (Cabral)
   // op.sombrero — 'bicornio' para el San Martín del acto
@@ -31090,9 +31085,6 @@ var Soldado = class _Soldado {
     this.andando = false;
     this.plaza = null;
     this.andarColumna = 0;
-    this.reunion = null;
-    this.tReunion = 0;
-    this._amigos = 0;
     this.monta = null;
     this.tPasada = 0;
     this.pasadas = 0;
@@ -31532,20 +31524,6 @@ var Soldado = class _Soldado {
         this._parar();
         if (dist < ALCANCE_ACERO) {
           this._entrarAcero();
-          break;
-        }
-        if (this.reunion) {
-          const rx = this.reunion.x - this.pos.x, rz = this.reunion.z - this.pos.z;
-          const rd = Math.hypot(rx, rz);
-          if (rd < LLEGADA_JUNTOS) {
-            this.reunion = null;
-            break;
-          }
-          this._girarHacia(Math.atan2(rx / rd, rz / rd) + Math.PI, dt, false);
-          this.fig.poner("marcha");
-          this.pos.x += rx / rd * VEL * dt;
-          this.pos.z += rz / rd * VEL * dt;
-          andando = true;
           break;
         }
         const tardaEnLlegar = dist / VEL_CARRERA;
@@ -35299,7 +35277,6 @@ function armarMoral(ctx) {
   }
   function mirar(s, dt) {
     let amigos = 0, flanco = 0, jinetes = 0, deCostado = 0, rotos = 0;
-    let anclaD2 = Infinity, anclaX = 0, anclaZ = 0;
     if (s.frente === null) s.frente = s.malla.rotation.y;
     else {
       let g = s.malla.rotation.y - s.frente;
@@ -35317,14 +35294,7 @@ function armarMoral(ctx) {
       if (o.bando === s.bando) {
         if (o.quebrado) {
           if (d < CONTAGIO_RADIO) rotos++;
-        } else {
-          if (d < JUNTOS_RADIO) amigos++;
-          if (o._amigos >= JUNTOS_MINIMO && d2 < anclaD2) {
-            anclaD2 = d2;
-            anclaX = o.pos.x;
-            anclaZ = o.pos.z;
-          }
-        }
+        } else if (d < JUNTOS_RADIO) amigos++;
         continue;
       }
       const aLaCara = (dx * fx + dz * fz) / d >= COS_FLANCO;
@@ -35348,25 +35318,8 @@ function armarMoral(ctx) {
     }
     const q = s.porQue || (s.porQue = { flanco: 0, jinetes: 0, solo: 0, herido: 0, rotos: 0 });
     const aPie = !s.montado;
-    s._amigos = amigos;
-    if (!aPie || s.plaza) s.reunion = null;
-    else {
-      s.tReunion = Math.max(0, s.tReunion - dt);
-      if (s.reunion) {
-        if (s.tReunion <= 0 && amigos >= REUNION_JUNTOS) {
-          s.reunion = null;
-          s.tReunion = REUNION_FIRME;
-        } else if (anclaD2 < Infinity) {
-          s.reunion.x = anclaX;
-          s.reunion.z = anclaZ;
-        }
-      } else if (s.tReunion <= 0 && amigos < REUNION_SOLO && anclaD2 < Infinity) {
-        s.reunion = { x: anclaX, z: anclaZ };
-        s.tReunion = REUNION_FIRME;
-      }
-    }
     q.flanco = aPie && flanco ? FLANCO * Math.min(1, flanco / FLANCO_LLENO) : 0;
-    q.solo = aPie && amigos < JUNTOS_MINIMO ? SOLEDAD * (1 - amigos / JUNTOS_MINIMO) * (s.reunion ? SOLEDAD_VOLVIENDO : 1) : 0;
+    q.solo = aPie && amigos < JUNTOS_MINIMO ? SOLEDAD * (1 - amigos / JUNTOS_MINIMO) : 0;
     q.jinetes = jinetes ? CABALLO_ENCIMA * Math.min(1, jinetes / CABALLO_LLENO) * (1 + deCostado / jinetes * (CABALLO_FLANCO - 1)) : 0;
     q.herido = s.vida <= VIDA_TROPA / 2 ? HERIDO : 0;
     q.rotos = rotos ? CONTAGIO * Math.min(1, rotos / 2) : 0;

@@ -47,7 +47,6 @@ import {
   FLANCO, FLANCO_RADIO, FLANCO_CONO, FLANCO_LLENO,
   CABALLO_ENCIMA, CABALLO_RADIO, CABALLO_LLENO, CABALLO_FLANCO,
   SOLEDAD, JUNTOS_RADIO, JUNTOS_MINIMO,
-  REUNION_SOLO, REUNION_JUNTOS, REUNION_FIRME, SOLEDAD_VOLVIENDO,
   HERIDO, PIEZA_CALLADA, PIEZA_RADIO, FRENTE_GIRO,
   APLOMO, DESGASTE, CONTAGIO, CONTAGIO_RADIO,
   LINEA_ROTA, LINEA_MINIMA, DESBANDE
@@ -100,9 +99,6 @@ export function armarMoral (ctx) {
   // -------------------------------------------------------------------------
   function mirar (s, dt) {
     let amigos = 0, flanco = 0, jinetes = 0, deCostado = 0, rotos = 0;
-    // El pedazo de línea más cercano al que volver, si hiciera falta. Sale de
-    // esta misma vuelta y no cuesta una cuenta más.
-    let anclaD2 = Infinity, anclaX = 0, anclaZ = 0;
 
     // EL FRENTE DE LA TROPA, que persigue al rumbo del hombre pero muchísimo
     // más despacio. Contra esto se mide el flanco, y no contra hacia dónde
@@ -126,18 +122,7 @@ export function armarMoral (ctx) {
       const d = Math.sqrt(d2) || 0.001;
       if (o.bando === s.bando) {
         if (o.quebrado) { if (d < CONTAGIO_RADIO) rotos++; }
-        else {
-          if (d < JUNTOS_RADIO) amigos++;
-          // ¿ES ÉSTE UN PEDAZO DE LÍNEA? Un compañero que a su vez está
-          // acompañado. Su cuenta ya está hecha —la de su última mirada, hace
-          // menos de medio segundo— así que preguntarle sale gratis. Volver
-          // al PROMEDIO del bando sería lo primero que uno escribe y lo peor:
-          // el promedio de una fuerza desparramada cae en un pedazo de pasto
-          // vacío y los manda a todos al mismo punto.
-          if (o._amigos >= JUNTOS_MINIMO && d2 < anclaD2) {
-            anclaD2 = d2; anclaX = o.pos.x; anclaZ = o.pos.z;
-          }
-        }
+        else if (d < JUNTOS_RADIO) amigos++;
         continue;
       }
       // ¿lo tengo adelante, o al costado y a la espalda?
@@ -175,42 +160,8 @@ export function armarMoral (ctx) {
     // Y al que le voltean el caballo se le cobran los dos de golpe, que es
     // exactamente lo que tiene que sentir: dejó de ser caballería.
     const aPie = !s.montado;
-    s._amigos = amigos;
-
-    // VOLVER CON LOS SUYOS, O QUEDARSE Y ROMPERSE.
-    //
-    // Acá sólo se DECIDE; el que marcha es soldados.js, que es el que mueve al
-    // hombre. Es el mismo reparto de siempre: este archivo mira la tropa y
-    // aquél mira al hombre.
-    //
-    // El montado no vuelve por acá: la caballería tiene su propia reunión, que
-    // es la del escuadrón, y la lleva pinza.js con la plaza.
-    if (!aPie || s.plaza) s.reunion = null;
-    else {
-      s.tReunion = Math.max(0, s.tReunion - dt);
-      if (s.reunion) {
-        // ya está volviendo. Se suelta bien acompañado y no antes de tiempo;
-        // mientras tanto se le refresca el punto, porque el grupo al que va
-        // también se está moviendo y también se está muriendo.
-        if (s.tReunion <= 0 && amigos >= REUNION_JUNTOS) { s.reunion = null; s.tReunion = REUNION_FIRME; }
-        else if (anclaD2 < Infinity) { s.reunion.x = anclaX; s.reunion.z = anclaZ; }
-      } else if (s.tReunion <= 0 && amigos < REUNION_SOLO && anclaD2 < Infinity) {
-        // EL RELOJ FRENA LAS DOS PUNTAS, no sólo la salida. Sin la puerta de acá
-        // el hombre que llega —soldados.js le borra el punto al pisarlo— podía
-        // recibir uno nuevo en la mirada siguiente, y de ahí salían vueltas de
-        // medio segundo: dos pasos y frenar. Medido: eran el 10 % de las vueltas.
-        s.reunion = { x: anclaX, z: anclaZ };
-        s.tReunion = REUNION_FIRME;
-      }
-    }
-
     q.flanco = aPie && flanco ? FLANCO * Math.min(1, flanco / FLANCO_LLENO) : 0;
-    // Y EL CASTIGO ES POR LA DECISIÓN, NO POR LA POSICIÓN. El que ya dio media
-    // vuelta está haciendo algo con su soledad y paga una fracción; el que se
-    // quedó de frente y solo —o el que no tiene a dónde volver— la paga entera.
-    q.solo = aPie && amigos < JUNTOS_MINIMO
-      ? SOLEDAD * (1 - amigos / JUNTOS_MINIMO) * (s.reunion ? SOLEDAD_VOLVIENDO : 1)
-      : 0;
+    q.solo = aPie && amigos < JUNTOS_MINIMO ? SOLEDAD * (1 - amigos / JUNTOS_MINIMO) : 0;
     // el jinete que te entra por el costado asusta el doble largo que el que
     // te viene de frente: es la misma idea que el flanco, no otra
     q.jinetes = jinetes

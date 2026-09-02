@@ -121,97 +121,7 @@ const r = await pag.evaluate(async () => {
   ok('y cuando llega, se fue del campo', !j.soldados.includes(uno),
     j.soldados.includes(uno) ? `quedó en z ${uno.pos.z.toFixed(0)}` : `se fueron ${j.moral.idos}`);
 
-  // ---------- 3. el que queda solo vuelve con los suyos ----------
-  //
-  // Un realista aislado o es un suicida o está en retirada, y el juego decidió
-  // lo segundo. Antes no era ninguna de las dos: la soledad valía 0,12 y se
-  // cobra escalada, así que el que quedaba solo pagaba 0,06 por segundo contra
-  // 0,30 de aplomo. Se le LLENABA el balde. Medido en la batalla entera: a los
-  // quince segundos cuatro de cada cinco realistas estaban ganando ánimo, y al
-  // final quedaban diecisiete hombres sueltos que no se iban a quebrar nunca.
-  // No aguantaban por temple: estaban fuera del sistema.
-  //
-  // La escena está armada para que las dos salidas apunten a lados OPUESTOS:
-  // el grupo al oeste del que quedó solo, el enemigo al este. Si vuelve, se va
-  // para un lado; si sigue de frente, para el otro. No hay forma de confundirlos.
-  limpiar();
-  for (let k = 0; k < 5; k++) j.soltarSoldado('realista', { pos: new T(-1 + k * 0.5, 0, -40) });
-  const suelto = j.soltarSoldado('realista', { pos: new T(20, 0, -40) });
-  j.soltarSoldado('granadero', { pos: new T(60, 0, -40) });
-  correr(60 * 2);
-  ok('el que quedó solo decide volver', !!suelto.reunion);
-  ok('y vuelve al pedazo de línea, no al promedio del bando',
-    !!suelto.reunion && Math.abs(suelto.reunion.x) < 8,
-    suelto.reunion ? `x=${suelto.reunion.x.toFixed(0)}` : 'no volvió');
-  const x0 = suelto.pos.x;
-  correr(60 * 3);
-  ok('y camina para el lado contrario al enemigo: es retirada, no carga',
-    suelto.pos.x < x0 - 1.5, `de x ${x0.toFixed(0)} a ${suelto.pos.x.toFixed(0)}`);
-  correr(60 * 12);
-  const cerca = j.soldados.filter(o => o !== suelto && o.vivo && o.esRealista &&
-    Math.hypot(o.pos.x - suelto.pos.x, o.pos.z - suelto.pos.z) < 9).length;
-  ok('y llega: deja de estar solo', cerca >= 1, `${cerca} compañeros a nueve metros`);
-
-  // Y NO TITILA, que es lo único que separa esto de doscientos hombres
-  // temblando en el lugar. El error ya está documentado en TERQUEDAD: si el
-  // umbral de entrar fuera el mismo que el de salir, el hombre entraría y
-  // saldría del estado cada media vuelta. Por eso son dos umbrales distintos y
-  // un reloj que frena las DOS puntas.
-  //
-  // Y SE MIDE EL HUECO ENTRE CAMBIOS, no cuántos hubo. Contar cambios no
-  // distingue un titileo de una persecución: acá el grupo se va caminando y el
-  // que vuelve se queda atrás otra vez, así que entra y sale varias veces con
-  // toda razón. Lo que no puede pasar es que entre y salga DOS VECES SEGUIDAS
-  // en menos de lo que tarda en dar tres pasos.
-  let tenia = !!suelto.reunion, tCambio = 0, hueco = Infinity;
-  const huecos = [];
-  for (let i = 0; i < 60 * 40; i++) {
-    j.simular(1 / 60);
-    if (!!suelto.reunion === tenia) continue;
-    const ahora = i / 60;
-    if (tCambio) { hueco = Math.min(hueco, ahora - tCambio); huecos.push(+(ahora - tCambio).toFixed(1)); }
-    tCambio = ahora; tenia = !!suelto.reunion;
-  }
-  out.push(['—', 'huecos entre cambios de idea, en cuarenta segundos',
-    huecos.length ? huecos.join(' s · ') + ' s' : 'no cambió de idea ni una vez']);
-  ok('y no titila: entre cambio y cambio pasa más de un segundo', hueco > 1,
-    hueco === Infinity ? 'nunca cambió dos veces' : `el más corto, ${hueco.toFixed(1)} s`);
-
-  // ---------- 4. el castigo es por la decisión, no por la posición ----------
-  //
-  // Dos hombres igual de solos: uno tiene a dónde volver y el otro no. El que
-  // ya dio media vuelta paga una fracción; el que se quedó, entero. Eso es lo
-  // que hace que el campo se lea de un vistazo —el que camina para atrás se
-  // está salvando— y lo que castiga la decisión y no el lugar donde le tocó
-  // estar parado.
-  limpiar();
-  for (let k = 0; k < 5; k++) j.soltarSoldado('realista', { pos: new T(-1 + k * 0.5, 0, -40) });
-  const vuelve = j.soltarSoldado('realista', { pos: new T(16, 0, -40) });
-  const plantado = j.soltarSoldado('realista', { pos: new T(16, 0, 30) });   // sin nadie a veintidós metros
-  j.soltarSoldado('granadero', { pos: new T(60, 0, -40) });
-  j.soltarSoldado('granadero', { pos: new T(60, 0, 30) });
-  correr(60 * 2);
-  const solVuelve = (vuelve.porQue || {}).solo || 0;
-  const solPlantado = (plantado.porQue || {}).solo || 0;
-  out.push(['—', 'soledad: el que vuelve contra el que se queda',
-    `${solVuelve.toFixed(3)}/s contra ${solPlantado.toFixed(3)}/s`]);
-  ok('el que se queda solo y plantado paga mucho más', solPlantado > solVuelve * 2,
-    `${solPlantado.toFixed(3)} contra ${solVuelve.toFixed(3)}`);
-  ok('y el que no tiene a dónde volver no encuentra punto', !plantado.reunion);
-
-  // Y AHORA LO QUE ESTABA ROTO, medido donde se ve: ¿le gana el castigo al
-  // aplomo, o no? Se le baja el ánimo a mano para que haya lugar para subir —si
-  // arranca pegado al techo no se puede ver si sube—. Antes de esto el plantado
-  // RECUPERABA: 0,06 de castigo contra 0,30 de aplomo. Ésa era toda la falla.
-  plantado.animo = 40;
-  const a0 = plantado.animo;
-  correr(60 * 10);
-  out.push(['—', 'el ánimo del que se queda solo, en diez segundos',
-    `de ${a0} a ${plantado.animo.toFixed(1)}`]);
-  ok('el que se queda solo PIERDE ánimo, ya no se le llena el balde',
-    plantado.animo < a0, `de ${a0} a ${plantado.animo.toFixed(1)}`);
-
-  // ---------- 5. LA BATALLA ----------
+  // ---------- 3. LA BATALLA ----------
   const gr0 = 120, re0 = 250;
   j.formarPinza(gr0 / 2, re0);
   // EL PILOTO SOSTIENE LAS TECLAS, como un jugador. Antes alcanzaba con escribir
@@ -293,7 +203,7 @@ const r = await pag.evaluate(async () => {
   ok('y tus granaderos no se evaporan', fin.granaderos.vivos > gr0 * 0.3,
     `${fin.granaderos.vivos} de ${gr0}`);
 
-  // ---------- 6. ¿se desbanda o se derrite? ----------
+  // ---------- 4. ¿se desbanda o se derrite? ----------
   //
   // Una desbandada no es lineal: empieza con unos pocos y termina llevándose a
   // todos de una vez. Un deshielo, en cambio, avanza parejo.
@@ -331,7 +241,7 @@ const r = await pag.evaluate(async () => {
   ok('se desbanda de golpe, no se derrite de a uno', porcion < 0.3,
     `la mitad en el ${(porcion * 100).toFixed(0)} % del tiempo`);
 
-  // ---------- 7. tus granaderos también se quiebran ----------
+  // ---------- 5. tus granaderos también se quiebran ----------
   //
   // Si sólo se rompe el enemigo, esto no es un sistema de moral: es un botón de
   // ganar. Doce granaderos solos contra ochenta realistas tienen que irse.
@@ -352,7 +262,7 @@ const r = await pag.evaluate(async () => {
   ok('tus granaderos, solos contra ochenta, también se van', seFueron >= 7,
     `${seFueron} de 12 dejaron de pelear`);
 
-  // ---------- 8. el costo ----------
+  // ---------- 5. el costo ----------
   const t0 = performance.now();
   for (let i = 0; i < 120; i++) j.simular(1 / 60);
   const ms = (performance.now() - t0) / 120;
