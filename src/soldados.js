@@ -802,6 +802,20 @@ export class Soldado {
         return;
       }
     }
+    // SE LE ACABÓ EL SUSTO Y VUELVE A PELEAR.
+    //
+    // Acá quedaban clavados los granaderos a pie. Al que le voltean el caballo
+    // sale corriendo —`desmontar(true)` le pone `huyendo`— y mientras dura eso
+    // el estado es 'huir'. Cuando se le pasa, el bloque de arriba deja de
+    // correr... y nadie le saca el estado. Y 'huir' NO es un caso del switch de
+    // abajo, que además no tiene `default`: el hombre se quedaba parado con el
+    // enemigo elegido, el aliento lleno y nada que hacer, para siempre.
+    //
+    // Medido antes de esto: a los tres minutos, 16 de 23 granaderos a pie
+    // congelados en 'huir'. Son justo los lanceros derribados, que es la gente
+    // que más falta hace peleando.
+    if (this.huyendo <= 0 && this.estado === 'huir') this.estado = 'avanzar';
+
     // correr cansa y caminar repone. De acá salen los intervalos: cuatro
     // segundos de carrera, cinco de resuello, y otra vez.
     if (this.estado === 'correr') {

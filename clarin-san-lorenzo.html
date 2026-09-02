@@ -3609,17 +3609,17 @@ var Matrix3 = class _Matrix3 {
    * @return {Matrix3} A reference to this matrix.
    */
   transpose() {
-    let tmp;
+    let tmp2;
     const m = this.elements;
-    tmp = m[1];
+    tmp2 = m[1];
     m[1] = m[3];
-    m[3] = tmp;
-    tmp = m[2];
+    m[3] = tmp2;
+    tmp2 = m[2];
     m[2] = m[6];
-    m[6] = tmp;
-    tmp = m[5];
+    m[6] = tmp2;
+    tmp2 = m[5];
     m[5] = m[7];
-    m[7] = tmp;
+    m[7] = tmp2;
     return this;
   }
   /**
@@ -6653,29 +6653,29 @@ var Ray = class {
     _edge2.subVectors(c, a);
     _normal$1.crossVectors(_edge1, _edge2);
     let DdN = this.direction.dot(_normal$1);
-    let sign;
+    let sign2;
     if (DdN > 0) {
       if (backfaceCulling) return null;
-      sign = 1;
+      sign2 = 1;
     } else if (DdN < 0) {
-      sign = -1;
+      sign2 = -1;
       DdN = -DdN;
     } else {
       return null;
     }
     _diff.subVectors(this.origin, a);
-    const DdQxE2 = sign * this.direction.dot(_edge2.crossVectors(_diff, _edge2));
+    const DdQxE2 = sign2 * this.direction.dot(_edge2.crossVectors(_diff, _edge2));
     if (DdQxE2 < 0) {
       return null;
     }
-    const DdE1xQ = sign * this.direction.dot(_edge1.cross(_diff));
+    const DdE1xQ = sign2 * this.direction.dot(_edge1.cross(_diff));
     if (DdE1xQ < 0) {
       return null;
     }
     if (DdQxE2 + DdE1xQ > DdN) {
       return null;
     }
-    const QdN = -sign * _diff.dot(_normal$1);
+    const QdN = -sign2 * _diff.dot(_normal$1);
     if (QdN < 0) {
       return null;
     }
@@ -7224,25 +7224,25 @@ var Matrix4 = class _Matrix4 {
    */
   transpose() {
     const te = this.elements;
-    let tmp;
-    tmp = te[1];
+    let tmp2;
+    tmp2 = te[1];
     te[1] = te[4];
-    te[4] = tmp;
-    tmp = te[2];
+    te[4] = tmp2;
+    tmp2 = te[2];
     te[2] = te[8];
-    te[8] = tmp;
-    tmp = te[6];
+    te[8] = tmp2;
+    tmp2 = te[6];
     te[6] = te[9];
-    te[9] = tmp;
-    tmp = te[3];
+    te[9] = tmp2;
+    tmp2 = te[3];
     te[3] = te[12];
-    te[12] = tmp;
-    tmp = te[7];
+    te[12] = tmp2;
+    tmp2 = te[7];
     te[7] = te[13];
-    te[13] = tmp;
-    tmp = te[11];
+    te[13] = tmp2;
+    tmp2 = te[11];
     te[11] = te[14];
-    te[14] = tmp;
+    te[14] = tmp2;
     return this;
   }
   /**
@@ -11616,18 +11616,18 @@ var BufferGeometry = class _BufferGeometry extends EventDispatcher {
         );
       }
     }
-    const tmp = new Vector3(), tmp2 = new Vector3();
+    const tmp2 = new Vector3(), tmp22 = new Vector3();
     const n = new Vector3(), n2 = new Vector3();
     function handleVertex(v) {
       n.fromBufferAttribute(normalAttribute, v);
       n2.copy(n);
       const t = tan1[v];
-      tmp.copy(t);
-      tmp.sub(n.multiplyScalar(n.dot(t))).normalize();
-      tmp2.crossVectors(n2, t);
-      const test = tmp2.dot(tan2[v]);
+      tmp2.copy(t);
+      tmp2.sub(n.multiplyScalar(n.dot(t))).normalize();
+      tmp22.crossVectors(n2, t);
+      const test = tmp22.dot(tan2[v]);
       const w = test < 0 ? -1 : 1;
-      tangentAttribute.setXYZW(v, tmp.x, tmp.y, tmp.z, w);
+      tangentAttribute.setXYZW(v, tmp2.x, tmp2.y, tmp2.z, w);
     }
     for (let i = 0, il = groups.length; i < il; ++i) {
       const group = groups[i];
@@ -12003,7 +12003,7 @@ var Mesh = class extends Object3D {
    * @param {Raycaster} raycaster - The raycaster.
    * @param {Array<Object>} intersects - The target array that holds the intersection points.
    */
-  raycast(raycaster, intersects) {
+  raycast(raycaster, intersects2) {
     const geometry = this.geometry;
     const material = this.material;
     const matrixWorld = this.matrixWorld;
@@ -12021,9 +12021,9 @@ var Mesh = class extends Object3D {
     if (geometry.boundingBox !== null) {
       if (_ray$3.intersectsBox(geometry.boundingBox) === false) return;
     }
-    this._computeIntersections(raycaster, intersects, _ray$3);
+    this._computeIntersections(raycaster, intersects2, _ray$3);
   }
-  _computeIntersections(raycaster, intersects, rayLocalSpace) {
+  _computeIntersections(raycaster, intersects2, rayLocalSpace) {
     let intersection;
     const geometry = this.geometry;
     const material = this.material;
@@ -12049,7 +12049,7 @@ var Mesh = class extends Object3D {
             if (intersection) {
               intersection.faceIndex = Math.floor(j / 3);
               intersection.face.materialIndex = group.materialIndex;
-              intersects.push(intersection);
+              intersects2.push(intersection);
             }
           }
         }
@@ -12063,7 +12063,7 @@ var Mesh = class extends Object3D {
           intersection = checkGeometryIntersection(this, material, raycaster, rayLocalSpace, uv, uv1, normal, a, b, c);
           if (intersection) {
             intersection.faceIndex = Math.floor(i / 3);
-            intersects.push(intersection);
+            intersects2.push(intersection);
           }
         }
       }
@@ -12082,7 +12082,7 @@ var Mesh = class extends Object3D {
             if (intersection) {
               intersection.faceIndex = Math.floor(j / 3);
               intersection.face.materialIndex = group.materialIndex;
-              intersects.push(intersection);
+              intersects2.push(intersection);
             }
           }
         }
@@ -12096,7 +12096,7 @@ var Mesh = class extends Object3D {
           intersection = checkGeometryIntersection(this, material, raycaster, rayLocalSpace, uv, uv1, normal, a, b, c);
           if (intersection) {
             intersection.faceIndex = Math.floor(i / 3);
-            intersects.push(intersection);
+            intersects2.push(intersection);
           }
         }
       }
@@ -12281,9 +12281,9 @@ function cloneUniforms(src) {
 function mergeUniforms(uniforms) {
   const merged = {};
   for (let u = 0; u < uniforms.length; u++) {
-    const tmp = cloneUniforms(uniforms[u]);
-    for (const p in tmp) {
-      merged[p] = tmp[p];
+    const tmp2 = cloneUniforms(uniforms[u]);
+    for (const p in tmp2) {
+      merged[p] = tmp2[p];
     }
   }
   return merged;
@@ -13474,7 +13474,7 @@ var InstancedMesh = class extends Mesh {
       objectInfluences[i] = array[dataIndex + i];
     }
   }
-  raycast(raycaster, intersects) {
+  raycast(raycaster, intersects2) {
     const matrixWorld = this.matrixWorld;
     const raycastTimes = this.count;
     _mesh$1.geometry = this.geometry;
@@ -13493,7 +13493,7 @@ var InstancedMesh = class extends Mesh {
         const intersect2 = _instanceIntersects[i];
         intersect2.instanceId = instanceId;
         intersect2.object = this;
-        intersects.push(intersect2);
+        intersects2.push(intersect2);
       }
       _instanceIntersects.length = 0;
     }
@@ -14151,10 +14151,10 @@ var CylinderGeometry = class _CylinderGeometry extends BufferGeometry {
       const vertex2 = new Vector3();
       let groupCount = 0;
       const radius = top === true ? radiusTop : radiusBottom;
-      const sign = top === true ? 1 : -1;
+      const sign2 = top === true ? 1 : -1;
       for (let x = 1; x <= radialSegments; x++) {
-        vertices.push(0, halfHeight * sign, 0);
-        normals.push(0, sign, 0);
+        vertices.push(0, halfHeight * sign2, 0);
+        normals.push(0, sign2, 0);
         uvs.push(0.5, 0.5);
         index++;
       }
@@ -14165,12 +14165,12 @@ var CylinderGeometry = class _CylinderGeometry extends BufferGeometry {
         const cosTheta = Math.cos(theta);
         const sinTheta = Math.sin(theta);
         vertex2.x = radius * sinTheta;
-        vertex2.y = halfHeight * sign;
+        vertex2.y = halfHeight * sign2;
         vertex2.z = radius * cosTheta;
         vertices.push(vertex2.x, vertex2.y, vertex2.z);
-        normals.push(0, sign, 0);
+        normals.push(0, sign2, 0);
         uv.x = cosTheta * 0.5 + 0.5;
-        uv.y = sinTheta * 0.5 * sign + 0.5;
+        uv.y = sinTheta * 0.5 * sign2 + 0.5;
         uvs.push(uv.x, uv.y);
         index++;
       }
@@ -14241,6 +14241,2389 @@ var ConeGeometry = class _ConeGeometry extends CylinderGeometry {
     return new _ConeGeometry(data.radius, data.height, data.radialSegments, data.heightSegments, data.openEnded, data.thetaStart, data.thetaLength);
   }
 };
+var Curve = class {
+  /**
+   * Constructs a new curve.
+   */
+  constructor() {
+    this.type = "Curve";
+    this.arcLengthDivisions = 200;
+    this.needsUpdate = false;
+    this.cacheArcLengths = null;
+  }
+  /**
+   * This method returns a vector in 2D or 3D space (depending on the curve definition)
+   * for the given interpolation factor.
+   *
+   * @abstract
+   * @param {number} t - A interpolation factor representing a position on the curve. Must be in the range `[0,1]`.
+   * @param {(Vector2|Vector3)} [optionalTarget] - The optional target vector the result is written to.
+   * @return {(Vector2|Vector3)} The position on the curve. It can be a 2D or 3D vector depending on the curve definition.
+   */
+  getPoint() {
+    console.warn("THREE.Curve: .getPoint() not implemented.");
+  }
+  /**
+   * This method returns a vector in 2D or 3D space (depending on the curve definition)
+   * for the given interpolation factor. Unlike {@link Curve#getPoint}, this method honors the length
+   * of the curve which equidistant samples.
+   *
+   * @param {number} u - A interpolation factor representing a position on the curve. Must be in the range `[0,1]`.
+   * @param {(Vector2|Vector3)} [optionalTarget] - The optional target vector the result is written to.
+   * @return {(Vector2|Vector3)} The position on the curve. It can be a 2D or 3D vector depending on the curve definition.
+   */
+  getPointAt(u, optionalTarget) {
+    const t = this.getUtoTmapping(u);
+    return this.getPoint(t, optionalTarget);
+  }
+  /**
+   * This method samples the curve via {@link Curve#getPoint} and returns an array of points representing
+   * the curve shape.
+   *
+   * @param {number} [divisions=5] - The number of divisions.
+   * @return {Array<(Vector2|Vector3)>} An array holding the sampled curve values. The number of points is `divisions + 1`.
+   */
+  getPoints(divisions = 5) {
+    const points = [];
+    for (let d = 0; d <= divisions; d++) {
+      points.push(this.getPoint(d / divisions));
+    }
+    return points;
+  }
+  // Get sequence of points using getPointAt( u )
+  /**
+   * This method samples the curve via {@link Curve#getPointAt} and returns an array of points representing
+   * the curve shape. Unlike {@link Curve#getPoints}, this method returns equi-spaced points across the entire
+   * curve.
+   *
+   * @param {number} [divisions=5] - The number of divisions.
+   * @return {Array<(Vector2|Vector3)>} An array holding the sampled curve values. The number of points is `divisions + 1`.
+   */
+  getSpacedPoints(divisions = 5) {
+    const points = [];
+    for (let d = 0; d <= divisions; d++) {
+      points.push(this.getPointAt(d / divisions));
+    }
+    return points;
+  }
+  /**
+   * Returns the total arc length of the curve.
+   *
+   * @return {number} The length of the curve.
+   */
+  getLength() {
+    const lengths = this.getLengths();
+    return lengths[lengths.length - 1];
+  }
+  /**
+   * Returns an array of cumulative segment lengths of the curve.
+   *
+   * @param {number} [divisions=this.arcLengthDivisions] - The number of divisions.
+   * @return {Array<number>} An array holding the cumulative segment lengths.
+   */
+  getLengths(divisions = this.arcLengthDivisions) {
+    if (this.cacheArcLengths && this.cacheArcLengths.length === divisions + 1 && !this.needsUpdate) {
+      return this.cacheArcLengths;
+    }
+    this.needsUpdate = false;
+    const cache = [];
+    let current, last = this.getPoint(0);
+    let sum = 0;
+    cache.push(0);
+    for (let p = 1; p <= divisions; p++) {
+      current = this.getPoint(p / divisions);
+      sum += current.distanceTo(last);
+      cache.push(sum);
+      last = current;
+    }
+    this.cacheArcLengths = cache;
+    return cache;
+  }
+  /**
+   * Update the cumulative segment distance cache. The method must be called
+   * every time curve parameters are changed. If an updated curve is part of a
+   * composed curve like {@link CurvePath}, this method must be called on the
+   * composed curve, too.
+   */
+  updateArcLengths() {
+    this.needsUpdate = true;
+    this.getLengths();
+  }
+  /**
+   * Given an interpolation factor in the range `[0,1]`, this method returns an updated
+   * interpolation factor in the same range that can be ued to sample equidistant points
+   * from a curve.
+   *
+   * @param {number} u - The interpolation factor.
+   * @param {?number} distance - An optional distance on the curve.
+   * @return {number} The updated interpolation factor.
+   */
+  getUtoTmapping(u, distance = null) {
+    const arcLengths = this.getLengths();
+    let i = 0;
+    const il = arcLengths.length;
+    let targetArcLength;
+    if (distance) {
+      targetArcLength = distance;
+    } else {
+      targetArcLength = u * arcLengths[il - 1];
+    }
+    let low = 0, high = il - 1, comparison;
+    while (low <= high) {
+      i = Math.floor(low + (high - low) / 2);
+      comparison = arcLengths[i] - targetArcLength;
+      if (comparison < 0) {
+        low = i + 1;
+      } else if (comparison > 0) {
+        high = i - 1;
+      } else {
+        high = i;
+        break;
+      }
+    }
+    i = high;
+    if (arcLengths[i] === targetArcLength) {
+      return i / (il - 1);
+    }
+    const lengthBefore = arcLengths[i];
+    const lengthAfter = arcLengths[i + 1];
+    const segmentLength = lengthAfter - lengthBefore;
+    const segmentFraction = (targetArcLength - lengthBefore) / segmentLength;
+    const t = (i + segmentFraction) / (il - 1);
+    return t;
+  }
+  /**
+   * Returns a unit vector tangent for the given interpolation factor.
+   * If the derived curve does not implement its tangent derivation,
+   * two points a small delta apart will be used to find its gradient
+   * which seems to give a reasonable approximation.
+   *
+   * @param {number} t - The interpolation factor.
+   * @param {(Vector2|Vector3)} [optionalTarget] - The optional target vector the result is written to.
+   * @return {(Vector2|Vector3)} The tangent vector.
+   */
+  getTangent(t, optionalTarget) {
+    const delta = 1e-4;
+    let t1 = t - delta;
+    let t2 = t + delta;
+    if (t1 < 0) t1 = 0;
+    if (t2 > 1) t2 = 1;
+    const pt1 = this.getPoint(t1);
+    const pt2 = this.getPoint(t2);
+    const tangent = optionalTarget || (pt1.isVector2 ? new Vector2() : new Vector3());
+    tangent.copy(pt2).sub(pt1).normalize();
+    return tangent;
+  }
+  /**
+   * Same as {@link Curve#getTangent} but with equidistant samples.
+   *
+   * @param {number} u - The interpolation factor.
+   * @param {(Vector2|Vector3)} [optionalTarget] - The optional target vector the result is written to.
+   * @return {(Vector2|Vector3)} The tangent vector.
+   * @see {@link Curve#getPointAt}
+   */
+  getTangentAt(u, optionalTarget) {
+    const t = this.getUtoTmapping(u);
+    return this.getTangent(t, optionalTarget);
+  }
+  /**
+   * Generates the Frenet Frames. Requires a curve definition in 3D space. Used
+   * in geometries like {@link TubeGeometry} or {@link ExtrudeGeometry}.
+   *
+   * @param {number} segments - The number of segments.
+   * @param {boolean} [closed=false] - Whether the curve is closed or not.
+   * @return {{tangents: Array<Vector3>, normals: Array<Vector3>, binormals: Array<Vector3>}} The Frenet Frames.
+   */
+  computeFrenetFrames(segments, closed = false) {
+    const normal = new Vector3();
+    const tangents = [];
+    const normals = [];
+    const binormals = [];
+    const vec = new Vector3();
+    const mat2 = new Matrix4();
+    for (let i = 0; i <= segments; i++) {
+      const u = i / segments;
+      tangents[i] = this.getTangentAt(u, new Vector3());
+    }
+    normals[0] = new Vector3();
+    binormals[0] = new Vector3();
+    let min = Number.MAX_VALUE;
+    const tx = Math.abs(tangents[0].x);
+    const ty = Math.abs(tangents[0].y);
+    const tz = Math.abs(tangents[0].z);
+    if (tx <= min) {
+      min = tx;
+      normal.set(1, 0, 0);
+    }
+    if (ty <= min) {
+      min = ty;
+      normal.set(0, 1, 0);
+    }
+    if (tz <= min) {
+      normal.set(0, 0, 1);
+    }
+    vec.crossVectors(tangents[0], normal).normalize();
+    normals[0].crossVectors(tangents[0], vec);
+    binormals[0].crossVectors(tangents[0], normals[0]);
+    for (let i = 1; i <= segments; i++) {
+      normals[i] = normals[i - 1].clone();
+      binormals[i] = binormals[i - 1].clone();
+      vec.crossVectors(tangents[i - 1], tangents[i]);
+      if (vec.length() > Number.EPSILON) {
+        vec.normalize();
+        const theta = Math.acos(clamp(tangents[i - 1].dot(tangents[i]), -1, 1));
+        normals[i].applyMatrix4(mat2.makeRotationAxis(vec, theta));
+      }
+      binormals[i].crossVectors(tangents[i], normals[i]);
+    }
+    if (closed === true) {
+      let theta = Math.acos(clamp(normals[0].dot(normals[segments]), -1, 1));
+      theta /= segments;
+      if (tangents[0].dot(vec.crossVectors(normals[0], normals[segments])) > 0) {
+        theta = -theta;
+      }
+      for (let i = 1; i <= segments; i++) {
+        normals[i].applyMatrix4(mat2.makeRotationAxis(tangents[i], theta * i));
+        binormals[i].crossVectors(tangents[i], normals[i]);
+      }
+    }
+    return {
+      tangents,
+      normals,
+      binormals
+    };
+  }
+  /**
+   * Returns a new curve with copied values from this instance.
+   *
+   * @return {Curve} A clone of this instance.
+   */
+  clone() {
+    return new this.constructor().copy(this);
+  }
+  /**
+   * Copies the values of the given curve to this instance.
+   *
+   * @param {Curve} source - The curve to copy.
+   * @return {Curve} A reference to this curve.
+   */
+  copy(source) {
+    this.arcLengthDivisions = source.arcLengthDivisions;
+    return this;
+  }
+  /**
+   * Serializes the curve into JSON.
+   *
+   * @return {Object} A JSON object representing the serialized curve.
+   * @see {@link ObjectLoader#parse}
+   */
+  toJSON() {
+    const data = {
+      metadata: {
+        version: 4.7,
+        type: "Curve",
+        generator: "Curve.toJSON"
+      }
+    };
+    data.arcLengthDivisions = this.arcLengthDivisions;
+    data.type = this.type;
+    return data;
+  }
+  /**
+   * Deserializes the curve from the given JSON.
+   *
+   * @param {Object} json - The JSON holding the serialized curve.
+   * @return {Curve} A reference to this curve.
+   */
+  fromJSON(json) {
+    this.arcLengthDivisions = json.arcLengthDivisions;
+    return this;
+  }
+};
+var EllipseCurve = class extends Curve {
+  /**
+   * Constructs a new ellipse curve.
+   *
+   * @param {number} [aX=0] - The X center of the ellipse.
+   * @param {number} [aY=0] - The Y center of the ellipse.
+   * @param {number} [xRadius=1] - The radius of the ellipse in the x direction.
+   * @param {number} [yRadius=1] - The radius of the ellipse in the y direction.
+   * @param {number} [aStartAngle=0] - The start angle of the curve in radians starting from the positive X axis.
+   * @param {number} [aEndAngle=Math.PI*2] - The end angle of the curve in radians starting from the positive X axis.
+   * @param {boolean} [aClockwise=false] - Whether the ellipse is drawn clockwise or not.
+   * @param {number} [aRotation=0] - The rotation angle of the ellipse in radians, counterclockwise from the positive X axis.
+   */
+  constructor(aX = 0, aY = 0, xRadius = 1, yRadius = 1, aStartAngle = 0, aEndAngle = Math.PI * 2, aClockwise = false, aRotation = 0) {
+    super();
+    this.isEllipseCurve = true;
+    this.type = "EllipseCurve";
+    this.aX = aX;
+    this.aY = aY;
+    this.xRadius = xRadius;
+    this.yRadius = yRadius;
+    this.aStartAngle = aStartAngle;
+    this.aEndAngle = aEndAngle;
+    this.aClockwise = aClockwise;
+    this.aRotation = aRotation;
+  }
+  /**
+   * Returns a point on the curve.
+   *
+   * @param {number} t - A interpolation factor representing a position on the curve. Must be in the range `[0,1]`.
+   * @param {Vector2} [optionalTarget] - The optional target vector the result is written to.
+   * @return {Vector2} The position on the curve.
+   */
+  getPoint(t, optionalTarget = new Vector2()) {
+    const point = optionalTarget;
+    const twoPi = Math.PI * 2;
+    let deltaAngle = this.aEndAngle - this.aStartAngle;
+    const samePoints = Math.abs(deltaAngle) < Number.EPSILON;
+    while (deltaAngle < 0) deltaAngle += twoPi;
+    while (deltaAngle > twoPi) deltaAngle -= twoPi;
+    if (deltaAngle < Number.EPSILON) {
+      if (samePoints) {
+        deltaAngle = 0;
+      } else {
+        deltaAngle = twoPi;
+      }
+    }
+    if (this.aClockwise === true && !samePoints) {
+      if (deltaAngle === twoPi) {
+        deltaAngle = -twoPi;
+      } else {
+        deltaAngle = deltaAngle - twoPi;
+      }
+    }
+    const angle = this.aStartAngle + t * deltaAngle;
+    let x = this.aX + this.xRadius * Math.cos(angle);
+    let y = this.aY + this.yRadius * Math.sin(angle);
+    if (this.aRotation !== 0) {
+      const cos = Math.cos(this.aRotation);
+      const sin = Math.sin(this.aRotation);
+      const tx = x - this.aX;
+      const ty = y - this.aY;
+      x = tx * cos - ty * sin + this.aX;
+      y = tx * sin + ty * cos + this.aY;
+    }
+    return point.set(x, y);
+  }
+  copy(source) {
+    super.copy(source);
+    this.aX = source.aX;
+    this.aY = source.aY;
+    this.xRadius = source.xRadius;
+    this.yRadius = source.yRadius;
+    this.aStartAngle = source.aStartAngle;
+    this.aEndAngle = source.aEndAngle;
+    this.aClockwise = source.aClockwise;
+    this.aRotation = source.aRotation;
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.aX = this.aX;
+    data.aY = this.aY;
+    data.xRadius = this.xRadius;
+    data.yRadius = this.yRadius;
+    data.aStartAngle = this.aStartAngle;
+    data.aEndAngle = this.aEndAngle;
+    data.aClockwise = this.aClockwise;
+    data.aRotation = this.aRotation;
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.aX = json.aX;
+    this.aY = json.aY;
+    this.xRadius = json.xRadius;
+    this.yRadius = json.yRadius;
+    this.aStartAngle = json.aStartAngle;
+    this.aEndAngle = json.aEndAngle;
+    this.aClockwise = json.aClockwise;
+    this.aRotation = json.aRotation;
+    return this;
+  }
+};
+var ArcCurve = class extends EllipseCurve {
+  /**
+   * Constructs a new arc curve.
+   *
+   * @param {number} [aX=0] - The X center of the ellipse.
+   * @param {number} [aY=0] - The Y center of the ellipse.
+   * @param {number} [aRadius=1] - The radius of the ellipse in the x direction.
+   * @param {number} [aStartAngle=0] - The start angle of the curve in radians starting from the positive X axis.
+   * @param {number} [aEndAngle=Math.PI*2] - The end angle of the curve in radians starting from the positive X axis.
+   * @param {boolean} [aClockwise=false] - Whether the ellipse is drawn clockwise or not.
+   */
+  constructor(aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise) {
+    super(aX, aY, aRadius, aRadius, aStartAngle, aEndAngle, aClockwise);
+    this.isArcCurve = true;
+    this.type = "ArcCurve";
+  }
+};
+function CubicPoly() {
+  let c0 = 0, c1 = 0, c2 = 0, c3 = 0;
+  function init(x0, x1, t0, t1) {
+    c0 = x0;
+    c1 = t0;
+    c2 = -3 * x0 + 3 * x1 - 2 * t0 - t1;
+    c3 = 2 * x0 - 2 * x1 + t0 + t1;
+  }
+  return {
+    initCatmullRom: function(x0, x1, x2, x3, tension) {
+      init(x1, x2, tension * (x2 - x0), tension * (x3 - x1));
+    },
+    initNonuniformCatmullRom: function(x0, x1, x2, x3, dt0, dt1, dt2) {
+      let t1 = (x1 - x0) / dt0 - (x2 - x0) / (dt0 + dt1) + (x2 - x1) / dt1;
+      let t2 = (x2 - x1) / dt1 - (x3 - x1) / (dt1 + dt2) + (x3 - x2) / dt2;
+      t1 *= dt1;
+      t2 *= dt1;
+      init(x1, x2, t1, t2);
+    },
+    calc: function(t) {
+      const t2 = t * t;
+      const t3 = t2 * t;
+      return c0 + c1 * t + c2 * t2 + c3 * t3;
+    }
+  };
+}
+var tmp = /* @__PURE__ */ new Vector3();
+var px = /* @__PURE__ */ new CubicPoly();
+var py = /* @__PURE__ */ new CubicPoly();
+var pz = /* @__PURE__ */ new CubicPoly();
+var CatmullRomCurve3 = class extends Curve {
+  /**
+   * Constructs a new Catmull-Rom curve.
+   *
+   * @param {Array<Vector3>} [points] - An array of 3D points defining the curve.
+   * @param {boolean} [closed=false] - Whether the curve is closed or not.
+   * @param {('centripetal'|'chordal'|'catmullrom')} [curveType='centripetal'] - The curve type.
+   * @param {number} [tension=0.5] - Tension of the curve.
+   */
+  constructor(points = [], closed = false, curveType = "centripetal", tension = 0.5) {
+    super();
+    this.isCatmullRomCurve3 = true;
+    this.type = "CatmullRomCurve3";
+    this.points = points;
+    this.closed = closed;
+    this.curveType = curveType;
+    this.tension = tension;
+  }
+  /**
+   * Returns a point on the curve.
+   *
+   * @param {number} t - A interpolation factor representing a position on the curve. Must be in the range `[0,1]`.
+   * @param {Vector3} [optionalTarget] - The optional target vector the result is written to.
+   * @return {Vector3} The position on the curve.
+   */
+  getPoint(t, optionalTarget = new Vector3()) {
+    const point = optionalTarget;
+    const points = this.points;
+    const l = points.length;
+    const p = (l - (this.closed ? 0 : 1)) * t;
+    let intPoint = Math.floor(p);
+    let weight = p - intPoint;
+    if (this.closed) {
+      intPoint += intPoint > 0 ? 0 : (Math.floor(Math.abs(intPoint) / l) + 1) * l;
+    } else if (weight === 0 && intPoint === l - 1) {
+      intPoint = l - 2;
+      weight = 1;
+    }
+    let p0, p3;
+    if (this.closed || intPoint > 0) {
+      p0 = points[(intPoint - 1) % l];
+    } else {
+      tmp.subVectors(points[0], points[1]).add(points[0]);
+      p0 = tmp;
+    }
+    const p1 = points[intPoint % l];
+    const p2 = points[(intPoint + 1) % l];
+    if (this.closed || intPoint + 2 < l) {
+      p3 = points[(intPoint + 2) % l];
+    } else {
+      tmp.subVectors(points[l - 1], points[l - 2]).add(points[l - 1]);
+      p3 = tmp;
+    }
+    if (this.curveType === "centripetal" || this.curveType === "chordal") {
+      const pow = this.curveType === "chordal" ? 0.5 : 0.25;
+      let dt0 = Math.pow(p0.distanceToSquared(p1), pow);
+      let dt1 = Math.pow(p1.distanceToSquared(p2), pow);
+      let dt2 = Math.pow(p2.distanceToSquared(p3), pow);
+      if (dt1 < 1e-4) dt1 = 1;
+      if (dt0 < 1e-4) dt0 = dt1;
+      if (dt2 < 1e-4) dt2 = dt1;
+      px.initNonuniformCatmullRom(p0.x, p1.x, p2.x, p3.x, dt0, dt1, dt2);
+      py.initNonuniformCatmullRom(p0.y, p1.y, p2.y, p3.y, dt0, dt1, dt2);
+      pz.initNonuniformCatmullRom(p0.z, p1.z, p2.z, p3.z, dt0, dt1, dt2);
+    } else if (this.curveType === "catmullrom") {
+      px.initCatmullRom(p0.x, p1.x, p2.x, p3.x, this.tension);
+      py.initCatmullRom(p0.y, p1.y, p2.y, p3.y, this.tension);
+      pz.initCatmullRom(p0.z, p1.z, p2.z, p3.z, this.tension);
+    }
+    point.set(
+      px.calc(weight),
+      py.calc(weight),
+      pz.calc(weight)
+    );
+    return point;
+  }
+  copy(source) {
+    super.copy(source);
+    this.points = [];
+    for (let i = 0, l = source.points.length; i < l; i++) {
+      const point = source.points[i];
+      this.points.push(point.clone());
+    }
+    this.closed = source.closed;
+    this.curveType = source.curveType;
+    this.tension = source.tension;
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.points = [];
+    for (let i = 0, l = this.points.length; i < l; i++) {
+      const point = this.points[i];
+      data.points.push(point.toArray());
+    }
+    data.closed = this.closed;
+    data.curveType = this.curveType;
+    data.tension = this.tension;
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.points = [];
+    for (let i = 0, l = json.points.length; i < l; i++) {
+      const point = json.points[i];
+      this.points.push(new Vector3().fromArray(point));
+    }
+    this.closed = json.closed;
+    this.curveType = json.curveType;
+    this.tension = json.tension;
+    return this;
+  }
+};
+function CatmullRom(t, p0, p1, p2, p3) {
+  const v0 = (p2 - p0) * 0.5;
+  const v1 = (p3 - p1) * 0.5;
+  const t2 = t * t;
+  const t3 = t * t2;
+  return (2 * p1 - 2 * p2 + v0 + v1) * t3 + (-3 * p1 + 3 * p2 - 2 * v0 - v1) * t2 + v0 * t + p1;
+}
+function QuadraticBezierP0(t, p) {
+  const k = 1 - t;
+  return k * k * p;
+}
+function QuadraticBezierP1(t, p) {
+  return 2 * (1 - t) * t * p;
+}
+function QuadraticBezierP2(t, p) {
+  return t * t * p;
+}
+function QuadraticBezier(t, p0, p1, p2) {
+  return QuadraticBezierP0(t, p0) + QuadraticBezierP1(t, p1) + QuadraticBezierP2(t, p2);
+}
+function CubicBezierP0(t, p) {
+  const k = 1 - t;
+  return k * k * k * p;
+}
+function CubicBezierP1(t, p) {
+  const k = 1 - t;
+  return 3 * k * k * t * p;
+}
+function CubicBezierP2(t, p) {
+  return 3 * (1 - t) * t * t * p;
+}
+function CubicBezierP3(t, p) {
+  return t * t * t * p;
+}
+function CubicBezier(t, p0, p1, p2, p3) {
+  return CubicBezierP0(t, p0) + CubicBezierP1(t, p1) + CubicBezierP2(t, p2) + CubicBezierP3(t, p3);
+}
+var CubicBezierCurve = class extends Curve {
+  /**
+   * Constructs a new Cubic Bezier curve.
+   *
+   * @param {Vector2} [v0] - The start point.
+   * @param {Vector2} [v1] - The first control point.
+   * @param {Vector2} [v2] - The second control point.
+   * @param {Vector2} [v3] - The end point.
+   */
+  constructor(v0 = new Vector2(), v1 = new Vector2(), v2 = new Vector2(), v3 = new Vector2()) {
+    super();
+    this.isCubicBezierCurve = true;
+    this.type = "CubicBezierCurve";
+    this.v0 = v0;
+    this.v1 = v1;
+    this.v2 = v2;
+    this.v3 = v3;
+  }
+  /**
+   * Returns a point on the curve.
+   *
+   * @param {number} t - A interpolation factor representing a position on the curve. Must be in the range `[0,1]`.
+   * @param {Vector2} [optionalTarget] - The optional target vector the result is written to.
+   * @return {Vector2} The position on the curve.
+   */
+  getPoint(t, optionalTarget = new Vector2()) {
+    const point = optionalTarget;
+    const v0 = this.v0, v1 = this.v1, v2 = this.v2, v3 = this.v3;
+    point.set(
+      CubicBezier(t, v0.x, v1.x, v2.x, v3.x),
+      CubicBezier(t, v0.y, v1.y, v2.y, v3.y)
+    );
+    return point;
+  }
+  copy(source) {
+    super.copy(source);
+    this.v0.copy(source.v0);
+    this.v1.copy(source.v1);
+    this.v2.copy(source.v2);
+    this.v3.copy(source.v3);
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.v0 = this.v0.toArray();
+    data.v1 = this.v1.toArray();
+    data.v2 = this.v2.toArray();
+    data.v3 = this.v3.toArray();
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.v0.fromArray(json.v0);
+    this.v1.fromArray(json.v1);
+    this.v2.fromArray(json.v2);
+    this.v3.fromArray(json.v3);
+    return this;
+  }
+};
+var CubicBezierCurve3 = class extends Curve {
+  /**
+   * Constructs a new Cubic Bezier curve.
+   *
+   * @param {Vector3} [v0] - The start point.
+   * @param {Vector3} [v1] - The first control point.
+   * @param {Vector3} [v2] - The second control point.
+   * @param {Vector3} [v3] - The end point.
+   */
+  constructor(v0 = new Vector3(), v1 = new Vector3(), v2 = new Vector3(), v3 = new Vector3()) {
+    super();
+    this.isCubicBezierCurve3 = true;
+    this.type = "CubicBezierCurve3";
+    this.v0 = v0;
+    this.v1 = v1;
+    this.v2 = v2;
+    this.v3 = v3;
+  }
+  /**
+   * Returns a point on the curve.
+   *
+   * @param {number} t - A interpolation factor representing a position on the curve. Must be in the range `[0,1]`.
+   * @param {Vector3} [optionalTarget] - The optional target vector the result is written to.
+   * @return {Vector3} The position on the curve.
+   */
+  getPoint(t, optionalTarget = new Vector3()) {
+    const point = optionalTarget;
+    const v0 = this.v0, v1 = this.v1, v2 = this.v2, v3 = this.v3;
+    point.set(
+      CubicBezier(t, v0.x, v1.x, v2.x, v3.x),
+      CubicBezier(t, v0.y, v1.y, v2.y, v3.y),
+      CubicBezier(t, v0.z, v1.z, v2.z, v3.z)
+    );
+    return point;
+  }
+  copy(source) {
+    super.copy(source);
+    this.v0.copy(source.v0);
+    this.v1.copy(source.v1);
+    this.v2.copy(source.v2);
+    this.v3.copy(source.v3);
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.v0 = this.v0.toArray();
+    data.v1 = this.v1.toArray();
+    data.v2 = this.v2.toArray();
+    data.v3 = this.v3.toArray();
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.v0.fromArray(json.v0);
+    this.v1.fromArray(json.v1);
+    this.v2.fromArray(json.v2);
+    this.v3.fromArray(json.v3);
+    return this;
+  }
+};
+var LineCurve = class extends Curve {
+  /**
+   * Constructs a new line curve.
+   *
+   * @param {Vector2} [v1] - The start point.
+   * @param {Vector2} [v2] - The end point.
+   */
+  constructor(v1 = new Vector2(), v2 = new Vector2()) {
+    super();
+    this.isLineCurve = true;
+    this.type = "LineCurve";
+    this.v1 = v1;
+    this.v2 = v2;
+  }
+  /**
+   * Returns a point on the line.
+   *
+   * @param {number} t - A interpolation factor representing a position on the line. Must be in the range `[0,1]`.
+   * @param {Vector2} [optionalTarget] - The optional target vector the result is written to.
+   * @return {Vector2} The position on the line.
+   */
+  getPoint(t, optionalTarget = new Vector2()) {
+    const point = optionalTarget;
+    if (t === 1) {
+      point.copy(this.v2);
+    } else {
+      point.copy(this.v2).sub(this.v1);
+      point.multiplyScalar(t).add(this.v1);
+    }
+    return point;
+  }
+  // Line curve is linear, so we can overwrite default getPointAt
+  getPointAt(u, optionalTarget) {
+    return this.getPoint(u, optionalTarget);
+  }
+  getTangent(t, optionalTarget = new Vector2()) {
+    return optionalTarget.subVectors(this.v2, this.v1).normalize();
+  }
+  getTangentAt(u, optionalTarget) {
+    return this.getTangent(u, optionalTarget);
+  }
+  copy(source) {
+    super.copy(source);
+    this.v1.copy(source.v1);
+    this.v2.copy(source.v2);
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.v1 = this.v1.toArray();
+    data.v2 = this.v2.toArray();
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.v1.fromArray(json.v1);
+    this.v2.fromArray(json.v2);
+    return this;
+  }
+};
+var LineCurve3 = class extends Curve {
+  /**
+   * Constructs a new line curve.
+   *
+   * @param {Vector3} [v1] - The start point.
+   * @param {Vector3} [v2] - The end point.
+   */
+  constructor(v1 = new Vector3(), v2 = new Vector3()) {
+    super();
+    this.isLineCurve3 = true;
+    this.type = "LineCurve3";
+    this.v1 = v1;
+    this.v2 = v2;
+  }
+  /**
+   * Returns a point on the line.
+   *
+   * @param {number} t - A interpolation factor representing a position on the line. Must be in the range `[0,1]`.
+   * @param {Vector3} [optionalTarget] - The optional target vector the result is written to.
+   * @return {Vector3} The position on the line.
+   */
+  getPoint(t, optionalTarget = new Vector3()) {
+    const point = optionalTarget;
+    if (t === 1) {
+      point.copy(this.v2);
+    } else {
+      point.copy(this.v2).sub(this.v1);
+      point.multiplyScalar(t).add(this.v1);
+    }
+    return point;
+  }
+  // Line curve is linear, so we can overwrite default getPointAt
+  getPointAt(u, optionalTarget) {
+    return this.getPoint(u, optionalTarget);
+  }
+  getTangent(t, optionalTarget = new Vector3()) {
+    return optionalTarget.subVectors(this.v2, this.v1).normalize();
+  }
+  getTangentAt(u, optionalTarget) {
+    return this.getTangent(u, optionalTarget);
+  }
+  copy(source) {
+    super.copy(source);
+    this.v1.copy(source.v1);
+    this.v2.copy(source.v2);
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.v1 = this.v1.toArray();
+    data.v2 = this.v2.toArray();
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.v1.fromArray(json.v1);
+    this.v2.fromArray(json.v2);
+    return this;
+  }
+};
+var QuadraticBezierCurve = class extends Curve {
+  /**
+   * Constructs a new Quadratic Bezier curve.
+   *
+   * @param {Vector2} [v0] - The start point.
+   * @param {Vector2} [v1] - The control point.
+   * @param {Vector2} [v2] - The end point.
+   */
+  constructor(v0 = new Vector2(), v1 = new Vector2(), v2 = new Vector2()) {
+    super();
+    this.isQuadraticBezierCurve = true;
+    this.type = "QuadraticBezierCurve";
+    this.v0 = v0;
+    this.v1 = v1;
+    this.v2 = v2;
+  }
+  /**
+   * Returns a point on the curve.
+   *
+   * @param {number} t - A interpolation factor representing a position on the curve. Must be in the range `[0,1]`.
+   * @param {Vector2} [optionalTarget] - The optional target vector the result is written to.
+   * @return {Vector2} The position on the curve.
+   */
+  getPoint(t, optionalTarget = new Vector2()) {
+    const point = optionalTarget;
+    const v0 = this.v0, v1 = this.v1, v2 = this.v2;
+    point.set(
+      QuadraticBezier(t, v0.x, v1.x, v2.x),
+      QuadraticBezier(t, v0.y, v1.y, v2.y)
+    );
+    return point;
+  }
+  copy(source) {
+    super.copy(source);
+    this.v0.copy(source.v0);
+    this.v1.copy(source.v1);
+    this.v2.copy(source.v2);
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.v0 = this.v0.toArray();
+    data.v1 = this.v1.toArray();
+    data.v2 = this.v2.toArray();
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.v0.fromArray(json.v0);
+    this.v1.fromArray(json.v1);
+    this.v2.fromArray(json.v2);
+    return this;
+  }
+};
+var QuadraticBezierCurve3 = class extends Curve {
+  /**
+   * Constructs a new Quadratic Bezier curve.
+   *
+   * @param {Vector3} [v0] - The start point.
+   * @param {Vector3} [v1] - The control point.
+   * @param {Vector3} [v2] - The end point.
+   */
+  constructor(v0 = new Vector3(), v1 = new Vector3(), v2 = new Vector3()) {
+    super();
+    this.isQuadraticBezierCurve3 = true;
+    this.type = "QuadraticBezierCurve3";
+    this.v0 = v0;
+    this.v1 = v1;
+    this.v2 = v2;
+  }
+  /**
+   * Returns a point on the curve.
+   *
+   * @param {number} t - A interpolation factor representing a position on the curve. Must be in the range `[0,1]`.
+   * @param {Vector3} [optionalTarget] - The optional target vector the result is written to.
+   * @return {Vector3} The position on the curve.
+   */
+  getPoint(t, optionalTarget = new Vector3()) {
+    const point = optionalTarget;
+    const v0 = this.v0, v1 = this.v1, v2 = this.v2;
+    point.set(
+      QuadraticBezier(t, v0.x, v1.x, v2.x),
+      QuadraticBezier(t, v0.y, v1.y, v2.y),
+      QuadraticBezier(t, v0.z, v1.z, v2.z)
+    );
+    return point;
+  }
+  copy(source) {
+    super.copy(source);
+    this.v0.copy(source.v0);
+    this.v1.copy(source.v1);
+    this.v2.copy(source.v2);
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.v0 = this.v0.toArray();
+    data.v1 = this.v1.toArray();
+    data.v2 = this.v2.toArray();
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.v0.fromArray(json.v0);
+    this.v1.fromArray(json.v1);
+    this.v2.fromArray(json.v2);
+    return this;
+  }
+};
+var SplineCurve = class extends Curve {
+  /**
+   * Constructs a new 2D spline curve.
+   *
+   * @param {Array<Vector2>} [points] -  An array of 2D points defining the curve.
+   */
+  constructor(points = []) {
+    super();
+    this.isSplineCurve = true;
+    this.type = "SplineCurve";
+    this.points = points;
+  }
+  /**
+   * Returns a point on the curve.
+   *
+   * @param {number} t - A interpolation factor representing a position on the curve. Must be in the range `[0,1]`.
+   * @param {Vector2} [optionalTarget] - The optional target vector the result is written to.
+   * @return {Vector2} The position on the curve.
+   */
+  getPoint(t, optionalTarget = new Vector2()) {
+    const point = optionalTarget;
+    const points = this.points;
+    const p = (points.length - 1) * t;
+    const intPoint = Math.floor(p);
+    const weight = p - intPoint;
+    const p0 = points[intPoint === 0 ? intPoint : intPoint - 1];
+    const p1 = points[intPoint];
+    const p2 = points[intPoint > points.length - 2 ? points.length - 1 : intPoint + 1];
+    const p3 = points[intPoint > points.length - 3 ? points.length - 1 : intPoint + 2];
+    point.set(
+      CatmullRom(weight, p0.x, p1.x, p2.x, p3.x),
+      CatmullRom(weight, p0.y, p1.y, p2.y, p3.y)
+    );
+    return point;
+  }
+  copy(source) {
+    super.copy(source);
+    this.points = [];
+    for (let i = 0, l = source.points.length; i < l; i++) {
+      const point = source.points[i];
+      this.points.push(point.clone());
+    }
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.points = [];
+    for (let i = 0, l = this.points.length; i < l; i++) {
+      const point = this.points[i];
+      data.points.push(point.toArray());
+    }
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.points = [];
+    for (let i = 0, l = json.points.length; i < l; i++) {
+      const point = json.points[i];
+      this.points.push(new Vector2().fromArray(point));
+    }
+    return this;
+  }
+};
+var Curves = /* @__PURE__ */ Object.freeze({
+  __proto__: null,
+  ArcCurve,
+  CatmullRomCurve3,
+  CubicBezierCurve,
+  CubicBezierCurve3,
+  EllipseCurve,
+  LineCurve,
+  LineCurve3,
+  QuadraticBezierCurve,
+  QuadraticBezierCurve3,
+  SplineCurve
+});
+var CurvePath = class extends Curve {
+  /**
+   * Constructs a new curve path.
+   */
+  constructor() {
+    super();
+    this.type = "CurvePath";
+    this.curves = [];
+    this.autoClose = false;
+  }
+  /**
+   * Adds a curve to this curve path.
+   *
+   * @param {Curve} curve - The curve to add.
+   */
+  add(curve) {
+    this.curves.push(curve);
+  }
+  /**
+   * Adds a line curve to close the path.
+   *
+   * @return {CurvePath} A reference to this curve path.
+   */
+  closePath() {
+    const startPoint = this.curves[0].getPoint(0);
+    const endPoint = this.curves[this.curves.length - 1].getPoint(1);
+    if (!startPoint.equals(endPoint)) {
+      const lineType = startPoint.isVector2 === true ? "LineCurve" : "LineCurve3";
+      this.curves.push(new Curves[lineType](endPoint, startPoint));
+    }
+    return this;
+  }
+  /**
+   * This method returns a vector in 2D or 3D space (depending on the curve definitions)
+   * for the given interpolation factor.
+   *
+   * @param {number} t - A interpolation factor representing a position on the curve. Must be in the range `[0,1]`.
+   * @param {(Vector2|Vector3)} [optionalTarget] - The optional target vector the result is written to.
+   * @return {?(Vector2|Vector3)} The position on the curve. It can be a 2D or 3D vector depending on the curve definition.
+   */
+  getPoint(t, optionalTarget) {
+    const d = t * this.getLength();
+    const curveLengths = this.getCurveLengths();
+    let i = 0;
+    while (i < curveLengths.length) {
+      if (curveLengths[i] >= d) {
+        const diff = curveLengths[i] - d;
+        const curve = this.curves[i];
+        const segmentLength = curve.getLength();
+        const u = segmentLength === 0 ? 0 : 1 - diff / segmentLength;
+        return curve.getPointAt(u, optionalTarget);
+      }
+      i++;
+    }
+    return null;
+  }
+  getLength() {
+    const lens = this.getCurveLengths();
+    return lens[lens.length - 1];
+  }
+  updateArcLengths() {
+    this.needsUpdate = true;
+    this.cacheLengths = null;
+    this.getCurveLengths();
+  }
+  /**
+   * Returns list of cumulative curve lengths of the defined curves.
+   *
+   * @return {Array<number>} The curve lengths.
+   */
+  getCurveLengths() {
+    if (this.cacheLengths && this.cacheLengths.length === this.curves.length) {
+      return this.cacheLengths;
+    }
+    const lengths = [];
+    let sums = 0;
+    for (let i = 0, l = this.curves.length; i < l; i++) {
+      sums += this.curves[i].getLength();
+      lengths.push(sums);
+    }
+    this.cacheLengths = lengths;
+    return lengths;
+  }
+  getSpacedPoints(divisions = 40) {
+    const points = [];
+    for (let i = 0; i <= divisions; i++) {
+      points.push(this.getPoint(i / divisions));
+    }
+    if (this.autoClose) {
+      points.push(points[0]);
+    }
+    return points;
+  }
+  getPoints(divisions = 12) {
+    const points = [];
+    let last;
+    for (let i = 0, curves = this.curves; i < curves.length; i++) {
+      const curve = curves[i];
+      const resolution = curve.isEllipseCurve ? divisions * 2 : curve.isLineCurve || curve.isLineCurve3 ? 1 : curve.isSplineCurve ? divisions * curve.points.length : divisions;
+      const pts = curve.getPoints(resolution);
+      for (let j = 0; j < pts.length; j++) {
+        const point = pts[j];
+        if (last && last.equals(point)) continue;
+        points.push(point);
+        last = point;
+      }
+    }
+    if (this.autoClose && points.length > 1 && !points[points.length - 1].equals(points[0])) {
+      points.push(points[0]);
+    }
+    return points;
+  }
+  copy(source) {
+    super.copy(source);
+    this.curves = [];
+    for (let i = 0, l = source.curves.length; i < l; i++) {
+      const curve = source.curves[i];
+      this.curves.push(curve.clone());
+    }
+    this.autoClose = source.autoClose;
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.autoClose = this.autoClose;
+    data.curves = [];
+    for (let i = 0, l = this.curves.length; i < l; i++) {
+      const curve = this.curves[i];
+      data.curves.push(curve.toJSON());
+    }
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.autoClose = json.autoClose;
+    this.curves = [];
+    for (let i = 0, l = json.curves.length; i < l; i++) {
+      const curve = json.curves[i];
+      this.curves.push(new Curves[curve.type]().fromJSON(curve));
+    }
+    return this;
+  }
+};
+var Path = class extends CurvePath {
+  /**
+   * Constructs a new path.
+   *
+   * @param {Array<Vector2>} [points] - An array of 2D points defining the path.
+   */
+  constructor(points) {
+    super();
+    this.type = "Path";
+    this.currentPoint = new Vector2();
+    if (points) {
+      this.setFromPoints(points);
+    }
+  }
+  /**
+   * Creates a path from the given list of points. The points are added
+   * to the path as instances of {@link LineCurve}.
+   *
+   * @param {Array<Vector2>} points - An array of 2D points.
+   * @return {Path} A reference to this path.
+   */
+  setFromPoints(points) {
+    this.moveTo(points[0].x, points[0].y);
+    for (let i = 1, l = points.length; i < l; i++) {
+      this.lineTo(points[i].x, points[i].y);
+    }
+    return this;
+  }
+  /**
+   * Moves {@link Path#currentPoint} to the given point.
+   *
+   * @param {number} x - The x coordinate.
+   * @param {number} y - The y coordinate.
+   * @return {Path} A reference to this path.
+   */
+  moveTo(x, y) {
+    this.currentPoint.set(x, y);
+    return this;
+  }
+  /**
+   * Adds an instance of {@link LineCurve} to the path by connecting
+   * the current point with the given one.
+   *
+   * @param {number} x - The x coordinate of the end point.
+   * @param {number} y - The y coordinate of the end point.
+   * @return {Path} A reference to this path.
+   */
+  lineTo(x, y) {
+    const curve = new LineCurve(this.currentPoint.clone(), new Vector2(x, y));
+    this.curves.push(curve);
+    this.currentPoint.set(x, y);
+    return this;
+  }
+  /**
+   * Adds an instance of {@link QuadraticBezierCurve} to the path by connecting
+   * the current point with the given one.
+   *
+   * @param {number} aCPx - The x coordinate of the control point.
+   * @param {number} aCPy - The y coordinate of the control point.
+   * @param {number} aX - The x coordinate of the end point.
+   * @param {number} aY - The y coordinate of the end point.
+   * @return {Path} A reference to this path.
+   */
+  quadraticCurveTo(aCPx, aCPy, aX, aY) {
+    const curve = new QuadraticBezierCurve(
+      this.currentPoint.clone(),
+      new Vector2(aCPx, aCPy),
+      new Vector2(aX, aY)
+    );
+    this.curves.push(curve);
+    this.currentPoint.set(aX, aY);
+    return this;
+  }
+  /**
+   * Adds an instance of {@link CubicBezierCurve} to the path by connecting
+   * the current point with the given one.
+   *
+   * @param {number} aCP1x - The x coordinate of the first control point.
+   * @param {number} aCP1y - The y coordinate of the first control point.
+   * @param {number} aCP2x - The x coordinate of the second control point.
+   * @param {number} aCP2y - The y coordinate of the second control point.
+   * @param {number} aX - The x coordinate of the end point.
+   * @param {number} aY - The y coordinate of the end point.
+   * @return {Path} A reference to this path.
+   */
+  bezierCurveTo(aCP1x, aCP1y, aCP2x, aCP2y, aX, aY) {
+    const curve = new CubicBezierCurve(
+      this.currentPoint.clone(),
+      new Vector2(aCP1x, aCP1y),
+      new Vector2(aCP2x, aCP2y),
+      new Vector2(aX, aY)
+    );
+    this.curves.push(curve);
+    this.currentPoint.set(aX, aY);
+    return this;
+  }
+  /**
+   * Adds an instance of {@link SplineCurve} to the path by connecting
+   * the current point with the given list of points.
+   *
+   * @param {Array<Vector2>} pts - An array of points in 2D space.
+   * @return {Path} A reference to this path.
+   */
+  splineThru(pts) {
+    const npts = [this.currentPoint.clone()].concat(pts);
+    const curve = new SplineCurve(npts);
+    this.curves.push(curve);
+    this.currentPoint.copy(pts[pts.length - 1]);
+    return this;
+  }
+  /**
+   * Adds an arc as an instance of {@link EllipseCurve} to the path, positioned relative
+   * to the current point.
+   *
+   * @param {number} [aX=0] - The x coordinate of the center of the arc offsetted from the previous curve.
+   * @param {number} [aY=0] - The y coordinate of the center of the arc offsetted from the previous curve.
+   * @param {number} [aRadius=1] - The radius of the arc.
+   * @param {number} [aStartAngle=0] - The start angle in radians.
+   * @param {number} [aEndAngle=Math.PI*2] - The end angle in radians.
+   * @param {boolean} [aClockwise=false] - Whether to sweep the arc clockwise or not.
+   * @return {Path} A reference to this path.
+   */
+  arc(aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise) {
+    const x0 = this.currentPoint.x;
+    const y0 = this.currentPoint.y;
+    this.absarc(
+      aX + x0,
+      aY + y0,
+      aRadius,
+      aStartAngle,
+      aEndAngle,
+      aClockwise
+    );
+    return this;
+  }
+  /**
+   * Adds an absolutely positioned arc as an instance of {@link EllipseCurve} to the path.
+   *
+   * @param {number} [aX=0] - The x coordinate of the center of the arc.
+   * @param {number} [aY=0] - The y coordinate of the center of the arc.
+   * @param {number} [aRadius=1] - The radius of the arc.
+   * @param {number} [aStartAngle=0] - The start angle in radians.
+   * @param {number} [aEndAngle=Math.PI*2] - The end angle in radians.
+   * @param {boolean} [aClockwise=false] - Whether to sweep the arc clockwise or not.
+   * @return {Path} A reference to this path.
+   */
+  absarc(aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise) {
+    this.absellipse(aX, aY, aRadius, aRadius, aStartAngle, aEndAngle, aClockwise);
+    return this;
+  }
+  /**
+   * Adds an ellipse as an instance of {@link EllipseCurve} to the path, positioned relative
+   * to the current point
+   *
+   * @param {number} [aX=0] - The x coordinate of the center of the ellipse offsetted from the previous curve.
+   * @param {number} [aY=0] - The y coordinate of the center of the ellipse offsetted from the previous curve.
+   * @param {number} [xRadius=1] - The radius of the ellipse in the x axis.
+   * @param {number} [yRadius=1] - The radius of the ellipse in the y axis.
+   * @param {number} [aStartAngle=0] - The start angle in radians.
+   * @param {number} [aEndAngle=Math.PI*2] - The end angle in radians.
+   * @param {boolean} [aClockwise=false] - Whether to sweep the ellipse clockwise or not.
+   * @param {number} [aRotation=0] - The rotation angle of the ellipse in radians, counterclockwise from the positive X axis.
+   * @return {Path} A reference to this path.
+   */
+  ellipse(aX, aY, xRadius, yRadius, aStartAngle, aEndAngle, aClockwise, aRotation) {
+    const x0 = this.currentPoint.x;
+    const y0 = this.currentPoint.y;
+    this.absellipse(aX + x0, aY + y0, xRadius, yRadius, aStartAngle, aEndAngle, aClockwise, aRotation);
+    return this;
+  }
+  /**
+   * Adds an absolutely positioned ellipse as an instance of {@link EllipseCurve} to the path.
+   *
+   * @param {number} [aX=0] - The x coordinate of the absolute center of the ellipse.
+   * @param {number} [aY=0] - The y coordinate of the absolute center of the ellipse.
+   * @param {number} [xRadius=1] - The radius of the ellipse in the x axis.
+   * @param {number} [yRadius=1] - The radius of the ellipse in the y axis.
+   * @param {number} [aStartAngle=0] - The start angle in radians.
+   * @param {number} [aEndAngle=Math.PI*2] - The end angle in radians.
+   * @param {boolean} [aClockwise=false] - Whether to sweep the ellipse clockwise or not.
+   * @param {number} [aRotation=0] - The rotation angle of the ellipse in radians, counterclockwise from the positive X axis.
+   * @return {Path} A reference to this path.
+   */
+  absellipse(aX, aY, xRadius, yRadius, aStartAngle, aEndAngle, aClockwise, aRotation) {
+    const curve = new EllipseCurve(aX, aY, xRadius, yRadius, aStartAngle, aEndAngle, aClockwise, aRotation);
+    if (this.curves.length > 0) {
+      const firstPoint = curve.getPoint(0);
+      if (!firstPoint.equals(this.currentPoint)) {
+        this.lineTo(firstPoint.x, firstPoint.y);
+      }
+    }
+    this.curves.push(curve);
+    const lastPoint = curve.getPoint(1);
+    this.currentPoint.copy(lastPoint);
+    return this;
+  }
+  copy(source) {
+    super.copy(source);
+    this.currentPoint.copy(source.currentPoint);
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.currentPoint = this.currentPoint.toArray();
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.currentPoint.fromArray(json.currentPoint);
+    return this;
+  }
+};
+var Shape = class extends Path {
+  /**
+   * Constructs a new shape.
+   *
+   * @param {Array<Vector2>} [points] - An array of 2D points defining the shape.
+   */
+  constructor(points) {
+    super(points);
+    this.uuid = generateUUID();
+    this.type = "Shape";
+    this.holes = [];
+  }
+  /**
+   * Returns an array representing each contour of the holes
+   * as a list of 2D points.
+   *
+   * @param {number} divisions - The fineness of the result.
+   * @return {Array<Array<Vector2>>} The holes as a series of 2D points.
+   */
+  getPointsHoles(divisions) {
+    const holesPts = [];
+    for (let i = 0, l = this.holes.length; i < l; i++) {
+      holesPts[i] = this.holes[i].getPoints(divisions);
+    }
+    return holesPts;
+  }
+  // get points of shape and holes (keypoints based on segments parameter)
+  /**
+   * Returns an object that holds contour data for the shape and its holes as
+   * arrays of 2D points.
+   *
+   * @param {number} divisions - The fineness of the result.
+   * @return {{shape:Array<Vector2>,holes:Array<Array<Vector2>>}} An object with contour data.
+   */
+  extractPoints(divisions) {
+    return {
+      shape: this.getPoints(divisions),
+      holes: this.getPointsHoles(divisions)
+    };
+  }
+  copy(source) {
+    super.copy(source);
+    this.holes = [];
+    for (let i = 0, l = source.holes.length; i < l; i++) {
+      const hole = source.holes[i];
+      this.holes.push(hole.clone());
+    }
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    data.uuid = this.uuid;
+    data.holes = [];
+    for (let i = 0, l = this.holes.length; i < l; i++) {
+      const hole = this.holes[i];
+      data.holes.push(hole.toJSON());
+    }
+    return data;
+  }
+  fromJSON(json) {
+    super.fromJSON(json);
+    this.uuid = json.uuid;
+    this.holes = [];
+    for (let i = 0, l = json.holes.length; i < l; i++) {
+      const hole = json.holes[i];
+      this.holes.push(new Path().fromJSON(hole));
+    }
+    return this;
+  }
+};
+function earcut(data, holeIndices, dim = 2) {
+  const hasHoles = holeIndices && holeIndices.length;
+  const outerLen = hasHoles ? holeIndices[0] * dim : data.length;
+  let outerNode = linkedList(data, 0, outerLen, dim, true);
+  const triangles = [];
+  if (!outerNode || outerNode.next === outerNode.prev) return triangles;
+  let minX, minY, invSize;
+  if (hasHoles) outerNode = eliminateHoles(data, holeIndices, outerNode, dim);
+  if (data.length > 80 * dim) {
+    minX = Infinity;
+    minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (let i = dim; i < outerLen; i += dim) {
+      const x = data[i];
+      const y = data[i + 1];
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+    invSize = Math.max(maxX - minX, maxY - minY);
+    invSize = invSize !== 0 ? 32767 / invSize : 0;
+  }
+  earcutLinked(outerNode, triangles, dim, minX, minY, invSize, 0);
+  return triangles;
+}
+function linkedList(data, start, end, dim, clockwise) {
+  let last;
+  if (clockwise === signedArea(data, start, end, dim) > 0) {
+    for (let i = start; i < end; i += dim) last = insertNode(i / dim | 0, data[i], data[i + 1], last);
+  } else {
+    for (let i = end - dim; i >= start; i -= dim) last = insertNode(i / dim | 0, data[i], data[i + 1], last);
+  }
+  if (last && equals(last, last.next)) {
+    removeNode(last);
+    last = last.next;
+  }
+  return last;
+}
+function filterPoints(start, end) {
+  if (!start) return start;
+  if (!end) end = start;
+  let p = start, again;
+  do {
+    again = false;
+    if (!p.steiner && (equals(p, p.next) || area(p.prev, p, p.next) === 0)) {
+      removeNode(p);
+      p = end = p.prev;
+      if (p === p.next) break;
+      again = true;
+    } else {
+      p = p.next;
+    }
+  } while (again || p !== end);
+  return end;
+}
+function earcutLinked(ear, triangles, dim, minX, minY, invSize, pass) {
+  if (!ear) return;
+  if (!pass && invSize) indexCurve(ear, minX, minY, invSize);
+  let stop = ear;
+  while (ear.prev !== ear.next) {
+    const prev = ear.prev;
+    const next = ear.next;
+    if (invSize ? isEarHashed(ear, minX, minY, invSize) : isEar(ear)) {
+      triangles.push(prev.i, ear.i, next.i);
+      removeNode(ear);
+      ear = next.next;
+      stop = next.next;
+      continue;
+    }
+    ear = next;
+    if (ear === stop) {
+      if (!pass) {
+        earcutLinked(filterPoints(ear), triangles, dim, minX, minY, invSize, 1);
+      } else if (pass === 1) {
+        ear = cureLocalIntersections(filterPoints(ear), triangles);
+        earcutLinked(ear, triangles, dim, minX, minY, invSize, 2);
+      } else if (pass === 2) {
+        splitEarcut(ear, triangles, dim, minX, minY, invSize);
+      }
+      break;
+    }
+  }
+}
+function isEar(ear) {
+  const a = ear.prev, b = ear, c = ear.next;
+  if (area(a, b, c) >= 0) return false;
+  const ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
+  const x0 = Math.min(ax, bx, cx), y0 = Math.min(ay, by, cy), x1 = Math.max(ax, bx, cx), y1 = Math.max(ay, by, cy);
+  let p = c.next;
+  while (p !== a) {
+    if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, p.x, p.y) && area(p.prev, p, p.next) >= 0) return false;
+    p = p.next;
+  }
+  return true;
+}
+function isEarHashed(ear, minX, minY, invSize) {
+  const a = ear.prev, b = ear, c = ear.next;
+  if (area(a, b, c) >= 0) return false;
+  const ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
+  const x0 = Math.min(ax, bx, cx), y0 = Math.min(ay, by, cy), x1 = Math.max(ax, bx, cx), y1 = Math.max(ay, by, cy);
+  const minZ = zOrder(x0, y0, minX, minY, invSize), maxZ = zOrder(x1, y1, minX, minY, invSize);
+  let p = ear.prevZ, n = ear.nextZ;
+  while (p && p.z >= minZ && n && n.z <= maxZ) {
+    if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p !== a && p !== c && pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, p.x, p.y) && area(p.prev, p, p.next) >= 0) return false;
+    p = p.prevZ;
+    if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n !== a && n !== c && pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, n.x, n.y) && area(n.prev, n, n.next) >= 0) return false;
+    n = n.nextZ;
+  }
+  while (p && p.z >= minZ) {
+    if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p !== a && p !== c && pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, p.x, p.y) && area(p.prev, p, p.next) >= 0) return false;
+    p = p.prevZ;
+  }
+  while (n && n.z <= maxZ) {
+    if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n !== a && n !== c && pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, n.x, n.y) && area(n.prev, n, n.next) >= 0) return false;
+    n = n.nextZ;
+  }
+  return true;
+}
+function cureLocalIntersections(start, triangles) {
+  let p = start;
+  do {
+    const a = p.prev, b = p.next.next;
+    if (!equals(a, b) && intersects(a, p, p.next, b) && locallyInside(a, b) && locallyInside(b, a)) {
+      triangles.push(a.i, p.i, b.i);
+      removeNode(p);
+      removeNode(p.next);
+      p = start = b;
+    }
+    p = p.next;
+  } while (p !== start);
+  return filterPoints(p);
+}
+function splitEarcut(start, triangles, dim, minX, minY, invSize) {
+  let a = start;
+  do {
+    let b = a.next.next;
+    while (b !== a.prev) {
+      if (a.i !== b.i && isValidDiagonal(a, b)) {
+        let c = splitPolygon(a, b);
+        a = filterPoints(a, a.next);
+        c = filterPoints(c, c.next);
+        earcutLinked(a, triangles, dim, minX, minY, invSize, 0);
+        earcutLinked(c, triangles, dim, minX, minY, invSize, 0);
+        return;
+      }
+      b = b.next;
+    }
+    a = a.next;
+  } while (a !== start);
+}
+function eliminateHoles(data, holeIndices, outerNode, dim) {
+  const queue = [];
+  for (let i = 0, len = holeIndices.length; i < len; i++) {
+    const start = holeIndices[i] * dim;
+    const end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
+    const list = linkedList(data, start, end, dim, false);
+    if (list === list.next) list.steiner = true;
+    queue.push(getLeftmost(list));
+  }
+  queue.sort(compareXYSlope);
+  for (let i = 0; i < queue.length; i++) {
+    outerNode = eliminateHole(queue[i], outerNode);
+  }
+  return outerNode;
+}
+function compareXYSlope(a, b) {
+  let result = a.x - b.x;
+  if (result === 0) {
+    result = a.y - b.y;
+    if (result === 0) {
+      const aSlope = (a.next.y - a.y) / (a.next.x - a.x);
+      const bSlope = (b.next.y - b.y) / (b.next.x - b.x);
+      result = aSlope - bSlope;
+    }
+  }
+  return result;
+}
+function eliminateHole(hole, outerNode) {
+  const bridge = findHoleBridge(hole, outerNode);
+  if (!bridge) {
+    return outerNode;
+  }
+  const bridgeReverse = splitPolygon(bridge, hole);
+  filterPoints(bridgeReverse, bridgeReverse.next);
+  return filterPoints(bridge, bridge.next);
+}
+function findHoleBridge(hole, outerNode) {
+  let p = outerNode;
+  const hx = hole.x;
+  const hy = hole.y;
+  let qx = -Infinity;
+  let m;
+  if (equals(hole, p)) return p;
+  do {
+    if (equals(hole, p.next)) return p.next;
+    else if (hy <= p.y && hy >= p.next.y && p.next.y !== p.y) {
+      const x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
+      if (x <= hx && x > qx) {
+        qx = x;
+        m = p.x < p.next.x ? p : p.next;
+        if (x === hx) return m;
+      }
+    }
+    p = p.next;
+  } while (p !== outerNode);
+  if (!m) return null;
+  const stop = m;
+  const mx = m.x;
+  const my = m.y;
+  let tanMin = Infinity;
+  p = m;
+  do {
+    if (hx >= p.x && p.x >= mx && hx !== p.x && pointInTriangle(hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y)) {
+      const tan = Math.abs(hy - p.y) / (hx - p.x);
+      if (locallyInside(p, hole) && (tan < tanMin || tan === tanMin && (p.x > m.x || p.x === m.x && sectorContainsSector(m, p)))) {
+        m = p;
+        tanMin = tan;
+      }
+    }
+    p = p.next;
+  } while (p !== stop);
+  return m;
+}
+function sectorContainsSector(m, p) {
+  return area(m.prev, m, p.prev) < 0 && area(p.next, m, m.next) < 0;
+}
+function indexCurve(start, minX, minY, invSize) {
+  let p = start;
+  do {
+    if (p.z === 0) p.z = zOrder(p.x, p.y, minX, minY, invSize);
+    p.prevZ = p.prev;
+    p.nextZ = p.next;
+    p = p.next;
+  } while (p !== start);
+  p.prevZ.nextZ = null;
+  p.prevZ = null;
+  sortLinked(p);
+}
+function sortLinked(list) {
+  let numMerges;
+  let inSize = 1;
+  do {
+    let p = list;
+    let e;
+    list = null;
+    let tail = null;
+    numMerges = 0;
+    while (p) {
+      numMerges++;
+      let q = p;
+      let pSize = 0;
+      for (let i = 0; i < inSize; i++) {
+        pSize++;
+        q = q.nextZ;
+        if (!q) break;
+      }
+      let qSize = inSize;
+      while (pSize > 0 || qSize > 0 && q) {
+        if (pSize !== 0 && (qSize === 0 || !q || p.z <= q.z)) {
+          e = p;
+          p = p.nextZ;
+          pSize--;
+        } else {
+          e = q;
+          q = q.nextZ;
+          qSize--;
+        }
+        if (tail) tail.nextZ = e;
+        else list = e;
+        e.prevZ = tail;
+        tail = e;
+      }
+      p = q;
+    }
+    tail.nextZ = null;
+    inSize *= 2;
+  } while (numMerges > 1);
+  return list;
+}
+function zOrder(x, y, minX, minY, invSize) {
+  x = (x - minX) * invSize | 0;
+  y = (y - minY) * invSize | 0;
+  x = (x | x << 8) & 16711935;
+  x = (x | x << 4) & 252645135;
+  x = (x | x << 2) & 858993459;
+  x = (x | x << 1) & 1431655765;
+  y = (y | y << 8) & 16711935;
+  y = (y | y << 4) & 252645135;
+  y = (y | y << 2) & 858993459;
+  y = (y | y << 1) & 1431655765;
+  return x | y << 1;
+}
+function getLeftmost(start) {
+  let p = start, leftmost = start;
+  do {
+    if (p.x < leftmost.x || p.x === leftmost.x && p.y < leftmost.y) leftmost = p;
+    p = p.next;
+  } while (p !== start);
+  return leftmost;
+}
+function pointInTriangle(ax, ay, bx, by, cx, cy, px2, py2) {
+  return (cx - px2) * (ay - py2) >= (ax - px2) * (cy - py2) && (ax - px2) * (by - py2) >= (bx - px2) * (ay - py2) && (bx - px2) * (cy - py2) >= (cx - px2) * (by - py2);
+}
+function pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, px2, py2) {
+  return !(ax === px2 && ay === py2) && pointInTriangle(ax, ay, bx, by, cx, cy, px2, py2);
+}
+function isValidDiagonal(a, b) {
+  return a.next.i !== b.i && a.prev.i !== b.i && !intersectsPolygon(a, b) && // doesn't intersect other edges
+  (locallyInside(a, b) && locallyInside(b, a) && middleInside(a, b) && // locally visible
+  (area(a.prev, a, b.prev) || area(a, b.prev, b)) || // does not create opposite-facing sectors
+  equals(a, b) && area(a.prev, a, a.next) > 0 && area(b.prev, b, b.next) > 0);
+}
+function area(p, q, r) {
+  return (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+}
+function equals(p1, p2) {
+  return p1.x === p2.x && p1.y === p2.y;
+}
+function intersects(p1, q1, p2, q2) {
+  const o1 = sign(area(p1, q1, p2));
+  const o2 = sign(area(p1, q1, q2));
+  const o3 = sign(area(p2, q2, p1));
+  const o4 = sign(area(p2, q2, q1));
+  if (o1 !== o2 && o3 !== o4) return true;
+  if (o1 === 0 && onSegment(p1, p2, q1)) return true;
+  if (o2 === 0 && onSegment(p1, q2, q1)) return true;
+  if (o3 === 0 && onSegment(p2, p1, q2)) return true;
+  if (o4 === 0 && onSegment(p2, q1, q2)) return true;
+  return false;
+}
+function onSegment(p, q, r) {
+  return q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x) && q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y);
+}
+function sign(num) {
+  return num > 0 ? 1 : num < 0 ? -1 : 0;
+}
+function intersectsPolygon(a, b) {
+  let p = a;
+  do {
+    if (p.i !== a.i && p.next.i !== a.i && p.i !== b.i && p.next.i !== b.i && intersects(p, p.next, a, b)) return true;
+    p = p.next;
+  } while (p !== a);
+  return false;
+}
+function locallyInside(a, b) {
+  return area(a.prev, a, a.next) < 0 ? area(a, b, a.next) >= 0 && area(a, a.prev, b) >= 0 : area(a, b, a.prev) < 0 || area(a, a.next, b) < 0;
+}
+function middleInside(a, b) {
+  let p = a;
+  let inside = false;
+  const px2 = (a.x + b.x) / 2;
+  const py2 = (a.y + b.y) / 2;
+  do {
+    if (p.y > py2 !== p.next.y > py2 && p.next.y !== p.y && px2 < (p.next.x - p.x) * (py2 - p.y) / (p.next.y - p.y) + p.x)
+      inside = !inside;
+    p = p.next;
+  } while (p !== a);
+  return inside;
+}
+function splitPolygon(a, b) {
+  const a2 = createNode(a.i, a.x, a.y), b2 = createNode(b.i, b.x, b.y), an = a.next, bp = b.prev;
+  a.next = b;
+  b.prev = a;
+  a2.next = an;
+  an.prev = a2;
+  b2.next = a2;
+  a2.prev = b2;
+  bp.next = b2;
+  b2.prev = bp;
+  return b2;
+}
+function insertNode(i, x, y, last) {
+  const p = createNode(i, x, y);
+  if (!last) {
+    p.prev = p;
+    p.next = p;
+  } else {
+    p.next = last.next;
+    p.prev = last;
+    last.next.prev = p;
+    last.next = p;
+  }
+  return p;
+}
+function removeNode(p) {
+  p.next.prev = p.prev;
+  p.prev.next = p.next;
+  if (p.prevZ) p.prevZ.nextZ = p.nextZ;
+  if (p.nextZ) p.nextZ.prevZ = p.prevZ;
+}
+function createNode(i, x, y) {
+  return {
+    i,
+    // vertex index in coordinates array
+    x,
+    y,
+    // vertex coordinates
+    prev: null,
+    // previous and next vertex nodes in a polygon ring
+    next: null,
+    z: 0,
+    // z-order curve value
+    prevZ: null,
+    // previous and next nodes in z-order
+    nextZ: null,
+    steiner: false
+    // indicates whether this is a steiner point
+  };
+}
+function signedArea(data, start, end, dim) {
+  let sum = 0;
+  for (let i = start, j = end - dim; i < end; i += dim) {
+    sum += (data[j] - data[i]) * (data[i + 1] + data[j + 1]);
+    j = i;
+  }
+  return sum;
+}
+var Earcut = class {
+  /**
+   * Triangulates the given shape definition by returning an array of triangles.
+   *
+   * @param {Array<number>} data - An array with 2D points.
+   * @param {Array<number>} holeIndices - An array with indices defining holes.
+   * @param {number} [dim=2] - The number of coordinates per vertex in the input array.
+   * @return {Array<number>} An array representing the triangulated faces. Each face is defined by three consecutive numbers
+   * representing vertex indices.
+   */
+  static triangulate(data, holeIndices, dim = 2) {
+    return earcut(data, holeIndices, dim);
+  }
+};
+var ShapeUtils = class _ShapeUtils {
+  /**
+   * Calculate area of a ( 2D ) contour polygon.
+   *
+   * @param {Array<Vector2>} contour - An array of 2D points.
+   * @return {number} The area.
+   */
+  static area(contour) {
+    const n = contour.length;
+    let a = 0;
+    for (let p = n - 1, q = 0; q < n; p = q++) {
+      a += contour[p].x * contour[q].y - contour[q].x * contour[p].y;
+    }
+    return a * 0.5;
+  }
+  /**
+   * Returns `true` if the given contour uses a clockwise winding order.
+   *
+   * @param {Array<Vector2>} pts - An array of 2D points defining a polygon.
+   * @return {boolean} Whether the given contour uses a clockwise winding order or not.
+   */
+  static isClockWise(pts) {
+    return _ShapeUtils.area(pts) < 0;
+  }
+  /**
+   * Triangulates the given shape definition.
+   *
+   * @param {Array<Vector2>} contour - An array of 2D points defining the contour.
+   * @param {Array<Array<Vector2>>} holes - An array that holds arrays of 2D points defining the holes.
+   * @return {Array<Array<number>>} An array that holds for each face definition an array with three indices.
+   */
+  static triangulateShape(contour, holes) {
+    const vertices = [];
+    const holeIndices = [];
+    const faces = [];
+    removeDupEndPts(contour);
+    addContour(vertices, contour);
+    let holeIndex = contour.length;
+    holes.forEach(removeDupEndPts);
+    for (let i = 0; i < holes.length; i++) {
+      holeIndices.push(holeIndex);
+      holeIndex += holes[i].length;
+      addContour(vertices, holes[i]);
+    }
+    const triangles = Earcut.triangulate(vertices, holeIndices);
+    for (let i = 0; i < triangles.length; i += 3) {
+      faces.push(triangles.slice(i, i + 3));
+    }
+    return faces;
+  }
+};
+function removeDupEndPts(points) {
+  const l = points.length;
+  if (l > 2 && points[l - 1].equals(points[0])) {
+    points.pop();
+  }
+}
+function addContour(vertices, contour) {
+  for (let i = 0; i < contour.length; i++) {
+    vertices.push(contour[i].x);
+    vertices.push(contour[i].y);
+  }
+}
+var ExtrudeGeometry = class _ExtrudeGeometry extends BufferGeometry {
+  /**
+   * Constructs a new extrude geometry.
+   *
+   * @param {Shape|Array<Shape>} [shapes] - A shape or an array of shapes.
+   * @param {ExtrudeGeometry~Options} [options] - The extrude settings.
+   */
+  constructor(shapes = new Shape([new Vector2(0.5, 0.5), new Vector2(-0.5, 0.5), new Vector2(-0.5, -0.5), new Vector2(0.5, -0.5)]), options = {}) {
+    super();
+    this.type = "ExtrudeGeometry";
+    this.parameters = {
+      shapes,
+      options
+    };
+    shapes = Array.isArray(shapes) ? shapes : [shapes];
+    const scope = this;
+    const verticesArray = [];
+    const uvArray = [];
+    for (let i = 0, l = shapes.length; i < l; i++) {
+      const shape = shapes[i];
+      addShape(shape);
+    }
+    this.setAttribute("position", new Float32BufferAttribute(verticesArray, 3));
+    this.setAttribute("uv", new Float32BufferAttribute(uvArray, 2));
+    this.computeVertexNormals();
+    function addShape(shape) {
+      const placeholder = [];
+      const curveSegments = options.curveSegments !== void 0 ? options.curveSegments : 12;
+      const steps = options.steps !== void 0 ? options.steps : 1;
+      const depth = options.depth !== void 0 ? options.depth : 1;
+      let bevelEnabled = options.bevelEnabled !== void 0 ? options.bevelEnabled : true;
+      let bevelThickness = options.bevelThickness !== void 0 ? options.bevelThickness : 0.2;
+      let bevelSize = options.bevelSize !== void 0 ? options.bevelSize : bevelThickness - 0.1;
+      let bevelOffset = options.bevelOffset !== void 0 ? options.bevelOffset : 0;
+      let bevelSegments = options.bevelSegments !== void 0 ? options.bevelSegments : 3;
+      const extrudePath = options.extrudePath;
+      const uvgen = options.UVGenerator !== void 0 ? options.UVGenerator : WorldUVGenerator;
+      let extrudePts, extrudeByPath = false;
+      let splineTube, binormal, normal, position2;
+      if (extrudePath) {
+        extrudePts = extrudePath.getSpacedPoints(steps);
+        extrudeByPath = true;
+        bevelEnabled = false;
+        splineTube = extrudePath.computeFrenetFrames(steps, false);
+        binormal = new Vector3();
+        normal = new Vector3();
+        position2 = new Vector3();
+      }
+      if (!bevelEnabled) {
+        bevelSegments = 0;
+        bevelThickness = 0;
+        bevelSize = 0;
+        bevelOffset = 0;
+      }
+      const shapePoints = shape.extractPoints(curveSegments);
+      let vertices = shapePoints.shape;
+      const holes = shapePoints.holes;
+      const reverse = !ShapeUtils.isClockWise(vertices);
+      if (reverse) {
+        vertices = vertices.reverse();
+        for (let h = 0, hl = holes.length; h < hl; h++) {
+          const ahole = holes[h];
+          if (ShapeUtils.isClockWise(ahole)) {
+            holes[h] = ahole.reverse();
+          }
+        }
+      }
+      function mergeOverlappingPoints(points) {
+        const THRESHOLD = 1e-10;
+        const THRESHOLD_SQ = THRESHOLD * THRESHOLD;
+        let prevPos = points[0];
+        for (let i = 1; i <= points.length; i++) {
+          const currentIndex = i % points.length;
+          const currentPos = points[currentIndex];
+          const dx = currentPos.x - prevPos.x;
+          const dy = currentPos.y - prevPos.y;
+          const distSq = dx * dx + dy * dy;
+          const scalingFactorSqrt = Math.max(
+            Math.abs(currentPos.x),
+            Math.abs(currentPos.y),
+            Math.abs(prevPos.x),
+            Math.abs(prevPos.y)
+          );
+          const thresholdSqScaled = THRESHOLD_SQ * scalingFactorSqrt * scalingFactorSqrt;
+          if (distSq <= thresholdSqScaled) {
+            points.splice(currentIndex, 1);
+            i--;
+            continue;
+          }
+          prevPos = currentPos;
+        }
+      }
+      mergeOverlappingPoints(vertices);
+      holes.forEach(mergeOverlappingPoints);
+      const numHoles = holes.length;
+      const contour = vertices;
+      for (let h = 0; h < numHoles; h++) {
+        const ahole = holes[h];
+        vertices = vertices.concat(ahole);
+      }
+      function scalePt2(pt, vec, size) {
+        if (!vec) console.error("THREE.ExtrudeGeometry: vec does not exist");
+        return pt.clone().addScaledVector(vec, size);
+      }
+      const vlen = vertices.length;
+      function getBevelVec(inPt, inPrev, inNext) {
+        let v_trans_x, v_trans_y, shrink_by;
+        const v_prev_x = inPt.x - inPrev.x, v_prev_y = inPt.y - inPrev.y;
+        const v_next_x = inNext.x - inPt.x, v_next_y = inNext.y - inPt.y;
+        const v_prev_lensq = v_prev_x * v_prev_x + v_prev_y * v_prev_y;
+        const collinear0 = v_prev_x * v_next_y - v_prev_y * v_next_x;
+        if (Math.abs(collinear0) > Number.EPSILON) {
+          const v_prev_len = Math.sqrt(v_prev_lensq);
+          const v_next_len = Math.sqrt(v_next_x * v_next_x + v_next_y * v_next_y);
+          const ptPrevShift_x = inPrev.x - v_prev_y / v_prev_len;
+          const ptPrevShift_y = inPrev.y + v_prev_x / v_prev_len;
+          const ptNextShift_x = inNext.x - v_next_y / v_next_len;
+          const ptNextShift_y = inNext.y + v_next_x / v_next_len;
+          const sf = ((ptNextShift_x - ptPrevShift_x) * v_next_y - (ptNextShift_y - ptPrevShift_y) * v_next_x) / (v_prev_x * v_next_y - v_prev_y * v_next_x);
+          v_trans_x = ptPrevShift_x + v_prev_x * sf - inPt.x;
+          v_trans_y = ptPrevShift_y + v_prev_y * sf - inPt.y;
+          const v_trans_lensq = v_trans_x * v_trans_x + v_trans_y * v_trans_y;
+          if (v_trans_lensq <= 2) {
+            return new Vector2(v_trans_x, v_trans_y);
+          } else {
+            shrink_by = Math.sqrt(v_trans_lensq / 2);
+          }
+        } else {
+          let direction_eq = false;
+          if (v_prev_x > Number.EPSILON) {
+            if (v_next_x > Number.EPSILON) {
+              direction_eq = true;
+            }
+          } else {
+            if (v_prev_x < -Number.EPSILON) {
+              if (v_next_x < -Number.EPSILON) {
+                direction_eq = true;
+              }
+            } else {
+              if (Math.sign(v_prev_y) === Math.sign(v_next_y)) {
+                direction_eq = true;
+              }
+            }
+          }
+          if (direction_eq) {
+            v_trans_x = -v_prev_y;
+            v_trans_y = v_prev_x;
+            shrink_by = Math.sqrt(v_prev_lensq);
+          } else {
+            v_trans_x = v_prev_x;
+            v_trans_y = v_prev_y;
+            shrink_by = Math.sqrt(v_prev_lensq / 2);
+          }
+        }
+        return new Vector2(v_trans_x / shrink_by, v_trans_y / shrink_by);
+      }
+      const contourMovements = [];
+      for (let i = 0, il = contour.length, j = il - 1, k = i + 1; i < il; i++, j++, k++) {
+        if (j === il) j = 0;
+        if (k === il) k = 0;
+        contourMovements[i] = getBevelVec(contour[i], contour[j], contour[k]);
+      }
+      const holesMovements = [];
+      let oneHoleMovements, verticesMovements = contourMovements.concat();
+      for (let h = 0, hl = numHoles; h < hl; h++) {
+        const ahole = holes[h];
+        oneHoleMovements = [];
+        for (let i = 0, il = ahole.length, j = il - 1, k = i + 1; i < il; i++, j++, k++) {
+          if (j === il) j = 0;
+          if (k === il) k = 0;
+          oneHoleMovements[i] = getBevelVec(ahole[i], ahole[j], ahole[k]);
+        }
+        holesMovements.push(oneHoleMovements);
+        verticesMovements = verticesMovements.concat(oneHoleMovements);
+      }
+      let faces;
+      if (bevelSegments === 0) {
+        faces = ShapeUtils.triangulateShape(contour, holes);
+      } else {
+        const contractedContourVertices = [];
+        const expandedHoleVertices = [];
+        for (let b = 0; b < bevelSegments; b++) {
+          const t = b / bevelSegments;
+          const z = bevelThickness * Math.cos(t * Math.PI / 2);
+          const bs2 = bevelSize * Math.sin(t * Math.PI / 2) + bevelOffset;
+          for (let i = 0, il = contour.length; i < il; i++) {
+            const vert = scalePt2(contour[i], contourMovements[i], bs2);
+            v(vert.x, vert.y, -z);
+            if (t === 0) contractedContourVertices.push(vert);
+          }
+          for (let h = 0, hl = numHoles; h < hl; h++) {
+            const ahole = holes[h];
+            oneHoleMovements = holesMovements[h];
+            const oneHoleVertices = [];
+            for (let i = 0, il = ahole.length; i < il; i++) {
+              const vert = scalePt2(ahole[i], oneHoleMovements[i], bs2);
+              v(vert.x, vert.y, -z);
+              if (t === 0) oneHoleVertices.push(vert);
+            }
+            if (t === 0) expandedHoleVertices.push(oneHoleVertices);
+          }
+        }
+        faces = ShapeUtils.triangulateShape(contractedContourVertices, expandedHoleVertices);
+      }
+      const flen = faces.length;
+      const bs = bevelSize + bevelOffset;
+      for (let i = 0; i < vlen; i++) {
+        const vert = bevelEnabled ? scalePt2(vertices[i], verticesMovements[i], bs) : vertices[i];
+        if (!extrudeByPath) {
+          v(vert.x, vert.y, 0);
+        } else {
+          normal.copy(splineTube.normals[0]).multiplyScalar(vert.x);
+          binormal.copy(splineTube.binormals[0]).multiplyScalar(vert.y);
+          position2.copy(extrudePts[0]).add(normal).add(binormal);
+          v(position2.x, position2.y, position2.z);
+        }
+      }
+      for (let s = 1; s <= steps; s++) {
+        for (let i = 0; i < vlen; i++) {
+          const vert = bevelEnabled ? scalePt2(vertices[i], verticesMovements[i], bs) : vertices[i];
+          if (!extrudeByPath) {
+            v(vert.x, vert.y, depth / steps * s);
+          } else {
+            normal.copy(splineTube.normals[s]).multiplyScalar(vert.x);
+            binormal.copy(splineTube.binormals[s]).multiplyScalar(vert.y);
+            position2.copy(extrudePts[s]).add(normal).add(binormal);
+            v(position2.x, position2.y, position2.z);
+          }
+        }
+      }
+      for (let b = bevelSegments - 1; b >= 0; b--) {
+        const t = b / bevelSegments;
+        const z = bevelThickness * Math.cos(t * Math.PI / 2);
+        const bs2 = bevelSize * Math.sin(t * Math.PI / 2) + bevelOffset;
+        for (let i = 0, il = contour.length; i < il; i++) {
+          const vert = scalePt2(contour[i], contourMovements[i], bs2);
+          v(vert.x, vert.y, depth + z);
+        }
+        for (let h = 0, hl = holes.length; h < hl; h++) {
+          const ahole = holes[h];
+          oneHoleMovements = holesMovements[h];
+          for (let i = 0, il = ahole.length; i < il; i++) {
+            const vert = scalePt2(ahole[i], oneHoleMovements[i], bs2);
+            if (!extrudeByPath) {
+              v(vert.x, vert.y, depth + z);
+            } else {
+              v(vert.x, vert.y + extrudePts[steps - 1].y, extrudePts[steps - 1].x + z);
+            }
+          }
+        }
+      }
+      buildLidFaces();
+      buildSideFaces();
+      function buildLidFaces() {
+        const start = verticesArray.length / 3;
+        if (bevelEnabled) {
+          let layer = 0;
+          let offset = vlen * layer;
+          for (let i = 0; i < flen; i++) {
+            const face = faces[i];
+            f3(face[2] + offset, face[1] + offset, face[0] + offset);
+          }
+          layer = steps + bevelSegments * 2;
+          offset = vlen * layer;
+          for (let i = 0; i < flen; i++) {
+            const face = faces[i];
+            f3(face[0] + offset, face[1] + offset, face[2] + offset);
+          }
+        } else {
+          for (let i = 0; i < flen; i++) {
+            const face = faces[i];
+            f3(face[2], face[1], face[0]);
+          }
+          for (let i = 0; i < flen; i++) {
+            const face = faces[i];
+            f3(face[0] + vlen * steps, face[1] + vlen * steps, face[2] + vlen * steps);
+          }
+        }
+        scope.addGroup(start, verticesArray.length / 3 - start, 0);
+      }
+      function buildSideFaces() {
+        const start = verticesArray.length / 3;
+        let layeroffset = 0;
+        sidewalls(contour, layeroffset);
+        layeroffset += contour.length;
+        for (let h = 0, hl = holes.length; h < hl; h++) {
+          const ahole = holes[h];
+          sidewalls(ahole, layeroffset);
+          layeroffset += ahole.length;
+        }
+        scope.addGroup(start, verticesArray.length / 3 - start, 1);
+      }
+      function sidewalls(contour2, layeroffset) {
+        let i = contour2.length;
+        while (--i >= 0) {
+          const j = i;
+          let k = i - 1;
+          if (k < 0) k = contour2.length - 1;
+          for (let s = 0, sl = steps + bevelSegments * 2; s < sl; s++) {
+            const slen1 = vlen * s;
+            const slen2 = vlen * (s + 1);
+            const a = layeroffset + j + slen1, b = layeroffset + k + slen1, c = layeroffset + k + slen2, d = layeroffset + j + slen2;
+            f4(a, b, c, d);
+          }
+        }
+      }
+      function v(x, y, z) {
+        placeholder.push(x);
+        placeholder.push(y);
+        placeholder.push(z);
+      }
+      function f3(a, b, c) {
+        addVertex(a);
+        addVertex(b);
+        addVertex(c);
+        const nextIndex = verticesArray.length / 3;
+        const uvs = uvgen.generateTopUV(scope, verticesArray, nextIndex - 3, nextIndex - 2, nextIndex - 1);
+        addUV(uvs[0]);
+        addUV(uvs[1]);
+        addUV(uvs[2]);
+      }
+      function f4(a, b, c, d) {
+        addVertex(a);
+        addVertex(b);
+        addVertex(d);
+        addVertex(b);
+        addVertex(c);
+        addVertex(d);
+        const nextIndex = verticesArray.length / 3;
+        const uvs = uvgen.generateSideWallUV(scope, verticesArray, nextIndex - 6, nextIndex - 3, nextIndex - 2, nextIndex - 1);
+        addUV(uvs[0]);
+        addUV(uvs[1]);
+        addUV(uvs[3]);
+        addUV(uvs[1]);
+        addUV(uvs[2]);
+        addUV(uvs[3]);
+      }
+      function addVertex(index) {
+        verticesArray.push(placeholder[index * 3 + 0]);
+        verticesArray.push(placeholder[index * 3 + 1]);
+        verticesArray.push(placeholder[index * 3 + 2]);
+      }
+      function addUV(vector2) {
+        uvArray.push(vector2.x);
+        uvArray.push(vector2.y);
+      }
+    }
+  }
+  copy(source) {
+    super.copy(source);
+    this.parameters = Object.assign({}, source.parameters);
+    return this;
+  }
+  toJSON() {
+    const data = super.toJSON();
+    const shapes = this.parameters.shapes;
+    const options = this.parameters.options;
+    return toJSON$1(shapes, options, data);
+  }
+  /**
+   * Factory method for creating an instance of this class from the given
+   * JSON object.
+   *
+   * @param {Object} data - A JSON object representing the serialized geometry.
+   * @param {Array<Shape>} shapes - An array of shapes.
+   * @return {ExtrudeGeometry} A new instance.
+   */
+  static fromJSON(data, shapes) {
+    const geometryShapes = [];
+    for (let j = 0, jl = data.shapes.length; j < jl; j++) {
+      const shape = shapes[data.shapes[j]];
+      geometryShapes.push(shape);
+    }
+    const extrudePath = data.options.extrudePath;
+    if (extrudePath !== void 0) {
+      data.options.extrudePath = new Curves[extrudePath.type]().fromJSON(extrudePath);
+    }
+    return new _ExtrudeGeometry(geometryShapes, data.options);
+  }
+};
+var WorldUVGenerator = {
+  generateTopUV: function(geometry, vertices, indexA, indexB, indexC) {
+    const a_x = vertices[indexA * 3];
+    const a_y = vertices[indexA * 3 + 1];
+    const b_x = vertices[indexB * 3];
+    const b_y = vertices[indexB * 3 + 1];
+    const c_x = vertices[indexC * 3];
+    const c_y = vertices[indexC * 3 + 1];
+    return [
+      new Vector2(a_x, a_y),
+      new Vector2(b_x, b_y),
+      new Vector2(c_x, c_y)
+    ];
+  },
+  generateSideWallUV: function(geometry, vertices, indexA, indexB, indexC, indexD) {
+    const a_x = vertices[indexA * 3];
+    const a_y = vertices[indexA * 3 + 1];
+    const a_z = vertices[indexA * 3 + 2];
+    const b_x = vertices[indexB * 3];
+    const b_y = vertices[indexB * 3 + 1];
+    const b_z = vertices[indexB * 3 + 2];
+    const c_x = vertices[indexC * 3];
+    const c_y = vertices[indexC * 3 + 1];
+    const c_z = vertices[indexC * 3 + 2];
+    const d_x = vertices[indexD * 3];
+    const d_y = vertices[indexD * 3 + 1];
+    const d_z = vertices[indexD * 3 + 2];
+    if (Math.abs(a_y - b_y) < Math.abs(a_x - b_x)) {
+      return [
+        new Vector2(a_x, 1 - a_z),
+        new Vector2(b_x, 1 - b_z),
+        new Vector2(c_x, 1 - c_z),
+        new Vector2(d_x, 1 - d_z)
+      ];
+    } else {
+      return [
+        new Vector2(a_y, 1 - a_z),
+        new Vector2(b_y, 1 - b_z),
+        new Vector2(c_y, 1 - c_z),
+        new Vector2(d_y, 1 - d_z)
+      ];
+    }
+  }
+};
+function toJSON$1(shapes, options, data) {
+  data.shapes = [];
+  if (Array.isArray(shapes)) {
+    for (let i = 0, l = shapes.length; i < l; i++) {
+      const shape = shapes[i];
+      data.shapes.push(shape.uuid);
+    }
+  } else {
+    data.shapes.push(shapes.uuid);
+  }
+  data.options = Object.assign({}, options);
+  if (options.extrudePath !== void 0) data.options.extrudePath = options.extrudePath.toJSON();
+  return data;
+}
 var PlaneGeometry = class _PlaneGeometry extends BufferGeometry {
   /**
    * Constructs a new plane geometry.
@@ -16658,10 +19041,10 @@ var Raycaster = class {
    * @param {Array<Raycaster~Intersection>} [intersects=[]] The target array that holds the result of the method.
    * @return {Array<Raycaster~Intersection>} An array holding the intersection points.
    */
-  intersectObject(object, recursive = true, intersects = []) {
-    intersect(object, this, intersects, recursive);
-    intersects.sort(ascSort);
-    return intersects;
+  intersectObject(object, recursive = true, intersects2 = []) {
+    intersect(object, this, intersects2, recursive);
+    intersects2.sort(ascSort);
+    return intersects2;
   }
   /**
    * Checks all intersection between the ray and the objects with or without
@@ -16673,27 +19056,27 @@ var Raycaster = class {
    * @param {Array<Raycaster~Intersection>} [intersects=[]] The target array that holds the result of the method.
    * @return {Array<Raycaster~Intersection>} An array holding the intersection points.
    */
-  intersectObjects(objects, recursive = true, intersects = []) {
+  intersectObjects(objects, recursive = true, intersects2 = []) {
     for (let i = 0, l = objects.length; i < l; i++) {
-      intersect(objects[i], this, intersects, recursive);
+      intersect(objects[i], this, intersects2, recursive);
     }
-    intersects.sort(ascSort);
-    return intersects;
+    intersects2.sort(ascSort);
+    return intersects2;
   }
 };
 function ascSort(a, b) {
   return a.distance - b.distance;
 }
-function intersect(object, raycaster, intersects, recursive) {
+function intersect(object, raycaster, intersects2, recursive) {
   let propagate = true;
   if (object.layers.test(raycaster.layers)) {
-    const result = object.raycast(raycaster, intersects);
+    const result = object.raycast(raycaster, intersects2);
     if (result === false) propagate = false;
   }
   if (propagate === true && recursive === true) {
     const children = object.children;
     for (let i = 0, l = children.length; i < l; i++) {
-      intersect(children[i], raycaster, intersects, true);
+      intersect(children[i], raycaster, intersects2, true);
     }
   }
 }
@@ -27085,8 +29468,8 @@ function barrancaYRio(escena2, colisiones) {
     const quad = [[x0, ya, za], [x1, ya, za], [x1, yb, zb], [x0, ya, za], [x1, yb, zb], [x0, yb, zb]];
     const nx = 0, ny = Math.abs(zb - za), nz = -(yb - ya);
     const len = Math.hypot(ny, nz) || 1;
-    for (const [px, py, pz] of quad) {
-      v.push(px, py, pz);
+    for (const [px2, py2, pz2] of quad) {
+      v.push(px2, py2, pz2);
       n.push(nx, ny / len, nz / len);
       const col = alto.clone().lerp(bajo, (t0 + t1) / 2);
       c.push(col.r, col.g, col.b);
@@ -27121,10 +29504,10 @@ function barrancaYRio(escena2, colisiones) {
     h.caja(x, y + 0.9, z, 16, 2.6, 4.4, CASCO2, r);
     h.caja(x, y + 2.4, z, 9, 1.2, 3.6, CASCO2, r);
     for (const [dx, altoP] of [[-4.4, 13], [0.6, 15], [5, 11]]) {
-      const px = x + Math.cos(r) * dx, pz = z - Math.sin(r) * dx;
-      h.caja(px, y + altoP / 2 + 2, pz, 0.5, altoP, 0.5, PALO);
-      h.caja(px, y + altoP * 0.72, pz, 6.4, 4.6, 0.24, VELA, r);
-      h.caja(px, y + altoP * 0.36, pz, 8.2, 4.2, 0.24, VELA, r);
+      const px2 = x + Math.cos(r) * dx, pz2 = z - Math.sin(r) * dx;
+      h.caja(px2, y + altoP / 2 + 2, pz2, 0.5, altoP, 0.5, PALO);
+      h.caja(px2, y + altoP * 0.72, pz2, 6.4, 4.6, 0.24, VELA, r);
+      h.caja(px2, y + altoP * 0.36, pz2, 8.2, 4.2, 0.24, VELA, r);
     }
   }
   botes(h, HONDO);
@@ -27424,7 +29807,7 @@ function construirMundo(escena2) {
     new Vector3(Math.min(x0, x1), 0, Math.min(z0, z1)),
     new Vector3(Math.max(x0, x1), alto, Math.max(z0, z1))
   ));
-  for (const [px, pz, largo] of [
+  for (const [px2, pz2, largo] of [
     [-8, -6, 5],
     [7.5, -10, 4],
     [0, -18, 6],
@@ -27440,9 +29823,9 @@ function construirMundo(escena2) {
     for (let k = 0; k < largo; k++) {
       for (let f = 0; f < 2; f++) {
         parque.caja(
-          px + (k - (largo - 1) / 2) * 1.02,
+          px2 + (k - (largo - 1) / 2) * 1.02,
           0.21 + f * 0.42,
-          pz + f * 0.1 + (Math.random() - 0.5) * 0.06,
+          pz2 + f * 0.1 + (Math.random() - 0.5) * 0.06,
           1.05,
           0.42,
           0.62,
@@ -27452,12 +29835,12 @@ function construirMundo(escena2) {
       }
     }
     const semi = (largo - 1) * 0.51 + 0.55;
-    meterCaja(px - semi, pz - 0.45, px + semi, pz + 0.55, 0.84);
+    meterCaja(px2 - semi, pz2 - 0.45, px2 + semi, pz2 + 0.55, 0.84);
   }
   const ruedaGeo = new TorusGeometry(0.66, 0.1, 6, 14);
-  for (const [px, pz, giro] of [[-11, -14, 0.4], [10, -27, -0.7], [-6, -42, 1.1], [16, -40, 0.2]]) {
+  for (const [px2, pz2, giro] of [[-11, -14, 0.4], [10, -27, -0.7], [-6, -42, 1.1], [16, -40, 0.2]]) {
     const co = Math.cos(giro), si = Math.sin(giro);
-    const local = (lx, lz) => [px + lx * co + lz * si, pz - lx * si + lz * co];
+    const local = (lx, lz) => [px2 + lx * co + lz * si, pz2 - lx * si + lz * co];
     let [cx, cz] = local(0, 0);
     parque.caja(cx, 1.05, cz, 1.7, 0.62, 2.5, MADERA_C, giro);
     parque.caja(cx, 0.74, cz, 1.8, 0.12, 2.6, MADERA_O, giro);
@@ -27480,25 +29863,25 @@ function construirMundo(escena2) {
       const [vx, vz] = local(sx, -2);
       parque.caja(vx, 0.8, vz, 0.09, 0.09, 1.9, MADERA_C, giro);
     }
-    meterCaja(px - 1.6, pz - 1.6, px + 1.6, pz + 1.6, 1.4);
+    meterCaja(px2 - 1.6, pz2 - 1.6, px2 + 1.6, pz2 + 1.6, 1.4);
   }
   const barrilGeo = new CylinderGeometry(0.34, 0.34, 0.86, 10);
   const aroGeo = new TorusGeometry(0.35, 0.025, 5, 10);
-  for (const [px, pz] of [[5, -8], [5.9, -8.6], [-16, -30], [-15.2, -30.7], [2, -56], [11, -12]]) {
-    parque.pieza(barrilGeo, [px, 0.43, pz], null, null, MADERA_C);
-    for (const y of [0.62, 0.24]) parque.pieza(aroGeo, [px, y, pz], [Math.PI / 2, 0, 0], null, MADERA_O);
-    meterCaja(px - 0.34, pz - 0.34, px + 0.34, pz + 0.34, 0.86);
+  for (const [px2, pz2] of [[5, -8], [5.9, -8.6], [-16, -30], [-15.2, -30.7], [2, -56], [11, -12]]) {
+    parque.pieza(barrilGeo, [px2, 0.43, pz2], null, null, MADERA_C);
+    for (const y of [0.62, 0.24]) parque.pieza(aroGeo, [px2, y, pz2], [Math.PI / 2, 0, 0], null, MADERA_O);
+    meterCaja(px2 - 0.34, pz2 - 0.34, px2 + 0.34, pz2 + 0.34, 0.86);
   }
-  for (const [px, pz, ancho, giro] of [
+  for (const [px2, pz2, ancho, giro] of [
     [-19, -12, 4.5, 0.2],
     [17, -16, 3.5, -0.3],
     [-2, -36, 5, 0.6],
     [13, -58, 4, -0.15]
   ]) {
-    parque.caja(px, 0.62, pz, ancho, 1.25, 0.55, CAL_C, giro);
+    parque.caja(px2, 0.62, pz2, ancho, 1.25, 0.55, CAL_C, giro);
     const ex2 = Math.abs(ancho / 2 * Math.cos(giro)) + Math.abs(0.275 * Math.sin(giro));
     const ez2 = Math.abs(ancho / 2 * Math.sin(giro)) + Math.abs(0.275 * Math.cos(giro));
-    meterCaja(px - ex2, pz - ez2, px + ex2, pz + ez2, 1.25);
+    meterCaja(px2 - ex2, pz2 - ez2, px2 + ex2, pz2 + ez2, 1.25);
   }
   escena2.add(parque.cocinar(MAT()));
   for (const [x, z] of [
@@ -29648,14 +32031,14 @@ var Taller = class {
     const mallas = [];
     for (const { hueso, metal, piezas } of this.lotes.values()) {
       const pos = [], nor = [], col = [];
-      for (const pz of piezas) {
-        const g = pz.geo.index ? pz.geo.toNonIndexed() : pz.geo.clone();
-        g.applyMatrix4(pz.m);
+      for (const pz2 of piezas) {
+        const g = pz2.geo.index ? pz2.geo.toNonIndexed() : pz2.geo.clone();
+        g.applyMatrix4(pz2.m);
         const ap = g.attributes.position, an = g.attributes.normal;
         for (let i = 0; i < ap.count; i++) {
           pos.push(ap.getX(i), ap.getY(i), ap.getZ(i));
           nor.push(an.getX(i), an.getY(i), an.getZ(i));
-          col.push(pz.color.r, pz.color.g, pz.color.b);
+          col.push(pz2.color.r, pz2.color.g, pz2.color.b);
         }
         g.dispose();
       }
@@ -29676,6 +32059,24 @@ var Taller = class {
 var cil = (rt, rb, h, seg = 8) => new CylinderGeometry(rt, rb, h, seg);
 var caja = (x, y, z) => new BoxGeometry(x, y, z);
 var bola = (r, seg = 8) => new SphereGeometry(r, seg, Math.max(4, seg - 2));
+var medialuna = (largo, alto, punta, grueso, filo = 0, tramos = 16) => {
+  const arriba = (t) => alto + (punta - alto) * t * t;
+  const abajo = (t) => filo ? Math.max(arriba(t) - filo, punta * t * t) : punta * t * t;
+  const f = new Shape();
+  f.moveTo(-largo, arriba(-1));
+  for (let i = 0; i <= tramos; i++) {
+    const t = -1 + 2 * i / tramos;
+    f.lineTo(t * largo, arriba(t));
+  }
+  for (let i = tramos; i >= 0; i--) {
+    const t = -1 + 2 * i / tramos;
+    f.lineTo(t * largo, abajo(t));
+  }
+  const g = new ExtrudeGeometry(f, { depth: grueso, bevelEnabled: false, curveSegments: 1 });
+  g.translate(0, -punta, -grueso / 2);
+  g.rotateY(Math.PI / 2);
+  return g;
+};
 function correa(radio = 0.2, grosor = 0.023) {
   const g = new TorusGeometry(radio, grosor, 4, 16);
   g.rotateX(Math.PI / 2);
@@ -29812,43 +32213,46 @@ function vestir(taller, h, c, piel, pelo, sombrero) {
     taller.add(h.cabeza, caja(0.02, 0.07, 0.055), pelo, { p: [s * 0.094, 0.15, -0.012] });
   }
   if (sombrero === "bicornio") {
-    taller.add(h.cabeza, cil(0.126, 0.136, 0.1, 12), NEGRO, { p: [0, 0.285, 0] });
+    taller.add(h.cabeza, cil(0.113, 0.124, 0.1, 12), NEGRO, { p: [0, 0.278, 0] });
+    const ALA = 0.152;
+    const LUZ = 0.152;
+    const PUNTA = 0.246;
+    const PIE = 0.255;
+    const ABRE = 0.3;
     for (const s2 of [-1, 1]) {
-      taller.add(h.cabeza, caja(0.024, 0.19, 0.31), NEGRO, { p: [s2 * 0.05, 0.355, 0] });
-      for (const z of [-1, 1]) {
-        taller.add(
-          h.cabeza,
-          caja(0.024, 0.23, 0.135),
-          NEGRO,
-          { p: [s2 * 0.05, 0.455, z * 0.088], r: [z * 0.34, 0, 0] }
-        );
-        taller.add(
-          h.cabeza,
-          caja(0.028, 0.01, 0.13),
-          LATON,
-          { p: [s2 * 0.05, 0.565, z * 0.125], r: [z * 0.34, 0, 0], metal: true }
-        );
-      }
+      taller.add(
+        h.cabeza,
+        medialuna(ALA, LUZ, PUNTA, 0.03),
+        NEGRO,
+        { p: [s2 * 9e-3, PIE + PUNTA, 0], r: [0, 0, s2 * ABRE] }
+      );
+      taller.add(
+        h.cabeza,
+        medialuna(ALA, LUZ, PUNTA, 0.034, 0.011),
+        LATON,
+        { p: [s2 * 9e-3, PIE + PUNTA, 0], r: [0, 0, s2 * ABRE], metal: true }
+      );
     }
     taller.add(
       h.cabeza,
-      cil(0.044, 0.044, 0.012, 10),
+      cil(0.042, 0.042, 0.012, 10),
       15262418,
-      { p: [0.068, 0.4, -0.045], r: [0, 0, Math.PI / 2] }
+      { p: [0.048, 0.345, -0.088], r: [0, 0, Math.PI / 2] }
     );
     taller.add(
       h.cabeza,
-      cil(0.026, 0.026, 0.016, 10),
+      cil(0.025, 0.025, 0.016, 10),
       7645656,
-      { p: [0.07, 0.4, -0.045], r: [0, 0, Math.PI / 2] }
+      { p: [0.05, 0.345, -0.088], r: [0, 0, Math.PI / 2] }
     );
     taller.add(
       h.cabeza,
-      caja(0.014, 0.135, 0.016),
+      caja(0.013, 0.105, 0.015),
       LATON,
-      { p: [0.066, 0.455, -0.045], r: [0, 0, -0.16], metal: true }
+      { p: [0.046, 0.405, -0.092], r: [0, 0, -0.1], metal: true }
     );
   } else if (c.morrion) {
+    const penacho = sombrero === "oficial" ? 14673646 : c.penacho;
     taller.add(h.cabeza, cil(0.126, 0.117, 0.3, 12), NEGRO, { p: [0, 0.415, 0] });
     taller.add(h.cabeza, cil(0.122, 0.122, 0.026, 12), NEGRO, { p: [0, 0.272, 0] });
     taller.add(h.cabeza, caja(0.21, 0.015, 0.1), NEGRO, { p: [0, 0.265, -0.1], r: [0.26, 0, 0] });
@@ -29860,8 +32264,8 @@ function vestir(taller, h, c, piel, pelo, sombrero) {
       taller.add(h.cabeza, caja(0.016, 0.115, 0.045), LATON, { p: [s * 0.101, 0.2, -0.018], r: [0, 0, s * 0.13], metal: true });
       taller.add(h.cabeza, bola(0.022, 6), LATON, { p: [s * 0.122, 0.29, -0.01], metal: true });
     }
-    taller.add(h.cabeza, bola(0.052, 8), c.penacho, { p: [0, 0.573, -0.03], s: [1, 0.9, 1] });
-    taller.add(h.cabeza, cil(0.012, 0.038, 0.185, 7), c.penacho, { p: [0, 0.685, -0.035] });
+    taller.add(h.cabeza, bola(0.052, 8), penacho, { p: [0, 0.573, -0.03], s: [1, 0.9, 1] });
+    taller.add(h.cabeza, cil(0.012, 0.038, 0.185, 7), penacho, { p: [0, 0.685, -0.035] });
   } else {
     taller.add(h.cabeza, cil(0.232, 0.232, 0.02, 16), NEGRO, { p: [0, 0.268, -5e-3], s: [1, 1, 1.04] });
     taller.add(h.cabeza, cil(0.126, 0.142, 0.14, 14), NEGRO, { p: [0, 0.345, 0] });
@@ -30639,6 +33043,18 @@ var Caballo = class {
   }
   // El caballo de la otra máquina: patas, polvareda y desplome, nada de
   // física. La posición se la escribe red.js con lo que llega del cable.
+  // SE LEVANTA. La caída le deja la raíz volcada de costado y hundida, y eso
+  // no se deshace solo: `vivo = true` sólo cambia por qué rama entra. En red un
+  // caballo puede volver a estar en pie sin haberse muerto nunca —el que se
+  // desmontó y vuelve a montar— y sin esto seguía acostado con el jinete
+  // flotando encima.
+  enderezar() {
+    this.caida = 0;
+    if (this.poseFija) return;
+    this.raiz.rotation.z = 0;
+    this.raiz.rotation.x = 0;
+    this.raiz.position.y = this.alto;
+  }
   actualizarTitere(dt) {
     if (!this.vivo) {
       this.caida = Math.min(1, this.caida + dt * 2.2);
@@ -30748,11 +33164,11 @@ var Caballo = class {
     const fuerza = Math.min(1, (this.vel - 2.6) / 7.6);
     this.tPolvo = 0.2 - fuerza * 0.07;
     const atras = 0.55;
-    const px = this.pos.x + Math.sin(this.rumbo) * atras;
-    const pz = this.pos.z + Math.cos(this.rumbo) * atras;
+    const px2 = this.pos.x + Math.sin(this.rumbo) * atras;
+    const pz2 = this.pos.z + Math.cos(this.rumbo) * atras;
     this._pol = this._pol || new Vector3();
     this._dirPol = this._dirPol || new Vector3();
-    this._pol.set(px, 0.12, pz);
+    this._pol.set(px2, 0.12, pz2);
     this._dirPol.set(Math.sin(this.rumbo) * 0.7, 0.55, Math.cos(this.rumbo) * 0.7);
     this.humo.soltar(this._pol, this._dirPol, {
       cantidad: 1,
@@ -30914,12 +33330,12 @@ function sacarDeCaja(pos, radio, caja3, n) {
     [caja3.max.z - pos.z, 0, 1, pos.x, caja3.max.z + radio]
   ];
   salidas.sort((a, b) => a[0] - b[0]);
-  const [, sx, sz, px, pz] = salidas[0];
+  const [, sx, sz, px2, pz2] = salidas[0];
   n.x = sx;
   n.z = sz;
-  const antes = Math.hypot(pos.x - px, pos.z - pz);
-  pos.x = px;
-  pos.z = pz;
+  const antes = Math.hypot(pos.x - px2, pos.z - pz2);
+  pos.x = px2;
+  pos.z = pz2;
   return antes;
 }
 var Rejilla = class {
@@ -31493,6 +33909,7 @@ var Soldado = class _Soldado {
         return;
       }
     }
+    if (this.huyendo <= 0 && this.estado === "huir") this.estado = "avanzar";
     if (this.estado === "correr") {
       this.aliento = Math.max(0, this.aliento - GASTO_CARRERA * dt);
       if (this.aliento <= 0) {
@@ -31851,14 +34268,14 @@ var Soldado = class _Soldado {
       if (dEnemigo < CUBIERTA_MINIMA) continue;
       const nx = (c.x - objetivo.x) / (dEnemigo || 1);
       const nz = (c.z - objetivo.z) / (dEnemigo || 1);
-      const px = c.x + nx * (c.r + 0.45);
-      const pz = c.z + nz * (c.r + 0.45);
-      const acerca = Math.hypot(px - objetivo.x, pz - objetivo.z) - dist;
-      const puntaje = Math.hypot(px - this.pos.x, pz - this.pos.z) + Math.max(0, acerca) * 1.4;
+      const px2 = c.x + nx * (c.r + 0.45);
+      const pz2 = c.z + nz * (c.r + 0.45);
+      const acerca = Math.hypot(px2 - objetivo.x, pz2 - objetivo.z) - dist;
+      const puntaje = Math.hypot(px2 - this.pos.x, pz2 - this.pos.z) + Math.max(0, acerca) * 1.4;
       if (puntaje < mejorPuntaje) {
         mejorPuntaje = puntaje;
         mejor = c;
-        mejorPunto = { x: px, z: pz };
+        mejorPunto = { x: px2, z: pz2 };
       }
     }
     return mejor ? mejorPunto : null;
@@ -31892,12 +34309,12 @@ var Soldado = class _Soldado {
     const ux = dx / d, uz = dz / d;
     const hasta = Math.min(PASILLO_LARGO, d - 1.4);
     for (let m = 2; m <= hasta; m += 3.2) {
-      const px = this.pos.x + ux * m, pz = this.pos.z + uz * m;
+      const px2 = this.pos.x + ux * m, pz2 = this.pos.z + uz * m;
       let libre = true;
-      r.cerca(px, pz, (o) => {
+      r.cerca(px2, pz2, (o) => {
         if (!libre || o === this || !o.vivo || o.bando !== this.bando) return;
         if (o.rodilla && !this.rodilla) return;
-        if (Math.hypot(o.pos.x - px, o.pos.z - pz) < PASILLO) libre = false;
+        if (Math.hypot(o.pos.x - px2, o.pos.z - pz2) < PASILLO) libre = false;
       });
       if (!libre) return false;
     }
@@ -32606,8 +35023,8 @@ function hornear(raices) {
         a.fromBufferAttribute(ap, i).applyMatrix4(m);
         b.fromBufferAttribute(ap, i + 1).applyMatrix4(m);
         c.fromBufferAttribute(ap, i + 2).applyMatrix4(m);
-        const area = cr.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a)).length() * 0.5;
-        if (area < MIGAJA) continue;
+        const area2 = cr.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a)).length() * 0.5;
+        if (area2 < MIGAJA) continue;
         for (const [v, k] of [[a, i], [b, i + 1], [c, i + 2]]) {
           pos.push(v.x, v.y, v.z);
           n0.fromBufferAttribute(an, k).applyMatrix3(nm).normalize();
@@ -38380,7 +40797,11 @@ function armarRed(ctx) {
       sonido2,
       new Vector3(p0.x, 0, p0.z),
       "granadero",
-      { colisiones: [], lancero: true }
+      {
+        colisiones: [],
+        lancero: true,
+        sombrero: j === 0 ? "bicornio" : "oficial"
+      }
     );
     soldado.titere = true;
     soldado._sinRed = true;
@@ -38456,7 +40877,7 @@ function armarRed(ctx) {
     }
   }
   function mandarCuerpo() {
-    const c = montado2() ? jugador2.monta : null;
+    const c = jugador2.monta || (campo2.caballo || null);
     const p = jugador2.espectador && jugador2.murioEn ? jugador2.murioEn : jugador2.pos;
     mandar({
       t: "yo",
@@ -38467,7 +40888,7 @@ function armarRed(ctx) {
       vivo: jugador2.vivo,
       vida: Math.round(jugador2.vida),
       pose: poseDelJugador2(),
-      m: !!c,
+      m: montado2(),
       cx: c ? +c.pos.x.toFixed(2) : 0,
       cz: c ? +c.pos.z.toFixed(2) : 0,
       cr: c ? +c.rumbo.toFixed(3) : 0,
@@ -38493,13 +40914,22 @@ function armarRed(ctx) {
     soldado.fig.poner(m.pose || "lanzaAlto");
     if (!m.vivo) soldado.caida = Math.min(1, soldado.caida + 0.06);
     else soldado.caida = 0;
+    if (!m.m) {
+      const dx = m.x - soldado.pos.x, dz = m.z - soldado.pos.z;
+      const paso = Math.hypot(dx, dz);
+      soldado.andando = paso > 0.02;
+      soldado.ritmo = paso > 0.14 ? 2.3 : 1;
+    } else soldado.andando = false;
+    if (m.cvivo && !caballo.vivo) {
+      caballo.vivo = true;
+      caballo.enderezar();
+    } else if (!m.cvivo) caballo.vivo = false;
     if (m.m && m.cvivo) {
       if (!soldado.monta) {
         soldado.monta = caballo;
-        caballo.vivo = true;
-        caballo.caida = 0;
         caballo.montado = true;
         soldado.fig.montura = true;
+        soldado._sentar();
       }
       par.destinoCaballo = par.destinoCaballo || { x: m.cx, z: m.cz, rumbo: m.cr };
       const e = par.destinoCaballo;
@@ -38520,7 +40950,6 @@ function armarRed(ctx) {
         soldado.fig.montura = false;
         caballo.montado = false;
       }
-      if (!m.cvivo) caballo.vivo = false;
       cabeza.vivo = false;
     }
   }
@@ -39306,6 +41735,7 @@ var ULTIMAS = [
   "A la desgracia se la vence con la firmeza.",
   "Cuando la Patria est\xE1 en peligro, todo es l\xEDcito menos dejarla perecer."
 ];
+var RED_FUNDIDO = 4.5;
 var ultimaFrase = -1;
 function frasePostrera() {
   let i = Math.floor(Math.random() * (ULTIMAS.length - 1));
@@ -39316,9 +41746,15 @@ function frasePostrera() {
 jugador.alMorir = () => {
   hud.mostrarAviso("Fuera de combate", "malo");
   if (red.activo) {
-    if (jugador.espiar()) {
-      hud.decir("Ca\xEDste. Mir\xE1 c\xF3mo termina: WASD para volar, Shift para ir r\xE1pido, Espacio y Control para subir y bajar. Enter para volver a la pelea.", 9);
-    }
+    hud.cerrarLosOjos(RED_FUNDIDO, false);
+    sonido.morir(RED_FUNDIDO);
+    setTimeout(() => hud.decir(frasePostrera(), 5), RED_FUNDIDO * 0.55 * 1e3);
+    setTimeout(() => {
+      hud.abrirLosOjos();
+      if (jugador.espiar()) {
+        hud.decir("Mir\xE1 c\xF3mo termina: WASD para volar, Shift para ir r\xE1pido, Espacio y Control para subir y bajar. Enter para volver a la pelea.", 9);
+      }
+    }, RED_FUNDIDO * 1e3);
     return;
   }
   if (jugador.atrapado <= 0) {

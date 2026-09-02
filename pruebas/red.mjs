@@ -817,11 +817,32 @@ await latir(0.6);
 // VEAN: lo que queda abajo es su cadáver, donde cayó, y ahí se queda —si se
 // mandara la posición de la cámara, el otro vería un muerto paseándose por el
 // cielo—.
-const esp = await inv.evaluate(async () => {
-  const j = window.juego, r = {};
+// PRIMERO SE MUERE Y DESPUÉS SE VUELA, y entre las dos cosas hay un fundido.
+// Antes se pasaba a espectador en el mismo cuadro del golpe, sin negro y sin
+// frase, y morirse —lo más importante que te pasa en la batalla— se leía como
+// un cambio de cámara. Ahora la pantalla se va a negro, se lee una frase de
+// San Martín, y recién ahí despega.
+//
+// Se ESPERA A QUE DESPEGUE en vez de dormir un número: el fundido dura lo que
+// diga main.js y una prueba que copia esa constante se desactualiza sola.
+const alCaer = await inv.evaluate(() => {
+  const j = window.juego;
   j.jugador.revivir();
   j.jugador.pos.set(9, 1.68, -12);
   j.jugador.recibir(999, null);
+  return { espectador: j.jugador.espectador, vivo: j.jugador.vivo,
+    negro: !!document.querySelector('#lienzo.ojos') };
+});
+ok('al caer NO se vuela de una: primero la pantalla se va a negro',
+  !alCaer.espectador && !alCaer.vivo && alCaer.negro,
+  `espectador=${alCaer.espectador} negro=${alCaer.negro}`);
+await inv.waitForFunction(() => window.juego.jugador.espectador, null, { timeout: 15000 })
+  .catch(() => { /* lo dice la afirmación de abajo */ });
+ok('y después del fundido sí pasa a mirar',
+  await inv.evaluate(() => window.juego.jugador.espectador));
+
+const esp = await inv.evaluate(async () => {
+  const j = window.juego, r = {};
   r.espectador = j.jugador.espectador;
   r.murioEn = j.jugador.murioEn;
   r.arriba = j.jugador.pos.y;

@@ -687,8 +687,14 @@ export function armarRed (ctx) {
     caballo.titere = true;
     caballo.humo = humo;
     caballo._sinRed = true;
+    // EL SOMBRERO DICE QUIÉN ES. San Martín lleva el bicornio —el mismo que ya
+    // se usa para encontrarlo en el acto Cabral— y los demás jugadores un
+    // morrión de oficial, con el penacho claro en vez del encarnado de la
+    // tropa. Es lo único que separa a una persona de los ciento veinte bots
+    // vestidos igual, y a cien metros se lee.
     const soldado = new Soldado(escena, humo, sonido, new THREE.Vector3(p0.x, 0, p0.z),
-      'granadero', { colisiones: [], lancero: true });
+      'granadero', { colisiones: [], lancero: true,
+        sombrero: j === 0 ? 'bicornio' : 'oficial' });
     soldado.titere = true;
     soldado._sinRed = true;
     soldado._par = j;
@@ -784,7 +790,18 @@ export function armarRed (ctx) {
 
   // ---------------------------------------------------------- mi propio cuerpo
   function mandarCuerpo () {
-    const c = montado() ? jugador.monta : null;
+    // EL CABALLO SE MANDA AUNQUE NO ESTÉS ARRIBA.
+    //
+    // Acá estaba el bicho del caballo tendido. Esto decía `montado() ? monta :
+    // null`, así que al desmontarte la carta salía con `cvivo: false` y del
+    // otro lado se leía «se le murió el caballo»: el animal se desplomaba de
+    // costado. Al volver a montar se lo revivía, pero la caída ya le había
+    // torcido la raíz y nadie se la enderezaba, así que seguía acostado con el
+    // jinete flotando encima.
+    //
+    // Son DOS hechos distintos y ahora viajan separados: `m` dice si estoy
+    // arriba, y `cvivo` dice si el animal está vivo. Desmontarse no lo mata.
+    const c = jugador.monta || (campo.caballo || null);
     // EL CADÁVER SE QUEDA DONDE CAYÓ. Mientras mirás la batalla volando, lo que
     // se manda por el cable es el sitio donde te mataron y no dónde está la
     // cámara: si no, los otros verían tu cuerpo muerto paseándose por el cielo.
@@ -795,7 +812,7 @@ export function armarRed (ctx) {
       yaw: +jugador.yaw.toFixed(3),
       vivo: jugador.vivo, vida: Math.round(jugador.vida),
       pose: poseDelJugador(),
-      m: !!c,
+      m: montado(),
       cx: c ? +c.pos.x.toFixed(2) : 0,
       cz: c ? +c.pos.z.toFixed(2) : 0,
       cr: c ? +c.rumbo.toFixed(3) : 0,
@@ -821,13 +838,29 @@ export function armarRed (ctx) {
     if (!m.vivo) soldado.caida = Math.min(1, soldado.caida + 0.06);
     else soldado.caida = 0;
 
+    // LAS PIERNAS DEL QUE VA A PIE. El bucle principal ya anima a este cuerpo
+    // —es un títere más dentro de `soldados`— pero mira `andando`, y a los
+    // pares no se lo escribía nadie: caminaban deslizándose con las piernas
+    // quietas. Sale del movimiento que ya estamos siguiendo, sin mandar un
+    // dato más por el cable.
+    if (!m.m) {
+      const dx = m.x - soldado.pos.x, dz = m.z - soldado.pos.z;
+      const paso = Math.hypot(dx, dz);
+      soldado.andando = paso > 0.02;
+      soldado.ritmo = paso > 0.14 ? 2.3 : 1;      // el umbral de la carrera
+    } else soldado.andando = false;
+
+    // EL ANIMAL PRIMERO, Y APARTE DE SI ESTÁ MONTADO. Puede estar vivo y
+    // pastando al lado del que se bajó.
+    if (m.cvivo && !caballo.vivo) { caballo.vivo = true; caballo.enderezar(); }
+    else if (!m.cvivo) caballo.vivo = false;
+
     if (m.m && m.cvivo) {
       if (!soldado.monta) {
         soldado.monta = caballo;
-        caballo.vivo = true;
-        caballo.caida = 0;
         caballo.montado = true;
         soldado.fig.montura = true;
+        soldado._sentar();
       }
       par.destinoCaballo = par.destinoCaballo || { x: m.cx, z: m.cz, rumbo: m.cr };
       const e = par.destinoCaballo;
@@ -840,7 +873,6 @@ export function armarRed (ctx) {
       cabeza.vivo = m.vivo;
     } else {
       if (soldado.monta) { soldado.monta = null; soldado.fig.montura = false; caballo.montado = false; }
-      if (!m.cvivo) caballo.vivo = false;
       // A PIE YA NO ARRASTRA A LA COLUMNA. Sesenta jinetes no siguen al paso a
       // un hombre desmontado; la Pinza sabe qué hacer cuando la cabeza
       // desaparece —la hereda un sargento— y es lo mismo que pasa en solo.

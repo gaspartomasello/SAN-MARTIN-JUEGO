@@ -210,6 +210,10 @@ const ULTIMAS = [
 // Y NUNCA DOS VECES SEGUIDAS. Sorteo a secas quiere decir que una de cada
 // ocho muertes repite la anterior, y una frase repetida deja de ser una frase:
 // se lee como un cartel. Se sortea entre las que no son la última.
+// Cuánto dura el fundido en red. Es más corto que en solitario a propósito:
+// allá no hay a quién hacer esperar y acá sí.
+const RED_FUNDIDO = 4.5;
+
 let ultimaFrase = -1;
 function frasePostrera () {
   let i = Math.floor(Math.random() * (ULTIMAS.length - 1));
@@ -225,10 +229,33 @@ jugador.alMorir = () => {
   // hacer esperar. En solitario no hay a quién esperar y lo que corresponde es
   // lo otro: que se te caiga la cabeza al pasto y se te cierren los ojos.
   if (red.activo) {
-    if (jugador.espiar()) {
-      hud.decir('Caíste. Mirá cómo termina: WASD para volar, Shift para ir rápido, ' +
-        'Espacio y Control para subir y bajar. Enter para volver a la pelea.', 9);
-    }
+    // TAMBIÉN SE MUERE EN RED, y hasta ahora no: se pasaba a volar de un
+    // fotograma al otro, sin fundido y sin frase, como si te hubieran cambiado
+    // de cámara. Morirse es lo más importante que te pasa en la batalla y no
+    // puede ser un corte.
+    //
+    // Lo que cambia respecto de solo es lo que viene DESPUÉS: allá los ojos se
+    // quedan cerrados, acá se vuelven a abrir sobre el campo porque los otros
+    // siguen peleando. El fundido corto —cuatro segundos y medio contra siete—
+    // por lo mismo: hay gente esperándote.
+    //
+    // Sin los botones del caído: en red la salida no es «volver a formar», es
+    // mirar, y el aviso de abajo la explica.
+    // Y SIN SOLTAR EL PUNTERO. En solitario se suelta —hay botones que apretar—
+    // pero acá soltarlo pausa el mundo, y un invitado pausado deja de mandar su
+    // cuerpo: del otro lado su compañero queda vivo y clavado en la plaza de
+    // salida para siempre. Además, en un rato va a estar volando con WASD y
+    // para eso el puntero tiene que seguir tomado.
+    hud.cerrarLosOjos(RED_FUNDIDO, false);
+    sonido.morir(RED_FUNDIDO);
+    setTimeout(() => hud.decir(frasePostrera(), 5), RED_FUNDIDO * 0.55 * 1000);
+    setTimeout(() => {
+      hud.abrirLosOjos();
+      if (jugador.espiar()) {
+        hud.decir('Mirá cómo termina: WASD para volar, Shift para ir rápido, ' +
+          'Espacio y Control para subir y bajar. Enter para volver a la pelea.', 9);
+      }
+    }, RED_FUNDIDO * 1000);
     return;
   }
 

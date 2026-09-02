@@ -73,6 +73,36 @@ export const cil = (rt, rb, h, seg = 8) => new THREE.CylinderGeometry(rt, rb, h,
 export const caja = (x, y, z) => new THREE.BoxGeometry(x, y, z);
 export const bola = (r, seg = 8) => new THREE.SphereGeometry(r, seg, Math.max(4, seg - 2));
 
+// UNA MEDIA LUNA: el ala del bicornio, y nada más que eso.
+//
+// Se probó apilarla en tablillas —una caja por tramo, tan alta como diga la
+// curva— y no sale. Derechas, las tapas quedan a distinta altura y de tres
+// cuartos se ve un peine; inclinada cada una para seguir la pendiente, se le
+// tuerce también el pie y las puntas se abren como antenas. El ala no es una
+// pila de cajas: es UNA figura con dos arcos que se juntan en los extremos, y
+// de ese encuentro sale el filo del cuerno. three.js la extruye exacta.
+//
+//   `alto`  la luz del ala en el medio, sobre la cabeza
+//   `punta` cuánto suben los dos cuernos por encima del pie
+//   `filo`  si viene, no es el ala entera sino una tira fina pegada al canto
+//           de arriba: el galón dorado, que así corre por todo el borde
+//
+// Sale con las PUNTAS EN EL ORIGEN y el pie hacia abajo, para que al inclinarla
+// gire sobre los cuernos: las dos mitades se abren por abajo, donde tiene que
+// entrar la cabeza, y arriba siguen tocándose.
+export const medialuna = (largo, alto, punta, grueso, filo = 0, tramos = 16) => {
+  const arriba = t => alto + (punta - alto) * t * t;
+  const abajo = t => (filo ? Math.max(arriba(t) - filo, punta * t * t) : punta * t * t);
+  const f = new THREE.Shape();
+  f.moveTo(-largo, arriba(-1));
+  for (let i = 0; i <= tramos; i++) { const t = -1 + (2 * i) / tramos; f.lineTo(t * largo, arriba(t)); }
+  for (let i = tramos; i >= 0; i--) { const t = -1 + (2 * i) / tramos; f.lineTo(t * largo, abajo(t)); }
+  const g = new THREE.ExtrudeGeometry(f, { depth: grueso, bevelEnabled: false, curveSegments: 1 });
+  g.translate(0, -punta, -grueso / 2);      // las puntas al origen
+  g.rotateY(Math.PI / 2);                   // el espesor pasa a ser el ancho del sombrero
+  return g;
+};
+
 // Una correa que abraza el cuerpo: aro achatado como el torso, listo para
 // inclinarlo y cruzarlo en el pecho.
 function correa (radio = 0.2, grosor = 0.023) {
@@ -229,30 +259,57 @@ function vestir (taller, h, c, piel, pelo, sombrero) {
     // en batalla —ancho y chato— y queda otro sombrero: el del retrato es
     // angosto de frente y sube en dos puntas, adelante y atrás. De costado es
     // una media luna parada; de frente, un bonete. Esa es la silueta.
-    taller.add(h.cabeza, cil(0.126, 0.136, 0.10, 12), NEGRO, { p: [0, 0.285, 0] });
-    // Cada ala es UNA PIEZA con dos puntas, no dos puntas sueltas. Hechas por
-    // separado quedaban dos cuernos con un hueco en el medio —parecía una
-    // cornamenta y no un sombrero—: el cuerpo del ala tiene que llenar el
-    // valle entre punta y punta, que es lo que le da la media luna.
+    taller.add(h.cabeza, cil(0.113, 0.124, 0.10, 12), NEGRO, { p: [0, 0.278, 0] });
+    // EL ALA ES UNA CURVA, NO TRES CAJAS.
+    //
+    // La versión anterior armaba cada ala con un bloque en el medio y una
+    // punta a cada lado, y de costado —que es justo desde donde se mira un
+    // bicornio— se le veían los tres escalones: canto de arriba recto, dos
+    // quiebres, y el galón en dos barritas sueltas que no llegaban a los
+    // extremos. Parecía un tricornio golpeado.
+    //
+    // Ahora el borde de arriba sale de una PARÁBOLA: hundido sobre la cabeza y
+    // levantándose hacia las dos puntas. Se arma en tablillas finas, cada una
+    // tan alta como diga la curva en su sitio; con nueve, el escalón entre una
+    // y otra es de milímetros y de lejos el canto se lee liso. El galón va
+    // encima de cada tablilla, así que corre por todo el borde y no en dos
+    // pedazos, que es lo que se ve en el retrato.
+    //
+    // Y las dos alas se abren hacia arriba —se tocan abajo, en la copa, y se
+    // separan arriba—, que es lo que le da el hueco del medio y lo que hace
+    // que de frente sea angosto y de perfil, ancho.
+    const ALA = 0.152;          // media luz de punta a punta
+    const LUZ = 0.152;          // la luz del ala en el medio
+    const PUNTA = 0.246;        // cuánto suben los cuernos sobre el pie
+    const PIE = 0.255;          // dónde apoya el ala sobre la copa
+    const ABRE = 0.30;          // cuánto se abren las dos mitades POR ABAJO
+    // Las dos mitades del ala doblada. Giran sobre los cuernos —la media luna
+    // sale con las puntas en el origen— así que arriba se tocan y abajo se
+    // separan justo lo que hace falta para que entre la cabeza. De frente es
+    // una punta sola y angosta; de costado, la media luna entera.
     for (const s2 of [-1, 1]) {
-      taller.add(h.cabeza, caja(0.024, 0.19, 0.31), NEGRO, { p: [s2 * 0.050, 0.355, 0] });
-      for (const z of [-1, 1]) {
-        taller.add(h.cabeza, caja(0.024, 0.23, 0.135), NEGRO,
-          { p: [s2 * 0.050, 0.455, z * 0.088], r: [z * 0.34, 0, 0] });
-        // el galón dorado, un filo fino y no un bloque
-        taller.add(h.cabeza, caja(0.028, 0.010, 0.13), LATON,
-          { p: [s2 * 0.050, 0.565, z * 0.125], r: [z * 0.34, 0, 0], metal: true });
-      }
+      taller.add(h.cabeza, medialuna(ALA, LUZ, PUNTA, 0.030), NEGRO,
+        { p: [s2 * 0.009, PIE + PUNTA, 0], r: [0, 0, s2 * ABRE] });
+      // el galón dorado: una tira fina pegada al canto, de punta a punta
+      taller.add(h.cabeza, medialuna(ALA, LUZ, PUNTA, 0.034, 0.011), LATON,
+        { p: [s2 * 0.009, PIE + PUNTA, 0], r: [0, 0, s2 * ABRE], metal: true });
     }
-    // la escarapela celeste y blanca, al costado derecho, con su presilla
-    taller.add(h.cabeza, cil(0.044, 0.044, 0.012, 10), 0xe8e2d2,
-      { p: [0.068, 0.40, -0.045], r: [0, 0, Math.PI / 2] });
-    taller.add(h.cabeza, cil(0.026, 0.026, 0.016, 10), 0x74a9d8,
-      { p: [0.070, 0.40, -0.045], r: [0, 0, Math.PI / 2] });
-    taller.add(h.cabeza, caja(0.014, 0.135, 0.016), LATON,
-      { p: [0.066, 0.455, -0.045], r: [0, 0, -0.16], metal: true });
+    // Va CONTRA el ala delantera y no flotando al costado: la presilla sube
+    // desde la escarapela hasta el galón, que es de donde cuelga.
+    taller.add(h.cabeza, cil(0.042, 0.042, 0.012, 10), 0xe8e2d2,
+      { p: [0.048, 0.345, -0.088], r: [0, 0, Math.PI / 2] });
+    taller.add(h.cabeza, cil(0.025, 0.025, 0.016, 10), 0x74a9d8,
+      { p: [0.050, 0.345, -0.088], r: [0, 0, Math.PI / 2] });
+    taller.add(h.cabeza, caja(0.013, 0.105, 0.015), LATON,
+      { p: [0.046, 0.405, -0.092], r: [0, 0, -0.10], metal: true });
   } else if (c.morrion) {
     // morrión: alto pero no descomunal. Es la silueta que se lee a cien metros.
+    //
+    // EL DE OFICIAL es el mismo con el penacho claro. Existe por el modo de a
+    // dos: los otros jugadores tienen que distinguirse de los ciento veinte
+    // bots vestidos igual, y San Martín ya se distingue por el bicornio. Es un
+    // color, no un sombrero nuevo.
+    const penacho = sombrero === 'oficial' ? 0xdfe6ee : c.penacho;
     taller.add(h.cabeza, cil(0.126, 0.117, 0.30, 12), NEGRO, { p: [0, 0.415, 0] });
     taller.add(h.cabeza, cil(0.122, 0.122, 0.026, 12), NEGRO, { p: [0, 0.272, 0] });
     taller.add(h.cabeza, caja(0.21, 0.015, 0.10), NEGRO, { p: [0, 0.265, -0.10], r: [0.26, 0, 0] });
@@ -267,8 +324,8 @@ function vestir (taller, h, c, piel, pelo, sombrero) {
       taller.add(h.cabeza, bola(0.022, 6), LATON, { p: [s * 0.122, 0.29, -0.01], metal: true });
     }
     // pompón y penacho encarnado
-    taller.add(h.cabeza, bola(0.052, 8), c.penacho, { p: [0, 0.573, -0.03], s: [1, 0.9, 1] });
-    taller.add(h.cabeza, cil(0.012, 0.038, 0.185, 7), c.penacho, { p: [0, 0.685, -0.035] });
+    taller.add(h.cabeza, bola(0.052, 8), penacho, { p: [0, 0.573, -0.03], s: [1, 0.9, 1] });
+    taller.add(h.cabeza, cil(0.012, 0.038, 0.185, 7), penacho, { p: [0, 0.685, -0.035] });
   } else {
     // sombrero redondo de ala ancha: copa baja, no galera
     taller.add(h.cabeza, cil(0.232, 0.232, 0.02, 16), NEGRO, { p: [0, 0.268, -0.005], s: [1, 1, 1.04] });

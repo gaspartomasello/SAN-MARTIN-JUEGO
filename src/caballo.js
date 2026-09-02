@@ -299,6 +299,19 @@ export class Caballo {
 
   // El caballo de la otra máquina: patas, polvareda y desplome, nada de
   // física. La posición se la escribe red.js con lo que llega del cable.
+  // SE LEVANTA. La caída le deja la raíz volcada de costado y hundida, y eso
+  // no se deshace solo: `vivo = true` sólo cambia por qué rama entra. En red un
+  // caballo puede volver a estar en pie sin haberse muerto nunca —el que se
+  // desmontó y vuelve a montar— y sin esto seguía acostado con el jinete
+  // flotando encima.
+  enderezar () {
+    this.caida = 0;
+    if (this.poseFija) return;
+    this.raiz.rotation.z = 0;
+    this.raiz.rotation.x = 0;
+    this.raiz.position.y = this.alto;
+  }
+
   actualizarTitere (dt) {
     if (!this.vivo) {
       this.caida = Math.min(1, this.caida + dt * 2.2);
