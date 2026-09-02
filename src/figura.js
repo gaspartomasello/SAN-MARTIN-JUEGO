@@ -410,6 +410,42 @@ function lanzaGranadero (taller, mano) {
   taller.add(mano, cil(0.028, 0.028, 0.14, 7), CUERO, { p: [0, 0, 0.16], r: [Math.PI / 2, 0, 0] });
 }
 
+// EL CORVO EN LA MANO. El sable al cinto ya existe —es la vaina— pero el arma
+// desenvainada no estaba: en tercera persona sólo había fusil, tercerola y
+// lanza, así que un jugador con el corvo en alto se veía con una tercerola.
+//
+// La curva se hace con cinco tramos que van girando: es un sable corvo y su
+// curva es la mitad de su carácter. Cada tramo arranca donde termina el
+// anterior, así que la hoja no tiene escalones.
+function sableEnMano (taller, mano) {
+  taller.add(mano, cil(0.021, 0.021, 0.115, 7), CUERO, { p: [0, 0, 0.03], r: [Math.PI / 2, 0, 0] });   // puño
+  taller.add(mano, caja(0.012, 0.10, 0.05), LATON, { p: [0, -0.008, -0.045], metal: true });           // guarda
+  taller.add(mano, cil(0.026, 0.026, 0.02, 7), LATON, { p: [0, 0, 0.095], r: [Math.PI / 2, 0, 0], metal: true }); // pomo
+  const TRAMOS = 5, LARGO = 0.155;
+  let z = -0.075, y = 0, ang = 0;
+  for (let i = 0; i < TRAMOS; i++) {
+    ang += 0.115;                                   // la panza del corvo
+    const zc = z - Math.cos(ang) * LARGO / 2;
+    const yc = y + Math.sin(ang) * LARGO / 2;
+    const ancho = 0.030 - i * 0.003;
+    taller.add(mano, caja(0.008, ancho, LARGO), HIERRO,
+      { p: [0, yc, zc], r: [Math.PI / 2 - (Math.PI / 2 - ang), 0, 0], metal: true });
+    z -= Math.cos(ang) * LARGO;
+    y += Math.sin(ang) * LARGO;
+  }
+}
+
+// EL PISTOLÓN de arzón: caño corto, llave de chispa y culata de nogal que baja.
+function pistolonEnMano (taller, mano) {
+  taller.add(mano, cil(0.014, 0.015, 0.30, 7), HIERRO, { p: [0, 0.008, -0.13], r: [Math.PI / 2, 0, 0], metal: true });
+  taller.add(mano, caja(0.034, 0.040, 0.26), MADERA, { p: [0, -0.014, -0.10] });
+  taller.add(mano, caja(0.040, 0.058, 0.055), HIERRO, { p: [0.016, 0.010, 0.015], metal: true });   // llave
+  taller.add(mano, cil(0.019, 0.019, 0.014, 6), HIERRO, { p: [0.030, 0.028, 0.005], r: [0, 0, Math.PI / 2], metal: true });
+  // la culata cae hacia atrás y abajo, que es lo que lo hace un pistolón y no un caño
+  taller.add(mano, caja(0.036, 0.10, 0.075), MADERA, { p: [0, -0.056, 0.075], r: [-0.42, 0, 0] });
+  taller.add(mano, cil(0.024, 0.024, 0.026, 7), LATON, { p: [0, -0.10, 0.105], r: [Math.PI / 2 - 0.42, 0, 0], metal: true });
+}
+
 function sableAlCinto (taller, cadera) {
   const g = new THREE.Group();
   taller.add(cadera, cil(0.024, 0.03, 0.68, 7), 0x2c2f34, { p: [-0.19, -0.30, 0.10], r: [0.30, 0, -0.16], metal: true });
@@ -551,11 +587,35 @@ export class Figura {
 
     const taller = new Taller();
     vestir(taller, h, c, piel, pelo, op.sombrero);
-    if (op.arma === 'lanza') { lanzaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
+    // EL ARMERO COMPLETO, sólo para quien cambia de arma.
+    //
+    // El Taller junta por hueso, así que todo lo que se cuelgue de la mano
+    // termina en una sola malla y no se puede prender y apagar por pieza. Por
+    // eso cada arma va en su PROPIO grupo colgado de la mano: cada una queda
+    // con su malla y cambiar de arma es prender una y apagar las otras. Cero
+    // geometría en el bucle de dibujo.
+    //
+    // Va sólo con `op.armas`, que hoy usan nada más que los cuerpos de los
+    // otros jugadores —nueve como mucho—. Dárselo a los ciento veinte bots
+    // sería multiplicar por cuatro la geometría del arma para nada: un bot no
+    // cambia de arma en toda la batalla.
+    if (op.armas) {
+      this.armero = {};
+      for (const [nombre, armar] of [['tercerola', tercerolaGranadero], ['lanza', lanzaGranadero],
+        ['sable', sableEnMano], ['pistolon', pistolonEnMano]]) {
+        const g = new THREE.Group();
+        h.arma.add(g);
+        armar(taller, g);
+        this.armero[nombre] = g;
+      }
+      sableAlCinto(taller, h.cadera);
+    } else if (op.arma === 'lanza') { lanzaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
     else if (c.morrion) { tercerolaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
     else fusilRealista(taller, h.arma);
     this.mallas = taller.cocinar();
     this.arma = h.arma;
+    // el armero arranca con el arma que corresponde y todo lo demás apagado
+    if (this.armero) { this.enMano = null; this.ponerArma(op.arma === 'lanza' ? 'lanza' : 'tercerola'); }
 
     // nadie es idéntico al de al lado: estatura y ancho varían un poco
     const alto = 0.955 + (semilla * 7919 % 1) * 0.09;
@@ -589,6 +649,17 @@ export class Figura {
     this._blancoI = V();
 
     this._armar();
+  }
+
+  // CAMBIAR DE ARMA. Prender una y apagar las otras, nada más: las cuatro ya
+  // están armadas y colgadas de la mano desde el constructor. Sólo la tienen
+  // las figuras hechas con `op.armas` —los cuerpos de los otros jugadores—;
+  // en las demás no hace nada, que es lo que corresponde: un bot no cambia.
+  ponerArma (nombre) {
+    if (!this.armero || nombre === this.enMano) return;
+    const cual = this.armero[nombre] ? nombre : 'tercerola';
+    for (const k in this.armero) this.armero[k].visible = k === cual;
+    this.enMano = cual;
   }
 
   poner (nombre) { if (POSES[nombre]) this.pose = nombre; }

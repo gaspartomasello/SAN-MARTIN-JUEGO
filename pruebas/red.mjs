@@ -475,6 +475,59 @@ async function abrir (quien) {
   r.push(['—', 'anfitrión', JSON.stringify(csm)]);
   r.push(['—', 'invitado ', JSON.stringify(cbm)]);
   ok('al invitado le llega la batalla y no un campo vacío', cbm.soldados > 0, String(cbm.soldados));
+
+  // ---- EL ARMA QUE SE LE VE EN LA MANO AL COMPAÑERO ----
+  //
+  // En tercera persona sólo había fusil, tercerola y lanza, así que un jugador
+  // con el corvo en alto se veía con una tercerola. Las cuatro armas viven
+  // colgadas de la mano desde que nace el cuerpo y cambiar es prender una y
+  // apagar las otras: cero geometría en el bucle de dibujo.
+  //
+  // Se prueba DESMONTADO porque a caballo se ve la lanza y tapa todo lo demás.
+  const latir = async (n = 12) => {
+    for (let i = 0; i < n; i++) {
+      await Promise.all([sm, bm].map(p =>
+        p.evaluate(() => { for (let k = 0; k < 6; k++) window.juego.simular(1 / 30); })));
+      await sm.waitForTimeout(12);
+    }
+  };
+  await sm.evaluate(() => { const j = window.juego; if (j.jugador.monta) j.campo.montarODesmontar(); });
+  await latir(15);
+  for (const [tecla, espera] of [['Digit3', 'pistolon'], ['Digit2', 'sable'], ['Digit1', 'tercerola']]) {
+    await sm.evaluate(k => {
+      window.juego.mando.teclas.add(k);
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: k }));
+    }, tecla);
+    await latir(12);
+    const visto = await bm.evaluate(() => {
+      const c = window.juego.red.companero;
+      return c && c.fig ? (c.fig.enMano || null) : null;
+    });
+    ok(`y le ve el arma que agarra: ${espera}`, visto === espera, `ve "${visto}"`);
+  }
+
+  // ---- LA VICTORIA SE CANTA EN LAS DOS MÁQUINAS, Y LA CANTA CUALQUIERA ----
+  //
+  // Los dos ganaron la misma batalla: hacer caminar al segundo hasta el portón
+  // para leer lo mismo es hacerlo esperar por nada. Acá el que llega es el
+  // INVITADO, que es el caso que no se detecta solo —no simula la batalla— y
+  // el que se rompería si el aviso fuera de una sola dirección.
+  const fase = p => p.evaluate(() => window.juego.victoria.fase);
+  ok('antes no hay victoria en ninguna de las dos', (await fase(sm)) === null && (await fase(bm)) === null);
+  await sm.evaluate(() => window.juego.victoria.arrancar(true));
+  await latir(10);
+  ok('el final lo canta el anfitrión y le llega al invitado', (await fase(bm)) === 'llamando', await fase(bm));
+  ok('y al invitado le aparece la flecha del portón',
+    await bm.evaluate(() => !!window.juego.victoria.marca));
+  await bm.evaluate(() => {
+    const j = window.juego;
+    j.jugador.pos.set(0, 1.68, 13);
+    if (j.jugador.monta) j.jugador.monta.pos.set(0, 0, 13);
+  });
+  await latir(12);
+  ok('y llegando UNO SOLO —el invitado— se canta en las dos',
+    (await fase(bm)) === 'llegado' && (await fase(sm)) === 'llegado',
+    `invitado=${await fase(bm)} anfitrión=${await fase(sm)}`);
   ok('y le llega ENTERA', cbm.soldados === csm.soldados, `${cbm.soldados} contra ${csm.soldados}`);
   ok('con las dos piezas', cbm.canones === 2, String(cbm.canones));
   ok('y sale por el costado que le toca', cbm.columna === 'este', cbm.columna);

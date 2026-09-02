@@ -265,9 +265,66 @@ const r = await pag.evaluate(() => {
   acto.contar(90, true, c2);
   ok('en el campo de práctica no pasa', acto.tClarin === 0 && !acto.activo);
 
+  // =========================================================================
+  // EL ACTO DE LA VICTORIA
+  // =========================================================================
+  //
+  // El otro acto de este archivo: el que cierra la batalla. Va acá y no en uno
+  // nuevo porque es la misma clase de cosa —un acto con fases, con su
+  // disparador, que toma el HUD y lo devuelve— y porque prueba el mismo
+  // archivo.
+  //
+  // Se pelea una batalla CHICA a propósito: lo que se prueba es el cierre, no
+  // el balance, y treinta contra veinte se resuelve en dos minutos de reloj
+  // simulado en vez de cuatro.
+  const T = j.jugador.pos.constructor;
+  const v = j.victoria;
+  j.campo.limpiarCampo(); j.jugador.revivir(); j.jugador.pos.set(0, 1.68, 0);
+  j.formarPinza(30, 20); j.pinza.tocar();
+  ok('antes de pelear no hay victoria que cantar', v.fase === null);
+
+  let t = 0;
+  for (let i = 0; i < 60 * 300 && !v.activo; i++) { j.simular(1 / 60); t += 1 / 60; }
+  ok('se dispara sola cuando no queda un realista peleando', v.activo,
+    `a los ${t.toFixed(0)} s · fase=${v.fase}`);
+  ok('y planta la flecha sobre el portón del convento',
+    !!v.marca && Math.abs(v.marca.position.x) < 1 && Math.abs(v.marca.position.z - 16) < 5,
+    v.marca ? `x=${v.marca.position.x.toFixed(0)} z=${v.marca.position.z.toFixed(0)}` : 'no hay flecha');
+
+  const montados = () => j.soldados.filter(s => !s.esRealista && s.vivo && s.montado);
+  const conPlaza = montados().filter(s => s.plaza).length;
+  ok('y le da destino a TODOS los granaderos montados', conPlaza === montados().length && conPlaza > 0,
+    `${conPlaza} de ${montados().length}`);
+
+  // Y QUE DE VERDAD CAMINEN. Escribirles la plaza y que no se muevan sería lo
+  // mismo que no hacer nada: la Pinza se apaga en el mismo acto y si el
+  // destino no se leyera, el escuadrón se quedaría donde estaba.
+  const alPorton = () => {
+    const m = montados();
+    return m.length ? m.reduce((a, s) => a + Math.hypot(s.pos.x, s.pos.z - 16), 0) / m.length : 0;
+  };
+  const antes = alPorton();
+  for (let i = 0; i < 60 * 25; i++) j.simular(1 / 60);
+  ok('y marchan hacia ahí', alPorton() < antes - 5,
+    `de ${antes.toFixed(0)} m a ${alPorton().toFixed(0)} m`);
+  ok('pero no se canta victoria por llegar ELLOS', v.fase === 'llamando', `fase=${v.fase}`);
+
+  // EL JUGADOR LLEGA. Se le mueve también el caballo: montado, la posición del
+  // hombre la manda el animal y mover sólo al jugador no lo lleva a ningún
+  // lado —cosa que costó un rato entender—.
+  j.jugador.revivir();
+  j.jugador.pos.set(0, 1.68, 13);
+  if (j.jugador.monta) j.jugador.monta.pos.set(0, 0, 13);
+  for (let i = 0; i < 30; i++) j.simular(1 / 60);
+  ok('y cuando llega el jugador, ahí sí', v.fase === 'llegado', `fase=${v.fase}`);
+  ok('y la flecha se levanta', !v.marca);
+
+  j.formarPinza(4, 4);
+  ok('al rearmar el campo vuelve a estar por ganarse', v.fase === null, `fase=${v.fase}`);
+
   return out;
 });
-for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(42), x);
+for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(52), x);
 const mal = r.filter(x => x[0] === 'MAL').length;
 console.log(`\n${r.filter(x => x[0] === 'OK ').length} bien, ${mal} mal`);
 console.log(errs.length ? 'ERRORES: ' + errs.join(' / ') : 'sin errores de consola');

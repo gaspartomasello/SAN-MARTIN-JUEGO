@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Soldado } from './soldados.js';
 import { PIEL_CABRAL } from './figura.js';
+import { PORTON } from './sanlorenzo.js';
 
 // EL ACTO CABRAL.
 //
@@ -83,6 +84,34 @@ const C_FRASE = 2.6;
 const C_NEGRO = 4.6;
 const C_OJOS = 6.6;         // lo que dura el cierre, en el mismo reloj lento
 const C_FIN = 7.4;          // y volvés a ser San Martín
+
+// LA FLECHA CELESTE que dice «acá». La usan los dos actos: el de Cabral para
+// marcar dónde quedó San Martín entre ciento veinte hombres vestidos igual, y
+// el de la victoria para marcar el portón del convento.
+function baliza (escena, x, z) {
+
+  // CELESTE, y las dos marcas del mismo color. Es el de la escarapela, así
+  // que no queda como un cartel de videojuego pegado encima de 1813, y
+  // contra el pasto seco y el crema del caballo es lo que más salta.
+  const mat = new THREE.MeshBasicMaterial({ color: 0x74c7ec, transparent: true,
+    opacity: 0.7, depthTest: false, depthWrite: false });
+  const g = new THREE.Group();
+  // ARRANCA POR ENCIMA DEL CUERPO. Desde el suelo la vara le pasa por el
+  // medio al hombre y al animal —no consulta la profundidad— y de cerca eso
+  // es una raya atravesando justo lo que uno vino a mirar.
+  const haz = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.4, 6), mat);
+  haz.position.y = 3.1;
+  const punta = new THREE.Mesh(new THREE.ConeGeometry(0.30, 0.55, 4), mat);
+  punta.position.y = 1.25;
+  punta.rotation.x = Math.PI;          // la punta mirando al hombre
+  g.add(haz, punta);
+  g.position.set(x, 0, z);
+  g.renderOrder = 999;
+  escena.add(g);
+  g.userData.mat = mat;
+  g.userData.punta = punta;
+  return g;
+}
 
 export class ActoCabral {
   constructor (ctx) {
@@ -292,29 +321,7 @@ export class ActoCabral {
   // ve por encima del humo, de los cuerpos y de los otros ciento diecinueve
   // granaderos. Es lo único del juego que se dibuja atravesando el mundo, y se
   // justifica porque acá el problema no es ver: es ENCONTRAR.
-  _baliza (x, z) {
-    // CELESTE, y las dos marcas del mismo color. Es el de la escarapela, así
-    // que no queda como un cartel de videojuego pegado encima de 1813, y
-    // contra el pasto seco y el crema del caballo es lo que más salta.
-    const mat = new THREE.MeshBasicMaterial({ color: 0x74c7ec, transparent: true,
-      opacity: 0.7, depthTest: false, depthWrite: false });
-    const g = new THREE.Group();
-    // ARRANCA POR ENCIMA DEL CUERPO. Desde el suelo la vara le pasa por el
-    // medio al hombre y al animal —no consulta la profundidad— y de cerca eso
-    // es una raya atravesando justo lo que uno vino a mirar.
-    const haz = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.4, 6), mat);
-    haz.position.y = 3.1;
-    const punta = new THREE.Mesh(new THREE.ConeGeometry(0.30, 0.55, 4), mat);
-    punta.position.y = 1.25;
-    punta.rotation.x = Math.PI;          // la punta mirando al hombre
-    g.add(haz, punta);
-    g.position.set(x, 0, z);
-    g.renderOrder = 999;
-    this.ctx.escena.add(g);
-    g.userData.mat = mat;
-    g.userData.punta = punta;
-    return g;
-  }
+  _baliza (x, z) { return baliza(this.ctx.escena, x, z); }
 
   // EL BORDE DEL CABALLO. Una copia de las mismas mallas un poco más grande y
   // dibujada por dentro (`BackSide`): el original la tapa entera salvo en la
@@ -494,5 +501,133 @@ export class ActoCabral {
     if (sm && this.sitio) { sm.pos.x = this.sitio.x; sm.pos.z = this.sitio.z; sm.pos.y = 0; }
 
     if (this._tc >= C_FIN) this._serSanMartin();
+  }
+}
+
+// ===========================================================================
+// EL ACTO DE LA VICTORIA · lo que pasa cuando la barranca queda vacía
+// ===========================================================================
+//
+// San Lorenzo no se ganó matando a los doscientos cincuenta: se ganó cuando la
+// línea se quebró y bajaron a los botes. Hasta acá el juego sabía producir ese
+// momento pero no sabía DECIRLO: la última bandera roja desaparecía del campo y
+// no pasaba nada más. Quedabas parado en un potrero.
+//
+// Son tres cosas y ninguna es una pantalla: un aviso, una flecha sobre el
+// portón del convento —de donde saliste— y el escuadrón formando ahí. La
+// batalla termina donde empezó, y termina caminando hasta ahí, no mirando un
+// cartel. El cartel viene después, cuando llegás.
+//
+// EN RED alcanza con que llegue UNO. Los dos ganaron la misma batalla y hacer
+// que el segundo camine para leer lo mismo es hacerlo esperar por nada.
+const VICTORIA_CERCA = 7;      // a esta distancia del portón, llegaste
+const VICTORIA_ESPERA = 2.2;   // lo que se tarda en creerlo, antes del aviso
+
+// La frase es SUYA y es sobre sus granaderos, que es de lo que trata esta
+// batalla. No hay ninguna cita de San Martín sobre San Lorenzo que se pueda
+// poner acá sin inventarla, y una frase inventada con su nombre abajo es lo
+// único que este juego no puede hacer.
+const VICTORIA_FRASE = 'De lo que son capaces mis granaderos, sólo yo lo sé; ' +
+  'quien los iguale habrá, quien los exceda, no.';
+
+export class ActoVictoria {
+  constructor (ctx) {
+    this.ctx = ctx;
+    this.fase = null;          // null · 'llamando' · 'llegado'
+    this.t = 0;
+    this.marca = null;
+    this.hubo = false;         // ¿llegó a haber realistas? si no, no hay nada que ganar
+    this.alEmpezar = null;     // para contárselo a la otra máquina
+    this.alLlegar = null;
+  }
+
+  get activo () { return this.fase !== null; }
+
+  // ¿SE ACABÓ? Se pregunta por los que siguen PELEANDO, no por los vivos: el
+  // que se quebró y todavía está corriendo a la barranca ya no es un enemigo,
+  // y esperar a que salga del campo son veinte segundos mirando espaldas.
+  contar (dt) {
+    if (this.fase || !this.ctx.pinza.tocado) return;
+    let enPie = 0;
+    for (const s of this.ctx.soldados) {
+      if (s.esRealista && s.vivo && !s.quebrado) enPie++;
+    }
+    if (enPie > 0) { this.hubo = true; this.t = 0; return; }
+    if (!this.hubo) return;
+    // un respiro antes del aviso: si se dispara en el mismo cuadro en que cae
+    // el último, se pisa con el ruido de ese golpe
+    this.t += dt;
+    if (this.t >= VICTORIA_ESPERA) this.arrancar(true);
+  }
+
+  // `mio` es false cuando la victoria la cantó la otra máquina: entonces no se
+  // vuelve a contar por el cable, que sería un eco.
+  arrancar (mio) {
+    if (this.fase) return;
+    this.fase = 'llamando';
+    this.t = 0;
+    const { hud, sonido, escena } = this.ctx;
+    hud.mostrarAviso('¡SE QUIEBRA EL ENEMIGO!', 'bien');
+    hud.decir(VICTORIA_FRASE + ' — José de San Martín', 9);
+    if (sonido.clarin) sonido.clarin();
+    this.marca = baliza(escena, PORTON.x, PORTON.z - 2.5);
+    setTimeout(() => {
+      if (this.fase === 'llamando') hud.decir('Al portón del convento. Ahí formaron a las cinco y media.', 7);
+    }, 5000);
+    this._formar();
+    if (mio && this.alEmpezar) this.alEmpezar();
+  }
+
+  // EL ESCUADRÓN VUELVE AL PORTÓN. Se les escribe la plaza, que es el mismo
+  // mecanismo con el que la Pinza los lleva formados: mientras la tengan
+  // puesta marchan y no se paran a pelear con nadie. Y se apaga la Pinza
+  // primero, que si no se la vuelve a escribir ella en el cuadro siguiente.
+  _formar () {
+    const { soldados, pinza } = this.ctx;
+    pinza.viva = false;
+    let i = 0;
+    for (const s of soldados) {
+      if (s.esRealista || !s.vivo || s.quebrado || s.titere || !s.montado) continue;
+      const fila = Math.floor(i / 12), col = (i % 12) - 5.5;
+      s.plaza = new THREE.Vector3(PORTON.x + col * 2.6, 0, PORTON.z - 7 - fila * 3.2);
+      s.andarColumna = 2;
+      i++;
+    }
+  }
+
+  actualizar (dt) {
+    if (this.fase !== 'llamando') return;
+    this.t += dt;
+    // la flecha late, como la del acto de Cabral
+    if (this.marca) {
+      const m = this.marca.userData.mat;
+      if (m) m.opacity = 0.45 + 0.28 * (0.5 + 0.5 * Math.sin(this.t * 3.1));
+    }
+    // cada tanto se les refresca la plaza: los que se desmontan o se suman
+    // después no tienen por qué quedarse afuera de la formación
+    if ((this.t % 2) < dt) this._formar();
+    const j = this.ctx.jugador;
+    if (!j.vivo) return;
+    const d = Math.hypot(j.pos.x - PORTON.x, j.pos.z - PORTON.z);
+    if (d <= VICTORIA_CERCA) this.llegar(true);
+  }
+
+  llegar (mio) {
+    if (this.fase !== 'llamando') return;
+    this.fase = 'llegado';
+    const { hud, sonido } = this.ctx;
+    if (this.marca) { this.ctx.escena.remove(this.marca); this.marca = null; }
+    hud.mostrarAviso('¡VICTORIA!', 'bien');
+    hud.decir('San Lorenzo. Dejaron las dos piezas, la bandera y sus muertos en la barranca.', 12);
+    if (sonido.clarin) sonido.clarin();
+    if (mio && this.alLlegar) this.alLlegar();
+  }
+
+  // Cuando se rearma el campo, la victoria vuelve a estar por ganarse.
+  reiniciar () {
+    if (this.marca) { this.ctx.escena.remove(this.marca); this.marca = null; }
+    this.fase = null;
+    this.t = 0;
+    this.hubo = false;
   }
 }

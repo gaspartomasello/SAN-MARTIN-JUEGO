@@ -121,7 +121,7 @@ export function nombreDeJugador (j) {
 export function armarRed (ctx) {
   const { escena, humo, fuego, sonido, hud, jugador,
     soldados, caballos, canones, pinza, campo, luzBoca, montado,
-    poseDelJugador, intentarVoltear } = ctx;
+    poseDelJugador, armaDelJugador, intentarVoltear } = ctx;
 
   // ------------------------------------------------------------------ estado
   let peer = null;                   // el enganche con el directorio de salas
@@ -693,7 +693,7 @@ export function armarRed (ctx) {
     // tropa. Es lo único que separa a una persona de los ciento veinte bots
     // vestidos igual, y a cien metros se lee.
     const soldado = new Soldado(escena, humo, sonido, new THREE.Vector3(p0.x, 0, p0.z),
-      'granadero', { colisiones: [], lancero: true,
+      'granadero', { colisiones: [], lancero: true, armas: true,
         sombrero: j === 0 ? 'bicornio' : 'oficial' });
     soldado.titere = true;
     soldado._sinRed = true;
@@ -812,6 +812,7 @@ export function armarRed (ctx) {
       yaw: +jugador.yaw.toFixed(3),
       vivo: jugador.vivo, vida: Math.round(jugador.vida),
       pose: poseDelJugador(),
+      arma: armaDelJugador ? armaDelJugador() : 'tercerola',
       m: montado(),
       cx: c ? +c.pos.x.toFixed(2) : 0,
       cz: c ? +c.pos.z.toFixed(2) : 0,
@@ -835,6 +836,9 @@ export function armarRed (ctx) {
     soldado.vivo = m.vivo;
     soldado.vida = m.vida;
     soldado.fig.poner(m.pose || 'lanzaAlto');
+    // EL ARMA QUE TIENE EN LA MANO. Los cuatro modelos ya están colgados de la
+    // mano desde que nació este cuerpo: acá sólo se prende el que toca.
+    soldado.fig.ponerArma(m.arma || 'tercerola');
     if (!m.vivo) soldado.caida = Math.min(1, soldado.caida + 0.06);
     else soldado.caida = 0;
 
@@ -1217,6 +1221,13 @@ export function armarRed (ctx) {
       case 'aviso': hud.mostrarAviso(m.texto, m.tipo); break;
       case 'frase': hud.decir(m.texto, m.seg || 4); break;
       case 'clarin': sonido.clarin(); break;
+      // LA VICTORIA, en dos avisos. 'empieza' la canta la máquina que llevaba
+      // la batalla; 'llego' la canta el primero que pisa el portón, sea quien
+      // sea. Los dos ganaron la misma batalla: hacer caminar al segundo para
+      // leer lo mismo es hacerlo esperar por nada.
+      case 'victoria':
+        if (red.alVictoria) red.alVictoria(m.fase);
+        break;
 
       // ---- de los invitados al anfitrión ----
       case 'daño': {
@@ -1455,6 +1466,16 @@ export function armarRed (ctx) {
   red.contarClarin = function () {
     if (rol === 'anfitrion' && hayGente()) mandar({ t: 'clarin' });
   };
+
+  // LA VICTORIA VA EN LAS DOS DIRECCIONES, al revés que casi todo lo demás.
+  // El arranque lo canta el anfitrión, que es el que simula la batalla; pero
+  // la llegada al portón la puede cantar cualquiera, así que el invitado
+  // también manda. El anfitrión lo reencamina con `contar`, que ya difunde.
+  red.contarVictoria = function (fase) {
+    if (!red.activo) return;
+    mandar({ t: 'victoria', fase, j: yo });
+  };
+  red.alVictoria = null;
 
   // «¡A MÍ!» — LA Q. La manda quien lleva una columna, esté donde esté su
   // máquina. Devuelve 'tropa' si el que la apretó es un granadero: no manda

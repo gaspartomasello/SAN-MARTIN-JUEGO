@@ -28,7 +28,7 @@ import { Jugador } from './jugador.js';
 import { Sable } from './sable.js';
 import { Soldado } from './soldados.js';
 import { penalCargaMontado } from './caballo.js';
-import { ActoCabral } from './acto.js';
+import { ActoCabral, ActoVictoria } from './acto.js';
 import { PasadaArma } from './pasadaArma.js';
 import { PasadaVelocidad } from './pasadaVelocidad.js';
 import { Lejania } from './lejania.js';
@@ -176,10 +176,23 @@ function poseDelJugador () {
   return 'marcha';
 }
 
+// QUÉ ARMA SE LE VE EN LA MANO, para que los otros la vean cambiar. Es el
+// vocabulario de figura.js —cuatro modelos— y no el del arsenal, que tiene la
+// Remington de práctica y distingue fusil de tercerola: desde diez metros son
+// la misma arma larga y no vale un modelo aparte.
+function armaDelJugador () {
+  if (montado()) return 'lanza';
+  const a = arsenal.actual();
+  if (!a) return 'sable';
+  // `tipo` es la CLAVE del arma ('pistolon'); `nombre` es el rótulo del HUD
+  // ('Pistolón de arzón') y comparar contra eso no da nunca.
+  return a.tipo === 'pistolon' ? 'pistolon' : 'tercerola';
+}
+
 red = armarRed({
   escena, humo, fuego, sonido, hud, jugador,
   soldados, caballos, canones, pinza, campo, luzBoca, montado,
-  poseDelJugador, intentarVoltear: combate.intentarVoltear
+  poseDelJugador, armaDelJugador, intentarVoltear: combate.intentarVoltear
 });
 
 // LA MORAL. Va después de la red porque el «se quiebra la línea» hay que
@@ -188,7 +201,9 @@ red = armarRed({
 const moral = armarMoral({
   soldados, caballos, canones, hud, sonido, jugador, montado, red
 });
-campo.alFormar = () => moral.reiniciar();
+// Se rearma el campo: la moral vuelve a cero y la victoria vuelve a estar por
+// ganarse. `victoria` se declara más abajo y para cuando esto corra ya existe.
+campo.alFormar = () => { moral.reiniciar(); victoria.reiniciar(); };
 
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 // AL MORIR EN UNA PARTIDA DE A DOS SE PASA A MIRAR, no a esperar. En solitario
@@ -315,6 +330,21 @@ pinza.alTocar = () => {
   red.contarClarin();
   red.contar('¡A LA CARGA!', 'bien',
     'El clarín de San Martín. Salís vos también, por el otro costado.');
+};
+
+// EL CIERRE. Hasta acá la batalla se ganaba y no pasaba nada: la última
+// bandera roja desaparecía del campo y quedabas parado en un potrero. Ahora la
+// victoria se marca, el escuadrón vuelve al portón del convento —de donde
+// salieron a las cinco y media— y se cierra cuando llegás.
+const victoria = new ActoVictoria({ escena, hud, sonido, jugador, soldados, pinza });
+// EN RED LO CANTA EL QUE LO VE, y lo escuchan todos. El invitado no simula la
+// batalla y por eso no detecta el final: se lo dice el anfitrión. Pero la
+// llegada al portón sí la puede cantar cualquiera, y alcanza con uno.
+victoria.alEmpezar = () => red.contarVictoria('empieza');
+victoria.alLlegar = () => red.contarVictoria('llego');
+red.alVictoria = (fase) => {
+  victoria.arrancar(false);                 // no hace nada si ya estaba
+  if (fase === 'llego') victoria.llegar(false);
 };
 
 const plano = armarPlano({ hud });
@@ -463,6 +493,12 @@ function simular (dt) {
   if (!red.esInvitado) moral.actualizar(dt);
 
   pinza.actualizar(dt, jugador, soldados.filter(s => s.esRealista));
+
+  // EL CIERRE. El invitado no cuenta enemigos —no simula la batalla— pero sí
+  // camina hasta el portón, así que `actualizar` corre en las dos máquinas y
+  // `contar` sólo donde se lleva la batalla.
+  if (!red.esInvitado) victoria.contar(dt);
+  victoria.actualizar(dt);
   // y se aprieta y se pinta DESPUÉS, con las posiciones del cuadro ya puestas
   // apretujar es simulación —empuja hombre contra hombre— y por eso la hace
   // sólo el que lleva la batalla. Pintar es dibujo y lo hacen los dos.
@@ -584,7 +620,7 @@ window.juego = {
   balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, render,
-  lejania, pasadaVel, pinza, canones, acto, simular,
+  lejania, pasadaVel, pinza, canones, acto, victoria, simular,
   get armas () { return arsenal.armas; },
   get caballo () { return campo.caballo; },
   get arma () { return arsenal.actual(); },

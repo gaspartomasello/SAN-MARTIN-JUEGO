@@ -213,7 +213,8 @@ export class Soldado {
     this.semilla = op.semilla !== undefined ? op.semilla : Math.random();
     this.tez = op.tez || null;
     this.fig = new Figura(this.bando, this.semilla,
-      { tez: op.tez, sombrero: op.sombrero, arma: this.lancero ? 'lanza' : null });
+      { tez: op.tez, sombrero: op.sombrero, arma: this.lancero ? 'lanza' : null,
+        armas: op.armas });
     // la malla exterior lleva el rumbo; la figura de adentro, el desplome
     this.malla = new THREE.Group();
     this.malla.add(this.fig.raiz);

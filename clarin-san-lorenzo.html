@@ -29377,6 +29377,7 @@ var Horno = class {
 };
 var MAT = () => new MeshStandardMaterial({ vertexColors: true, roughness: 0.92 });
 var CONVENTO = { x0: -31, x1: 31, z0: 16, z1: 68 };
+var PORTON = { x: 0, z: 16 };
 var IGLESIA = { x0: -19.5, x1: -6.5, z0: 17, z1: 37 };
 var Z_BARRANCA = -84;
 var Z_RIO = -99;
@@ -32325,6 +32326,35 @@ function lanzaGranadero(taller, mano) {
   taller.add(mano, caja(4e-3, 0.115, 0.3), 15921124, { p: [0.017, -0.055, PUNTA + 0.3] });
   taller.add(mano, cil(0.028, 0.028, 0.14, 7), CUERO, { p: [0, 0, 0.16], r: [Math.PI / 2, 0, 0] });
 }
+function sableEnMano(taller, mano) {
+  taller.add(mano, cil(0.021, 0.021, 0.115, 7), CUERO, { p: [0, 0, 0.03], r: [Math.PI / 2, 0, 0] });
+  taller.add(mano, caja(0.012, 0.1, 0.05), LATON, { p: [0, -8e-3, -0.045], metal: true });
+  taller.add(mano, cil(0.026, 0.026, 0.02, 7), LATON, { p: [0, 0, 0.095], r: [Math.PI / 2, 0, 0], metal: true });
+  const TRAMOS = 5, LARGO = 0.155;
+  let z = -0.075, y = 0, ang2 = 0;
+  for (let i = 0; i < TRAMOS; i++) {
+    ang2 += 0.115;
+    const zc = z - Math.cos(ang2) * LARGO / 2;
+    const yc = y + Math.sin(ang2) * LARGO / 2;
+    const ancho = 0.03 - i * 3e-3;
+    taller.add(
+      mano,
+      caja(8e-3, ancho, LARGO),
+      HIERRO,
+      { p: [0, yc, zc], r: [Math.PI / 2 - (Math.PI / 2 - ang2), 0, 0], metal: true }
+    );
+    z -= Math.cos(ang2) * LARGO;
+    y += Math.sin(ang2) * LARGO;
+  }
+}
+function pistolonEnMano(taller, mano) {
+  taller.add(mano, cil(0.014, 0.015, 0.3, 7), HIERRO, { p: [0, 8e-3, -0.13], r: [Math.PI / 2, 0, 0], metal: true });
+  taller.add(mano, caja(0.034, 0.04, 0.26), MADERA2, { p: [0, -0.014, -0.1] });
+  taller.add(mano, caja(0.04, 0.058, 0.055), HIERRO, { p: [0.016, 0.01, 0.015], metal: true });
+  taller.add(mano, cil(0.019, 0.019, 0.014, 6), HIERRO, { p: [0.03, 0.028, 5e-3], r: [0, 0, Math.PI / 2], metal: true });
+  taller.add(mano, caja(0.036, 0.1, 0.075), MADERA2, { p: [0, -0.056, 0.075], r: [-0.42, 0, 0] });
+  taller.add(mano, cil(0.024, 0.024, 0.026, 7), LATON, { p: [0, -0.1, 0.105], r: [Math.PI / 2 - 0.42, 0, 0], metal: true });
+}
 function sableAlCinto(taller, cadera) {
   const g = new Group();
   taller.add(cadera, cil(0.024, 0.03, 0.68, 7), 2895668, { p: [-0.19, -0.3, 0.1], r: [0.3, 0, -0.16], metal: true });
@@ -32494,7 +32524,21 @@ var Figura = class {
     this.rodilla = false;
     const taller = new Taller();
     vestir(taller, h, c, piel, pelo, op.sombrero);
-    if (op.arma === "lanza") {
+    if (op.armas) {
+      this.armero = {};
+      for (const [nombre, armar] of [
+        ["tercerola", tercerolaGranadero],
+        ["lanza", lanzaGranadero],
+        ["sable", sableEnMano],
+        ["pistolon", pistolonEnMano]
+      ]) {
+        const g = new Group();
+        h.arma.add(g);
+        armar(taller, g);
+        this.armero[nombre] = g;
+      }
+      sableAlCinto(taller, h.cadera);
+    } else if (op.arma === "lanza") {
       lanzaGranadero(taller, h.arma);
       sableAlCinto(taller, h.cadera);
     } else if (c.morrion) {
@@ -32503,6 +32547,10 @@ var Figura = class {
     } else fusilRealista(taller, h.arma);
     this.mallas = taller.cocinar();
     this.arma = h.arma;
+    if (this.armero) {
+      this.enMano = null;
+      this.ponerArma(op.arma === "lanza" ? "lanza" : "tercerola");
+    }
     const alto = 0.955 + semilla * 7919 % 1 * 0.09;
     raiz.scale.set(alto * 0.99, alto, alto * 0.99);
     this.paso = semilla * 6.283;
@@ -32535,6 +32583,16 @@ var Figura = class {
     this._qHD = new Quaternion();
     this._blancoI = V();
     this._armar();
+  }
+  // CAMBIAR DE ARMA. Prender una y apagar las otras, nada más: las cuatro ya
+  // están armadas y colgadas de la mano desde el constructor. Sólo la tienen
+  // las figuras hechas con `op.armas` —los cuerpos de los otros jugadores—;
+  // en las demás no hace nada, que es lo que corresponde: un bot no cambia.
+  ponerArma(nombre) {
+    if (!this.armero || nombre === this.enMano) return;
+    const cual = this.armero[nombre] ? nombre : "tercerola";
+    for (const k in this.armero) this.armero[k].visible = k === cual;
+    this.enMano = cual;
   }
   poner(nombre) {
     if (POSES[nombre]) this.pose = nombre;
@@ -33444,7 +33502,12 @@ var Soldado = class _Soldado {
     this.fig = new Figura(
       this.bando,
       this.semilla,
-      { tez: op.tez, sombrero: op.sombrero, arma: this.lancero ? "lanza" : null }
+      {
+        tez: op.tez,
+        sombrero: op.sombrero,
+        arma: this.lancero ? "lanza" : null,
+        armas: op.armas
+      }
     );
     this.malla = new Group();
     this.malla.add(this.fig.raiz);
@@ -34430,6 +34493,28 @@ var C_FRASE = 2.6;
 var C_NEGRO = 4.6;
 var C_OJOS = 6.6;
 var C_FIN = 7.4;
+function baliza(escena2, x, z) {
+  const mat2 = new MeshBasicMaterial({
+    color: 7653356,
+    transparent: true,
+    opacity: 0.7,
+    depthTest: false,
+    depthWrite: false
+  });
+  const g = new Group();
+  const haz = new Mesh(new CylinderGeometry(0.05, 0.05, 3.4, 6), mat2);
+  haz.position.y = 3.1;
+  const punta = new Mesh(new ConeGeometry(0.3, 0.55, 4), mat2);
+  punta.position.y = 1.25;
+  punta.rotation.x = Math.PI;
+  g.add(haz, punta);
+  g.position.set(x, 0, z);
+  g.renderOrder = 999;
+  escena2.add(g);
+  g.userData.mat = mat2;
+  g.userData.punta = punta;
+  return g;
+}
 var ActoCabral = class {
   constructor(ctx) {
     this.ctx = ctx;
@@ -34609,26 +34694,7 @@ var ActoCabral = class {
   // granaderos. Es lo único del juego que se dibuja atravesando el mundo, y se
   // justifica porque acá el problema no es ver: es ENCONTRAR.
   _baliza(x, z) {
-    const mat2 = new MeshBasicMaterial({
-      color: 7653356,
-      transparent: true,
-      opacity: 0.7,
-      depthTest: false,
-      depthWrite: false
-    });
-    const g = new Group();
-    const haz = new Mesh(new CylinderGeometry(0.05, 0.05, 3.4, 6), mat2);
-    haz.position.y = 3.1;
-    const punta = new Mesh(new ConeGeometry(0.3, 0.55, 4), mat2);
-    punta.position.y = 1.25;
-    punta.rotation.x = Math.PI;
-    g.add(haz, punta);
-    g.position.set(x, 0, z);
-    g.renderOrder = 999;
-    this.ctx.escena.add(g);
-    g.userData.mat = mat2;
-    g.userData.punta = punta;
-    return g;
+    return baliza(this.ctx.escena, x, z);
   }
   // EL BORDE DEL CABALLO. Una copia de las mismas mallas un poco más grande y
   // dibujada por dentro (`BackSide`): el original la tapa entera salvo en la
@@ -34795,6 +34861,110 @@ var ActoCabral = class {
       sm.pos.y = 0;
     }
     if (this._tc >= C_FIN) this._serSanMartin();
+  }
+};
+var VICTORIA_CERCA = 7;
+var VICTORIA_ESPERA = 2.2;
+var VICTORIA_FRASE = "De lo que son capaces mis granaderos, s\xF3lo yo lo s\xE9; quien los iguale habr\xE1, quien los exceda, no.";
+var ActoVictoria = class {
+  constructor(ctx) {
+    this.ctx = ctx;
+    this.fase = null;
+    this.t = 0;
+    this.marca = null;
+    this.hubo = false;
+    this.alEmpezar = null;
+    this.alLlegar = null;
+  }
+  get activo() {
+    return this.fase !== null;
+  }
+  // ¿SE ACABÓ? Se pregunta por los que siguen PELEANDO, no por los vivos: el
+  // que se quebró y todavía está corriendo a la barranca ya no es un enemigo,
+  // y esperar a que salga del campo son veinte segundos mirando espaldas.
+  contar(dt) {
+    if (this.fase || !this.ctx.pinza.tocado) return;
+    let enPie = 0;
+    for (const s of this.ctx.soldados) {
+      if (s.esRealista && s.vivo && !s.quebrado) enPie++;
+    }
+    if (enPie > 0) {
+      this.hubo = true;
+      this.t = 0;
+      return;
+    }
+    if (!this.hubo) return;
+    this.t += dt;
+    if (this.t >= VICTORIA_ESPERA) this.arrancar(true);
+  }
+  // `mio` es false cuando la victoria la cantó la otra máquina: entonces no se
+  // vuelve a contar por el cable, que sería un eco.
+  arrancar(mio) {
+    if (this.fase) return;
+    this.fase = "llamando";
+    this.t = 0;
+    const { hud: hud2, sonido: sonido2, escena: escena2 } = this.ctx;
+    hud2.mostrarAviso("\xA1SE QUIEBRA EL ENEMIGO!", "bien");
+    hud2.decir(VICTORIA_FRASE + " \u2014 Jos\xE9 de San Mart\xEDn", 9);
+    if (sonido2.clarin) sonido2.clarin();
+    this.marca = baliza(escena2, PORTON.x, PORTON.z - 2.5);
+    setTimeout(() => {
+      if (this.fase === "llamando") hud2.decir("Al port\xF3n del convento. Ah\xED formaron a las cinco y media.", 7);
+    }, 5e3);
+    this._formar();
+    if (mio && this.alEmpezar) this.alEmpezar();
+  }
+  // EL ESCUADRÓN VUELVE AL PORTÓN. Se les escribe la plaza, que es el mismo
+  // mecanismo con el que la Pinza los lleva formados: mientras la tengan
+  // puesta marchan y no se paran a pelear con nadie. Y se apaga la Pinza
+  // primero, que si no se la vuelve a escribir ella en el cuadro siguiente.
+  _formar() {
+    const { soldados: soldados2, pinza: pinza2 } = this.ctx;
+    pinza2.viva = false;
+    let i = 0;
+    for (const s of soldados2) {
+      if (s.esRealista || !s.vivo || s.quebrado || s.titere || !s.montado) continue;
+      const fila = Math.floor(i / 12), col = i % 12 - 5.5;
+      s.plaza = new Vector3(PORTON.x + col * 2.6, 0, PORTON.z - 7 - fila * 3.2);
+      s.andarColumna = 2;
+      i++;
+    }
+  }
+  actualizar(dt) {
+    if (this.fase !== "llamando") return;
+    this.t += dt;
+    if (this.marca) {
+      const m = this.marca.userData.mat;
+      if (m) m.opacity = 0.45 + 0.28 * (0.5 + 0.5 * Math.sin(this.t * 3.1));
+    }
+    if (this.t % 2 < dt) this._formar();
+    const j = this.ctx.jugador;
+    if (!j.vivo) return;
+    const d = Math.hypot(j.pos.x - PORTON.x, j.pos.z - PORTON.z);
+    if (d <= VICTORIA_CERCA) this.llegar(true);
+  }
+  llegar(mio) {
+    if (this.fase !== "llamando") return;
+    this.fase = "llegado";
+    const { hud: hud2, sonido: sonido2 } = this.ctx;
+    if (this.marca) {
+      this.ctx.escena.remove(this.marca);
+      this.marca = null;
+    }
+    hud2.mostrarAviso("\xA1VICTORIA!", "bien");
+    hud2.decir("San Lorenzo. Dejaron las dos piezas, la bandera y sus muertos en la barranca.", 12);
+    if (sonido2.clarin) sonido2.clarin();
+    if (mio && this.alLlegar) this.alLlegar();
+  }
+  // Cuando se rearma el campo, la victoria vuelve a estar por ganarse.
+  reiniciar() {
+    if (this.marca) {
+      this.ctx.escena.remove(this.marca);
+      this.marca = null;
+    }
+    this.fase = null;
+    this.t = 0;
+    this.hubo = false;
   }
 };
 
@@ -40352,6 +40522,7 @@ function armarRed(ctx) {
     luzBoca: luzBoca2,
     montado: montado2,
     poseDelJugador: poseDelJugador2,
+    armaDelJugador: armaDelJugador2,
     intentarVoltear
   } = ctx;
   let peer = null;
@@ -40800,6 +40971,7 @@ function armarRed(ctx) {
       {
         colisiones: [],
         lancero: true,
+        armas: true,
         sombrero: j === 0 ? "bicornio" : "oficial"
       }
     );
@@ -40888,6 +41060,7 @@ function armarRed(ctx) {
       vivo: jugador2.vivo,
       vida: Math.round(jugador2.vida),
       pose: poseDelJugador2(),
+      arma: armaDelJugador2 ? armaDelJugador2() : "tercerola",
       m: montado2(),
       cx: c ? +c.pos.x.toFixed(2) : 0,
       cz: c ? +c.pos.z.toFixed(2) : 0,
@@ -40912,6 +41085,7 @@ function armarRed(ctx) {
     soldado.vivo = m.vivo;
     soldado.vida = m.vida;
     soldado.fig.poner(m.pose || "lanzaAlto");
+    soldado.fig.ponerArma(m.arma || "tercerola");
     if (!m.vivo) soldado.caida = Math.min(1, soldado.caida + 0.06);
     else soldado.caida = 0;
     if (!m.m) {
@@ -41296,6 +41470,13 @@ function armarRed(ctx) {
       case "clarin":
         sonido2.clarin();
         break;
+      // LA VICTORIA, en dos avisos. 'empieza' la canta la máquina que llevaba
+      // la batalla; 'llego' la canta el primero que pisa el portón, sea quien
+      // sea. Los dos ganaron la misma batalla: hacer caminar al segundo para
+      // leer lo mismo es hacerlo esperar por nada.
+      case "victoria":
+        if (red2.alVictoria) red2.alVictoria(m.fase);
+        break;
       // ---- de los invitados al anfitrión ----
       case "da\xF1o": {
         const o = porId.get(m.id);
@@ -41496,6 +41677,11 @@ function armarRed(ctx) {
   red2.contarClarin = function() {
     if (rol === "anfitrion" && hayGente()) mandar({ t: "clarin" });
   };
+  red2.contarVictoria = function(fase2) {
+    if (!red2.activo) return;
+    mandar({ t: "victoria", fase: fase2, j: yo });
+  };
+  red2.alVictoria = null;
   red2.reunir = function() {
     const mio = gente.get(yo);
     if (mio && mio.puesto !== 0) return "tropa";
@@ -41696,6 +41882,12 @@ function poseDelJugador() {
   if (arsenal.apuntando) return "apuntar";
   return "marcha";
 }
+function armaDelJugador() {
+  if (montado()) return "lanza";
+  const a = arsenal.actual();
+  if (!a) return "sable";
+  return a.tipo === "pistolon" ? "pistolon" : "tercerola";
+}
 red = armarRed({
   escena,
   humo,
@@ -41711,6 +41903,7 @@ red = armarRed({
   luzBoca,
   montado,
   poseDelJugador,
+  armaDelJugador,
   intentarVoltear: combate.intentarVoltear
 });
 var moral = armarMoral({
@@ -41723,7 +41916,10 @@ var moral = armarMoral({
   montado,
   red
 });
-campo.alFormar = () => moral.reiniciar();
+campo.alFormar = () => {
+  moral.reiniciar();
+  victoria.reiniciar();
+};
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 var ULTIMAS = [
   "Ser\xE1s lo que debas ser, o no ser\xE1s nada.",
@@ -41805,6 +42001,13 @@ pinza.alTocar = () => {
     "bien",
     "El clar\xEDn de San Mart\xEDn. Sal\xEDs vos tambi\xE9n, por el otro costado."
   );
+};
+var victoria = new ActoVictoria({ escena, hud, sonido, jugador, soldados, pinza });
+victoria.alEmpezar = () => red.contarVictoria("empieza");
+victoria.alLlegar = () => red.contarVictoria("llego");
+red.alVictoria = (fase) => {
+  victoria.arrancar(false);
+  if (fase === "llego") victoria.llegar(false);
 };
 var plano = armarPlano({ hud });
 var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto });
@@ -41896,6 +42099,8 @@ function simular(dt) {
   }
   if (!red.esInvitado) moral.actualizar(dt);
   pinza.actualizar(dt, jugador, soldados.filter((s) => s.esRealista));
+  if (!red.esInvitado) victoria.contar(dt);
+  victoria.actualizar(dt);
   if (!red.esInvitado) gentio.apretujar();
   gentio.pintar();
   if (canones.length && !red.esInvitado) {
@@ -42006,6 +42211,7 @@ window.juego = {
   pinza,
   canones,
   acto,
+  victoria,
   simular,
   get armas() {
     return arsenal.armas;

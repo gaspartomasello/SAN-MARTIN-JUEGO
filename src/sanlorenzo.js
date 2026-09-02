@@ -93,6 +93,11 @@ export const MAT = () => new THREE.MeshStandardMaterial({ vertexColors: true, ro
 // LA PLANTA DEL NIVEL, para el que la necesite dibujar. El plano de la batalla
 // se genera con estos números: si el convento se mueve, el plano se mueve solo.
 export const CONVENTO = { x0: -31, x1: 31, z0: 16, z1: 68 };
+// EL PORTÓN, al medio de la tapia que mira al campo. Lo usa el acto de la
+// victoria para saber dónde plantar la flecha y dónde formar el escuadrón, y
+// está acá por el mismo motivo que todo lo demás de este bloque: si el
+// convento se mueve, se mueve con él y nadie tiene que acordarse.
+export const PORTON = { x: 0, z: 16 };
 export const IGLESIA = { x0: -19.5, x1: -6.5, z0: 17, z1: 37 };
 export const Z_BARRANCA = -84;   // el labio por donde se cae el terreno
 export const Z_RIO = -99;
