@@ -8,8 +8,8 @@ import { brazoLibre } from './armas-modelos.js';
 
 // La hoja se genera barriendo una sección en rombo a lo largo de un arco:
 // el lomo va por el lado cóncavo y el filo por el convexo, como corresponde.
-function geometriaHoja ({ largo = 0.82, curva = 0.95, anchoBase = 0.044,
-  anchoPunta = 0.010, grosor = 0.012, pasos = 26 } = {}) {
+function geometriaHoja ({ largo = 0.82, curva = 0.95, anchoBase = 0.056,
+  grosor = 0.017, pasos = 26 } = {}) {
   const R = largo / curva;
   const pos = [];
   const idx = [];
@@ -22,8 +22,18 @@ function geometriaHoja ({ largo = 0.82, curva = 0.95, anchoBase = 0.044,
     const n = new THREE.Vector3(0, Math.cos(a), Math.sin(a));   // hacia el lomo
     const b = new THREE.Vector3(1, 0, 0);                        // espesor
 
-    const w = THREE.MathUtils.lerp(anchoBase, anchoPunta, Math.pow(t, 0.75)) * 0.5;
-    const g = grosor * (1 - 0.62 * t) * 0.5;
+    // EL ANCHO NO SE AFINA PAREJO. Antes iba de 4,4 cm en la guarda a 1 cm en
+    // la punta, y con eso la hoja se ve como un alambre: a mitad de camino ya
+    // no queda nada que mirar. Un sable de caballería mantiene el ancho casi
+    // hasta el final —hasta se ENSANCHA en la panza, que es donde corta— y
+    // recién en los últimos centímetros cierra en punta. Esa panza es lo que
+    // le da cuerpo a la silueta cuando cruza la pantalla.
+    const perfil = t < 0.86
+      ? 1 - 0.20 * t + 0.16 * t * t          // apenas afina, y engorda en la panza
+      : (1 - (t - 0.86) / 0.14) * 0.96;      // la punta, corta
+    const w = anchoBase * Math.max(0.04, perfil) * 0.5;
+    // el lomo tampoco se afina tanto: es la parte que se ve de canto
+    const g = grosor * (1 - 0.42 * t) * 0.5;
 
     const anillo = [
       p.clone().addScaledVector(n, w),        // lomo
@@ -207,6 +217,9 @@ export class Sable {
       this.zurdo = !this.zurdo;      // un tajo va de ida y el siguiente de vuelta
       this.duracion = this.zurdo ? 0.46 : 0.52;
     }
+    // DESDE LA SILLA SE PEGA HACIA ABAJO, y eso hay que recordarlo hasta que
+    // termine el tajo: la animación lo lee cada cuadro.
+    this.montado = !!montado;
     if (montado) this.duracion *= DESDE_LA_SILLA;
     this.sonido.sable();
     return this.remate;
@@ -223,19 +236,68 @@ export class Sable {
       this.t += dt;
       const u = this.t / this.duracion;
       if (u < 1) {
+        // DOS RELOJES, Y AHÍ ESTÁ TODO EL ASUNTO.
+        //
+        //   `e` es el ENVIÓN: va y vuelve, y es lo que saca la hoja del cuerpo
+        //       y la trae de nuevo. Un seno.
+        //   `d` es la CAÍDA: sólo avanza, de 0 a 1, y NO vuelve.
+        //
+        // Con el envión solo —que es lo que había— el sable sale, cruza y
+        // vuelve exactamente por donde vino: en la pantalla eso es una raya
+        // horizontal, y es justo lo que no hace un sable. Un tajo EMPIEZA
+        // arriba y TERMINA abajo, y esa asimetría no se puede sacar de una
+        // función que es simétrica. La caída la pone `d`, y la vuelta al
+        // reposo la hace el amortiguado de abajo cuando el tajo terminó.
         const e = Math.sin(Math.min(1, u * 1.15) * Math.PI);
+        const d = Math.min(1, u * 1.25);
+        // DESDE LA SILLA SE PEGA HACIA ABAJO. Estás dos metros por encima del
+        // que tenés adelante: el revés que a pie sale hacia arriba, montado no
+        // existe —no hay nada ahí arriba a lo que pegarle—. Los dos tajos
+        // bajan, y bajan más.
+        const silla = this.montado ? 1 : 0;
+        // LA CAÍDA ES DE MUÑECA, NO DE HOMBRO, y el signo salió de la cuenta.
+        //
+        // El primer intento bajaba la MANO cuarenta centímetros: con el hombro
+        // detrás de la cámara, una mano tan baja tira el brazo contra el ojo y
+        // lo único que se ve es la manga por dentro. Un sablazo tampoco baja la
+        // mano: la muñeca se queda donde está y lo que cae es LA HOJA.
+        //
+        // Y el segundo intento la hacía SUBIR. Este archivo ya avisaba arriba
+        // que estos ángulos no se tantean —tres rotaciones compuestas no se
+        // adivinan— así que se calculó: se toma la dirección de la hoja en su
+        // propio espacio, (0, 0,457, −0,889), se le aplica el Euler y se mira
+        // adónde apunta la punta. Con `+d` la punta terminaba mirando al cielo;
+        // con `−d` termina mirando al piso, que era todo el asunto.
+        //
+        // Adónde apunta la punta al terminar, medido:
+        //
+        //                   a pie        montado
+        //   tajo            0,38 abajo   0,76 abajo
+        //   revés           0,90 arriba  0,86 abajo
+        //   remate          0,47 abajo   0,82 abajo
+        //
+        // El revés es el único que a pie SUBE, y es a propósito: dos tajos
+        // seguidos que caen igual son el mismo tajo dos veces. Montado no sube
+        // ninguno, porque arriba del caballo no hay nadie a quien pegarle
+        // arriba: los dos caen, y caen más.
         if (this.remate) {
-          // remate: entra de arriba, de punta a punta. Es el golpe que cobra.
-          this.grupo.position.set(0.22 - e * 0.5, -0.12 + e * 0.30, -0.58 - e * 0.16);
-          this.grupo.rotation.set(0.02 - e * 1.15, -0.42 + e * 1.05, 0.26 + e * 2.25);
+          this.grupo.position.set(0.22 - e * 0.5,
+            -0.12 + e * 0.32 - d * (0.16 + silla * 0.10),
+            -0.58 - e * 0.16 - d * 0.10);
+          this.grupo.rotation.set(0.02 - e * 1.15 - d * (1.00 + silla * 0.50),
+            -0.42 + e * 1.05, 0.26 + e * 2.25);
         } else if (this.zurdo) {
-          // revés: entra de abajo a la izquierda y sale arriba a la derecha
-          this.grupo.position.set(0.22 - e * 0.4, -0.14 - e * 0.04, -0.58 - e * 0.1);
-          this.grupo.rotation.set(0.02 + e * 0.6, -0.42 - e * 1.1, 0.26 - e * 1.5);
+          this.grupo.position.set(0.22 - e * 0.4,
+            -0.14 - e * 0.14 + d * (0.14 - silla * 0.30),
+            -0.58 - e * 0.1 - d * 0.06);
+          this.grupo.rotation.set(0.02 + e * 0.6 + d * (0.70 - silla * 3.40),
+            -0.42 - e * 1.1, 0.26 - e * 1.5);
         } else {
-          // tajo: de arriba a la derecha hacia abajo a la izquierda
-          this.grupo.position.set(0.22 - e * 0.46, -0.12 + e * 0.1, -0.58 - e * 0.06);
-          this.grupo.rotation.set(0.02 - e * 0.45, -0.42 + e * 1.35, 0.26 + e * 1.85);
+          this.grupo.position.set(0.22 - e * 0.46,
+            -0.12 + e * 0.24 - d * (0.14 + silla * 0.12),
+            -0.58 - e * 0.06 - d * 0.09);
+          this.grupo.rotation.set(0.02 - e * 0.45 - d * (0.90 + silla * 0.85),
+            -0.42 + e * 1.35, 0.26 + e * 1.85);
         }
         if (!this.golpeo && u > (this.remate ? 0.34 : 0.3) && u < 0.62) {
           this.golpeo = true;

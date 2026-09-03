@@ -105,30 +105,6 @@ function llaveDeChispa (g, x, y, z, laton, hierro, cuelloDeCisne) {
 // El brazo del granadero: casaca azul, bocamanga encarnada y galón blanco.
 // Cuelga hacia abajo desde la muñeca; la inclinación se da con `rot`, que es
 // mucho más predecible que calcularla entre dos puntos.
-export function brazoGranadero (pos, rot, largo, grosor) {
-  const g = new THREE.Group();
-
-  const bocamanga = new THREE.Mesh(
-    new THREE.BoxGeometry(grosor * 1.14, grosor * 0.5, grosor * 1.14), mat(PALETA.carmesi, 0.9));
-  bocamanga.position.y = -grosor * 0.25;
-  g.add(bocamanga);
-
-  const manga = new THREE.Mesh(
-    new THREE.BoxGeometry(grosor, largo, grosor * 0.94), mat(PALETA.azul, 0.9));
-  manga.position.y = -largo * 0.5 - grosor * 0.45;
-  g.add(manga);
-
-  // vivo de la costura, apenas una línea
-  const vivo = new THREE.Mesh(
-    new THREE.BoxGeometry(grosor * 0.16, largo * 0.92, grosor * 0.16), mat(0xd8d2c0, 0.9));
-  vivo.position.set(grosor * 0.45, -largo * 0.5 - grosor * 0.45, grosor * 0.45);
-  g.add(vivo);
-
-  g.position.copy(pos);
-  g.rotation.copy(rot);
-  return g;
-}
-
 // Brazo suelto: la manga arranca en la muñeca y se va hacia +Z con largo 1,
 // así se estira con `scale.z` y se orienta con `lookAt` hacia el hombro.
 // Ojo con el +Z: `lookAt` en un objeto común apunta el eje Z POSITIVO al
@@ -145,22 +121,48 @@ export function brazoLibre (grosor) {
   return g;
 }
 
+// LA MANO VA CON EL ARMA; EL BRAZO, NO.
+//
+// La mano agarra el arma y viaja con ella: eso está bien y así se queda. El
+// BRAZO no, y ahí estaba el bicho de las mangas cortadas. Era un antebrazo de
+// largo fijo colgado del grupo del arma, así que cuando el arma sale para
+// adelante en un culatazo —treinta y cuatro centímetros— el brazo entero se va
+// con ella: el codo se despega del hombro y la manga termina en el aire, a
+// mitad de camino.
+//
+// Un brazo no puede ser hijo de lo que la mano agarra. Tiene que unir DOS
+// puntos que se mueven por su cuenta: la muñeca, que va con el arma, y el
+// hombro, que se queda donde está. Es exactamente lo que el sable ya hacía
+// —está escrito en sable.js y funciona desde entonces— y acá se hace igual:
+// la manga vive fuera del grupo del arma, se apunta al hombro con `lookAt` y
+// se estira con `scale.z` hasta llegar.
 function manoYManga (g, xMano, yMano, zMano) {
   const guante = mat(0xb9ac93, 0.95);
   const manoDer = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.078, 0.105), guante);
   manoDer.position.set(xMano, yMano, zMano);
   g.add(manoDer);
-  // el antebrazo cuelga de la muñeca hacia el hombro
-  g.add(brazoGranadero(
-    new THREE.Vector3(xMano, yMano - 0.03, zMano + 0.04),
-    new THREE.Euler(-0.85, 0, -0.18), 0.46, 0.082));
   return manoDer;
 }
 
-function brazoIzquierdo (g, mano) {
-  g.add(brazoGranadero(
-    new THREE.Vector3(mano.position.x, mano.position.y - 0.03, mano.position.z + 0.04),
-    new THREE.Euler(-0.95, 0, 0.3), 0.42, 0.076));
+// Los dos brazos sueltos de un arma de fuego, con el punto de la muñeca que
+// cada uno tiene que seguir. `hombro` es fijo y está en el espacio de la
+// cámara del arma, un poco abajo y atrás del ojo, que es donde está el hombro
+// de alguien que sostiene un arma con las dos manos.
+export function brazosSueltos (manoDer, manoIzq) {
+  const brazos = [];
+  for (const [mano, grosor, lado] of [[manoDer, 0.070, 1], [manoIzq, 0.064, -1]]) {
+    if (!mano) continue;
+    const b = brazoLibre(grosor);
+    b.userData.muneca = mano.position.clone().add(new THREE.Vector3(0, -0.02, 0.03));
+    // EL HOMBRO, ABAJO Y ATRÁS DEL OJO. Con el hombro alto las dos mangas
+    // salen casi paralelas al cañón y tapan el arma entera: se ven dos tablones
+    // azules y atrás, en algún lado, una tercerola. Bajándolo, los brazos
+    // entran en diagonal desde el borde de abajo —que es de donde entran los
+    // brazos de uno— y el arma queda a la vista.
+    b.userData.hombro = new THREE.Vector3(0.20 * lado, -1.05, 0.30);
+    brazos.push(b);
+  }
+  return brazos;
 }
 
 function fogonazoYLuz (g, boca) {
@@ -192,13 +194,36 @@ function construirTercerola () {
   const caja = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.056, 0.72), madera);
   caja.position.set(0, -0.026, -0.28);
   g.add(caja);
-  const culata = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.115, 0.30), madera);
-  culata.position.set(0, -0.038, 0.13);
-  culata.rotation.x = -0.13;
-  g.add(culata);
-  const cantonera = new THREE.Mesh(new THREE.BoxGeometry(0.066, 0.13, 0.03), laton);
-  cantonera.position.set(0, -0.048, 0.28);
-  cantonera.rotation.x = -0.13;
+  // LA CULATA, QUE ERA UNA CAJA. Un bloque de 6×11×30 con una chapa al final:
+  // el arma terminaba en un ladrillo. Una culata de tercerola tiene forma y la
+  // forma se lee incluso a este tamaño, porque es la parte del arma que queda
+  // más cerca del ojo.
+  //
+  // Cuatro piezas, que son las cuatro que tiene de verdad:
+  //
+  //   garganta  el cuello angosto detrás del guardamonte, por donde se agarra
+  //   carrillera la parte alta donde apoya la cara, que sube hacia atrás
+  //   panza     la barriga de abajo, que baja y ensancha hasta la punta
+  //   cantonera la chapa de latón, inclinada como el talón
+  //
+  // La inclinación de la culata (−0,13) se respeta en las cuatro: si una sola
+  // queda derecha, se ve el escalón.
+  const CAIDA = -0.13;
+  const garganta = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.072, 0.115), madera);
+  garganta.position.set(0, -0.030, 0.035);
+  garganta.rotation.x = CAIDA;
+  g.add(garganta);
+  const carrillera = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.215), madera);
+  carrillera.position.set(0, -0.006, 0.175);
+  carrillera.rotation.x = CAIDA - 0.05;
+  g.add(carrillera);
+  const panza = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.070, 0.20), madera);
+  panza.position.set(0, -0.062, 0.165);
+  panza.rotation.x = CAIDA + 0.07;
+  g.add(panza);
+  const cantonera = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.132, 0.026), laton);
+  cantonera.position.set(0, -0.040, 0.282);
+  cantonera.rotation.x = CAIDA - 0.03;
   g.add(cantonera);
   const guarda = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.006, 6, 10, Math.PI), laton);
   guarda.rotation.set(Math.PI / 2, 0, 0);
@@ -217,15 +242,14 @@ function construirTercerola () {
   baqueta.position.set(0, -0.014, -0.36);
   g.add(baqueta);
 
-  manoYManga(g, 0.012, -0.05, 0.02);
+  const manoDer = manoYManga(g, 0.012, -0.05, 0.02);
   const manoIzq = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.07, 0.095), mat(0xb9ac93, 0.95));
   manoIzq.position.set(-0.02, -0.045, -0.30);
   g.add(manoIzq);
-  brazoIzquierdo(g, manoIzq);
 
   const boca = new THREE.Vector3(0, ejeY, -0.90);
   const { fogonazo, luz } = fogonazoYLuz(g, boca);
-  return { g, ejeY, boca, martillo, rastrillo, baqueta, manoIzq, fogonazo, luz,
+  return { g, ejeY, manoDer, boca, martillo, rastrillo, baqueta, manoIzq, fogonazo, luz,
     miraY: ejeY + 0.026 + 0.011, traseraZ: 0.295,
     baquetaGuardada: { y: -0.014, z: -0.36 }, bocaZ: -0.90 };
 }
@@ -285,17 +309,16 @@ function construirFusil () {
   baqueta.position.set(0, -0.02, -0.52);
   g.add(baqueta);
 
-  manoYManga(g, 0.012, -0.052, -0.02);
+  const manoDer = manoYManga(g, 0.012, -0.052, -0.02);
   const manoIzq = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.07, 0.095), mat(0xb9ac93, 0.95));
   manoIzq.position.set(-0.02, -0.048, -0.46);
   g.add(manoIzq);
-  brazoIzquierdo(g, manoIzq);
 
   const { martillo, rastrillo } = llaveDeChispa(g, 0.033, 0.024, -0.12, laton, hierro);
 
   const boca = new THREE.Vector3(0, ejeY, -1.28);
   const { fogonazo, luz } = fogonazoYLuz(g, boca);
-  return { g, ejeY, boca, martillo, rastrillo, baqueta, manoIzq, fogonazo, luz,
+  return { g, ejeY, manoDer, boca, martillo, rastrillo, baqueta, manoIzq, fogonazo, luz,
     miraY: ejeY + 0.028 + 0.012, traseraZ: 0.285,
     baquetaGuardada: { y: -0.02, z: -0.52 }, bocaZ: -1.28 };
 }
@@ -366,14 +389,14 @@ function construirPistolon () {
   baqueta.position.set(0, -0.004, -0.24);
   g.add(baqueta);
 
-  manoYManga(g, 0.006, -0.075, 0.075);
+  const manoDer = manoYManga(g, 0.006, -0.075, 0.075);
   const manoIzq = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.065, 0.085), mat(0xb9ac93, 0.95));
   manoIzq.position.set(-0.035, -0.05, -0.02);
   g.add(manoIzq);
 
   const boca = new THREE.Vector3(0, ejeY, -0.47);
   const { fogonazo, luz } = fogonazoYLuz(g, boca);
-  return { g, ejeY, boca, martillo, rastrillo, baqueta, manoIzq, fogonazo, luz,
+  return { g, ejeY, manoDer, boca, martillo, rastrillo, baqueta, manoIzq, fogonazo, luz,
     miraY: ejeY + 0.026 + 0.007, traseraZ: 0.165,
     baquetaGuardada: { y: -0.004, z: -0.24 }, bocaZ: -0.47 };
 }

@@ -88,7 +88,7 @@ export const ARMAS = {
 // Cacha de nogal con embutido de plata: el dibujo de volutas del original.
 
 // los fierros se arman en su propio archivo
-import { CONSTRUCTORES, posesPara, mat } from './armas-modelos.js';
+import { CONSTRUCTORES, posesPara, mat, brazosSueltos } from './armas-modelos.js';
 
 export class ArmaFuego {
   constructor (tipo, camaraArma, camaraMundo, sonido, humo) {
@@ -157,6 +157,35 @@ export class ArmaFuego {
     this.grupo.visible = false;
     this.grupo.traverse(o => { o.frustumCulled = false; });
     camaraArma.add(this.grupo);
+
+    // LOS BRAZOS VAN APARTE, no colgados del arma. El motivo está escrito en
+    // armas-modelos.js: un brazo une la muñeca —que viaja con el arma— con el
+    // hombro, que se queda donde está, y un antebrazo de largo fijo colgado
+    // del arma no puede hacer las dos cosas. Se estiran cada cuadro.
+    this.brazos = brazosSueltos(p.manoDer, p.manoIzq);
+    for (const b of this.brazos) {
+      b.visible = false;
+      b.traverse(o => { o.frustumCulled = false; });
+      camaraArma.add(b);
+    }
+    this._mano = new THREE.Vector3();
+  }
+
+  // Cada brazo, del puño al hombro. Hace falta refrescar la matriz del arma:
+  // si no, el brazo va un cuadro atrás de la mano y en pleno culatazo se ve
+  // despegado, que es la mitad del problema que esto vino a arreglar.
+  _acomodarBrazos () {
+    if (!this.brazos.length) return;
+    this.grupo.updateWorldMatrix(true, false);
+    for (const b of this.brazos) {
+      // la muñeca de la mano izquierda se mueve durante la carga: se lee del
+      // objeto y no de la copia que se guardó al nacer
+      const m = b.userData.muneca;
+      this._mano.copy(m).applyMatrix4(this.grupo.matrixWorld);
+      b.position.copy(this._mano);
+      b.lookAt(b.userData.hombro);
+      b.scale.z = Math.max(0.2, this._mano.distanceTo(b.userData.hombro));
+    }
   }
 
   // ---------- estado ----------
@@ -174,8 +203,14 @@ export class ArmaFuego {
     return 'descargada';
   }
 
-  sacar () { this.guardada = false; this.grupo.visible = true; }
-  guardar () { this.guardada = true; this.grupo.visible = false; this.cargando = false; this.tGolpe = -1; }
+  sacar () {
+    this.guardada = false; this.grupo.visible = true;
+    for (const b of this.brazos) b.visible = true;
+  }
+  guardar () {
+    this.guardada = true; this.grupo.visible = false; this.cargando = false; this.tGolpe = -1;
+    for (const b of this.brazos) b.visible = false;
+  }
 
   _duracion (id) {
     // CON LA CARGA SOLA EL ANDAR NO LA FRENA. penalCargaMontado multiplica por
@@ -515,6 +550,8 @@ export class ArmaFuego {
       this.grupo.position.x += (Math.random() - 0.5) * nervio;
       this.grupo.position.y += (Math.random() - 0.5) * nervio;
     }
+
+    this._acomodarBrazos();
 
     const objMartillo = this.amartillada ? -0.95 : 0.28;
     this.martillo.rotation.x += (objMartillo - this.martillo.rotation.x) * (1 - Math.exp(-16 * dt));

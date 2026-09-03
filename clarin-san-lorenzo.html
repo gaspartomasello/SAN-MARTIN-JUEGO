@@ -31634,30 +31634,6 @@ function llaveDeChispa(g, x, y, z, laton, hierro, cuelloDeCisne) {
   g.add(martillo);
   return { martillo, rastrillo };
 }
-function brazoGranadero(pos, rot, largo, grosor) {
-  const g = new Group();
-  const bocamanga = new Mesh(
-    new BoxGeometry(grosor * 1.14, grosor * 0.5, grosor * 1.14),
-    mat(PALETA.carmesi, 0.9)
-  );
-  bocamanga.position.y = -grosor * 0.25;
-  g.add(bocamanga);
-  const manga = new Mesh(
-    new BoxGeometry(grosor, largo, grosor * 0.94),
-    mat(PALETA.azul, 0.9)
-  );
-  manga.position.y = -largo * 0.5 - grosor * 0.45;
-  g.add(manga);
-  const vivo = new Mesh(
-    new BoxGeometry(grosor * 0.16, largo * 0.92, grosor * 0.16),
-    mat(14209728, 0.9)
-  );
-  vivo.position.set(grosor * 0.45, -largo * 0.5 - grosor * 0.45, grosor * 0.45);
-  g.add(vivo);
-  g.position.copy(pos);
-  g.rotation.copy(rot);
-  return g;
-}
 function brazoLibre(grosor) {
   const g = new Group();
   const bocamanga = new Mesh(
@@ -31676,21 +31652,18 @@ function manoYManga(g, xMano, yMano, zMano) {
   const manoDer = new Mesh(new BoxGeometry(0.058, 0.078, 0.105), guante);
   manoDer.position.set(xMano, yMano, zMano);
   g.add(manoDer);
-  g.add(brazoGranadero(
-    new Vector3(xMano, yMano - 0.03, zMano + 0.04),
-    new Euler(-0.85, 0, -0.18),
-    0.46,
-    0.082
-  ));
   return manoDer;
 }
-function brazoIzquierdo(g, mano) {
-  g.add(brazoGranadero(
-    new Vector3(mano.position.x, mano.position.y - 0.03, mano.position.z + 0.04),
-    new Euler(-0.95, 0, 0.3),
-    0.42,
-    0.076
-  ));
+function brazosSueltos(manoDer, manoIzq) {
+  const brazos = [];
+  for (const [mano, grosor, lado] of [[manoDer, 0.07, 1], [manoIzq, 0.064, -1]]) {
+    if (!mano) continue;
+    const b = brazoLibre(grosor);
+    b.userData.muneca = mano.position.clone().add(new Vector3(0, -0.02, 0.03));
+    b.userData.hombro = new Vector3(0.2 * lado, -1.05, 0.3);
+    brazos.push(b);
+  }
+  return brazos;
 }
 function fogonazoYLuz(g, boca) {
   const fogonazo = new Mesh(
@@ -31718,13 +31691,22 @@ function construirTercerola() {
   const caja3 = new Mesh(new BoxGeometry(0.05, 0.056, 0.72), madera);
   caja3.position.set(0, -0.026, -0.28);
   g.add(caja3);
-  const culata = new Mesh(new BoxGeometry(0.062, 0.115, 0.3), madera);
-  culata.position.set(0, -0.038, 0.13);
-  culata.rotation.x = -0.13;
-  g.add(culata);
-  const cantonera = new Mesh(new BoxGeometry(0.066, 0.13, 0.03), laton);
-  cantonera.position.set(0, -0.048, 0.28);
-  cantonera.rotation.x = -0.13;
+  const CAIDA2 = -0.13;
+  const garganta = new Mesh(new BoxGeometry(0.044, 0.072, 0.115), madera);
+  garganta.position.set(0, -0.03, 0.035);
+  garganta.rotation.x = CAIDA2;
+  g.add(garganta);
+  const carrillera = new Mesh(new BoxGeometry(0.052, 0.062, 0.215), madera);
+  carrillera.position.set(0, -6e-3, 0.175);
+  carrillera.rotation.x = CAIDA2 - 0.05;
+  g.add(carrillera);
+  const panza = new Mesh(new BoxGeometry(0.058, 0.07, 0.2), madera);
+  panza.position.set(0, -0.062, 0.165);
+  panza.rotation.x = CAIDA2 + 0.07;
+  g.add(panza);
+  const cantonera = new Mesh(new BoxGeometry(0.062, 0.132, 0.026), laton);
+  cantonera.position.set(0, -0.04, 0.282);
+  cantonera.rotation.x = CAIDA2 - 0.03;
   g.add(cantonera);
   const guarda = new Mesh(new TorusGeometry(0.028, 6e-3, 6, 10, Math.PI), laton);
   guarda.rotation.set(Math.PI / 2, 0, 0);
@@ -31738,16 +31720,16 @@ function construirTercerola() {
   baqueta.rotation.x = Math.PI / 2;
   baqueta.position.set(0, -0.014, -0.36);
   g.add(baqueta);
-  manoYManga(g, 0.012, -0.05, 0.02);
+  const manoDer = manoYManga(g, 0.012, -0.05, 0.02);
   const manoIzq = new Mesh(new BoxGeometry(0.055, 0.07, 0.095), mat(12168339, 0.95));
   manoIzq.position.set(-0.02, -0.045, -0.3);
   g.add(manoIzq);
-  brazoIzquierdo(g, manoIzq);
   const boca = new Vector3(0, ejeY, -0.9);
   const { fogonazo, luz } = fogonazoYLuz(g, boca);
   return {
     g,
     ejeY,
+    manoDer,
     boca,
     martillo,
     rastrillo,
@@ -31809,17 +31791,17 @@ function construirFusil() {
   baqueta.rotation.x = Math.PI / 2;
   baqueta.position.set(0, -0.02, -0.52);
   g.add(baqueta);
-  manoYManga(g, 0.012, -0.052, -0.02);
+  const manoDer = manoYManga(g, 0.012, -0.052, -0.02);
   const manoIzq = new Mesh(new BoxGeometry(0.055, 0.07, 0.095), mat(12168339, 0.95));
   manoIzq.position.set(-0.02, -0.048, -0.46);
   g.add(manoIzq);
-  brazoIzquierdo(g, manoIzq);
   const { martillo, rastrillo } = llaveDeChispa(g, 0.033, 0.024, -0.12, laton, hierro);
   const boca = new Vector3(0, ejeY, -1.28);
   const { fogonazo, luz } = fogonazoYLuz(g, boca);
   return {
     g,
     ejeY,
+    manoDer,
     boca,
     martillo,
     rastrillo,
@@ -31888,7 +31870,7 @@ function construirPistolon() {
   baqueta.rotation.x = Math.PI / 2;
   baqueta.position.set(0, -4e-3, -0.24);
   g.add(baqueta);
-  manoYManga(g, 6e-3, -0.075, 0.075);
+  const manoDer = manoYManga(g, 6e-3, -0.075, 0.075);
   const manoIzq = new Mesh(new BoxGeometry(0.05, 0.065, 0.085), mat(12168339, 0.95));
   manoIzq.position.set(-0.035, -0.05, -0.02);
   g.add(manoIzq);
@@ -31897,6 +31879,7 @@ function construirPistolon() {
   return {
     g,
     ejeY,
+    manoDer,
     boca,
     martillo,
     rastrillo,
@@ -31940,9 +31923,8 @@ function posesPara(tipo, p, escala) {
 function geometriaHoja({
   largo = 0.82,
   curva: curva2 = 0.95,
-  anchoBase = 0.044,
-  anchoPunta = 0.01,
-  grosor = 0.012,
+  anchoBase = 0.056,
+  grosor = 0.017,
   pasos = 26
 } = {}) {
   const R = largo / curva2;
@@ -31954,8 +31936,9 @@ function geometriaHoja({
     const p = new Vector3(0, R - R * Math.cos(a), -R * Math.sin(a));
     const n = new Vector3(0, Math.cos(a), Math.sin(a));
     const b = new Vector3(1, 0, 0);
-    const w = MathUtils.lerp(anchoBase, anchoPunta, Math.pow(t, 0.75)) * 0.5;
-    const g = grosor * (1 - 0.62 * t) * 0.5;
+    const perfil = t < 0.86 ? 1 - 0.2 * t + 0.16 * t * t : (1 - (t - 0.86) / 0.14) * 0.96;
+    const w = anchoBase * Math.max(0.04, perfil) * 0.5;
+    const g = grosor * (1 - 0.42 * t) * 0.5;
     const anillo = [
       p.clone().addScaledVector(n, w),
       // lomo
@@ -32109,6 +32092,7 @@ var Sable = class {
       this.zurdo = !this.zurdo;
       this.duracion = this.zurdo ? 0.46 : 0.52;
     }
+    this.montado = !!montado2;
     if (montado2) this.duracion *= DESDE_LA_SILLA;
     this.sonido.sable();
     return this.remate;
@@ -32124,15 +32108,41 @@ var Sable = class {
       const u = this.t / this.duracion;
       if (u < 1) {
         const e = Math.sin(Math.min(1, u * 1.15) * Math.PI);
+        const d = Math.min(1, u * 1.25);
+        const silla = this.montado ? 1 : 0;
         if (this.remate) {
-          this.grupo.position.set(0.22 - e * 0.5, -0.12 + e * 0.3, -0.58 - e * 0.16);
-          this.grupo.rotation.set(0.02 - e * 1.15, -0.42 + e * 1.05, 0.26 + e * 2.25);
+          this.grupo.position.set(
+            0.22 - e * 0.5,
+            -0.12 + e * 0.32 - d * (0.16 + silla * 0.1),
+            -0.58 - e * 0.16 - d * 0.1
+          );
+          this.grupo.rotation.set(
+            0.02 - e * 1.15 - d * (1 + silla * 0.5),
+            -0.42 + e * 1.05,
+            0.26 + e * 2.25
+          );
         } else if (this.zurdo) {
-          this.grupo.position.set(0.22 - e * 0.4, -0.14 - e * 0.04, -0.58 - e * 0.1);
-          this.grupo.rotation.set(0.02 + e * 0.6, -0.42 - e * 1.1, 0.26 - e * 1.5);
+          this.grupo.position.set(
+            0.22 - e * 0.4,
+            -0.14 - e * 0.14 + d * (0.14 - silla * 0.3),
+            -0.58 - e * 0.1 - d * 0.06
+          );
+          this.grupo.rotation.set(
+            0.02 + e * 0.6 + d * (0.7 - silla * 3.4),
+            -0.42 - e * 1.1,
+            0.26 - e * 1.5
+          );
         } else {
-          this.grupo.position.set(0.22 - e * 0.46, -0.12 + e * 0.1, -0.58 - e * 0.06);
-          this.grupo.rotation.set(0.02 - e * 0.45, -0.42 + e * 1.35, 0.26 + e * 1.85);
+          this.grupo.position.set(
+            0.22 - e * 0.46,
+            -0.12 + e * 0.24 - d * (0.14 + silla * 0.12),
+            -0.58 - e * 0.06 - d * 0.09
+          );
+          this.grupo.rotation.set(
+            0.02 - e * 0.45 - d * (0.9 + silla * 0.85),
+            -0.42 + e * 1.35,
+            0.26 + e * 1.85
+          );
         }
         if (!this.golpeo && u > (this.remate ? 0.34 : 0.3) && u < 0.62) {
           this.golpeo = true;
@@ -36525,6 +36535,29 @@ var ArmaFuego = class {
       o.frustumCulled = false;
     });
     camaraArma2.add(this.grupo);
+    this.brazos = brazosSueltos(p.manoDer, p.manoIzq);
+    for (const b of this.brazos) {
+      b.visible = false;
+      b.traverse((o) => {
+        o.frustumCulled = false;
+      });
+      camaraArma2.add(b);
+    }
+    this._mano = new Vector3();
+  }
+  // Cada brazo, del puño al hombro. Hace falta refrescar la matriz del arma:
+  // si no, el brazo va un cuadro atrás de la mano y en pleno culatazo se ve
+  // despegado, que es la mitad del problema que esto vino a arreglar.
+  _acomodarBrazos() {
+    if (!this.brazos.length) return;
+    this.grupo.updateWorldMatrix(true, false);
+    for (const b of this.brazos) {
+      const m = b.userData.muneca;
+      this._mano.copy(m).applyMatrix4(this.grupo.matrixWorld);
+      b.position.copy(this._mano);
+      b.lookAt(b.userData.hombro);
+      b.scale.z = Math.max(0.2, this._mano.distanceTo(b.userData.hombro));
+    }
   }
   // ---------- estado ----------
   get cargada() {
@@ -36552,12 +36585,14 @@ var ArmaFuego = class {
   sacar() {
     this.guardada = false;
     this.grupo.visible = true;
+    for (const b of this.brazos) b.visible = true;
   }
   guardar() {
     this.guardada = true;
     this.grupo.visible = false;
     this.cargando = false;
     this.tGolpe = -1;
+    for (const b of this.brazos) b.visible = false;
   }
   _duracion(id) {
     const postura = this.sola ? Math.min(1, this.penalPostura) : this.penalPostura;
@@ -36872,6 +36907,7 @@ var ArmaFuego = class {
       this.grupo.position.x += (Math.random() - 0.5) * nervio;
       this.grupo.position.y += (Math.random() - 0.5) * nervio;
     }
+    this._acomodarBrazos();
     const objMartillo = this.amartillada ? -0.95 : 0.28;
     this.martillo.rotation.x += (objMartillo - this.martillo.rotation.x) * (1 - Math.exp(-16 * dt));
     const objRastrillo = this.cebado ? 0 : -1.15;
