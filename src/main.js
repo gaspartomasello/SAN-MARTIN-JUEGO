@@ -42,6 +42,7 @@ import { armarMando } from './mando.js';
 import { armarMoral } from './moral.js';
 import { armarPlano } from './plano.js';
 import { armarRed } from './red.js';
+import { Z_BARRANCA } from './sanlorenzo.js';
 import { VOLTEO, OFICIO, METRALLA_CABALLO, CAIDA } from './balance.js';
 
 // ---------------------------------------------------------------------------
@@ -523,6 +524,16 @@ function simular (dt) {
   // que hace que un fusil a ochenta metros no suene igual que uno al lado.
   sonido.actualizar(dt, {
     oyente: jugador.pos,
+    // hacia dónde mirás: sin esto no hay izquierda ni derecha y la batalla
+    // entera suena en el medio de tu cabeza
+    mirada: jugador.yaw,
+    // qué tan cerca estás del labio de la barranca, de 0 a 1. Dónde está la
+    // barranca es cosa del nivel, así que la cuenta se hace acá y audio.js
+    // recibe un número y no un mapa.
+    rio: Math.max(0, Math.min(1, 1 - Math.abs(jugador.pos.z - Z_BARRANCA) / 34)),
+    // y cuánta batalla queda alrededor: el fragor de fondo lo sigue, así que
+    // cuando el campo se vacía el silencio se oye como un silencio
+    fragor: Math.min(1, campo.vivosDe('realista') / 90),
     // El pulso de Cabral no mide su vida: mide lo que está haciendo.
     vida: acto.pulsoAlto ? 22 : jugador.vida,
     vivo: jugador.vivo && !jugador.espectador,

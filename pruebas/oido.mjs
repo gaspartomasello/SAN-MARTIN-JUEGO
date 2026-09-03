@@ -183,6 +183,77 @@ const r = await pag.evaluate(() => {
 
   AudioNode.prototype.connect = _con;
   AudioParam.prototype.exponentialRampToValueAtTime = _exp;
+  // =======================================================================
+  // 6 · DE QUÉ LADO VIENE
+  // =======================================================================
+  //
+  // El hueco más grande que tenía este motor: sabía a qué distancia estaba
+  // cada cosa y no sabía de qué lado. Doscientos cincuenta fusiles sonaban
+  // todos en el medio de tu cabeza, y con eso no se puede pelear: no hay
+  // manera de darse vuelta hacia el que te está tirando.
+  const panes = [];
+  const _sp = s.ctx.createStereoPanner.bind(s.ctx);
+  s.ctx.createStereoPanner = () => { const n = _sp(); panes.push(n); return n; };
+  const pan = () => (panes.length ? +panes[panes.length - 1].pan.value.toFixed(2) : 0);
+
+  s.oir({ x: 0, y: 1.7, z: 0 }, 0);            // mirando a −Z, que es adelante
+  panes.length = 0; s.disparo({ x: 30, y: 1.7, z: 0 }); const aDerecha = pan();
+  panes.length = 0; s.disparo({ x: -30, y: 1.7, z: 0 }); const aIzquierda = pan();
+  panes.length = 0; s.disparo({ x: 0, y: 1.7, z: -30 }); const alFrente = pan();
+  ok('el tiro de tu derecha entra por la derecha', aDerecha > 0.4, String(aDerecha));
+  ok('y el de tu izquierda, por la izquierda', aIzquierda < -0.4, String(aIzquierda));
+  ok('y el de adelante va al medio', Math.abs(alFrente) < 0.15, String(alFrente));
+
+  // GIRAR LA CABEZA TIENE QUE MOVER EL CAMPO. Si el paneo saliera de la
+  // posición del mundo y no de hacia dónde mirás, el mismo fusil seguiría
+  // sonando a tu derecha después de que te diste vuelta, que es peor que no
+  // tener estéreo: es un estéreo que miente.
+  s.oir({ x: 0, y: 1.7, z: 0 }, Math.PI / 2);
+  panes.length = 0; s.disparo({ x: 30, y: 1.7, z: 0 });
+  ok('y girando la cabeza, ese mismo fusil se te va al medio',
+    Math.abs(pan()) < 0.2, `${aDerecha} → ${pan()}`);
+
+  // Y LO DE ENCIMA NO SE REPARTE. Un sonido a medio metro no está «todo a la
+  // derecha»: está encima tuyo. Mandarlo a un solo parlante suena a auricular
+  // roto, no a cercanía.
+  panes.length = 0; s.disparo();
+  ok('tu propio tiro no se va a un parlante', panes.length === 0);
+  panes.length = 0; s.disparo({ x: 0.5, y: 1.7, z: 0.5 });
+  ok('ni el que te revienta al lado', Math.abs(pan()) < 0.12, String(pan()));
+
+  // =======================================================================
+  // 7 · QUE HAYA UN LUGAR, Y QUE NO ESTÉ EN SILENCIO
+  // =======================================================================
+  //
+  // Cada sonido se traía su cola dibujada a mano, y eso alcanza para que un
+  // tiro suene a tiro pero no para que el campo suene a UN LUGAR. Ahora hay
+  // una convolución sola para toda la mezcla, con la reflexión del convento
+  // adentro. Y entre tiro y tiro ya no hay silencio digital.
+  ok('hay una sala y no una cola por sonido', !!(s.eco && s.eco.buffer),
+    s.eco && s.eco.buffer ? `${s.eco.buffer.duration.toFixed(2)} s en ${s.eco.buffer.numberOfChannels} canales` : 'no hay');
+  ok('y es UNA para todo, no una por tiro', !!s.envio && s.envio.gain.value > 0,
+    s.envio ? s.envio.gain.value.toFixed(2) : 'no hay envío');
+  ok('el lecho existe: viento, río y fragor', !!(s.viento && s.rio && s.fragor));
+
+  // EL GRITO NO ES UN ARCHIVO. Doscientos cincuenta hombres quebrándose con el
+  // mismo grito no suenan a desbandada: suenan a un sonido repetido.
+  //
+  // Se mide la GARGANTA —la frecuencia— y no la ganancia. La ganancia sale de
+  // la distancia, que acá es siempre la misma, así que contando por ahí salen
+  // tres y parece que no hubiera variedad: lo que cambia de un hombre a otro
+  // es el tono, no cuán fuerte grita.
+  const gargantas = new Set();
+  let formas = new Set();
+  for (let i = 0; i < 40; i++) {
+    limpiar(); s.grito({ x: 5, y: 1.7, z: 5 });
+    gargantas.add(Math.round(visto.ruidos[0].frec / 40));
+    formas.add(visto.tonos.length + '·' + visto.ruidos.length);
+  }
+  ok('cuarenta gritos no son cuarenta veces el mismo hombre', gargantas.size > 8,
+    `${gargantas.size} gargantas distintas`);
+  ok('y no todos gritan igual: hay formas de grito', formas.size >= 2,
+    `${formas.size} formas`);
+
   return out;
 });
 

@@ -193,7 +193,10 @@ export function armarMoral (ctx) {
 
   function quebrar (s) {
     if (!s.quebrar()) return;
-    if (tGrito <= 0) { sonido.grito(); tGrito = GRITO; }
+    // EL GRITO SALE DE DONDE ESTÁ EL HOMBRE. En una desbandada, de qué lado
+    // vienen los gritos es la información: te dice por dónde se está rompiendo
+    // la línea antes de que lo veas.
+    if (tGrito <= 0) { sonido.grito(s.pos); tGrito = GRITO; }
   }
 
   // -------------------------------------------------------------------------

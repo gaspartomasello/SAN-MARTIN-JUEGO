@@ -52,8 +52,11 @@ export class Sonido {
     this.interno = null;  // el corazón y el pitido: no los toca nada
     this.apagon = null;   // el desvanecimiento de la muerte
     this.ruido = null;
-    // dónde están tus oídos. Lo pone main.js una vez por cuadro.
+    // dónde están tus oídos, y HACIA DÓNDE MIRAN. Sin lo segundo no hay
+    // izquierda ni derecha: doscientos cincuenta fusiles suenan todos en el
+    // medio de tu cabeza. Lo pone main.js una vez por cuadro.
     this.oyente = { x: 0, y: 1.7, z: 0 };
+    this.mirada = 0;
     this.faseCorazon = 0;
     this.faseCasco = 0;
     this.ultimoCasco = -1;
@@ -90,6 +93,95 @@ export class Sonido {
     this.ruido = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
     const d = this.ruido.getChannelData(0);
     for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+
+    this._armarEco();
+    this._armarAmbiente();
+  }
+
+  // -------------------------------------------------------------------------
+  // EL ESPACIO · un campo abierto con una mole de piedra en el medio
+  // -------------------------------------------------------------------------
+  //
+  // Hasta acá cada sonido se traía su propia cola dibujada a mano: el tiro
+  // tenía la suya, el cañón la suya. Eso alcanza para que un tiro suene a tiro
+  // pero no para que el campo suene a UN LUGAR, porque cada cola era un invento
+  // suelto y ninguna hablaba de dónde estabas parado.
+  //
+  // Una convolución sí. Es UN nodo para toda la mezcla —no uno por sonido— y
+  // la respuesta al impulso se genera acá mismo: ruido que decae, con una
+  // reflexión temprana a los treinta y cinco milisegundos, que es lo que tarda
+  // el sonido en ir y volver de una pared de piedra a doce metros. Esa palmada
+  // temprana es la que pone el convento; la cola larga, la barranca y el río.
+  //
+  // Cuesta un nodo y no depende de cuántos tiros haya: la diferencia entre
+  // seiscientos cincuenta colas dibujadas a mano y una sola sala.
+  _armarEco () {
+    const sr = this.ctx.sampleRate;
+    const largo = Math.floor(sr * 1.25);
+    const ir = this.ctx.createBuffer(2, largo, sr);
+    const palmada = Math.floor(sr * 0.035);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch);
+      for (let i = 0; i < largo; i++) {
+        const t = i / largo;
+        // el campo se lleva los primeros diez milisegundos: afuera no hay nada
+        // tan cerca como para devolver antes
+        const arranque = i < sr * 0.01 ? 0 : 1;
+        let a = Math.pow(1 - t, 3.1) * arranque;
+        // la pared del convento, una sola y clara
+        if (i > palmada && i < palmada + sr * 0.012) a += 0.55 * (1 - (i - palmada) / (sr * 0.012));
+        d[i] = (Math.random() * 2 - 1) * a;
+      }
+    }
+    this.eco = this.ctx.createConvolver();
+    this.eco.buffer = ir;
+    // los agudos no rebotan: una cola brillante suena a baño de azulejos
+    const tapa = this.ctx.createBiquadFilter();
+    tapa.type = 'lowpass';
+    tapa.frequency.value = 2600;
+    this.envio = this.ctx.createGain();
+    this.envio.gain.value = 0.34;
+    this.master.connect(this.envio);
+    this.envio.connect(this.eco);
+    this.eco.connect(tapa);
+    tapa.connect(this.sordina);
+  }
+
+  // -------------------------------------------------------------------------
+  // EL LECHO · lo que se oye cuando no pasa nada
+  // -------------------------------------------------------------------------
+  //
+  // Entre tiro y tiro había SILENCIO DIGITAL, que es lo que más delata que un
+  // campo no existe: el mundo se apagaba y volvía. Son tres capas que no paran
+  // nunca y que juntas cuestan seis nodos fijos, no seis por cuadro.
+  //
+  //   viento  el pasto y el aire, con la ráfaga que va y viene
+  //   río     el Paraná, que está ahí abajo y sólo se oye cerca de la barranca
+  //   fragor  la batalla lejos: no son tiros, es lo que queda de todos ellos
+  //
+  // El fragor NO es ambiente de relleno: sube con la cantidad de gente peleando
+  // alrededor y baja cuando el campo se vacía, así que el final de la batalla
+  // —que es un silencio— se oye como un silencio.
+  _lecho (frec, q, tipo, gan) {
+    const s = this.ctx.createBufferSource();
+    s.buffer = this.ruido;
+    s.loop = true;
+    const f = this.ctx.createBiquadFilter();
+    f.type = tipo;
+    f.frequency.value = frec;
+    f.Q.value = q;
+    const g = this.ctx.createGain();
+    g.gain.value = gan;
+    s.connect(f); f.connect(g); g.connect(this.master);
+    s.start(this.t + Math.random() * 0.5);
+    return { g, f };
+  }
+
+  _armarAmbiente () {
+    this.viento = this._lecho(420, 0.7, 'lowpass', 0.030);
+    this.rio = this._lecho(760, 0.9, 'bandpass', 0);
+    this.fragor = this._lecho(300, 0.5, 'lowpass', 0);
+    this.tRafaga = 0;
   }
 
   get t () { return this.ctx.currentTime; }
@@ -133,8 +225,33 @@ export class Sonido {
     o.start(t); o.stop(t + dur + 0.02);
   }
 
-  // Dónde están tus oídos, una vez por cuadro.
-  oir (p) { this.oyente.x = p.x; this.oyente.y = p.y; this.oyente.z = p.z; }
+  // Dónde están tus oídos y hacia dónde mirás, una vez por cuadro. El rumbo es
+  // opcional: sin él queda el que estaba, que es lo que quieren las pruebas
+  // cuando sólo mueven al oyente de sitio.
+  oir (p, mirada) {
+    this.oyente.x = p.x; this.oyente.y = p.y; this.oyente.z = p.z;
+    if (mirada !== undefined) this.mirada = mirada;
+  }
+
+  // A QUÉ OÍDO LE ENTRA. Devuelve el nodo por el que tiene que salir un sonido
+  // que viene de un sitio, o `master` si viene de ninguno.
+  //
+  // Es UN panoramizador POR EVENTO y no por capa: el chasquido, el cuerpo y la
+  // cola de un mismo tiro vienen del mismo fusil y tienen que llegar juntos al
+  // mismo oído. Repartirlos por separado no es más preciso, es un tiro roto en
+  // tres pedazos.
+  //
+  // Y DE CERCA NO SE PANORAMIZA. Un sonido a dos metros no está «todo a la
+  // derecha»: está encima tuyo, y mandarlo entero a un parlante suena a
+  // auricular roto. El efecto entra con la distancia, que es cuando el oído de
+  // verdad lo usa para ubicar algo.
+  _salida (l) {
+    if (!l || !l.pan) return this.master;
+    const p = this.ctx.createStereoPanner();
+    p.pan.value = l.pan;
+    p.connect(this.master);
+    return p;
+  }
 
   // Qué le hace la distancia a un sonido. Devuelve null si está tan lejos que
   // no vale la pena programar nada: en una batalla de doscientos cincuenta
@@ -145,8 +262,20 @@ export class Sonido {
       (origen.y === undefined ? this.oyente.y : origen.y) - this.oyente.y,
       origen.z - this.oyente.z);
     if (d > ALCANCE) return null;
+    // De dónde viene, en el marco del que escucha. Adelante en este juego es
+    // (−sen, −cos) —la convención del modelo— así que la derecha es
+    // (cos, −sen), y el paneo es cuánto del sonido cae sobre esa derecha.
+    let pan = 0;
+    if (d > 0.5) {
+      const dx = (origen.x - this.oyente.x) / d, dz = (origen.z - this.oyente.z) / d;
+      const der = dx * Math.cos(this.mirada) - dz * Math.sin(this.mirada);
+      // el 0,82 deja siempre algo en el otro oído: un sonido en un solo
+      // parlante no está a un costado, está adentro del auricular
+      pan = Math.max(-1, Math.min(1, der * 0.82)) * Math.min(1, (d - 0.5) / 6);
+    }
     return {
       d,
+      pan,
       gan: 1 / (1 + Math.pow(d / 11, 1.55)),
       aire: Math.max(0.10, 1 - d / 130),
       retardo: d / VEL_SONIDO
@@ -181,15 +310,19 @@ export class Sonido {
     const c = l.gan, aire = l.aire, w = l.retardo;
     // dos tiros nunca son idénticos: la carga, el pistón, hacia dónde apunta
     const azar = 0.88 + Math.random() * 0.24;
+    const a = this._salida(l);
 
     this._ruido(0.055, 0.85 * c * aire * aire, 'highpass', 1500 * aire + 300, 0.7,
-      { cuando: w, ataque: 0.0012 });
+      { cuando: w, ataque: 0.0012, a });
     this._ruido(0.26 * (2 - aire), 0.8 * c, 'lowpass', (1600 * aire + 260) * azar, 0.8,
-      { cuando: w, ataque: 0.003 });
-    this._tono(188 * azar, 44, 0.26, 0.66 * c, 'square', { cuando: w });
-    this._tono(78 * azar, 30, 0.44, 0.5 * c, 'sine', { cuando: w });
-    this._ruido(0.45 + (1 - aire) * 1.0, 0.15 * c, 'lowpass', 620 * aire + 150, 0.6,
-      { cuando: w + 0.08 + (1 - aire) * 0.16, ataque: 0.035 });
+      { cuando: w, ataque: 0.003, a });
+    this._tono(188 * azar, 44, 0.26, 0.66 * c, 'square', { cuando: w, a });
+    this._tono(78 * azar, 30, 0.44, 0.5 * c, 'sine', { cuando: w, a });
+    // LA COLA DE ACÁ ES LA DEL FUSIL, no la del campo: el campo lo pone ahora
+    // la convolución, que es una sola para todo. Se le baja, porque sumadas
+    // eran dos salas encima de la otra.
+    this._ruido(0.34 + (1 - aire) * 0.7, 0.07 * c, 'lowpass', 620 * aire + 150, 0.6,
+      { cuando: w + 0.08 + (1 - aire) * 0.16, ataque: 0.035, a });
   }
 
   fogonazo () {           // cebó y no salió el tiro: sólo la cazoleta
@@ -259,11 +392,12 @@ export class Sonido {
     if (!l) return;
     const c = l.gan, w = l.retardo;
     const t = this.t;
-    this._ruido(1.4, 0.9 * c, 'lowpass', 380, 0.7, { cuando: w, ataque: 0.002 });
-    this._tono(70, 26, 1.1, 0.85 * c, 'sine', { cuando: w });
-    this._tono(120, 40, 0.5, 0.5 * c, 'square', { cuando: w });
+    const a = this._salida(l);
+    this._ruido(1.4, 0.9 * c, 'lowpass', 380, 0.7, { cuando: w, ataque: 0.002, a });
+    this._tono(70, 26, 1.1, 0.85 * c, 'sine', { cuando: w, a });
+    this._tono(120, 40, 0.5, 0.5 * c, 'square', { cuando: w, a });
     // el eco contra la barranca, medio segundo después y a la mitad
-    this._ruido(1.1, 0.28 * c, 'lowpass', 260, 0.7, { cuando: w + 0.48, ataque: 0.04 });
+    this._ruido(1.1, 0.28 * c, 'lowpass', 260, 0.7, { cuando: w + 0.48, ataque: 0.04, a });
     // Una pieza de a cuatro a veinte metros te deja sordo; a ciento veinte, no.
     if (l.d < 45) this.ensordecer(1.35 * (1 - l.d / 45) + 0.2);
     return t;
@@ -353,7 +487,38 @@ export class Sonido {
     this._ruido(dur * 0.9, 0.055 * fuerza, 'bandpass', f0 * 1.5, 5);
   }
 
-  grito () { if (this.ctx) { this._tono(320, 140, 0.4, 0.22, 'sawtooth'); this._ruido(0.35, 0.2, 'bandpass', 800, 1.2); } }
+  // EL GRITO. Con un solo grito, doscientos cincuenta hombres quebrándose son
+  // el mismo hombre doscientas cincuenta veces, y eso no se oye como una
+  // desbandada: se oye como un archivo. Cada uno tiene su garganta —la
+  // fundamental se mueve casi una octava—, su largo y su forma: el que aúlla,
+  // el que ladra corto, el que se quiebra en el medio.
+  //
+  // `origen` es opcional y ubica el grito: en una desbandada lo que dice de
+  // qué lado se está rompiendo la línea es de dónde vienen los gritos.
+  grito (origen) {
+    if (!this.ctx) return;
+    const l = this._lejania(origen);
+    if (!l) return;
+    const a = this._salida(l);
+    const c = l.gan * l.aire;
+    const g = 210 + Math.random() * 180;             // la garganta de éste
+    const forma = Math.random();
+    const w = l.retardo;
+    if (forma < 0.34) {
+      // el que aúlla: largo y cayendo
+      this._tono(g * 1.5, g * 0.5, 0.52, 0.20 * c, 'sawtooth', { cuando: w, a });
+      this._ruido(0.46, 0.17 * c, 'bandpass', g * 2.6, 1.1, { cuando: w, a });
+    } else if (forma < 0.7) {
+      // el ladrido corto, que es el más común en una línea que se rompe
+      this._tono(g * 1.2, g * 0.75, 0.20, 0.24 * c, 'square', { cuando: w, a });
+      this._ruido(0.22, 0.20 * c, 'bandpass', g * 3.4, 1.5, { cuando: w, a });
+    } else {
+      // el que se le quiebra la voz en el medio: dos tramos, no uno
+      this._tono(g, g * 1.7, 0.13, 0.20 * c, 'sawtooth', { cuando: w, a });
+      this._tono(g * 1.7, g * 0.6, 0.34, 0.17 * c, 'sawtooth', { cuando: w + 0.13, a });
+      this._ruido(0.42, 0.14 * c, 'bandpass', g * 3, 1.2, { cuando: w, a });
+    }
+  }
 
   // =========================================================================
   // EL OÍDO SATURADO — y por qué acá NO hay ningún pitido
@@ -398,9 +563,51 @@ export class Sonido {
   // casco, que a galope tendido son ocho por segundo.
   actualizar (dt, e) {
     if (!this.ctx || !e || !(dt > 0)) return;
-    if (e.oyente) this.oir(e.oyente);
+    if (e.oyente) this.oir(e.oyente, e.mirada);
     this._corazon(dt, e);
     this._cascos(dt, e);
+    this._lechoAlDia(dt, e);
+  }
+
+  // EL LECHO, CUADRO A CUADRO. Son tres rampas sobre tres ganancias que ya
+  // existen: no se crea ni un nodo acá adentro.
+  //
+  // Se mueve TODO por rampa y no por asignación directa. Un valor escrito de
+  // golpe sobre una ganancia que está sonando hace un chasquido —el salto es
+  // una discontinuidad en la onda— y con el viento cambiando sesenta veces por
+  // segundo eso es un crepitar constante.
+  _lechoAlDia (dt, e) {
+    if (!this.viento) return;
+    const t = this.t;
+    const suave = (par, hacia, seg) => {
+      par.cancelScheduledValues(t);
+      par.setValueAtTime(par.value, t);
+      par.linearRampToValueAtTime(Math.max(0.0001, hacia), t + seg);
+    };
+
+    // LA RÁFAGA. El viento parejo se vuelve inaudible en diez segundos —el
+    // oído lo da por sentado y deja de oírlo—; el que va y viene, no. Cada
+    // tanto se le pide una ráfaga nueva y se va hasta ahí sin apuro.
+    this.tRafaga -= dt;
+    if (this.tRafaga <= 0) {
+      this.tRafaga = 2.5 + Math.random() * 4;
+      const f = 0.020 + Math.random() * 0.028;
+      suave(this.viento.g.gain, f, this.tRafaga * 0.8);
+      suave(this.viento.f.frequency, 300 + Math.random() * 420, this.tRafaga * 0.8);
+    }
+
+    // EL RÍO. El Paraná está abajo de la barranca y sólo se oye cerca del
+    // labio: es la referencia que te dice que tenés el borde ahí. `rio` viene
+    // de main.js —de 0 a 1— porque dónde está la barranca es cosa del nivel y
+    // no de este archivo.
+    suave(this.rio.g.gain, 0.052 * Math.max(0, Math.min(1, e.rio || 0)), 0.35);
+
+    // EL FRAGOR. No es relleno: es la batalla que no ves. Sube con la gente
+    // que sigue peleando alrededor tuyo y se apaga cuando el campo se vacía,
+    // así que el final de San Lorenzo se OYE terminar.
+    const pelea = Math.max(0, Math.min(1, (e.fragor || 0)));
+    suave(this.fragor.g.gain, 0.055 * pelea * pelea, 0.9);
+    suave(this.fragor.f.frequency, 240 + 220 * pelea, 0.9);
   }
 
   // EL CORAZÓN. No es ambiente: es información, y es la única que no ocupa un
