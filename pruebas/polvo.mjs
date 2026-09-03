@@ -33,4 +33,62 @@ const r = await pag.evaluate(() => {
 await pag.waitForTimeout(900);
 await pag.screenshot({ path: 'tropa/d-1-polvareda.png' });
 console.log(JSON.stringify(r));
+// ===========================================================================
+// CHISPAS, Y LA SANGRE QUE SÓLO SALE SI LA PIDEN
+// ===========================================================================
+//
+// Dos efectos que se agregaron juntos porque son el mismo sistema: un puñado
+// de puntitos que salen de un sitio, caen y se apagan. Van en UN `Points` cada
+// uno —una llamada de dibujo para las noventa y seis—, con el buffer reservado
+// de una vez y las partículas recicladas: nada se crea mientras se juega.
+//
+// LA SANGRE VIENE APAGADA. Es la opción de la portada y la decisión de fondo:
+// el juego que se abre por primera vez es apto para cualquiera. Lo que se
+// prueba acá es que la puerta funcione en los DOS sentidos, porque una opción
+// que no se puede apagar no es una opción, y una que no se puede encender
+// tampoco.
+const efectos = await pag.evaluate(() => {
+  const j = window.juego, out = [];
+  const ok = (n, c, x) => out.push([c ? 'OK ' : 'MAL', n, x === undefined ? '' : x]);
+  const V = j.jugador.pos.constructor;
+  const vivas = e => e.granos.filter(g => g.t >= 0).length;
+
+  j.fuego.chispas(new V(0, 1.2, -2), new V(0, 1, 0));
+  ok('el acero contra el acero suelta chispas', vivas(j.fuego.acero) > 8,
+    `${vivas(j.fuego.acero)} chispas`);
+  ok('y van todas en un solo Points', j.fuego.acero.malla.type === 'Points');
+
+  // el blanco se pone donde la CÁMARA mira y a la distancia que ella mide: el
+  // jugador puede estar montado y entonces la cámara no está donde él
+  j.campo.limpiarCampo(); j.jugador.revivir(); j.jugador.pos.set(0, 1.68, 0);
+  const mira = j.camara.getWorldDirection(new V());
+  const donde = j.camara.position.clone().addScaledVector(mira, 1.6); donde.y = 0;
+  const o = j.campo.soltarSoldado('realista', { pos: donde });
+  const golpear = () => { const a = o.vida; j.combate.resolverGolpe(3.5, 1, 'prueba'); return a - o.vida; };
+
+  const guardada = j.opciones.sangre;
+  j.opciones.sangre = false;
+  const pego = golpear();
+  ok('el golpe de prueba conecta, que si no esto no prueba nada', pego > 0, `${pego} de vida`);
+  ok('con la opción APAGADA no sale una gota', vivas(j.fuego.sangre) === 0,
+    String(vivas(j.fuego.sangre)));
+
+  j.opciones.sangre = true;
+  o.vida = 99; o.vivo = true;
+  golpear();
+  ok('y encendida sí salpica', vivas(j.fuego.sangre) > 4, `${vivas(j.fuego.sangre)} gotas`);
+  j.opciones.sangre = guardada;
+
+  for (let i = 0; i < 90; i++) j.fuego.actualizar(0.016);
+  ok('todo se apaga solo, no queda nada colgado',
+    vivas(j.fuego.acero) === 0 && vivas(j.fuego.sangre) === 0);
+  ok('y el Points se esconde cuando no queda ninguna',
+    !j.fuego.acero.malla.visible && !j.fuego.sangre.malla.visible);
+  return out;
+});
+console.log('');
+for (const [e, n, x] of efectos) console.log(e.padEnd(4), n.padEnd(54), x);
+const malE = efectos.filter(x => x[0] === 'MAL').length;
+console.log(`\n${efectos.filter(x => x[0] === 'OK ').length} bien, ${malE} mal`);
 await nav.close();
+process.exit(malE ? 1 : 0);

@@ -167,6 +167,16 @@
   #portada{position:fixed;inset:0;z-index:20;background:#0F141A;display:flex;align-items:center;
     justify-content:center;padding:32px}
   #portada.oculto{display:none}
+  /* ---- opciones: una tira sobria abajo de los modos, no un menú aparte ---- */
+  .opciones{margin-top:18px;padding-top:14px;border-top:1px solid rgba(216,210,192,.16)}
+  .opciones h3{margin:0 0 10px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:#8d8674;font-weight:600}
+  .opcion{display:flex;align-items:flex-start;gap:12px;cursor:pointer;user-select:none;
+    padding:8px 10px;border-radius:4px;transition:background .15s}
+  .opcion:hover{background:rgba(216,210,192,.05)}
+  .opcion input{margin:2px 0 0;accent-color:#9c2b2b;width:15px;height:15px;flex:0 0 auto;cursor:pointer}
+  .opcion .txt b{display:block;font-size:13px;color:#d8d2c0;font-weight:600}
+  .opcion .txt span{display:block;font-size:12px;line-height:1.5;color:#8d8674;margin-top:2px}
   /* la portada crece cuando se suman fases: que nunca deje el botón afuera */
   .caja{max-width:660px;width:100%;max-height:calc(100vh - 64px);overflow-y:auto}
   .franja{display:flex;height:5px;width:132px;margin-bottom:30px}
@@ -440,6 +450,19 @@
           un shooter moderno: cargar en siete pasos, parar una bayoneta en el instante
           justo y andar a caballo sin que te maten. Con <kbd>O</kbd> empiezan a venir.</span>
       </button>
+    </div>
+
+    <div class="opciones">
+      <h3>Opciones</h3>
+      <label class="opcion">
+        <input type="checkbox" id="op-sangre">
+        <span class="txt">
+          <b>Mostrar sangre</b>
+          <span>Viene apagado. San Lorenzo se cuenta entero sin ella: lo terrible de esta
+            batalla es que doscientos hombres bajan corriendo una barranca, no el color de
+            lo que salpica. Encendida, los impactos salpican.</span>
+        </span>
+      </label>
     </div>
 
     <details class="ayuda">
@@ -13978,6 +14001,148 @@ var Frustum = class {
     return new this.constructor().copy(this);
   }
 };
+var PointsMaterial = class extends Material {
+  /**
+   * Constructs a new points material.
+   *
+   * @param {Object} [parameters] - An object with one or more properties
+   * defining the material's appearance. Any property of the material
+   * (including any property from inherited materials) can be passed
+   * in here. Color values can be passed any type of value accepted
+   * by {@link Color#set}.
+   */
+  constructor(parameters) {
+    super();
+    this.isPointsMaterial = true;
+    this.type = "PointsMaterial";
+    this.color = new Color(16777215);
+    this.map = null;
+    this.alphaMap = null;
+    this.size = 1;
+    this.sizeAttenuation = true;
+    this.fog = true;
+    this.setValues(parameters);
+  }
+  copy(source) {
+    super.copy(source);
+    this.color.copy(source.color);
+    this.map = source.map;
+    this.alphaMap = source.alphaMap;
+    this.size = source.size;
+    this.sizeAttenuation = source.sizeAttenuation;
+    this.fog = source.fog;
+    return this;
+  }
+};
+var _inverseMatrix = /* @__PURE__ */ new Matrix4();
+var _ray = /* @__PURE__ */ new Ray();
+var _sphere = /* @__PURE__ */ new Sphere();
+var _position$2 = /* @__PURE__ */ new Vector3();
+var Points = class extends Object3D {
+  /**
+   * Constructs a new point cloud.
+   *
+   * @param {BufferGeometry} [geometry] - The points geometry.
+   * @param {Material|Array<Material>} [material] - The points material.
+   */
+  constructor(geometry = new BufferGeometry(), material = new PointsMaterial()) {
+    super();
+    this.isPoints = true;
+    this.type = "Points";
+    this.geometry = geometry;
+    this.material = material;
+    this.morphTargetDictionary = void 0;
+    this.morphTargetInfluences = void 0;
+    this.updateMorphTargets();
+  }
+  copy(source, recursive) {
+    super.copy(source, recursive);
+    this.material = Array.isArray(source.material) ? source.material.slice() : source.material;
+    this.geometry = source.geometry;
+    return this;
+  }
+  /**
+   * Computes intersection points between a casted ray and this point cloud.
+   *
+   * @param {Raycaster} raycaster - The raycaster.
+   * @param {Array<Object>} intersects - The target array that holds the intersection points.
+   */
+  raycast(raycaster, intersects2) {
+    const geometry = this.geometry;
+    const matrixWorld = this.matrixWorld;
+    const threshold = raycaster.params.Points.threshold;
+    const drawRange = geometry.drawRange;
+    if (geometry.boundingSphere === null) geometry.computeBoundingSphere();
+    _sphere.copy(geometry.boundingSphere);
+    _sphere.applyMatrix4(matrixWorld);
+    _sphere.radius += threshold;
+    if (raycaster.ray.intersectsSphere(_sphere) === false) return;
+    _inverseMatrix.copy(matrixWorld).invert();
+    _ray.copy(raycaster.ray).applyMatrix4(_inverseMatrix);
+    const localThreshold = threshold / ((this.scale.x + this.scale.y + this.scale.z) / 3);
+    const localThresholdSq = localThreshold * localThreshold;
+    const index = geometry.index;
+    const attributes = geometry.attributes;
+    const positionAttribute = attributes.position;
+    if (index !== null) {
+      const start = Math.max(0, drawRange.start);
+      const end = Math.min(index.count, drawRange.start + drawRange.count);
+      for (let i = start, il = end; i < il; i++) {
+        const a = index.getX(i);
+        _position$2.fromBufferAttribute(positionAttribute, a);
+        testPoint(_position$2, a, localThresholdSq, matrixWorld, raycaster, intersects2, this);
+      }
+    } else {
+      const start = Math.max(0, drawRange.start);
+      const end = Math.min(positionAttribute.count, drawRange.start + drawRange.count);
+      for (let i = start, l = end; i < l; i++) {
+        _position$2.fromBufferAttribute(positionAttribute, i);
+        testPoint(_position$2, i, localThresholdSq, matrixWorld, raycaster, intersects2, this);
+      }
+    }
+  }
+  /**
+   * Sets the values of {@link Points#morphTargetDictionary} and {@link Points#morphTargetInfluences}
+   * to make sure existing morph targets can influence this 3D object.
+   */
+  updateMorphTargets() {
+    const geometry = this.geometry;
+    const morphAttributes = geometry.morphAttributes;
+    const keys = Object.keys(morphAttributes);
+    if (keys.length > 0) {
+      const morphAttribute = morphAttributes[keys[0]];
+      if (morphAttribute !== void 0) {
+        this.morphTargetInfluences = [];
+        this.morphTargetDictionary = {};
+        for (let m = 0, ml = morphAttribute.length; m < ml; m++) {
+          const name = morphAttribute[m].name || String(m);
+          this.morphTargetInfluences.push(0);
+          this.morphTargetDictionary[name] = m;
+        }
+      }
+    }
+  }
+};
+function testPoint(point, index, localThresholdSq, matrixWorld, raycaster, intersects2, object) {
+  const rayPointDistanceSq = _ray.distanceSqToPoint(point);
+  if (rayPointDistanceSq < localThresholdSq) {
+    const intersectPoint = new Vector3();
+    _ray.closestPointToPoint(point, intersectPoint);
+    intersectPoint.applyMatrix4(matrixWorld);
+    const distance = raycaster.ray.origin.distanceTo(intersectPoint);
+    if (distance < raycaster.near || distance > raycaster.far) return;
+    intersects2.push({
+      distance,
+      distanceToRay: Math.sqrt(rayPointDistanceSq),
+      point: intersectPoint,
+      index,
+      face: null,
+      faceIndex: null,
+      barycoord: null,
+      object
+    });
+  }
+}
 var CanvasTexture = class extends Texture {
   /**
    * Constructs a new texture.
@@ -30141,8 +30306,8 @@ var Humo = class {
     this.cursor = (this.cursor + 1) % MAX;
     return this.nubes[this.cursor];
   }
-  soltar(pos, dir, opciones) {
-    const o = opciones || {};
+  soltar(pos, dir, opciones2) {
+    const o = opciones2 || {};
     const cant = o.cantidad || 14;
     for (let i = 0; i < cant; i++) {
       const n = this._libre();
@@ -30283,6 +30448,7 @@ function texturaEstrella() {
   t.colorSpace = SRGBColorSpace;
   return t;
 }
+var MAX_CHISPAS = 96;
 var Fuego = class {
   constructor(escena2, camara2) {
     this.escena = escena2;
@@ -30339,6 +30505,123 @@ var Fuego = class {
     }
     this._q = new Quaternion();
     this._z = new Vector3(0, 0, -1);
+    this.acero = this._enjambre(escena2, AdditiveBlending, 0.055);
+    this.sangre = this._enjambre(escena2, NormalBlending, 0.075);
+  }
+  // Un enjambre: el buffer reservado de una vez, las partículas recicladas, y
+  // UN `Points` para todas. Nada se crea mientras se juega.
+  _enjambre(escena2, mezcla, tam) {
+    const geo = new BufferGeometry();
+    geo.setAttribute("position", new BufferAttribute(new Float32Array(MAX_CHISPAS * 3), 3));
+    geo.setAttribute("color", new BufferAttribute(new Float32Array(MAX_CHISPAS * 3), 3));
+    const granos = [];
+    for (let i = 0; i < MAX_CHISPAS; i++) {
+      granos.push({
+        t: -1,
+        vida: 1,
+        peso: 9,
+        r: 1,
+        g: 1,
+        b: 1,
+        pos: new Vector3(),
+        vel: new Vector3()
+      });
+    }
+    const malla = new Points(geo, new PointsMaterial({
+      size: tam,
+      vertexColors: true,
+      transparent: true,
+      opacity: 1,
+      blending: mezcla,
+      depthWrite: false,
+      sizeAttenuation: true
+    }));
+    malla.frustumCulled = false;
+    malla.renderOrder = 4;
+    malla.visible = false;
+    escena2.add(malla);
+    return { granos, malla, geo };
+  }
+  // El puñado que sale de un sitio. `op` es lo que separa una chispa de acero
+  // de una salpicadura: color, cuánto pesa, cuánto dura y con cuánta fuerza
+  // sale. Todo lo demás es igual.
+  _soltarGranos(enjambre, pos, dir, cant, op) {
+    let puestas = 0;
+    for (const c of enjambre.granos) {
+      if (puestas >= cant) break;
+      if (c.t >= 0) continue;
+      puestas++;
+      c.t = 0;
+      c.vida = op.vida * (0.6 + Math.random() * 0.8);
+      c.peso = op.peso;
+      c.pos.copy(pos);
+      c.vel.copy(dir).multiplyScalar(op.fuerza * (0.5 + Math.random()));
+      c.vel.x += (Math.random() - 0.5) * op.abanico;
+      c.vel.y += (Math.random() - 0.5) * op.abanico + op.arriba;
+      c.vel.z += (Math.random() - 0.5) * op.abanico;
+      const v = 0.75 + Math.random() * 0.5;
+      c.r = op.r * v;
+      c.g = op.g * v;
+      c.b = op.b * v;
+    }
+  }
+  // Correr un enjambre y volcarlo al buffer. Sólo se escriben las vivas y se
+  // le dice al `Points` cuántas dibujar: las muertas no cuestan un vértice.
+  _correrGranos(enjambre, dt) {
+    const pos = enjambre.geo.attributes.position.array;
+    const col = enjambre.geo.attributes.color.array;
+    let n = 0;
+    for (const c of enjambre.granos) {
+      if (c.t < 0) continue;
+      c.t += dt;
+      if (c.t >= c.vida) {
+        c.t = -1;
+        continue;
+      }
+      c.vel.y -= c.peso * dt;
+      c.pos.addScaledVector(c.vel, dt);
+      if (c.pos.y < 0.02) {
+        c.t = -1;
+        continue;
+      }
+      const f = 1 - c.t / c.vida;
+      pos[n * 3] = c.pos.x;
+      pos[n * 3 + 1] = c.pos.y;
+      pos[n * 3 + 2] = c.pos.z;
+      col[n * 3] = c.r * f;
+      col[n * 3 + 1] = c.g * f;
+      col[n * 3 + 2] = c.b * f;
+      n++;
+    }
+    enjambre.malla.visible = n > 0;
+    if (n > 0) {
+      enjambre.geo.setDrawRange(0, n);
+      enjambre.geo.attributes.position.needsUpdate = true;
+      enjambre.geo.attributes.color.needsUpdate = true;
+    }
+    return n;
+  }
+  // EL ACERO CONTRA EL ACERO. Es el único momento del duelo en que se ve que
+  // pasó algo: sin esto, una parada perfecta y una tarde se ven igual.
+  chispas(pos, dir) {
+    this._soltarGranos(
+      this.acero,
+      pos,
+      dir,
+      16,
+      { vida: 0.42, peso: 11, fuerza: 3.4, abanico: 3.6, arriba: 1.4, r: 1, g: 0.72, b: 0.26 }
+    );
+  }
+  // LA SALPICADURA. Quien la llama se fija primero si el que juega la pidió:
+  // el juego viene sin sangre.
+  salpicadura(pos, dir) {
+    this._soltarGranos(
+      this.sangre,
+      pos,
+      dir,
+      10,
+      { vida: 0.55, peso: 16, fuerza: 1.9, abanico: 1.5, arriba: 0.9, r: 0.34, g: 0.03, b: 0.025 }
+    );
   }
   disparo(origen, dir, alcance) {
     const l = this.llamas.find((x) => x.t < 0) || this.llamas[0];
@@ -30364,6 +30647,8 @@ var Fuego = class {
     e.malla.quaternion.setFromUnitVectors(this._z, dir);
   }
   actualizar(dt) {
+    this._correrGranos(this.acero, dt);
+    this._correrGranos(this.sangre, dt);
     for (const l of this.llamas) {
       if (l.t < 0) continue;
       l.t += dt;
@@ -36095,6 +36380,7 @@ var Hud = class {
 // src/combate.js
 function armarCombate(ctx) {
   const {
+    opciones: opciones2,
     escena: escena2,
     camara: camara2,
     jugador: jugador2,
@@ -36112,6 +36398,17 @@ function armarCombate(ctx) {
   } = ctx;
   const rayo = new Raycaster();
   rayo.far = 220;
+  const _p = new Vector3();
+  function chispear(quien) {
+    if (!quien) return;
+    _p.copy(quien.pos).add(jugador2.pos).multiplyScalar(0.5);
+    _p.y = jugador2.pos.y - 0.25;
+    fuego2.chispas(_p, new Vector3().subVectors(jugador2.pos, quien.pos).setY(0.6).normalize());
+  }
+  function salpicar(punto, dir) {
+    if (!opciones2 || !opciones2.sangre) return;
+    fuego2.salpicadura(punto, dir);
+  }
   function falloVisible(origen, blanco, tiro, contraVos) {
     const eje = new Vector3().subVectors(blanco, origen);
     const d = eje.length() || 1;
@@ -36197,6 +36494,7 @@ function armarCombate(ctx) {
     if (soldado) {
       sonido2.impactoCarne();
       humo2.soltar(g.point, d, { cantidad: 3, vida: 2.5, empuje: 1.4, radio: 0.1, opacidad: 0.35, claro: 0 });
+      salpicar(g.point, d);
       const z = zona(soldado, g.point.y);
       const dano = z === "miembro" ? BALA_MIEMBRO : BALA_JUGADOR;
       if (soldado.recibir(dano, d, VOLTEO.bala)) {
@@ -36231,6 +36529,7 @@ function armarCombate(ctx) {
     if (!g) return;
     sonido2.impactoCarne();
     const o = g.soldado;
+    salpicar(_p.copy(o.pos).setY(o.pos.y + 1.15), g.frente);
     if (o.montado && Math.random() < CABALLO_COME) {
       o.monta.recibir(BALA_AL_CABALLO);
       return;
@@ -36245,10 +36544,12 @@ function armarCombate(ctx) {
     if (g.soldado.cubierto && !remate && !lanzado) {
       sonido2.choque();
       jugador2.sacudir(0.16);
+      chispear(g.soldado);
       hud2.mostrarAviso("Par\xF3 el sablazo", "malo");
       return;
     }
     sonido2.impactoCarne();
+    salpicar(_p.copy(g.soldado.pos).setY(g.soldado.pos.y + 1.3), g.frente);
     const filo = montado2() ? jugador2.monta.filoPorVelocidad : 1;
     const dano = Math.round((remate ? DANO_REMATE : DANO_SABLE) * filo);
     const vuelca = montado2() ? Math.min(VOLTEO.lanza, VOLTEO.bayoneta * filo) : VOLTEO.bayoneta;
@@ -36317,6 +36618,7 @@ function armarCombate(ctx) {
       const parada = conSable() ? sable2.recibir() : false;
       if (parada === "perfecta") {
         sonido2.parada();
+        chispear(quien);
         jugador2.sacudir(0.22);
         quien.aturdir();
         hud2.mostrarAviso("\xA1PARADA! Rematalo", "bien");
@@ -36324,6 +36626,7 @@ function armarCombate(ctx) {
       }
       if (parada === "bloqueo") {
         sonido2.choque();
+        chispear(quien);
         jugador2.sacudir(0.34);
         jugador2.aliento = Math.max(0, jugador2.aliento - BLOQUEO_GASTO);
         jugador2.recibir(Math.round(DANO_BAYONETA * BAYONETA_PARADA), frente);
@@ -37653,7 +37956,7 @@ function armarGentio({ jugador: jugador2, soldados: soldados2, caballos: caballo
 
 // src/mando.js
 function armarMando(ctx) {
-  const { lienzo: lienzo2, jugador: jugador2, sable: sable2, arsenal: arsenal2, campo: campo2, combate: combate2, pinza: pinza2, hud: hud2, sonido: sonido2, red: red2, plano: plano2, acto: acto2 } = ctx;
+  const { lienzo: lienzo2, jugador: jugador2, sable: sable2, arsenal: arsenal2, campo: campo2, combate: combate2, pinza: pinza2, hud: hud2, sonido: sonido2, red: red2, plano: plano2, acto: acto2, opciones: opciones2 } = ctx;
   const teclas = /* @__PURE__ */ new Set();
   const sensibilidad = 21e-4;
   let bloqueado = false;
@@ -37907,6 +38210,14 @@ function armarMando(ctx) {
     }
     document.getElementById("portada").classList.add("oculto");
     plano2.mostrar("oeste", 250, () => alCampo("batalla"));
+  }
+  const casillaSangre = document.getElementById("op-sangre");
+  if (casillaSangre && opciones2) {
+    casillaSangre.checked = !!opciones2.sangre;
+    casillaSangre.addEventListener("change", () => {
+      opciones2.sangre = casillaSangre.checked;
+      opciones2.guardar();
+    });
   }
   document.getElementById("modo-batalla").addEventListener("click", () => arrancar("batalla"));
   document.getElementById("modo-campo").addEventListener("click", () => arrancar("campo"));
@@ -41999,6 +42310,23 @@ var humo = new Humo(escena);
 var fuego = new Fuego(escena, camara);
 var lejania = new Lejania(escena, 320);
 var sonido = new Sonido();
+var opciones = {
+  sangre: false,
+  guardar() {
+    try {
+      localStorage.setItem("clarin.opciones", JSON.stringify({ sangre: this.sangre }));
+    } catch {
+    }
+  },
+  cargar() {
+    try {
+      const g = JSON.parse(localStorage.getItem("clarin.opciones") || "{}");
+      if (typeof g.sangre === "boolean") this.sangre = g.sangre;
+    } catch {
+    }
+  }
+};
+opciones.cargar();
 var hud = new Hud();
 var jugador = new Jugador(camara, mundo.colisiones);
 var sable = new Sable(camaraArma, sonido);
@@ -42018,6 +42346,7 @@ var pinza = new Pinza();
 var arsenal = null;
 var canones = [];
 var combate = armarCombate({
+  opciones,
   escena,
   camara,
   jugador,
@@ -42212,7 +42541,7 @@ red.alVictoria = (fase) => {
   if (fase === "llego") victoria.llegar(false);
 };
 var plano = armarPlano({ hud });
-var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto });
+var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, opciones });
 addEventListener("resize", () => {
   camara.aspect = innerWidth / innerHeight;
   camara.updateProjectionMatrix();
@@ -42424,6 +42753,7 @@ window.juego = {
   canones,
   acto,
   victoria,
+  opciones,
   simular,
   get armas() {
     return arsenal.armas;

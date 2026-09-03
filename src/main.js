@@ -86,6 +86,33 @@ const humo = new Humo(escena);
 const fuego = new Fuego(escena, camara);
 const lejania = new Lejania(escena, 320);
 const sonido = new Sonido();
+// ---------------------------------------------------------------------------
+// LO QUE ELIGE EL QUE JUEGA
+// ---------------------------------------------------------------------------
+//
+// Vive acá porque main.js es el que coordina y el que se lo pasa a quien lo
+// necesite —el panel de la portada lo escribe, combate.js lo lee—, y así no
+// hace falta un archivo nuevo para tres renglones.
+//
+// LA SANGRE VIENE APAGADA, y ésa es la decisión: el juego que se abre por
+// primera vez es apto para cualquiera. San Lorenzo se cuenta bien sin ella
+// —lo que hace terrible a esta batalla es que doscientos hombres se van
+// corriendo por una barranca, no el color de lo que salpica—, así que la
+// sangre es algo que se pide, no algo de lo que hay que escaparse.
+const opciones = {
+  sangre: false,
+  guardar () {
+    try { localStorage.setItem('clarin.opciones', JSON.stringify({ sangre: this.sangre })); } catch { /* sin permiso, no pasa nada */ }
+  },
+  cargar () {
+    try {
+      const g = JSON.parse(localStorage.getItem('clarin.opciones') || '{}');
+      if (typeof g.sangre === 'boolean') this.sangre = g.sangre;
+    } catch { /* dato roto: se queda el de fábrica */ }
+  }
+};
+opciones.cargar();
+
 const hud = new Hud();
 const jugador = new Jugador(camara, mundo.colisiones);
 const sable = new Sable(camaraArma, sonido);
@@ -119,6 +146,7 @@ const pinza = new Pinza();
 let arsenal = null;
 const canones = [];
 const combate = armarCombate({
+  opciones,
   escena, camara, jugador, soldados, canones, mundo,
   humo, fuego, sonido, hud, sable, luzBoca,
   montado, conSable: () => arsenal.conSable()
@@ -349,7 +377,7 @@ red.alVictoria = (fase) => {
 };
 
 const plano = armarPlano({ hud });
-const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto });
+const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, opciones });
 
 addEventListener('resize', () => {
   camara.aspect = innerWidth / innerHeight;
@@ -631,7 +659,7 @@ window.juego = {
   balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, render,
-  lejania, pasadaVel, pinza, canones, acto, victoria, simular,
+  lejania, pasadaVel, pinza, canones, acto, victoria, opciones, simular,
   get armas () { return arsenal.armas; },
   get caballo () { return campo.caballo; },
   get arma () { return arsenal.actual(); },

@@ -35,6 +35,22 @@ function texturaEstrella () {
   return t;
 }
 
+// ---------------------------------------------------------------------------
+// LAS PARTÍCULAS SUELTAS · chispas y salpicaduras
+// ---------------------------------------------------------------------------
+//
+// Son dos efectos que parecen distintos y son el mismo: un puñado de puntitos
+// que salen despedidos de un sitio, caen y se apagan. La chispa del acero es
+// naranja, rápida y liviana; la salpicadura es oscura, lenta y pesada. Cambian
+// tres números, no el sistema.
+//
+// Y VAN TODOS EN UN SOLO `Points`, que es lo que hace que esto no cueste nada:
+// una llamada de dibujo para las noventa y seis partículas, hayan salido de un
+// sablazo o de seis. Nada se crea mientras se juega —el buffer se reserva una
+// vez y las partículas muertas se reciclan—, que es la regla de este proyecto
+// para todo lo que pasa por el bucle de dibujo.
+const MAX_CHISPAS = 96;
+
 export class Fuego {
   constructor (escena, camara) {
     this.escena = escena;
@@ -81,6 +97,102 @@ export class Fuego {
     }
     this._q = new THREE.Quaternion();
     this._z = new THREE.Vector3(0, 0, -1);
+
+    // LOS DOS ENJAMBRES. Mismo código, mismo costo, y separados por una sola
+    // razón: cómo se mezclan con lo que hay detrás.
+    //
+    // La chispa es luz —acero al rojo saltando— y va en ADITIVA: se suma a lo
+    // que tapa y por eso brilla. La sangre es lo contrario, es algo que TAPA, y
+    // en aditiva una gota oscura sobre pasto claro directamente no se ve: lo
+    // aditivo sólo puede aclarar. Son dos llamadas de dibujo en total, y la
+    // segunda sólo existe si el que juega pidió sangre.
+    this.acero = this._enjambre(escena, THREE.AdditiveBlending, 0.055);
+    this.sangre = this._enjambre(escena, THREE.NormalBlending, 0.075);
+  }
+
+  // Un enjambre: el buffer reservado de una vez, las partículas recicladas, y
+  // UN `Points` para todas. Nada se crea mientras se juega.
+  _enjambre (escena, mezcla, tam) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAX_CHISPAS * 3), 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(MAX_CHISPAS * 3), 3));
+    const granos = [];
+    for (let i = 0; i < MAX_CHISPAS; i++) {
+      granos.push({ t: -1, vida: 1, peso: 9, r: 1, g: 1, b: 1,
+        pos: new THREE.Vector3(), vel: new THREE.Vector3() });
+    }
+    const malla = new THREE.Points(geo, new THREE.PointsMaterial({
+      size: tam, vertexColors: true, transparent: true, opacity: 1,
+      blending: mezcla, depthWrite: false, sizeAttenuation: true
+    }));
+    malla.frustumCulled = false;
+    malla.renderOrder = 4;
+    malla.visible = false;
+    escena.add(malla);
+    return { granos, malla, geo };
+  }
+
+  // El puñado que sale de un sitio. `op` es lo que separa una chispa de acero
+  // de una salpicadura: color, cuánto pesa, cuánto dura y con cuánta fuerza
+  // sale. Todo lo demás es igual.
+  _soltarGranos (enjambre, pos, dir, cant, op) {
+    let puestas = 0;
+    for (const c of enjambre.granos) {
+      if (puestas >= cant) break;
+      if (c.t >= 0) continue;
+      puestas++;
+      c.t = 0;
+      c.vida = op.vida * (0.6 + Math.random() * 0.8);
+      c.peso = op.peso;
+      c.pos.copy(pos);
+      c.vel.copy(dir).multiplyScalar(op.fuerza * (0.5 + Math.random()));
+      c.vel.x += (Math.random() - 0.5) * op.abanico;
+      c.vel.y += (Math.random() - 0.5) * op.abanico + op.arriba;
+      c.vel.z += (Math.random() - 0.5) * op.abanico;
+      const v = 0.75 + Math.random() * 0.5;
+      c.r = op.r * v; c.g = op.g * v; c.b = op.b * v;
+    }
+  }
+
+  // Correr un enjambre y volcarlo al buffer. Sólo se escriben las vivas y se
+  // le dice al `Points` cuántas dibujar: las muertas no cuestan un vértice.
+  _correrGranos (enjambre, dt) {
+    const pos = enjambre.geo.attributes.position.array;
+    const col = enjambre.geo.attributes.color.array;
+    let n = 0;
+    for (const c of enjambre.granos) {
+      if (c.t < 0) continue;
+      c.t += dt;
+      if (c.t >= c.vida) { c.t = -1; continue; }
+      c.vel.y -= c.peso * dt;
+      c.pos.addScaledVector(c.vel, dt);
+      if (c.pos.y < 0.02) { c.t = -1; continue; }     // llegó al suelo
+      const f = 1 - c.t / c.vida;                      // se apaga apagándose
+      pos[n * 3] = c.pos.x; pos[n * 3 + 1] = c.pos.y; pos[n * 3 + 2] = c.pos.z;
+      col[n * 3] = c.r * f; col[n * 3 + 1] = c.g * f; col[n * 3 + 2] = c.b * f;
+      n++;
+    }
+    enjambre.malla.visible = n > 0;
+    if (n > 0) {
+      enjambre.geo.setDrawRange(0, n);
+      enjambre.geo.attributes.position.needsUpdate = true;
+      enjambre.geo.attributes.color.needsUpdate = true;
+    }
+    return n;
+  }
+
+  // EL ACERO CONTRA EL ACERO. Es el único momento del duelo en que se ve que
+  // pasó algo: sin esto, una parada perfecta y una tarde se ven igual.
+  chispas (pos, dir) {
+    this._soltarGranos(this.acero, pos, dir, 16,
+      { vida: 0.42, peso: 11, fuerza: 3.4, abanico: 3.6, arriba: 1.4, r: 1, g: 0.72, b: 0.26 });
+  }
+
+  // LA SALPICADURA. Quien la llama se fija primero si el que juega la pidió:
+  // el juego viene sin sangre.
+  salpicadura (pos, dir) {
+    this._soltarGranos(this.sangre, pos, dir, 10,
+      { vida: 0.55, peso: 16, fuerza: 1.9, abanico: 1.5, arriba: 0.9, r: 0.34, g: 0.03, b: 0.025 });
   }
 
   disparo (origen, dir, alcance) {
@@ -110,6 +222,8 @@ export class Fuego {
   }
 
   actualizar (dt) {
+    this._correrGranos(this.acero, dt);
+    this._correrGranos(this.sangre, dt);
     for (const l of this.llamas) {
       if (l.t < 0) continue;
       l.t += dt;

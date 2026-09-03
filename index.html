@@ -167,6 +167,16 @@
   #portada{position:fixed;inset:0;z-index:20;background:#0F141A;display:flex;align-items:center;
     justify-content:center;padding:32px}
   #portada.oculto{display:none}
+  /* ---- opciones: una tira sobria abajo de los modos, no un menú aparte ---- */
+  .opciones{margin-top:18px;padding-top:14px;border-top:1px solid rgba(216,210,192,.16)}
+  .opciones h3{margin:0 0 10px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:#8d8674;font-weight:600}
+  .opcion{display:flex;align-items:flex-start;gap:12px;cursor:pointer;user-select:none;
+    padding:8px 10px;border-radius:4px;transition:background .15s}
+  .opcion:hover{background:rgba(216,210,192,.05)}
+  .opcion input{margin:2px 0 0;accent-color:#9c2b2b;width:15px;height:15px;flex:0 0 auto;cursor:pointer}
+  .opcion .txt b{display:block;font-size:13px;color:#d8d2c0;font-weight:600}
+  .opcion .txt span{display:block;font-size:12px;line-height:1.5;color:#8d8674;margin-top:2px}
   /* la portada crece cuando se suman fases: que nunca deje el botón afuera */
   .caja{max-width:660px;width:100%;max-height:calc(100vh - 64px);overflow-y:auto}
   .franja{display:flex;height:5px;width:132px;margin-bottom:30px}
@@ -440,6 +450,19 @@
           un shooter moderno: cargar en siete pasos, parar una bayoneta en el instante
           justo y andar a caballo sin que te maten. Con <kbd>O</kbd> empiezan a venir.</span>
       </button>
+    </div>
+
+    <div class="opciones">
+      <h3>Opciones</h3>
+      <label class="opcion">
+        <input type="checkbox" id="op-sangre">
+        <span class="txt">
+          <b>Mostrar sangre</b>
+          <span>Viene apagado. San Lorenzo se cuenta entero sin ella: lo terrible de esta
+            batalla es que doscientos hombres bajan corriendo una barranca, no el color de
+            lo que salpica. Encendida, los impactos salpican.</span>
+        </span>
+      </label>
     </div>
 
     <details class="ayuda">

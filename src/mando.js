@@ -10,7 +10,7 @@
 // juego, está en el archivo equivocado.
 
 export function armarMando (ctx) {
-  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto } = ctx;
+  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, opciones } = ctx;
 
   const teclas = new Set();
   const sensibilidad = 0.0021;
@@ -284,6 +284,21 @@ export function armarMando (ctx) {
     document.getElementById('portada').classList.add('oculto');
     plano.mostrar('oeste', 250, () => alCampo('batalla'));
   }
+  // ---- el panel de opciones de la portada ----
+  //
+  // Va acá porque acá viven los botones de la portada. La casilla ESCRIBE en el
+  // objeto que main.js le pasó y lo guarda; quien la lee es combate.js, que se
+  // fija una sola vez antes de salpicar. Y se pinta con lo que había guardado,
+  // que si no la casilla dice una cosa y el juego hace otra.
+  const casillaSangre = document.getElementById('op-sangre');
+  if (casillaSangre && opciones) {
+    casillaSangre.checked = !!opciones.sangre;
+    casillaSangre.addEventListener('change', () => {
+      opciones.sangre = casillaSangre.checked;
+      opciones.guardar();
+    });
+  }
+
   document.getElementById('modo-batalla').addEventListener('click', () => arrancar('batalla'));
   document.getElementById('modo-campo').addEventListener('click', () => arrancar('campo'));
 

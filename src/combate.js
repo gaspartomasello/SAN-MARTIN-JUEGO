@@ -32,11 +32,36 @@ import {
 } from './balance.js';
 
 export function armarCombate (ctx) {
-  const { escena, camara, jugador, soldados, canones, mundo,
+  const { opciones, escena, camara, jugador, soldados, canones, mundo,
     humo, fuego, sonido, hud, sable, luzBoca, montado, conSable } = ctx;
 
   const rayo = new THREE.Raycaster();
   rayo.far = 220;
+
+  // -------------------------------------------------------------------------
+  // lo que se ve cuando algo pega
+  // -------------------------------------------------------------------------
+  //
+  // LAS CHISPAS DEL ACERO. Sin ellas, parar un bayonetazo se oía pero no se
+  // veía: el duelo entero pasaba sin una sola señal de que los dos aceros se
+  // habían tocado. Salen entre vos y el que te entró, a la altura del pecho,
+  // que es donde se cruzan las hojas.
+  const _p = new THREE.Vector3();
+  function chispear (quien) {
+    if (!quien) return;
+    _p.copy(quien.pos).add(jugador.pos).multiplyScalar(0.5);
+    _p.y = jugador.pos.y - 0.25;
+    fuego.chispas(_p, new THREE.Vector3().subVectors(jugador.pos, quien.pos).setY(0.6).normalize());
+  }
+
+  // LA SALPICADURA, que sale sólo si la pidieron. El juego viene sin ella y esa
+  // es la decisión, no un olvido: la pregunta se hace UNA vez acá y no en cada
+  // sitio donde algo recibe un golpe, para que no quede un rincón del código
+  // sangrando por su cuenta cuando la opción está apagada.
+  function salpicar (punto, dir) {
+    if (!opciones || !opciones.sangre) return;
+    fuego.salpicadura(punto, dir);
+  }
 
   // -------------------------------------------------------------------------
   // el fallo, que tiene que verse
@@ -157,6 +182,7 @@ export function armarCombate (ctx) {
     if (soldado) {
       sonido.impactoCarne();
       humo.soltar(g.point, d, { cantidad: 3, vida: 2.5, empuje: 1.4, radio: 0.1, opacidad: 0.35, claro: 0 });
+      salpicar(g.point, d);
       const z = zona(soldado, g.point.y);
       const dano = z === 'miembro' ? BALA_MIEMBRO : BALA_JUGADOR;
       if (soldado.recibir(dano, d, VOLTEO.bala)) {
@@ -197,6 +223,7 @@ export function armarCombate (ctx) {
     if (!g) return;
     sonido.impactoCarne();
     const o = g.soldado;
+    salpicar(_p.copy(o.pos).setY(o.pos.y + 1.15), g.frente);
     if (o.montado && Math.random() < CABALLO_COME) { o.monta.recibir(BALA_AL_CABALLO); return; }
     if (o.recibir(dano, g.frente, VOLTEO.bayoneta)) hud.mostrarAviso(nombre, 'bien');
   }
@@ -217,10 +244,12 @@ export function armarCombate (ctx) {
     if (g.soldado.cubierto && !remate && !lanzado) {
       sonido.choque();
       jugador.sacudir(0.16);
+      chispear(g.soldado);
       hud.mostrarAviso('Paró el sablazo', 'malo');
       return;
     }
     sonido.impactoCarne();
+    salpicar(_p.copy(g.soldado.pos).setY(g.soldado.pos.y + 1.3), g.frente);
     // Desde el caballo el sable no corta con el brazo: corta con la velocidad.
     const filo = montado() ? jugador.monta.filoPorVelocidad : 1;
     const dano = Math.round((remate ? DANO_REMATE : DANO_SABLE) * filo);
@@ -303,6 +332,7 @@ export function armarCombate (ctx) {
       const parada = conSable() ? sable.recibir() : false;
       if (parada === 'perfecta') {
         sonido.parada();
+        chispear(quien);
         jugador.sacudir(0.22);
         quien.aturdir();
         hud.mostrarAviso('¡PARADA! Rematalo', 'bien');
@@ -310,6 +340,7 @@ export function armarCombate (ctx) {
       }
       if (parada === 'bloqueo') {
         sonido.choque();
+        chispear(quien);
         jugador.sacudir(0.34);
         jugador.aliento = Math.max(0, jugador.aliento - BLOQUEO_GASTO);
         jugador.recibir(Math.round(DANO_BAYONETA * BAYONETA_PARADA), frente);
