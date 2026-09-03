@@ -79,11 +79,55 @@ const efectos = await pag.evaluate(() => {
   ok('y encendida sí salpica', vivas(j.fuego.sangre) > 4, `${vivas(j.fuego.sangre)} gotas`);
   j.opciones.sangre = guardada;
 
+  // LAS PAVESAS: los granos de pólvora que salen ardiendo por la boca, que es
+  // lo que hace que un arma de chispa se vea sucia y no como un láser. Son
+  // pocas por tiro a propósito —con quince y seiscientos cincuenta tiros por
+  // batalla el enjambre viviría lleno y nunca se vería una apagarse— y el
+  // enjambre tiene techo, así que una descarga entera no lo desborda.
+  for (let i = 0; i < 60; i++) j.fuego.actualizar(0.05);
+  j.fuego.disparo(new V(0, 1.5, -1), new V(0, 0, -1), 60);
+  ok('el fogonazo tira pavesas', j.fuego.pavesa.granos.filter(g => g.t >= 0).length > 2,
+    `${j.fuego.pavesa.granos.filter(g => g.t >= 0).length} pavesas`);
+  for (let i = 0; i < 200; i++) j.fuego.disparo(new V(0, 1.5, -1), new V(0, 0, -1), 60);
+  ok('y doscientos tiros seguidos no desbordan el enjambre',
+    j.fuego.pavesa.granos.filter(g => g.t >= 0).length <= 96);
+
+  // LA BALA QUE NO LE DIO A NADIE. Sin marca donde cae, apuntar y errar se ve
+  // igual que no haber disparado, y no hay forma de corregir la puntería.
+  //
+  // Se CALCULA dónde corta el suelo, no se tira un rayo: el rayo del disparo
+  // prueba contra soldados, blancos y piezas —el suelo no está ahí— y meter el
+  // terreno adentro sería pagar un raycast más caro en cada tiro para dibujar
+  // una nube. Y `humo.vivas` es un contador que se refresca en `actualizar`,
+  // no al soltar: para verlo en el mismo instante hay que contar el pool.
+  const nubesVivas = () => j.humo.nubes.filter(n => n.viva).length;
+  const antesSuelo = nubesVivas();
+  j.combate.resolverDisparo(new V(0, 1.7, 0), new V(0, -0.35, -1).normalize(), 0);
+  ok('la bala que se va al suelo levanta tierra donde cae', nubesVivas() > antesSuelo,
+    `${nubesVivas() - antesSuelo} nubes`);
+  const antesCielo = nubesVivas();
+  j.combate.resolverDisparo(new V(0, 1.7, 0), new V(0, 0.4, -1).normalize(), 0);
+  ok('y la que se va al cielo no levanta nada', nubesVivas() === antesCielo);
+
+  // EL CAÑONAZO. Era un 0,5 plano: una pieza a cien metros movía la cámara
+  // igual que una a diez. El oído ya distinguía —sólo ensordece a menos de
+  // cuarenta y cinco metros— así que la vista iba por detrás del oído.
+  const sacudidas = [];
+  const _sac = j.jugador.sacudir.bind(j.jugador);
+  j.jugador.sacudir = f => { sacudidas.push(+f.toFixed(2)); return _sac(f); };
+  const piezaA = d => ({ pos: new V(0, 0, -d), fuerzaSobre: () => 0 });
+  j.jugador.pos.set(0, 1.68, 0);
+  sacudidas.length = 0; j.combate.resolverMetralla(piezaA(8)); const cerca = sacudidas[0];
+  sacudidas.length = 0; j.combate.resolverMetralla(piezaA(95)); const lejos = sacudidas[0];
+  j.jugador.sacudir = _sac;
+  ok('el cañón de cerca sacude mucho más que el de lejos', cerca > lejos * 2.5,
+    `a 8 m ${cerca} · a 95 m ${lejos}`);
+
   for (let i = 0; i < 90; i++) j.fuego.actualizar(0.016);
   ok('todo se apaga solo, no queda nada colgado',
-    vivas(j.fuego.acero) === 0 && vivas(j.fuego.sangre) === 0);
+    vivas(j.fuego.acero) === 0 && vivas(j.fuego.sangre) === 0 && vivas(j.fuego.pavesa) === 0);
   ok('y el Points se esconde cuando no queda ninguna',
-    !j.fuego.acero.malla.visible && !j.fuego.sangre.malla.visible);
+    !j.fuego.acero.malla.visible && !j.fuego.sangre.malla.visible && !j.fuego.pavesa.malla.visible);
   return out;
 });
 console.log('');

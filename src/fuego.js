@@ -108,6 +108,10 @@ export class Fuego {
     // segunda sólo existe si el que juega pidió sangre.
     this.acero = this._enjambre(escena, THREE.AdditiveBlending, 0.055);
     this.sangre = this._enjambre(escena, THREE.NormalBlending, 0.075);
+    // LAS PAVESAS: los granos de pólvora que salen ardiendo por la boca. Es lo
+    // que hace que un arma de chispa se vea sucia y no como un láser. Van en
+    // aditiva como la chispa —son brasas— pero caen despacio y duran más.
+    this.pavesa = this._enjambre(escena, THREE.AdditiveBlending, 0.038);
   }
 
   // Un enjambre: el buffer reservado de una vez, las partículas recicladas, y
@@ -188,6 +192,15 @@ export class Fuego {
       { vida: 0.42, peso: 11, fuerza: 3.4, abanico: 3.6, arriba: 1.4, r: 1, g: 0.72, b: 0.26 });
   }
 
+  // LA PÓLVORA QUE SALE ARDIENDO. Pocas y chicas a propósito: son un detalle de
+  // suciedad, no un efecto. Con quince por tiro y seiscientos cincuenta tiros
+  // por batalla el enjambre viviría lleno y nunca se vería una sola apagarse;
+  // con cinco se ven las de tu propio fusil, que es donde se miran.
+  pavesas (pos, dir) {
+    this._soltarGranos(this.pavesa, pos, dir, 5,
+      { vida: 0.85, peso: 3.4, fuerza: 2.6, abanico: 1.1, arriba: 0.5, r: 1, g: 0.5, b: 0.14 });
+  }
+
   // LA SALPICADURA. Quien la llama se fija primero si el que juega la pidió:
   // el juego viene sin sangre.
   salpicadura (pos, dir) {
@@ -212,6 +225,8 @@ export class Fuego {
     l.estrella.scale.setScalar(0.26 + Math.random() * 0.12);
     l.estrella.material.rotation = Math.random() * Math.PI;
 
+    this.pavesas(l.estrella.position, dir);
+
     const e = this.estelas.find(x => x.t < 0) || this.estelas[0];
     e.t = 0;
     e.origen.copy(origen);
@@ -224,6 +239,7 @@ export class Fuego {
   actualizar (dt) {
     this._correrGranos(this.acero, dt);
     this._correrGranos(this.sangre, dt);
+    this._correrGranos(this.pavesa, dt);
     for (const l of this.llamas) {
       if (l.t < 0) continue;
       l.t += dt;

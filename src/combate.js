@@ -42,11 +42,35 @@ export function armarCombate (ctx) {
   // lo que se ve cuando algo pega
   // -------------------------------------------------------------------------
   //
+  // DÓNDE CAYÓ LA QUE NO LE DIO A NADIE. Sin esto, apuntar y errar se veía
+  // exactamente igual que no haber disparado, y no hay manera de corregir la
+  // puntería si el error no deja marca: es lo único que se puede aprender
+  // tirando.
+  //
+  // Y SE CALCULA, NO SE TIRA UN RAYO. El rayo del disparo prueba contra
+  // soldados, blancos y piezas —el suelo no está ahí— y meter el terreno
+  // adentro sería pagar un raycast más caro en cada tiro para dibujar una
+  // nube. Dónde corta el suelo una recta que baja es una división, así que se
+  // hace la división. La tapia y los árboles quedan afuera y así se queda: no
+  // vale un raycast contra el mundo entero.
+  function tierraDondeCayo (origen, d) {
+    if (d.y >= -0.02) return;                       // se va al cielo: no cae en ningún lado
+    const t = (0.05 - origen.y) / d.y;
+    if (t <= 0 || t > 150) return;
+    _p.copy(origen).addScaledVector(d, t);
+    // la tierra salta HACIA ATRÁS y hacia arriba: lo que se ve es el rebote
+    _r.set(-d.x, 0.9, -d.z).normalize();
+    humo.soltar(_p, _r, { cantidad: 3, vida: 1.7, empuje: 1.7, radio: 0.20,
+      opacidad: 0.34, claro: 0.7, tierra: 1 });
+  }
+
+  //
   // LAS CHISPAS DEL ACERO. Sin ellas, parar un bayonetazo se oía pero no se
   // veía: el duelo entero pasaba sin una sola señal de que los dos aceros se
   // habían tocado. Salen entre vos y el que te entró, a la altura del pecho,
   // que es donde se cruzan las hojas.
   const _p = new THREE.Vector3();
+  const _r = new THREE.Vector3();
   function chispear (quien) {
     if (!quien) return;
     _p.copy(quien.pos).add(jugador.pos).multiplyScalar(0.5);
@@ -166,7 +190,7 @@ export function armarCombate (ctx) {
 
     const g = golpes[0];
     fuego.disparo(origen, d, g ? g.distance : 140);
-    if (!g) return;
+    if (!g) { tierraDondeCayo(origen, d); return; }
 
     let raiz = g.object;
     while (raiz.parent && raiz.parent !== escena) raiz = raiz.parent;
@@ -380,7 +404,16 @@ export function armarCombate (ctx) {
   // —la metralla no distingue— y castiga más al que va montado, porque un
   // caballo es un blanco enorme.
   function resolverMetralla (canon) {
-    jugador.sacudir(0.5);
+    // EL CAÑONAZO SACUDE POR LA DISTANCIA, no siempre lo mismo. Esto era un
+    // 0,5 plano: una pieza a cien metros te movía la cámara igual que una a
+    // diez, y con eso el cañón deja de ser una amenaza que se acerca y pasa a
+    // ser un ruido de fondo con temblor. De cerca ahora pega el doble; de
+    // lejos, apenas un empujón que te dice que salió el tiro.
+    //
+    // El oído ya hacía esto —audio.js sólo ensordece si la pieza está a menos
+    // de cuarenta y cinco metros— así que la vista iba por detrás del oído.
+    const lejos = canon.pos.distanceTo(jugador.pos);
+    jugador.sacudir(0.14 + 0.86 * Math.max(0, 1 - lejos / 55));
     const f = jugador.vivo ? canon.fuerzaSobre(jugador.pos) : 0;
     if (f > 0) {
       sonido.metralla();
