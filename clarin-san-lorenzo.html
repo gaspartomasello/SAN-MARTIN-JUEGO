@@ -30449,6 +30449,20 @@ function texturaEstrella() {
   return t;
 }
 var MAX_CHISPAS = 96;
+function texturaGrano() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const x = c.getContext("2d");
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, "rgba(255,255,255,0.82)");
+  g.addColorStop(0.4, "rgba(255,255,255,0.66)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  x.fillStyle = g;
+  x.fillRect(0, 0, 64, 64);
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+}
 var Fuego = class {
   constructor(escena2, camara2) {
     this.escena = escena2;
@@ -30505,9 +30519,9 @@ var Fuego = class {
     }
     this._q = new Quaternion();
     this._z = new Vector3(0, 0, -1);
-    this.acero = this._enjambre(escena2, AdditiveBlending, 0.055);
-    this.sangre = this._enjambre(escena2, NormalBlending, 0.075);
-    this.pavesa = this._enjambre(escena2, AdditiveBlending, 0.038);
+    this.acero = this._enjambre(escena2, AdditiveBlending, 0.072);
+    this.sangre = this._enjambre(escena2, NormalBlending, 0.09);
+    this.pavesa = this._enjambre(escena2, AdditiveBlending, 0.052);
   }
   // Un enjambre: el buffer reservado de una vez, las partículas recicladas, y
   // UN `Points` para todas. Nada se crea mientras se juega.
@@ -30533,6 +30547,7 @@ var Fuego = class {
       vertexColors: true,
       transparent: true,
       opacity: 1,
+      map: this._grano || (this._grano = texturaGrano()),
       blending: mezcla,
       depthWrite: false,
       sizeAttenuation: true

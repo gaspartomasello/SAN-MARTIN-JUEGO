@@ -51,6 +51,39 @@ function texturaEstrella () {
 // para todo lo que pasa por el bucle de dibujo.
 const MAX_CHISPAS = 96;
 
+// UN PUNTO REDONDO, Y NO UN CUADRADO.
+//
+// `PointsMaterial` sin textura dibuja cada partícula como un cuadrito plano:
+// es lo que hace WebGL por defecto con los sprites de punto, y en pantalla se
+// ve exactamente como suena —una chispa cuadrada, una gota de sangre cuadrada—.
+// No se nota escribiéndolo, se nota jugando.
+//
+// La textura es un degradado radial de blanco a transparente, y va en BLANCO a
+// propósito: el color de cada partícula viene por vértice y se multiplica con
+// esto, así que una sola textura sirve para la chispa naranja, la pavesa y la
+// sangre. Se genera una vez, al armar.
+//
+// El borde no se corta de golpe —la mitad de afuera se desvanece— porque un
+// círculo duro de treinta píxeles tiene el borde dentado y vuelve a leerse
+// como una figura y no como una brasa.
+function texturaGrano () {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  // El núcleo NO va a opacidad plena. En aditiva, un centro opaco satura y la
+  // chispa sale blanca: se pierde el naranja del acero al rojo, que es lo único
+  // que la hace parecer una chispa y no un puntito de luz.
+  g.addColorStop(0.00, 'rgba(255,255,255,0.82)');
+  g.addColorStop(0.40, 'rgba(255,255,255,0.66)');
+  g.addColorStop(1.00, 'rgba(255,255,255,0)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export class Fuego {
   constructor (escena, camara) {
     this.escena = escena;
@@ -106,12 +139,12 @@ export class Fuego {
     // en aditiva una gota oscura sobre pasto claro directamente no se ve: lo
     // aditivo sólo puede aclarar. Son dos llamadas de dibujo en total, y la
     // segunda sólo existe si el que juega pidió sangre.
-    this.acero = this._enjambre(escena, THREE.AdditiveBlending, 0.055);
-    this.sangre = this._enjambre(escena, THREE.NormalBlending, 0.075);
+    this.acero = this._enjambre(escena, THREE.AdditiveBlending, 0.072);
+    this.sangre = this._enjambre(escena, THREE.NormalBlending, 0.090);
     // LAS PAVESAS: los granos de pólvora que salen ardiendo por la boca. Es lo
     // que hace que un arma de chispa se vea sucia y no como un láser. Van en
     // aditiva como la chispa —son brasas— pero caen despacio y duran más.
-    this.pavesa = this._enjambre(escena, THREE.AdditiveBlending, 0.038);
+    this.pavesa = this._enjambre(escena, THREE.AdditiveBlending, 0.052);
   }
 
   // Un enjambre: el buffer reservado de una vez, las partículas recicladas, y
@@ -127,6 +160,7 @@ export class Fuego {
     }
     const malla = new THREE.Points(geo, new THREE.PointsMaterial({
       size: tam, vertexColors: true, transparent: true, opacity: 1,
+      map: this._grano || (this._grano = texturaGrano()),
       blending: mezcla, depthWrite: false, sizeAttenuation: true
     }));
     malla.frustumCulled = false;

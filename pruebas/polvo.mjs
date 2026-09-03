@@ -58,6 +58,15 @@ const efectos = await pag.evaluate(() => {
     `${vivas(j.fuego.acero)} chispas`);
   ok('y van todas en un solo Points', j.fuego.acero.malla.type === 'Points');
 
+  // REDONDAS, NO CUADRADAS. `PointsMaterial` sin textura dibuja cada partícula
+  // como un cuadrito plano —es lo que hace WebGL por defecto con los sprites de
+  // punto— y salieron así a la calle una versión entera: chispas cuadradas y
+  // gotas de sangre cuadradas. No se nota escribiéndolo, se nota jugando.
+  const conMapa = [j.fuego.acero, j.fuego.sangre, j.fuego.pavesa]
+    .filter(e => e.malla.material.map).length;
+  ok('los tres enjambres tienen textura redonda, no el cuadrado de fábrica',
+    conMapa === 3, `${conMapa} de 3`);
+
   // el blanco se pone donde la CÁMARA mira y a la distancia que ella mide: el
   // jugador puede estar montado y entonces la cámara no está donde él
   j.campo.limpiarCampo(); j.jugador.revivir(); j.jugador.pos.set(0, 1.68, 0);
