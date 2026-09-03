@@ -163,21 +163,110 @@
   #pausa .nota{margin-top:20px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
     color:#5E6A75}
 
-  /* ---- portada ---- */
-  #portada{position:fixed;inset:0;z-index:20;background:#0F141A;display:flex;align-items:center;
-    justify-content:center;padding:32px}
+  /* ---- portada ----
+     Una foto a sangre y cinco palabras. Lo que antes estaba acá —tres tarjetas
+     con la historia entera, las teclas y la ayuda, todo junto en la primera
+     pantalla— no se borró: se mudó adentro de «Opciones», que es donde se
+     busca. Y la pantalla no scrollea NUNCA: si algo no entra, el que scrollea
+     es el panel, no la página. */
+  #portada{position:fixed;inset:0;z-index:20;overflow:hidden;background:#0F141A;
+    display:flex;align-items:center;justify-content:flex-start}
   #portada.oculto{display:none}
-  /* ---- opciones: una tira sobria abajo de los modos, no un menú aparte ---- */
-  .opciones{margin-top:18px;padding-top:14px;border-top:1px solid rgba(216,210,192,.16)}
-  .opciones h3{margin:0 0 10px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
-    color:#8d8674;font-weight:600}
+  /* El fondo son dos capas y el orden importa: primero un amanecer pintado con
+     degradados y ENCIMA la foto. Así, si portada.jpg no está en la carpeta, no
+     queda un cuadro roto ni un rectángulo negro: queda el amanecer. */
+  #portada .fondo{position:absolute;inset:0;background-color:#10141a;
+    background-image:
+      radial-gradient(ellipse 70% 55% at 66% 74%,rgba(150,102,44,.5),rgba(0,0,0,0) 72%),
+      linear-gradient(180deg,#151d28 0%,#2a2a26 44%,#5c4728 76%,#8a6a35 100%)}
+  #portada .foto{position:absolute;inset:0;background-image:none;
+    background-size:cover;background-position:center}
+  /* El velo: la foto es clara del lado derecho y el menú va a la izquierda, así
+     que el oscurecido no es parejo —se carga sobre la columna del texto—. */
+  #portada .velo{position:absolute;inset:0;
+    background:
+      linear-gradient(90deg,rgba(8,10,14,.9) 0%,rgba(8,10,14,.72) 34%,rgba(8,10,14,.24) 68%,rgba(8,10,14,.5) 100%),
+      linear-gradient(180deg,rgba(8,10,14,.6) 0%,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 64%,rgba(8,10,14,.78) 100%)}
+
+  /* El oro viejo: un degradado recortado sobre la letra. Ojo que con el relleno
+     transparente el text-shadow no se dibuja — la sombra va con drop-shadow. */
+  .oro{background-image:linear-gradient(180deg,#f7e6b6 0%,#e3c67e 34%,#c69b54 60%,#8d6a2b 100%);
+    -webkit-background-clip:text;background-clip:text;
+    color:transparent;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 2px 10px rgba(0,0,0,.85))}
+
+  #portada .tapa{position:relative;z-index:2;padding:0 clamp(26px,7vw,104px);max-width:640px}
+  #portada .franja{margin-bottom:22px}
+  #portada .eyebrow{color:#c8b891;font-size:11.5px;letter-spacing:.26em}
+  #portada h1{font-size:clamp(40px,6.4vw,74px);margin:12px 0 4px;letter-spacing:.005em}
+  #portada .lema{color:#a9a191;font-size:14.5px;letter-spacing:.05em;margin:0 0 34px;
+    max-width:40ch;line-height:1.65;text-shadow:0 2px 10px rgba(0,0,0,.9)}
+
+  /* ---- el menú ----
+     Cinco renglones y nada más. El botón no tiene caja: la caja la hace el oro
+     al encenderse, y la vara que entra por la izquierda cuando pasás por arriba. */
+  .menu{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+  /* background-COLOR y no el atajo `background`: el atajo también borra el
+     background-image, que es justo el degradado de oro con el que .oro pinta
+     la letra — y el renglón entero salía transparente sobre transparente. */
+  .entrada{position:relative;background-color:transparent;border:0;padding:7px 0 7px 30px;cursor:pointer;
+    text-align:left;text-transform:none;letter-spacing:.055em;
+    font-family:"Libre Caslon Display",Georgia,"Times New Roman",serif;font-weight:400;
+    font-size:clamp(23px,2.5vw,30px);line-height:1.15;
+    transition:padding-left .16s ease,filter .16s ease}
+  .entrada::before{content:'';position:absolute;left:0;top:50%;width:18px;height:1px;
+    background:linear-gradient(90deg,rgba(198,155,84,0),#e3c67e);
+    transform:scaleX(0);transform-origin:left;transition:transform .18s ease}
+  .entrada:hover,.entrada:focus-visible{padding-left:38px;outline:none;
+    filter:drop-shadow(0 0 12px rgba(227,198,126,.4)) drop-shadow(0 2px 10px rgba(0,0,0,.85))}
+  .entrada:hover::before,.entrada:focus-visible::before{transform:scaleX(1)}
+  .entrada:focus-visible{text-decoration:underline;text-underline-offset:7px}
+  .entrada i{display:block;font-style:normal;font-family:var(--ui);font-size:10.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:#7d7666;margin-top:1px;
+    -webkit-text-fill-color:#7d7666;filter:none}
+  .entrada:hover i,.entrada:focus-visible i{-webkit-text-fill-color:#b3aa93;color:#b3aa93}
+
+  /* ---- el pie ----
+     Los dos renglones chicos, uno en cada punta, como en un afiche. */
+  #portada .pieportada{position:absolute;left:0;right:0;bottom:0;z-index:2;
+    display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
+    padding:0 clamp(18px,3.4vw,34px) 16px;
+    font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#7b7466;
+    pointer-events:none;text-shadow:0 1px 6px rgba(0,0,0,.9)}
+
+  /* ---- las hojas: Opciones y Créditos ----
+     No son otra pantalla: son una hoja sobre la misma foto. Scrollean ellas y
+     no la página, que es la única manera de que nunca aparezca la barra. */
+  .hoja-portada{position:absolute;inset:0;z-index:3;display:flex;align-items:center;
+    justify-content:center;padding:clamp(16px,3vw,40px);
+    background:rgba(8,10,14,.72);backdrop-filter:blur(3px)}
+  .hoja-portada.oculto{display:none}
+  .hoja-portada > div{width:100%;max-width:660px;max-height:100%;overflow-y:auto;
+    background:rgba(14,18,24,.94);border:1px solid rgba(198,155,84,.3);
+    padding:26px 30px 24px;box-shadow:0 26px 80px rgba(0,0,0,.75)}
+  .hoja-portada h2{font-family:"Libre Caslon Display",Georgia,serif;font-weight:400;
+    font-size:30px;margin:0 0 4px;letter-spacing:.01em}
+  .hoja-portada .bajada{color:#8B97A1;font-size:13px;letter-spacing:.04em;margin:0 0 20px}
+  .hoja-portada .volver{margin-top:22px}
+  .hoja-portada p{font-size:13.5px;line-height:1.65;color:#a8a294}
+  .hoja-portada p b{color:#d8d2c0}
+  .creditos dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:9px 20px;
+    font-size:13px;line-height:1.5}
+  .creditos dt{color:var(--bronce);letter-spacing:.14em;text-transform:uppercase;font-size:10.5px;
+    padding-top:2px}
+  .creditos dd{margin:0;color:#bdb7a8}
+
+  /* ---- opciones ---- */
+  .opciones h3,.hoja-portada h3{margin:22px 0 10px;font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:#8d8674;font-weight:600}
   .opcion{display:flex;align-items:flex-start;gap:12px;cursor:pointer;user-select:none;
-    padding:8px 10px;border-radius:4px;transition:background .15s}
-  .opcion:hover{background:rgba(216,210,192,.05)}
+    padding:10px 12px;border:1px solid rgba(198,155,84,.18);background:rgba(198,155,84,.05);
+    transition:background .15s}
+  .opcion:hover{background:rgba(198,155,84,.11)}
   .opcion input{margin:2px 0 0;accent-color:#9c2b2b;width:15px;height:15px;flex:0 0 auto;cursor:pointer}
   .opcion .txt b{display:block;font-size:13px;color:#d8d2c0;font-weight:600}
   .opcion .txt span{display:block;font-size:12px;line-height:1.5;color:#8d8674;margin-top:2px}
-  /* la portada crece cuando se suman fases: que nunca deje el botón afuera */
+  /* la sala crece cuando se suman fases: que nunca deje el botón afuera */
   .caja{max-width:660px;width:100%;max-height:calc(100vh - 64px);overflow-y:auto}
   .franja{display:flex;height:5px;width:132px;margin-bottom:30px}
   .franja i{flex:1}
@@ -190,7 +279,7 @@
     line-height:1.05;margin:14px 0 6px;letter-spacing:-.01em}
   .sub{color:#8B97A1;font-size:16px;letter-spacing:.04em;margin:0 0 26px;max-width:46ch;line-height:1.6}
   .teclas{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:1px;
-    background:rgba(230,226,214,.13);border:1px solid rgba(230,226,214,.13);margin-bottom:26px}
+    background:rgba(230,226,214,.13);border:1px solid rgba(230,226,214,.13);margin-bottom:6px}
   .teclas div{background:#161D25;padding:9px 13px;display:flex;justify-content:space-between;gap:12px;
     font-size:13px;letter-spacing:.05em}
   .teclas kbd{color:var(--bronce);font-family:var(--ui);font-weight:600;letter-spacing:.1em;
@@ -201,26 +290,7 @@
   button:hover{background:#D8AC63}
   button:focus-visible{outline:2px solid var(--carmesi);outline-offset:3px}
   .pie{margin-top:22px;color:#5E6A75;font-size:12px;letter-spacing:.11em;text-transform:uppercase}
-  /* ---- los dos modos ----
-     La pinza y el clarín existían desde hace días y no se veían: había que
-     escribir juego.formarPinza() en la consola. Una función que hay que
-     invocar desde la consola no es una función del juego. */
-  .modos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:4px 0 24px}
-  @media (max-width:700px){.modos{grid-template-columns:1fr}}
-  /* flex en columna: un <button> centra su contenido en vertical por defecto y
-     las dos tarjetas quedaban desalineadas entre sí */
-  .modo{display:flex;flex-direction:column;width:100%;text-align:left;text-transform:none;letter-spacing:normal;
-    font-family:var(--ui);background:#161D25;color:var(--hueso);border:1px solid rgba(230,226,214,.16);
-    padding:0;cursor:pointer;transition:border-color .12s linear,background .12s linear}
-  .modo:hover{background:#1B242E;border-color:var(--bronce)}
-  .modo b{display:block;font-family:"Libre Caslon Display",Georgia,serif;font-weight:400;
-    font-size:23px;letter-spacing:0;padding:17px 19px 0;color:var(--hueso)}
-  .modo i{display:block;font-style:normal;color:#D9696C;font-weight:600;font-size:11px;
-    letter-spacing:.17em;text-transform:uppercase;padding:15px 19px 0}
-  .modo span{display:block;color:#8B97A1;font-size:13.5px;line-height:1.6;padding:9px 19px 18px;
-    letter-spacing:.02em}
-  .modo em{color:var(--bronce);font-style:normal}
-  .modo kbd{color:var(--bronce);font-family:var(--ui);font-weight:600;font-size:12px;
+  .hoja-portada p kbd{color:var(--bronce);font-family:var(--ui);font-weight:600;font-size:12px;
     letter-spacing:.08em;border:1px solid rgba(230,226,214,.26);padding:1px 5px;white-space:nowrap}
   details.ayuda{margin-bottom:8px}
   details.ayuda summary{cursor:pointer;color:#8B97A1;font-size:13px;letter-spacing:.1em;
@@ -417,58 +487,45 @@
 </div>
 
 <div id="portada">
-  <div class="caja">
+  <div class="fondo"></div>
+  <div class="foto"></div>
+  <div class="velo"></div>
+
+  <div class="tapa" id="portada-menu">
     <div class="franja"><i></i><i></i><i></i></div>
-    <div class="eyebrow">Combate de San Lorenzo · 3 de febrero de 1813</div>
-    <h1>El clarín de San Lorenzo</h1>
-    <p class="sub">Quince minutos de pelea a orillas del Paraná. Sos José de San Martín y
-      todavía no sos nadie: es tu primer combate en suelo americano.</p>
+    <div class="eyebrow">San Lorenzo · 3 de febrero de 1813</div>
+    <h1 class="oro">El clarín de San Lorenzo</h1>
+    <p class="lema">Quince minutos de pelea a orillas del Paraná. Sos José de San Martín
+      y todavía no sos nadie.</p>
 
-    <div class="modos">
-      <button class="modo" id="modo-batalla">
-        <i>La batalla</i>
-        <b>El clarín</b>
-        <span>Cinco y media de la mañana. Ciento veinte granaderos formados
-          <em>detrás</em> del convento, en dos columnas de sesenta. Doscientos cincuenta
-          realistas subiendo de la barranca con dos cañones, sin saber que estás ahí.
-          Vas a la cabeza de una columna: los sesenta te siguen <em>a vos</em>.
-          Cuando quieras, tocás el clarín con <kbd>T</kbd> y salen las dos a la vez.</span>
-      </button>
-      <button class="modo" id="modo-red">
-        <i>De a dos · red local</i>
-        <b>Los dos costados</b>
-        <span>San Martín no cargó solo: partió los ciento veinte en dos
-          escuadrones y el otro lo llevó el capitán <em>Justo Bermúdez</em>.
-          Uno lleva la columna del oeste y el otro la del este, cada uno en su
-          máquina, y la pinza se cierra de verdad. Hace falta levantar la sala
-          con <kbd>node herramientas/servidor.mjs</kbd>.</span>
-      </button>
-      <button class="modo" id="modo-campo">
-        <i>Práctica</i>
-        <b>El campo de tiro</b>
-        <span>Cuartel del Retiro, diciembre de 1812. Para aprender lo que no se parece a
-          un shooter moderno: cargar en siete pasos, parar una bayoneta en el instante
-          justo y andar a caballo sin que te maten. Con <kbd>O</kbd> empiezan a venir.</span>
-      </button>
-    </div>
+    <nav class="menu">
+      <button class="entrada oro" id="modo-batalla">Un jugador<i>La carga de los ciento veinte</i></button>
+      <button class="entrada oro" id="modo-red">Cooperativo<i>Las dos columnas, una en cada máquina</i></button>
+      <button class="entrada oro" id="modo-campo">Práctica<i>El cuartel del Retiro</i></button>
+      <button class="entrada oro" id="ver-opciones">Opciones<i>Controles y sangre</i></button>
+      <button class="entrada oro" id="ver-creditos">Créditos</button>
+    </nav>
+  </div>
 
-    <div class="opciones">
-      <h3>Opciones</h3>
+  <!-- ---- Opciones: acá adentro vive todo lo que antes ocupaba la portada ---- -->
+  <div class="hoja-portada oculto" id="portada-opciones">
+    <div>
+      <h2>Opciones</h2>
+      <p class="bajada">Lo que elijas queda guardado en esta máquina.</p>
+
       <label class="opcion">
         <input type="checkbox" id="op-sangre">
         <span class="txt">
           <b>Mostrar sangre</b>
           <span>Viene apagado. San Lorenzo se cuenta entero sin ella: lo terrible de esta
             batalla es que doscientos hombres bajan corriendo una barranca, no el color de
-            lo que salpica. Encendida, los impactos salpican.</span>
+            lo que salpica. Encendida, los impactos salpican y manchan.</span>
         </span>
       </label>
-    </div>
 
-    <details class="ayuda">
-      <summary>Las tres cosas que hay que entender</summary>
-      <p><b>Cargar.</b> Apretá <kbd>R</kbd> y hacé click cuando se encienda ¡AHORA! Acertar los tres
-        tiempos es la diferencia entre volver a tirar o comerte una bayoneta.</p>
+      <h3>Las tres cosas que hay que entender</h3>
+      <p><b>Cargar.</b> Apretá <kbd>R</kbd> y esperá: son siete pasos y tardan quince
+        segundos. Un disparo, quince segundos, y después el acero.</p>
       <p><b>El sable</b> (tecla <kbd>2</kbd>): click derecho cubre. El realista <em>avisa</em> antes
         de la estocada — echa el acero atrás y grita. Cubrirte <em>en ese instante</em> se la para en
         seco y lo deja abierto para el remate. No le entres de frente a uno en guardia: te choca
@@ -479,17 +536,15 @@
         triple, pero necesitás diez metros para frenar y la vuelta se abre. La línea se elige
         antes de entrar. Con <kbd>Espacio</kbd> salta las tapias, y contra una tapia el caballo
         raspa y sigue: nunca te frena del todo ni te arranca el rumbo de las manos.</p>
-    </details>
 
-    <details class="ayuda">
-      <summary>Teclas</summary>
+      <h3>Controles</h3>
       <div class="teclas">
         <div><kbd>W A S D</kbd><span>moverse</span></div>
         <div><kbd>Shift</kbd><span>correr</span></div>
         <div><kbd>Espacio</kbd><span>saltar · <b>batir el caballo</b></span></div>
         <div><kbd>C</kbd><span>agacharse</span></div>
         <div><kbd>Z</kbd><span>cuerpo a tierra</span></div>
-        <div><kbd>Click izq.</kbd><span>disparar · marcar el tiempo</span></div>
+        <div><kbd>Click izq.</kbd><span>disparar</span></div>
         <div><kbd>Click der.</kbd><span>apuntar · <b>cubrirse</b> con el sable</span></div>
         <div><kbd>R</kbd><span>cargar el arma (una apretada)</span></div>
         <div><kbd>F</kbd><span>culatazo / bayonetazo · <b>pechada</b></span></div>
@@ -498,18 +553,42 @@
         <div><kbd>W</kbd><span>a caballo: andar (sostener) · <kbd>Shift</kbd> galope</span></div>
         <div><kbd>T</kbd><span><b>tocar el clarín</b> (en la batalla)</span></div>
         <div><kbd>Q</kbd><span><b>¡a mí!</b> — tu columna corta la pelea y se forma atrás tuyo</span></div>
-        <div><kbd>Espacio</kbd><span>saltar la tapia a caballo · y en el acto Cabral,
-          <b>machacarlo</b> para levantar el animal</span></div>
         <div><kbd>G</kbd><span>tomar el fusil de un caído</span></div>
         <div><kbd>B</kbd><span>revisar la cartuchera</span></div>
         <div><kbd>V</kbd><span>vendarse (cura rápido)</span></div>
         <div><kbd>Enter</kbd><span>volver a formar</span></div>
         <div><kbd>O</kbd><span>que empiece el combate (práctica)</span></div>
+        <div><kbd>Esc</kbd><span>soltar el mouse y pausar</span></div>
         <div><kbd>F3</kbd><span>datos de depuración</span></div>
       </div>
-    </details>
 
-    <div class="pie">Clic para tomar el mouse · Esc para soltarlo y pausar</div>
+      <button class="volver" id="cerrar-opciones">Volver</button>
+    </div>
+  </div>
+
+  <!-- ---- Créditos ---- -->
+  <div class="hoja-portada oculto" id="portada-creditos">
+    <div class="creditos">
+      <h2>Créditos</h2>
+      <p class="bajada">El clarín de San Lorenzo — primera batalla de la campaña de San Martín.</p>
+      <dl>
+        <dt>Juego</dt><dd>Gaspar Tomasello</dd>
+        <dt>Motor</dt><dd>three.js — WebGL, sin instalación, en un solo archivo</dd>
+        <dt>Batalla</dt><dd>Combate de San Lorenzo, 3 de febrero de 1813. Ciento veinte
+          granaderos a caballo contra unos doscientos cincuenta realistas desembarcados
+          del Paraná.</dd>
+        <dt>La frase</dt><dd>«De lo que son capaces mis granaderos, sólo yo lo sé; quien
+          los iguale habrá, quien los exceda, no.» — José de San Martín</dd>
+        <dt>Sonido</dt><dd>Sintetizado en el navegador con Web Audio: no hay un solo
+          archivo de audio adentro.</dd>
+      </dl>
+      <button class="volver" id="cerrar-creditos">Volver</button>
+    </div>
+  </div>
+
+  <div class="pieportada">
+    <span>© 2026 — Todos los derechos reservados</span>
+    <span>THREE.JS · WEB GAME · v1.0</span>
   </div>
 </div>
 
@@ -38522,6 +38601,34 @@ function armarMando(ctx) {
       opciones2.guardar();
     });
   }
+  const hojas = ["portada-opciones", "portada-creditos"];
+  function abrirHoja(cual) {
+    for (const id of hojas) {
+      const h = document.getElementById(id);
+      if (h) h.classList.toggle("oculto", id !== cual);
+    }
+  }
+  function cerrarHojas() {
+    abrirHoja(null);
+  }
+  const atajos = [
+    ["ver-opciones", () => abrirHoja("portada-opciones")],
+    ["ver-creditos", () => abrirHoja("portada-creditos")],
+    ["cerrar-opciones", cerrarHojas],
+    ["cerrar-creditos", cerrarHojas]
+  ];
+  for (const [id, fn] of atajos) {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener("click", fn);
+  }
+  addEventListener("keydown", (ev) => {
+    if (ev.code !== "Escape") return;
+    const abierta = hojas.map((id) => document.getElementById(id)).find((h) => h && !h.classList.contains("oculto"));
+    if (abierta) {
+      abierta.classList.add("oculto");
+      ev.preventDefault();
+    }
+  });
   document.getElementById("modo-batalla").addEventListener("click", () => arrancar("batalla"));
   document.getElementById("modo-campo").addEventListener("click", () => arrancar("campo"));
   const pantallaSala = document.getElementById("sala");

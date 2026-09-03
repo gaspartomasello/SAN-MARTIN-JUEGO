@@ -9,6 +9,53 @@ await pag.goto('http://localhost:8099/index.html', { waitUntil: 'load' });
 await pag.waitForTimeout(1400);
 await pag.screenshot({ path: 'tropa/q-0-portada.png' });
 
+// ---- la portada nueva: una foto, cinco renglones y ni una barra de scroll ----
+//
+// La revisión del oro no es un capricho: la primera versión de este menú salió
+// EN BLANCO. El renglón se pinta con un degradado recortado sobre la letra
+// (background-image + background-clip:text + relleno transparente), y alcanzó
+// con que una regla posterior escribiera el atajo `background` para borrar el
+// degradado y dejar letra transparente sobre nada. Se ve en pantalla y no en el
+// código, así que la prueba pregunta las dos cosas juntas.
+const tapa = await pag.evaluate(() => {
+  const r = { faltan: [], sinOro: [], chicos: [] };
+  for (const id of ['modo-batalla', 'modo-red', 'modo-campo', 'ver-opciones', 'ver-creditos']) {
+    const b = document.getElementById(id);
+    if (!b) { r.faltan.push(id); continue; }
+    const e = getComputedStyle(b);
+    const transparente = e.webkitTextFillColor === 'rgba(0, 0, 0, 0)' || e.color === 'rgba(0, 0, 0, 0)';
+    if (transparente && e.backgroundImage === 'none') r.sinOro.push(id);
+    if (b.getBoundingClientRect().height < 24) r.chicos.push(id);
+  }
+  r.desbordeY = document.documentElement.scrollHeight - innerHeight;
+  r.desbordeX = document.documentElement.scrollWidth - innerWidth;
+  r.pie = [...document.querySelectorAll('#portada .pieportada span')].map(s => s.textContent.trim());
+  return r;
+});
+console.log('la tapa:', JSON.stringify(tapa));
+if (tapa.faltan.length) console.log('MAL · renglones que no están:', tapa.faltan.join(' '));
+if (tapa.sinOro.length) console.log('MAL · renglones transparentes sin degradado:', tapa.sinOro.join(' '));
+if (tapa.chicos.length) console.log('MAL · renglones sin alto:', tapa.chicos.join(' '));
+if (tapa.desbordeY > 0 || tapa.desbordeX > 0) console.log('MAL · la portada scrollea');
+
+// las dos hojas: abren, la casilla de sangre vive adentro de Opciones, y cierran
+await pag.click('#ver-opciones');
+await pag.waitForSelector('#portada-opciones:not(.oculto)', { timeout: 4000 });
+const dentro = await pag.evaluate(() => {
+  const c = document.getElementById('op-sangre');
+  return !!c && !!c.closest('#portada-opciones') && c.offsetParent !== null;
+});
+console.log('la sangre vive en Opciones:', dentro);
+await pag.keyboard.press('Escape');
+await pag.waitForTimeout(250);
+await pag.click('#ver-creditos');
+await pag.waitForSelector('#portada-creditos:not(.oculto)', { timeout: 4000 });
+await pag.click('#cerrar-creditos');
+await pag.waitForTimeout(250);
+const cerradas = await pag.evaluate(() => ['portada-opciones', 'portada-creditos']
+  .every(id => document.getElementById(id).classList.contains('oculto')));
+console.log('las hojas cierran:', cerradas);
+
 // el botón de la batalla, como lo aprieta cualquiera
 await pag.click('#modo-batalla');
 // entre elegir la batalla y salir al campo está el plano de la maniobra

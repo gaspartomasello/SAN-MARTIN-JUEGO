@@ -304,6 +304,37 @@ export function armarMando (ctx) {
     });
   }
 
+  // ---- las dos hojas de la portada: Opciones y Créditos ----
+  //
+  // No son otra pantalla ni otro estado del juego: son una hoja que se pone
+  // encima de la misma foto. Por eso alcanza con prender y apagar una clase, y
+  // por eso Escape las cierra en vez de pausar —desde la portada no hay nada
+  // que pausar todavía—.
+  const hojas = ['portada-opciones', 'portada-creditos'];
+  function abrirHoja (cual) {
+    for (const id of hojas) {
+      const h = document.getElementById(id);
+      if (h) h.classList.toggle('oculto', id !== cual);
+    }
+  }
+  function cerrarHojas () { abrirHoja(null); }
+  const atajos = [
+    ['ver-opciones',    () => abrirHoja('portada-opciones')],
+    ['ver-creditos',    () => abrirHoja('portada-creditos')],
+    ['cerrar-opciones', cerrarHojas],
+    ['cerrar-creditos', cerrarHojas]
+  ];
+  for (const [id, fn] of atajos) {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', fn);
+  }
+  addEventListener('keydown', ev => {
+    if (ev.code !== 'Escape') return;
+    const abierta = hojas.map(id => document.getElementById(id))
+      .find(h => h && !h.classList.contains('oculto'));
+    if (abierta) { abierta.classList.add('oculto'); ev.preventDefault(); }
+  });
+
   document.getElementById('modo-batalla').addEventListener('click', () => arrancar('batalla'));
   document.getElementById('modo-campo').addEventListener('click', () => arrancar('campo'));
 
