@@ -780,6 +780,7 @@ var NotEqualCompare = 517;
 var GreaterEqualCompare = 518;
 var AlwaysCompare = 519;
 var StaticDrawUsage = 35044;
+var DynamicDrawUsage = 35048;
 var GLSL3 = "300 es";
 var WebGLCoordinateSystem = 2e3;
 var WebGPUCoordinateSystem = 2001;
@@ -30463,6 +30464,28 @@ function texturaGrano() {
   t.colorSpace = SRGBColorSpace;
   return t;
 }
+function texturaMancha() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const x = c.getContext("2d");
+  x.fillStyle = "#fff";
+  const gota = (cx, cy, r) => {
+    x.beginPath();
+    x.arc(cx, cy, r, 0, Math.PI * 2);
+    x.fill();
+  };
+  gota(32, 32, 15);
+  gota(24, 27, 11);
+  gota(40, 36, 10);
+  for (let i = 0; i < 9; i++) {
+    const a = Math.random() * Math.PI * 2, d = 16 + Math.random() * 12;
+    gota(32 + Math.cos(a) * d, 32 + Math.sin(a) * d, 1.5 + Math.random() * 3.5);
+  }
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+}
+var MAX_MANCHAS = 44;
 var Fuego = class {
   constructor(escena2, camara2) {
     this.escena = escena2;
@@ -30522,6 +30545,136 @@ var Fuego = class {
     this.acero = this._enjambre(escena2, AdditiveBlending, 0.072);
     this.sangre = this._enjambre(escena2, NormalBlending, 0.09);
     this.pavesa = this._enjambre(escena2, AdditiveBlending, 0.052);
+    this._armarManchas(escena2);
+  }
+  // -------------------------------------------------------------------------
+  // LAS MANCHAS · lo que queda después
+  // -------------------------------------------------------------------------
+  //
+  // Sistema nuevo, y se avisa: hasta acá los efectos se apagaban solos y no
+  // dejaban nada. Una mancha es lo contrario —se queda— y eso trae dos
+  // problemas que las partículas no tienen: se acumula, y tiene que seguir al
+  // cuerpo donde está pegada.
+  //
+  // Las dos cosas se resuelven con un `InstancedMesh` de cuarenta y cuatro y un
+  // techo duro. UNA llamada de dibujo para todas las manchas del campo, hayan
+  // salido de un balazo o de treinta, y cuando se llena la más vieja cede el
+  // lugar. Sin techo, doscientos cincuenta hombres recibiendo golpes terminan
+  // siendo el juego entero.
+  //
+  // Hay DOS clases y viven en el mismo pozo:
+  //
+  //   en el cuerpo  pegada al hombre, lo sigue mientras camina y cae con él.
+  //                 Mira a la cámara, que a este tamaño es lo que se lee.
+  //   en el piso    tirada de plano donde cayó, y ahí se queda.
+  //
+  // Nada de esto sale si el que juega no pidió sangre: quien llama pregunta
+  // primero, igual que con la salpicadura.
+  _armarManchas(escena2) {
+    const geo = new PlaneGeometry(1, 1);
+    const mat2 = new MeshBasicMaterial({
+      map: texturaMancha(),
+      transparent: true,
+      depthWrite: false,
+      color: 6163211,
+      side: DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -4
+    });
+    this.manchas = new InstancedMesh(geo, mat2, MAX_MANCHAS);
+    this.manchas.frustumCulled = false;
+    this.manchas.renderOrder = 2;
+    this.manchas.count = 0;
+    this.manchas.instanceMatrix.setUsage(DynamicDrawUsage);
+    escena2.add(this.manchas);
+    this._mancha = [];
+    for (let i = 0; i < MAX_MANCHAS; i++) {
+      this._mancha.push({
+        usada: false,
+        orden: 0,
+        quien: null,
+        local: new Vector3(),
+        pos: new Vector3(),
+        tam: 0.3,
+        giro: 0
+      });
+    }
+    this._ordenMancha = 0;
+    this._m4 = new Matrix4();
+    this._esc = new Vector3();
+    this._qm = new Quaternion();
+    this._ojo = new Vector3();
+  }
+  // El hueco: uno libre, o el más viejo de todos.
+  _huecoMancha() {
+    let libre = null, viejo = this._mancha[0];
+    for (const m2 of this._mancha) {
+      if (!m2.usada) {
+        libre = m2;
+        break;
+      }
+      if (m2.orden < viejo.orden) viejo = m2;
+    }
+    const m = libre || viejo;
+    m.usada = true;
+    m.orden = ++this._ordenMancha;
+    return m;
+  }
+  // PEGADA AL CUERPO. Se guarda el punto RELATIVO al hombre, no el absoluto:
+  // el tipo sigue caminando y la mancha tiene que ir con él.
+  mancharCuerpo(quien, punto, tam) {
+    if (!quien) return;
+    const m = this._huecoMancha();
+    m.quien = quien;
+    m.local.copy(punto).sub(quien.pos);
+    m.tam = tam || 0.16 + Math.random() * 0.12;
+    m.giro = Math.random() * Math.PI * 2;
+  }
+  // EN EL PISO, de plano y quieta. Es la que dice dónde pasó algo cuando ya no
+  // queda nadie ahí.
+  mancharPiso(punto, tam) {
+    const m = this._huecoMancha();
+    m.quien = null;
+    m.pos.set(punto.x, 0.015, punto.z);
+    m.tam = tam || 0.4 + Math.random() * 0.5;
+    m.giro = Math.random() * Math.PI * 2;
+  }
+  // Cada cuadro: las del cuerpo siguen a su hombre y miran a la cámara; las
+  // del piso ya están donde tienen que estar. Son cuarenta y cuatro matrices,
+  // que al lado de trescientos setenta hombres no es nada.
+  _correrManchas() {
+    let n = 0;
+    for (const m of this._mancha) {
+      if (!m.usada) continue;
+      if (m.quien) {
+        if (!m.quien.malla || !m.quien.malla.parent) {
+          m.usada = false;
+          continue;
+        }
+        m.pos.copy(m.quien.pos).add(m.local);
+        this.camara.getWorldPosition(this._ojo);
+        this._ojo.sub(m.pos).normalize();
+        m.pos.addScaledVector(this._ojo, 0.17);
+        this._qm.copy(this.camara.quaternion);
+      } else {
+        this._qm.setFromAxisAngle(this._ejeX || (this._ejeX = new Vector3(1, 0, 0)), -Math.PI / 2);
+      }
+      this._esc.set(m.tam, m.tam, m.tam);
+      this._m4.compose(m.pos, this._qm, this._esc);
+      this.manchas.setMatrixAt(n, this._m4);
+      n++;
+    }
+    this.manchas.count = n;
+    if (n > 0) this.manchas.instanceMatrix.needsUpdate = true;
+  }
+  // Cuando se rearma el campo, no quedan manchas de la batalla anterior.
+  limpiarManchas() {
+    for (const m of this._mancha) {
+      m.usada = false;
+      m.quien = null;
+    }
+    this.manchas.count = 0;
   }
   // Un enjambre: el buffer reservado de una vez, las partículas recicladas, y
   // UN `Points` para todas. Nada se crea mientras se juega.
@@ -30637,8 +30790,15 @@ var Fuego = class {
       this.pavesa,
       pos,
       dir,
-      5,
-      { vida: 0.85, peso: 3.4, fuerza: 2.6, abanico: 1.1, arriba: 0.5, r: 1, g: 0.5, b: 0.14 }
+      7,
+      { vida: 0.3, peso: 2.2, fuerza: 15, abanico: 0.55, arriba: 0.1, r: 1, g: 0.66, b: 0.22 }
+    );
+    this._soltarGranos(
+      this.pavesa,
+      pos,
+      dir,
+      4,
+      { vida: 0.9, peso: 3.4, fuerza: 2.2, abanico: 1.2, arriba: 0.5, r: 1, g: 0.42, b: 0.12 }
     );
   }
   // LA SALPICADURA. Quien la llama se fija primero si el que juega la pidió:
@@ -30680,6 +30840,7 @@ var Fuego = class {
     this._correrGranos(this.acero, dt);
     this._correrGranos(this.sangre, dt);
     this._correrGranos(this.pavesa, dt);
+    this._correrManchas();
     for (const l of this.llamas) {
       if (l.t < 0) continue;
       l.t += dt;
@@ -36457,6 +36618,14 @@ function armarCombate(ctx) {
     if (!opciones2 || !opciones2.sangre) return;
     fuego2.salpicadura(punto, dir);
   }
+  function marcar(quien, punto, chico) {
+    if (!opciones2 || !opciones2.sangre || !quien) return;
+    fuego2.mancharCuerpo(quien, punto, chico ? 0.13 + Math.random() * 0.09 : 0.22 + Math.random() * 0.14);
+    if (!chico && Math.random() < 0.55) {
+      _p.set(quien.pos.x + (Math.random() - 0.5) * 0.9, 0, quien.pos.z + (Math.random() - 0.5) * 0.9);
+      fuego2.mancharPiso(_p, 0.35 + Math.random() * 0.45);
+    }
+  }
   function falloVisible(origen, blanco, tiro, contraVos) {
     const eje = new Vector3().subVectors(blanco, origen);
     const d = eje.length() || 1;
@@ -36546,6 +36715,7 @@ function armarCombate(ctx) {
       sonido2.impactoCarne();
       humo2.soltar(g.point, d, { cantidad: 3, vida: 2.5, empuje: 1.4, radio: 0.1, opacidad: 0.35, claro: 0 });
       salpicar(g.point, d);
+      marcar(soldado, g.point, true);
       const z = zona(soldado, g.point.y);
       const dano = z === "miembro" ? BALA_MIEMBRO : BALA_JUGADOR;
       if (soldado.recibir(dano, d, VOLTEO.bala)) {
@@ -36581,6 +36751,7 @@ function armarCombate(ctx) {
     sonido2.impactoCarne();
     const o = g.soldado;
     salpicar(_p.copy(o.pos).setY(o.pos.y + 1.15), g.frente);
+    marcar(o, _p, true);
     if (o.montado && Math.random() < CABALLO_COME) {
       o.monta.recibir(BALA_AL_CABALLO);
       return;
@@ -36601,6 +36772,7 @@ function armarCombate(ctx) {
     }
     sonido2.impactoCarne();
     salpicar(_p.copy(g.soldado.pos).setY(g.soldado.pos.y + 1.3), g.frente);
+    marcar(g.soldado, _p, false);
     const filo = montado2() ? jugador2.monta.filoPorVelocidad : 1;
     const dano = Math.round((remate ? DANO_REMATE : DANO_SABLE) * filo);
     const vuelca = montado2() ? Math.min(VOLTEO.lanza, VOLTEO.bayoneta * filo) : VOLTEO.bayoneta;
@@ -42502,6 +42674,7 @@ var moral = armarMoral({
 campo.alFormar = () => {
   moral.reiniciar();
   victoria.reiniciar();
+  fuego.limpiarManchas();
 };
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 var ULTIMAS = [

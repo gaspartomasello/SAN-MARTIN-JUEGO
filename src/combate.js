@@ -87,6 +87,25 @@ export function armarCombate (ctx) {
     fuego.salpicadura(punto, dir);
   }
 
+  // LA MARCA QUE QUEDA. La salpicadura dura medio segundo; esto se queda.
+  //
+  // `chico` separa el agujero de bala —una marca del tamaño de un puño— del
+  // tajo de sable o el lanzazo, que abre y se ve de lejos. Es lo mismo que hace
+  // el juego en todos lados: el mismo sistema con otro número.
+  //
+  // Y CAE AL PISO LO QUE NO QUEDÓ EN EL CUERPO. Un solo estampado por golpe y
+  // sólo si el hombre está de pie sobre el pasto: si no, cada bayonetazo de una
+  // pelea de doscientos cincuenta hombres deja su charco y el campo termina
+  // rojo, que no es lo que se quiere contar.
+  function marcar (quien, punto, chico) {
+    if (!opciones || !opciones.sangre || !quien) return;
+    fuego.mancharCuerpo(quien, punto, chico ? 0.13 + Math.random() * 0.09 : 0.22 + Math.random() * 0.14);
+    if (!chico && Math.random() < 0.55) {
+      _p.set(quien.pos.x + (Math.random() - 0.5) * 0.9, 0, quien.pos.z + (Math.random() - 0.5) * 0.9);
+      fuego.mancharPiso(_p, 0.35 + Math.random() * 0.45);
+    }
+  }
+
   // -------------------------------------------------------------------------
   // el fallo, que tiene que verse
   // -------------------------------------------------------------------------
@@ -207,6 +226,7 @@ export function armarCombate (ctx) {
       sonido.impactoCarne();
       humo.soltar(g.point, d, { cantidad: 3, vida: 2.5, empuje: 1.4, radio: 0.1, opacidad: 0.35, claro: 0 });
       salpicar(g.point, d);
+      marcar(soldado, g.point, true);
       const z = zona(soldado, g.point.y);
       const dano = z === 'miembro' ? BALA_MIEMBRO : BALA_JUGADOR;
       if (soldado.recibir(dano, d, VOLTEO.bala)) {
@@ -248,6 +268,7 @@ export function armarCombate (ctx) {
     sonido.impactoCarne();
     const o = g.soldado;
     salpicar(_p.copy(o.pos).setY(o.pos.y + 1.15), g.frente);
+    marcar(o, _p, true);
     if (o.montado && Math.random() < CABALLO_COME) { o.monta.recibir(BALA_AL_CABALLO); return; }
     if (o.recibir(dano, g.frente, VOLTEO.bayoneta)) hud.mostrarAviso(nombre, 'bien');
   }
@@ -274,6 +295,7 @@ export function armarCombate (ctx) {
     }
     sonido.impactoCarne();
     salpicar(_p.copy(g.soldado.pos).setY(g.soldado.pos.y + 1.3), g.frente);
+    marcar(g.soldado, _p, false);
     // Desde el caballo el sable no corta con el brazo: corta con la velocidad.
     const filo = montado() ? jugador.monta.filoPorVelocidad : 1;
     const dano = Math.round((remate ? DANO_REMATE : DANO_SABLE) * filo);

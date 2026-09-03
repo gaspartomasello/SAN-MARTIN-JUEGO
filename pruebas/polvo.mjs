@@ -86,7 +86,6 @@ const efectos = await pag.evaluate(() => {
   o.vida = 99; o.vivo = true;
   golpear();
   ok('y encendida sí salpica', vivas(j.fuego.sangre) > 4, `${vivas(j.fuego.sangre)} gotas`);
-  j.opciones.sangre = guardada;
 
   // LAS PAVESAS: los granos de pólvora que salen ardiendo por la boca, que es
   // lo que hace que un arma de chispa se vea sucia y no como un láser. Son
@@ -131,6 +130,42 @@ const efectos = await pag.evaluate(() => {
   j.jugador.sacudir = _sac;
   ok('el cañón de cerca sacude mucho más que el de lejos', cerca > lejos * 2.5,
     `a 8 m ${cerca} · a 95 m ${lejos}`);
+
+  // LAS MANCHAS. Son lo único de los efectos que SE QUEDA, y eso trae dos
+  // problemas que las partículas no tienen: se acumulan, y tienen que seguir
+  // al cuerpo donde están pegadas. Las dos cosas se prueban acá.
+  const usadas = () => j.fuego._mancha.filter(m => m.usada).length;
+  j.fuego.limpiarManchas();
+  j.opciones.sangre = false;
+  o.vida = 99; o.vivo = true; o.pos.copy(donde);
+  golpear();
+  ok('con la sangre apagada no queda ninguna marca', usadas() === 0, String(usadas()));
+
+  j.opciones.sangre = true;
+  o.vida = 99; o.vivo = true;
+  golpear();
+  ok('encendida, el golpe deja marca en el cuerpo', usadas() > 0, `${usadas()} manchas`);
+  const pegada = j.fuego._mancha.find(m => m.usada && m.quien === o);
+  ok('y la marca está pegada A ESE hombre', !!pegada);
+  if (pegada) {
+    const antesM = pegada.pos.clone();
+    o.pos.x += 4; o.pos.z -= 3;
+    j.fuego.actualizar(0.016);
+    ok('la mancha camina con él', pegada.pos.distanceTo(antesM) > 3,
+      `se movió ${pegada.pos.distanceTo(antesM).toFixed(1)} m`);
+  }
+
+  // EL TECHO. Sin él, doscientos cincuenta hombres recibiendo golpes terminan
+  // siendo el juego entero: es lo único que separa esto de una fuga.
+  for (let i = 0; i < 200; i++) j.fuego.mancharPiso(new V(Math.random() * 20, 0, Math.random() * 20), 0.4);
+  ok('doscientas marcas no desbordan el techo de 44', usadas() <= 44, `${usadas()} de 44`);
+  j.fuego.actualizar(0.016);
+  ok('y van todas en UNA instancia, no una malla por mancha',
+    j.fuego.manchas.count === usadas() && j.fuego.manchas.isInstancedMesh,
+    `count=${j.fuego.manchas.count}`);
+  j.fuego.limpiarManchas();
+  ok('rearmar el campo las barre', usadas() === 0, String(usadas()));
+  j.opciones.sangre = guardada;
 
   for (let i = 0; i < 90; i++) j.fuego.actualizar(0.016);
   ok('todo se apaga solo, no queda nada colgado',

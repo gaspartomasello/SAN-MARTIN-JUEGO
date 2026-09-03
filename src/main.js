@@ -230,9 +230,12 @@ red = armarRed({
 const moral = armarMoral({
   soldados, caballos, canones, hud, sonido, jugador, montado, red
 });
-// Se rearma el campo: la moral vuelve a cero y la victoria vuelve a estar por
-// ganarse. `victoria` se declara más abajo y para cuando esto corra ya existe.
-campo.alFormar = () => { moral.reiniciar(); victoria.reiniciar(); };
+// Se rearma el campo: `victoria` se declara más abajo y para cuando esto corra
+// ya existe.
+// Se rearma el campo: la moral vuelve a cero, la victoria vuelve a estar por
+// ganarse, y no quedan manchas de la batalla anterior —son lo único de los
+// efectos que se queda, así que son lo único que hay que barrer—.
+campo.alFormar = () => { moral.reiniciar(); victoria.reiniciar(); fuego.limpiarManchas(); };
 
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 // AL MORIR EN UNA PARTIDA DE A DOS SE PASA A MIRAR, no a esperar. En solitario
