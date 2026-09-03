@@ -30464,7 +30464,7 @@ function texturaGrano() {
   t.colorSpace = SRGBColorSpace;
   return t;
 }
-function texturaMancha() {
+function texturaMancha(forma) {
   const c = document.createElement("canvas");
   c.width = c.height = 64;
   const x = c.getContext("2d");
@@ -30474,12 +30474,26 @@ function texturaMancha() {
     x.arc(cx, cy, r, 0, Math.PI * 2);
     x.fill();
   };
-  gota(32, 32, 15);
-  gota(24, 27, 11);
-  gota(40, 36, 10);
-  for (let i = 0; i < 9; i++) {
-    const a = Math.random() * Math.PI * 2, d = 16 + Math.random() * 12;
-    gota(32 + Math.cos(a) * d, 32 + Math.sin(a) * d, 1.5 + Math.random() * 3.5);
+  const sueltas = (n, dMin, dMax, rMin, rMax) => {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, d = dMin + Math.random() * (dMax - dMin);
+      gota(32 + Math.cos(a) * d, 32 + Math.sin(a) * d, rMin + Math.random() * (rMax - rMin));
+    }
+  };
+  if (forma === 1) {
+    for (let i = 0; i < 12; i++) {
+      const t2 = i / 11;
+      gota(16 + t2 * 34, 32 + Math.sin(t2 * 2.4) * 5, 11 * (1 - t2 * 0.78) + 1.5);
+    }
+    sueltas(6, 18, 27, 1, 3);
+  } else if (forma === 2) {
+    gota(32, 32, 8);
+    sueltas(18, 8, 29, 1.5, 5);
+  } else {
+    gota(32, 32, 15);
+    gota(24, 27, 11);
+    gota(40, 36, 10);
+    sueltas(9, 16, 28, 1.5, 5);
   }
   const t = new CanvasTexture(c);
   t.colorSpace = SRGBColorSpace;
@@ -30572,28 +30586,33 @@ var Fuego = class {
   // primero, igual que con la salpicadura.
   _armarManchas(escena2) {
     const geo = new PlaneGeometry(1, 1);
-    const mat2 = new MeshBasicMaterial({
-      map: texturaMancha(),
-      transparent: true,
-      depthWrite: false,
-      color: 6163211,
-      side: DoubleSide,
-      polygonOffset: true,
-      polygonOffsetFactor: -4,
-      polygonOffsetUnits: -4
-    });
-    this.manchas = new InstancedMesh(geo, mat2, MAX_MANCHAS);
-    this.manchas.frustumCulled = false;
-    this.manchas.renderOrder = 2;
-    this.manchas.count = 0;
-    this.manchas.instanceMatrix.setUsage(DynamicDrawUsage);
-    escena2.add(this.manchas);
+    this.manchas = [];
+    for (let f = 0; f < 3; f++) {
+      const mat2 = new MeshBasicMaterial({
+        map: texturaMancha(f),
+        transparent: true,
+        depthWrite: false,
+        color: 6163211,
+        side: DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -4,
+        polygonOffsetUnits: -4
+      });
+      const im = new InstancedMesh(geo, mat2, MAX_MANCHAS);
+      im.frustumCulled = false;
+      im.renderOrder = 2;
+      im.count = 0;
+      im.instanceMatrix.setUsage(DynamicDrawUsage);
+      escena2.add(im);
+      this.manchas.push(im);
+    }
     this._mancha = [];
     for (let i = 0; i < MAX_MANCHAS; i++) {
       this._mancha.push({
         usada: false,
         orden: 0,
         quien: null,
+        hueso: null,
         local: new Vector3(),
         pos: new Vector3(),
         tam: 0.3,
@@ -30619,15 +30638,32 @@ var Fuego = class {
     const m = libre || viejo;
     m.usada = true;
     m.orden = ++this._ordenMancha;
+    m.forma = Math.floor(Math.random() * 3);
     return m;
   }
   // PEGADA AL CUERPO. Se guarda el punto RELATIVO al hombre, no el absoluto:
   // el tipo sigue caminando y la mancha tiene que ir con él.
+  // PEGADA AL CUERPO, Y COLGADA DEL TORSO.
+  //
+  // La primera versión guardaba el punto relativo a `pos`, que es la posición
+  // del hombre en el suelo, y con eso la mancha seguía al que caminaba pero se
+  // quedaba FLOTANDO cuando el tipo se desplomaba: un muerto se derrumba
+  // rotando la figura por dentro y `pos` casi no se mueve, así que la mancha
+  // quedaba en el aire a la altura del pecho, sobre un cuerpo tirado y limpio.
+  // Era las dos cosas que se veían mal: sangre en el aire, y cadáveres sin una
+  // gota.
+  //
+  // Colgada del hueso del torso se acabó: la mancha camina, se agacha, se cae y
+  // gira con el hombre, sin una línea de código para cada caso.
   mancharCuerpo(quien, punto, tam) {
-    if (!quien) return;
+    const hueso = quien && quien.fig && quien.fig.h ? quien.fig.h.torso || quien.fig.raiz : null;
+    if (!hueso) return;
+    hueso.updateWorldMatrix(true, false);
     const m = this._huecoMancha();
     m.quien = quien;
-    m.local.copy(punto).sub(quien.pos);
+    m.hueso = hueso;
+    m.local.copy(punto);
+    hueso.worldToLocal(m.local);
     m.tam = tam || 0.16 + Math.random() * 0.12;
     m.giro = Math.random() * Math.PI * 2;
   }
@@ -30644,7 +30680,7 @@ var Fuego = class {
   // del piso ya están donde tienen que estar. Son cuarenta y cuatro matrices,
   // que al lado de trescientos setenta hombres no es nada.
   _correrManchas() {
-    let n = 0;
+    const n = [0, 0, 0];
     for (const m of this._mancha) {
       if (!m.usada) continue;
       if (m.quien) {
@@ -30652,29 +30688,36 @@ var Fuego = class {
           m.usada = false;
           continue;
         }
-        m.pos.copy(m.quien.pos).add(m.local);
+        m.hueso.updateWorldMatrix(true, false);
+        m.pos.copy(m.local).applyMatrix4(m.hueso.matrixWorld);
         this.camara.getWorldPosition(this._ojo);
         this._ojo.sub(m.pos).normalize();
         m.pos.addScaledVector(this._ojo, 0.17);
         this._qm.copy(this.camara.quaternion);
       } else {
-        this._qm.setFromAxisAngle(this._ejeX || (this._ejeX = new Vector3(1, 0, 0)), -Math.PI / 2);
+        this._qm.setFromEuler(this._eu || (this._eu = new Euler()));
+        this._eu.set(-Math.PI / 2, 0, m.giro);
+        this._qm.setFromEuler(this._eu);
       }
       this._esc.set(m.tam, m.tam, m.tam);
       this._m4.compose(m.pos, this._qm, this._esc);
-      this.manchas.setMatrixAt(n, this._m4);
-      n++;
+      const im = this.manchas[m.forma];
+      im.setMatrixAt(n[m.forma], this._m4);
+      n[m.forma]++;
     }
-    this.manchas.count = n;
-    if (n > 0) this.manchas.instanceMatrix.needsUpdate = true;
+    for (let f = 0; f < 3; f++) {
+      this.manchas[f].count = n[f];
+      if (n[f] > 0) this.manchas[f].instanceMatrix.needsUpdate = true;
+    }
   }
   // Cuando se rearma el campo, no quedan manchas de la batalla anterior.
   limpiarManchas() {
     for (const m of this._mancha) {
       m.usada = false;
       m.quien = null;
+      m.hueso = null;
     }
-    this.manchas.count = 0;
+    for (const im of this.manchas) im.count = 0;
   }
   // Un enjambre: el buffer reservado de una vez, las partículas recicladas, y
   // UN `Points` para todas. Nada se crea mientras se juega.
@@ -33206,6 +33249,23 @@ var Figura = class {
     }
     const alto = 0.955 + semilla * 7919 % 1 * 0.09;
     raiz.scale.set(alto * 0.99, alto, alto * 0.99);
+    const az = (n) => semilla * n % 1;
+    this._caer = {
+      lado: az(3571) < 0.5 ? -1 : 1,
+      vuelco: 0.95 + az(7919) * 0.75,
+      // cuánto se va de costado
+      pique: -0.35 + az(1543) * 1,
+      // de cara al suelo o de espaldas
+      torso: 0.1 + az(2749) * 0.55,
+      musloI: -0.15 + az(4507) * 0.95,
+      musloD: -0.15 + az(9349) * 0.95,
+      // las piernas se despatarran
+      rodI: -(0.15 + az(1213) * 0.95),
+      rodD: -(0.1 + az(8191) * 0.85),
+      brazoI: (az(3319) - 0.4) * 1.7,
+      // y los brazos quedan donde caen
+      brazoD: (az(5077) - 0.4) * 1.7
+    };
     this.paso = semilla * 6.283;
     this.pose = "marcha";
     this.cur = {
@@ -33398,12 +33458,16 @@ var Figura = class {
   }
   // se desploma de costado, no de cara: queda mejor sobre el pasto
   desplomar(e) {
-    this.raiz.rotation.z = e * 1.35;
-    this.raiz.rotation.x = e * 0.35;
-    this.h.torso.rotation.x = e * 0.4;
-    this.h.musloI.rotation.x = e * 0.5;
-    this.h.musloD.rotation.x = e * 0.25;
-    this.h.rodillaI.rotation.x = -e * 0.8;
+    const c = this._caer;
+    this.raiz.rotation.z = e * c.vuelco * c.lado;
+    this.raiz.rotation.x = e * c.pique;
+    this.h.torso.rotation.x = e * c.torso;
+    this.h.musloI.rotation.x = e * c.musloI;
+    this.h.musloD.rotation.x = e * c.musloD;
+    this.h.rodillaI.rotation.x = e * c.rodI;
+    this.h.rodillaD.rotation.x = e * c.rodD;
+    if (this.h.hombroI) this.h.hombroI.rotation.z = e * c.brazoI;
+    if (this.h.hombroD) this.h.hombroD.rotation.z = e * c.brazoD;
   }
 };
 
@@ -36618,6 +36682,15 @@ function armarCombate(ctx) {
     if (!opciones2 || !opciones2.sangre) return;
     fuego2.salpicadura(punto, dir);
   }
+  function charcoAlCaer(quien) {
+    if (!opciones2 || !opciones2.sangre || !quien || quien._charco) return;
+    quien._charco = true;
+    fuego2.mancharPiso(_p.set(
+      quien.pos.x + (Math.random() - 0.5) * 0.5,
+      0,
+      quien.pos.z + (Math.random() - 0.5) * 0.5
+    ), 0.55 + Math.random() * 0.5);
+  }
   function marcar(quien, punto, chico) {
     if (!opciones2 || !opciones2.sangre || !quien) return;
     fuego2.mancharCuerpo(quien, punto, chico ? 0.13 + Math.random() * 0.09 : 0.22 + Math.random() * 0.14);
@@ -36719,6 +36792,7 @@ function armarCombate(ctx) {
       const z = zona(soldado, g.point.y);
       const dano = z === "miembro" ? BALA_MIEMBRO : BALA_JUGADOR;
       if (soldado.recibir(dano, d, VOLTEO.bala)) {
+        charcoAlCaer(soldado);
         hud2.mostrarAviso(z === "cabeza" ? "\xA1A la cabeza!" : "Realista abatido", "bien");
       } else if (z === "miembro") {
         hud2.mostrarAviso("Le diste, pero sigue en pie", "bien");
@@ -36756,7 +36830,10 @@ function armarCombate(ctx) {
       o.monta.recibir(BALA_AL_CABALLO);
       return;
     }
-    if (o.recibir(dano, g.frente, VOLTEO.bayoneta)) hud2.mostrarAviso(nombre, "bien");
+    if (o.recibir(dano, g.frente, VOLTEO.bayoneta)) {
+      charcoAlCaer(o);
+      hud2.mostrarAviso(nombre, "bien");
+    }
   }
   function sablazo() {
     const remate = sable2.remate;
@@ -36777,6 +36854,7 @@ function armarCombate(ctx) {
     const dano = Math.round((remate ? DANO_REMATE : DANO_SABLE) * filo);
     const vuelca = montado2() ? Math.min(VOLTEO.lanza, VOLTEO.bayoneta * filo) : VOLTEO.bayoneta;
     if (g.soldado.recibir(dano, g.frente, vuelca)) {
+      charcoAlCaer(g.soldado);
       hud2.mostrarAviso(remate ? "\xA1Rematado!" : filo > 2 ? "\xA1Lo llev\xF3 puesto!" : "A sablazos", "bien");
     }
   }
@@ -38372,6 +38450,7 @@ function armarMando(ctx) {
     estaCaido = true;
     mostrarPausa(false);
     if (document.pointerLockElement) document.exitPointerLock();
+    document.body.style.cursor = "default";
   }
   function ponerseEnPie() {
     if (jugador2.vivo) return false;
@@ -42979,6 +43058,7 @@ window.juego = {
   acto,
   victoria,
   opciones,
+  hud,
   simular,
   get armas() {
     return arsenal.armas;

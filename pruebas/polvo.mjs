@@ -160,9 +160,16 @@ const efectos = await pag.evaluate(() => {
   for (let i = 0; i < 200; i++) j.fuego.mancharPiso(new V(Math.random() * 20, 0, Math.random() * 20), 0.4);
   ok('doscientas marcas no desbordan el techo de 44', usadas() <= 44, `${usadas()} de 44`);
   j.fuego.actualizar(0.016);
-  ok('y van todas en UNA instancia, no una malla por mancha',
-    j.fuego.manchas.count === usadas() && j.fuego.manchas.isInstancedMesh,
-    `count=${j.fuego.manchas.count}`);
+  // Son TRES instancias y no una: un `InstancedMesh` tiene una sola textura, y
+  // con una sola forma veinte manchas en el piso son la misma calcomanía veinte
+  // veces. Tres llamadas en el peor caso, ninguna si no hay manchas.
+  const enInstancias = j.fuego.manchas.reduce((a, im) => a + im.count, 0);
+  ok('van todas en instancias, no una malla por mancha',
+    enInstancias === usadas() && j.fuego.manchas.every(im => im.isInstancedMesh),
+    `${enInstancias} repartidas en ${j.fuego.manchas.length} formas`);
+  ok('y las tres formas se usan, no siempre la misma',
+    new Set(j.fuego._mancha.filter(m => m.usada).map(m => m.forma)).size >= 2,
+    [...new Set(j.fuego._mancha.filter(m => m.usada).map(m => m.forma))].join(','));
   j.fuego.limpiarManchas();
   ok('rearmar el campo las barre', usadas() === 0, String(usadas()));
   j.opciones.sangre = guardada;

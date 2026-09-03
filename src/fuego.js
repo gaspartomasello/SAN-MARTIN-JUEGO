@@ -88,16 +88,43 @@ function texturaGrano () {
 // pisan más unas gotas sueltas alrededor. Un círculo limpio se lee como un
 // disco de plástico pegado encima; lo que hace que parezca sangre es que el
 // contorno no cierre.
-function texturaMancha () {
+// Tres formas y no una. Con un solo dibujo, veinte manchas en pantalla son la
+// misma calcomanía veinte veces y el ojo lo caza enseguida —sobre todo en el
+// piso, donde quedan quietas y se pueden comparar—. Son tres siluetas
+// distintas, no la misma girada:
+//
+//   0  el borrón: tres círculos que se pisan, redondo y compacto
+//   1  el reguero: alargado, como lo que corre desde una herida
+//   2  el salpicado: un centro chico y muchas gotas sueltas alrededor
+//
+// El azar de adentro las hace además distintas entre sí en cada partida.
+function texturaMancha (forma) {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
   const x = c.getContext('2d');
   x.fillStyle = '#fff';
   const gota = (cx, cy, r) => { x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill(); };
-  gota(32, 32, 15); gota(24, 27, 11); gota(40, 36, 10);
-  for (let i = 0; i < 9; i++) {
-    const a = Math.random() * Math.PI * 2, d = 16 + Math.random() * 12;
-    gota(32 + Math.cos(a) * d, 32 + Math.sin(a) * d, 1.5 + Math.random() * 3.5);
+  const sueltas = (n, dMin, dMax, rMin, rMax) => {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, d = dMin + Math.random() * (dMax - dMin);
+      gota(32 + Math.cos(a) * d, 32 + Math.sin(a) * d, rMin + Math.random() * (rMax - rMin));
+    }
+  };
+  if (forma === 1) {
+    // el reguero: un óvalo que se afina hacia una punta
+    for (let i = 0; i < 12; i++) {
+      const t = i / 11;
+      gota(16 + t * 34, 32 + Math.sin(t * 2.4) * 5, 11 * (1 - t * 0.78) + 1.5);
+    }
+    sueltas(6, 18, 27, 1, 3);
+  } else if (forma === 2) {
+    // el salpicado: poco centro y mucha gota
+    gota(32, 32, 8);
+    sueltas(18, 8, 29, 1.5, 5);
+  } else {
+    // el borrón
+    gota(32, 32, 15); gota(24, 27, 11); gota(40, 36, 10);
+    sueltas(9, 16, 28, 1.5, 5);
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -199,20 +226,29 @@ export class Fuego {
   // primero, igual que con la salpicadura.
   _armarManchas (escena) {
     const geo = new THREE.PlaneGeometry(1, 1);
-    const mat = new THREE.MeshBasicMaterial({
-      map: texturaMancha(), transparent: true, depthWrite: false,
-      color: 0x5e0b0b, side: THREE.DoubleSide,
-      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
-    });
-    this.manchas = new THREE.InstancedMesh(geo, mat, MAX_MANCHAS);
-    this.manchas.frustumCulled = false;
-    this.manchas.renderOrder = 2;
-    this.manchas.count = 0;
-    this.manchas.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    escena.add(this.manchas);
+    // Una instancia POR FORMA. Un `InstancedMesh` tiene una sola textura, así
+    // que tres siluetas son tres instancias: tres llamadas de dibujo en el peor
+    // caso, y ninguna si no hay manchas. La alternativa —un atlas con las tres
+    // y las UV por instancia— pide un shader propio, que es mucho pedir para
+    // ahorrar dos llamadas.
+    this.manchas = [];
+    for (let f = 0; f < 3; f++) {
+      const mat = new THREE.MeshBasicMaterial({
+        map: texturaMancha(f), transparent: true, depthWrite: false,
+        color: 0x5e0b0b, side: THREE.DoubleSide,
+        polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
+      });
+      const im = new THREE.InstancedMesh(geo, mat, MAX_MANCHAS);
+      im.frustumCulled = false;
+      im.renderOrder = 2;
+      im.count = 0;
+      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      escena.add(im);
+      this.manchas.push(im);
+    }
     this._mancha = [];
     for (let i = 0; i < MAX_MANCHAS; i++) {
-      this._mancha.push({ usada: false, orden: 0, quien: null,
+      this._mancha.push({ usada: false, orden: 0, quien: null, hueso: null,
         local: new THREE.Vector3(), pos: new THREE.Vector3(), tam: 0.3, giro: 0 });
     }
     this._ordenMancha = 0;
@@ -232,16 +268,33 @@ export class Fuego {
     const m = libre || viejo;
     m.usada = true;
     m.orden = ++this._ordenMancha;
+    m.forma = Math.floor(Math.random() * 3);
     return m;
   }
 
   // PEGADA AL CUERPO. Se guarda el punto RELATIVO al hombre, no el absoluto:
   // el tipo sigue caminando y la mancha tiene que ir con él.
+  // PEGADA AL CUERPO, Y COLGADA DEL TORSO.
+  //
+  // La primera versión guardaba el punto relativo a `pos`, que es la posición
+  // del hombre en el suelo, y con eso la mancha seguía al que caminaba pero se
+  // quedaba FLOTANDO cuando el tipo se desplomaba: un muerto se derrumba
+  // rotando la figura por dentro y `pos` casi no se mueve, así que la mancha
+  // quedaba en el aire a la altura del pecho, sobre un cuerpo tirado y limpio.
+  // Era las dos cosas que se veían mal: sangre en el aire, y cadáveres sin una
+  // gota.
+  //
+  // Colgada del hueso del torso se acabó: la mancha camina, se agacha, se cae y
+  // gira con el hombre, sin una línea de código para cada caso.
   mancharCuerpo (quien, punto, tam) {
-    if (!quien) return;
+    const hueso = quien && quien.fig && quien.fig.h ? (quien.fig.h.torso || quien.fig.raiz) : null;
+    if (!hueso) return;
+    hueso.updateWorldMatrix(true, false);
     const m = this._huecoMancha();
     m.quien = quien;
-    m.local.copy(punto).sub(quien.pos);
+    m.hueso = hueso;
+    m.local.copy(punto);
+    hueso.worldToLocal(m.local);
     m.tam = tam || (0.16 + Math.random() * 0.12);
     m.giro = Math.random() * Math.PI * 2;
   }
@@ -260,12 +313,18 @@ export class Fuego {
   // del piso ya están donde tienen que estar. Son cuarenta y cuatro matrices,
   // que al lado de trescientos setenta hombres no es nada.
   _correrManchas () {
-    let n = 0;
+    const n = [0, 0, 0];
     for (const m of this._mancha) {
       if (!m.usada) continue;
       if (m.quien) {
         if (!m.quien.malla || !m.quien.malla.parent) { m.usada = false; continue; }
-        m.pos.copy(m.quien.pos).add(m.local);
+        // SE REFRESCA LA MATRIZ DEL HUESO. Esto corre dentro de `simular`, o
+        // sea ANTES de que el motor recorra la escena, así que la matriz que
+        // hay puesta es la del cuadro anterior: sin esto la mancha va un cuadro
+        // atrás del cuerpo, que en pleno desplome se ve despegada. Es el mismo
+        // cuidado que ya estaba escrito en sable.js para el brazo.
+        m.hueso.updateWorldMatrix(true, false);
+        m.pos.copy(m.local).applyMatrix4(m.hueso.matrixWorld);
         // Y SE DESPEGA DEL CUERPO HACIA EL QUE MIRA.
         //
         // Puesta en el punto del impacto, la mancha queda ADENTRO del torso y
@@ -278,21 +337,28 @@ export class Fuego {
         m.pos.addScaledVector(this._ojo, 0.17);
         this._qm.copy(this.camara.quaternion);
       } else {
-        this._qm.setFromAxisAngle(this._ejeX || (this._ejeX = new THREE.Vector3(1, 0, 0)), -Math.PI / 2);
+        // de plano, y GIRADA: sin el giro las tres formas se repiten con la
+        // misma orientación y el piso se ve estampado con un sello
+        this._qm.setFromEuler(this._eu || (this._eu = new THREE.Euler()));
+        this._eu.set(-Math.PI / 2, 0, m.giro);
+        this._qm.setFromEuler(this._eu);
       }
       this._esc.set(m.tam, m.tam, m.tam);
       this._m4.compose(m.pos, this._qm, this._esc);
-      this.manchas.setMatrixAt(n, this._m4);
-      n++;
+      const im = this.manchas[m.forma];
+      im.setMatrixAt(n[m.forma], this._m4);
+      n[m.forma]++;
     }
-    this.manchas.count = n;
-    if (n > 0) this.manchas.instanceMatrix.needsUpdate = true;
+    for (let f = 0; f < 3; f++) {
+      this.manchas[f].count = n[f];
+      if (n[f] > 0) this.manchas[f].instanceMatrix.needsUpdate = true;
+    }
   }
 
   // Cuando se rearma el campo, no quedan manchas de la batalla anterior.
   limpiarManchas () {
-    for (const m of this._mancha) { m.usada = false; m.quien = null; }
-    this.manchas.count = 0;
+    for (const m of this._mancha) { m.usada = false; m.quien = null; m.hueso = null; }
+    for (const im of this.manchas) im.count = 0;
   }
 
   // Un enjambre: el buffer reservado de una vez, las partículas recicladas, y

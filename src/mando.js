@@ -191,6 +191,11 @@ export function armarMando (ctx) {
     estaCaido = true;
     mostrarPausa(false);
     if (document.pointerLockElement) document.exitPointerLock();
+    // Y EL CURSOR VUELVE. `mostrarPausa(false)` hace dos cosas —esconde la
+    // pantalla de pausa y esconde el puntero— y acá sólo hacía falta la
+    // primera: soltar el mouse sin cursor deja los botones del caído ahí,
+    // visibles, y sin manera de apretarlos. Se veía como que el juego se colgó.
+    document.body.style.cursor = 'default';
   }
 
   // PONERSE EN PIE es levantarse donde caíste. La batalla siguió sin vos.

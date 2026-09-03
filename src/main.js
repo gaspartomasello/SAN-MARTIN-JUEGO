@@ -662,7 +662,7 @@ window.juego = {
   balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, render,
-  lejania, pasadaVel, pinza, canones, acto, victoria, opciones, simular,
+  lejania, pasadaVel, pinza, canones, acto, victoria, opciones, hud, simular,
   get armas () { return arsenal.armas; },
   get caballo () { return campo.caballo; },
   get arma () { return arsenal.actual(); },

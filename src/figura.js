@@ -621,6 +621,31 @@ export class Figura {
     const alto = 0.955 + (semilla * 7919 % 1) * 0.09;
     raiz.scale.set(alto * 0.99, alto, alto * 0.99);
 
+    // CÓMO SE CAE ESTE HOMBRE, sorteado al nacer.
+    //
+    // `desplomar` era la misma pose para todos —vuelco de 1,35 hacia el mismo
+    // lado y las piernas en el mismo ángulo—, así que doscientos cincuenta
+    // muertos caían idénticos: un campo después de una carga se veía como una
+    // fila de maniquíes volcados para la derecha.
+    //
+    // Sale de la SEMILLA y no de `Math.random`, y eso importa en red: el cable
+    // manda cuánto lleva caído, no la pose, y cada máquina anima la caída por
+    // su cuenta. Con azar suelto el mismo muerto quedaría tirado de un lado en
+    // una pantalla y del otro en la otra.
+    const az = n => (semilla * n) % 1;
+    this._caer = {
+      lado: az(3571) < 0.5 ? -1 : 1,
+      vuelco: 0.95 + az(7919) * 0.75,      // cuánto se va de costado
+      pique: -0.35 + az(1543) * 1.0,       // de cara al suelo o de espaldas
+      torso: 0.10 + az(2749) * 0.55,
+      musloI: -0.15 + az(4507) * 0.95,
+      musloD: -0.15 + az(9349) * 0.95,     // las piernas se despatarran
+      rodI: -(0.15 + az(1213) * 0.95),
+      rodD: -(0.10 + az(8191) * 0.85),
+      brazoI: (az(3319) - 0.4) * 1.7,      // y los brazos quedan donde caen
+      brazoD: (az(5077) - 0.4) * 1.7
+    };
+
     this.paso = semilla * 6.283;
     this.pose = 'marcha';
 
@@ -827,11 +852,16 @@ export class Figura {
 
   // se desploma de costado, no de cara: queda mejor sobre el pasto
   desplomar (e) {
-    this.raiz.rotation.z = e * 1.35;
-    this.raiz.rotation.x = e * 0.35;
-    this.h.torso.rotation.x = e * 0.4;
-    this.h.musloI.rotation.x = e * 0.5;
-    this.h.musloD.rotation.x = e * 0.25;
-    this.h.rodillaI.rotation.x = -e * 0.8;
+    const c = this._caer;
+    this.raiz.rotation.z = e * c.vuelco * c.lado;
+    this.raiz.rotation.x = e * c.pique;
+    this.h.torso.rotation.x = e * c.torso;
+    this.h.musloI.rotation.x = e * c.musloI;
+    this.h.musloD.rotation.x = e * c.musloD;
+    this.h.rodillaI.rotation.x = e * c.rodI;
+    this.h.rodillaD.rotation.x = e * c.rodD;
+    // los brazos también: un muerto no cae con los brazos pegados al cuerpo
+    if (this.h.hombroI) this.h.hombroI.rotation.z = e * c.brazoI;
+    if (this.h.hombroD) this.h.hombroD.rotation.z = e * c.brazoD;
   }
 }

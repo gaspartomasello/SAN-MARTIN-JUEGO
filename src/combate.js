@@ -97,6 +97,17 @@ export function armarCombate (ctx) {
   // sólo si el hombre está de pie sobre el pasto: si no, cada bayonetazo de una
   // pelea de doscientos cincuenta hombres deja su charco y el campo termina
   // rojo, que no es lo que se quiere contar.
+  // EL QUE CAE DEJA CHARCO DEBAJO. Va aparte de `marcar` porque no es la marca
+  // del golpe: es lo que queda cuando el cuerpo ya está en el suelo, y sale UNA
+  // sola vez por hombre —el que ya lo dejó no lo vuelve a dejar aunque le
+  // sigan pegando—.
+  function charcoAlCaer (quien) {
+    if (!opciones || !opciones.sangre || !quien || quien._charco) return;
+    quien._charco = true;
+    fuego.mancharPiso(_p.set(quien.pos.x + (Math.random() - 0.5) * 0.5, 0,
+      quien.pos.z + (Math.random() - 0.5) * 0.5), 0.55 + Math.random() * 0.5);
+  }
+
   function marcar (quien, punto, chico) {
     if (!opciones || !opciones.sangre || !quien) return;
     fuego.mancharCuerpo(quien, punto, chico ? 0.13 + Math.random() * 0.09 : 0.22 + Math.random() * 0.14);
@@ -230,6 +241,7 @@ export function armarCombate (ctx) {
       const z = zona(soldado, g.point.y);
       const dano = z === 'miembro' ? BALA_MIEMBRO : BALA_JUGADOR;
       if (soldado.recibir(dano, d, VOLTEO.bala)) {
+        charcoAlCaer(soldado);
         hud.mostrarAviso(z === 'cabeza' ? '¡A la cabeza!' : 'Realista abatido', 'bien');
       } else if (z === 'miembro') {
         hud.mostrarAviso('Le diste, pero sigue en pie', 'bien');
@@ -270,7 +282,7 @@ export function armarCombate (ctx) {
     salpicar(_p.copy(o.pos).setY(o.pos.y + 1.15), g.frente);
     marcar(o, _p, true);
     if (o.montado && Math.random() < CABALLO_COME) { o.monta.recibir(BALA_AL_CABALLO); return; }
-    if (o.recibir(dano, g.frente, VOLTEO.bayoneta)) hud.mostrarAviso(nombre, 'bien');
+    if (o.recibir(dano, g.frente, VOLTEO.bayoneta)) { charcoAlCaer(o); hud.mostrarAviso(nombre, 'bien'); }
   }
 
   // El sablazo choca contra el acero si el realista está en guardia. Ahí está
@@ -303,6 +315,7 @@ export function armarCombate (ctx) {
     // velocidad del galope más: el mismo principio del lanzazo con menos asta
     const vuelca = montado() ? Math.min(VOLTEO.lanza, VOLTEO.bayoneta * filo) : VOLTEO.bayoneta;
     if (g.soldado.recibir(dano, g.frente, vuelca)) {
+      charcoAlCaer(g.soldado);
       hud.mostrarAviso(remate ? '¡Rematado!' : (filo > 2 ? '¡Lo llevó puesto!' : 'A sablazos'), 'bien');
     }
   }
