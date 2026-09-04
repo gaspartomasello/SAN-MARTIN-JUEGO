@@ -580,8 +580,31 @@ function simular (dt) {
   return { presion, arma, quiereApuntar };
 }
 
+// LAS TAPAS: mientras haya una, abajo no se dibuja nada.
+//
+// La portada y el plano cubren la pantalla entera y son opacos, y abajo estaba
+// corriendo la batalla completa —trescientos setenta hombres simulados y los
+// dos pases de dibujo— para que no se viera un solo píxel. Eso no es sólo
+// desperdicio: el menú y el juego pelean por el mismo hilo, así que la
+// animación de los botones se trababa. Medido en pruebas/portada.mjs: con el
+// bucle corriendo, la transición del renglón no avanzaba ni un píxel en 450 ms.
+//
+// La sala NO entra en la lista: ahí la red está negociando y el latido sale de
+// simular(). La portada y el plano no hablan con nadie.
+const TAPAS = ['portada', 'plano'];
+function tapado () {
+  for (const id of TAPAS) {
+    const e = document.getElementById(id);
+    if (e && !e.classList.contains('oculto')) return true;
+  }
+  return false;
+}
+
 function cuadro () {
   requestAnimationFrame(cuadro);
+  // el reloj se vacía igual, si no el primer cuadro adentro llega con el
+  // tiempo entero que estuviste mirando el menú
+  if (tapado()) { reloj.getDelta(); return; }
   const crudo = Math.min(0.05, reloj.getDelta());
   // en pausa se sigue dibujando, pero el mundo no corre
   // LA CÁMARA LENTA DEL ACTO. El mundo entero corre más despacio —no sólo la

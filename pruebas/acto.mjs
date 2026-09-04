@@ -86,7 +86,12 @@ const r = await pag.evaluate(() => {
   ok('queda pegado al caballo, no donde estaba la cámara', alCaballo < 1.1,
     `a ${alCaballo.toFixed(2)} m del animal`);
   ok('y en el sitio donde caíste', !!sm && Math.hypot(sm.pos.x - caiste.x, sm.pos.z - caiste.z) < 1.5);
-  ok('y TIRADO, no parado', !!sm && sm.tendido === true && sm.fig.raiz.rotation.z > 1.2,
+  // El VALOR ABSOLUTO, no el signo: desde que cada figura se desploma para su
+  // lado —el vuelco sale de la semilla, entre 0,95 y 1,70 rad— San Martín cae
+  // a la izquierda o a la derecha según quién sea, y esta afirmación pedía que
+  // fuera siempre para el mismo lado. Estaba tirado igual: daba -1,50 rad.
+  ok('y TIRADO, no parado',
+    !!sm && sm.tendido === true && Math.abs(sm.fig.raiz.rotation.z) > 0.9,
     sm ? `rotación ${sm.fig.raiz.rotation.z.toFixed(2)} rad` : '—');
 
   // EL CABALLO DE SAN MARTÍN ES EL CREMA. Es lo único que lo distingue de los

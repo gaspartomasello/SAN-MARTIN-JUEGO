@@ -6,7 +6,7 @@
 <title>El clarín de San Lorenzo — 3 de febrero de 1813</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Saira+Condensed:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Libre+Caslon+Display&family=Saira+Condensed:wght@500;600&display=swap">
 <style>
   :root{
     --azul:#23385E; --carmesi:#8F2126; --bronce:#C69B54;
@@ -179,28 +179,39 @@
     background-image:
       radial-gradient(ellipse 70% 55% at 66% 74%,rgba(150,102,44,.5),rgba(0,0,0,0) 72%),
       linear-gradient(180deg,#151d28 0%,#2a2a26 44%,#5c4728 76%,#8a6a35 100%)}
+  /* 34% y no «center»: la foto es más ancha que casi cualquier pantalla, así
+     que `cover` recorta de los costados, y el que se pierde con `center` es el
+     izquierdo — donde están la bandera y el convento—. Corrida al 34% se
+     recorta la montaña de la derecha y el jinete queda lejos del menú. */
   #portada .foto{position:absolute;inset:0;background-image:url(portada.jpg);
-    background-size:cover;background-position:center}
+    background-size:cover;background-position:34% center}
   /* El velo: la foto es clara del lado derecho y el menú va a la izquierda, así
      que el oscurecido no es parejo —se carga sobre la columna del texto—. */
   #portada .velo{position:absolute;inset:0;
     background:
-      linear-gradient(90deg,rgba(8,10,14,.9) 0%,rgba(8,10,14,.72) 34%,rgba(8,10,14,.24) 68%,rgba(8,10,14,.5) 100%),
+      linear-gradient(90deg,rgba(8,10,14,.84) 0%,rgba(8,10,14,.6) 32%,rgba(8,10,14,.16) 64%,rgba(8,10,14,.44) 100%),
       linear-gradient(180deg,rgba(8,10,14,.6) 0%,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 64%,rgba(8,10,14,.78) 100%)}
 
-  /* El oro viejo: un degradado recortado sobre la letra. Ojo que con el relleno
-     transparente el text-shadow no se dibuja — la sombra va con drop-shadow. */
+  /* El oro viejo: un degradado recortado sobre la letra. Con el relleno
+     transparente el text-shadow no se dibuja, así que la sombra de todo el
+     bloque va en .tapa —una sola para las siete piezas en vez de una por
+     pieza—. */
   .oro{background-image:linear-gradient(180deg,#f7e6b6 0%,#e3c67e 34%,#c69b54 60%,#8d6a2b 100%);
     -webkit-background-clip:text;background-clip:text;
-    color:transparent;-webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 2px 10px rgba(0,0,0,.85))}
+    color:transparent;-webkit-text-fill-color:transparent}
 
-  #portada .tapa{position:relative;z-index:2;padding:0 clamp(26px,7vw,104px);max-width:640px}
-  #portada .franja{margin-bottom:22px}
-  #portada .eyebrow{color:#c8b891;font-size:11.5px;letter-spacing:.26em}
-  #portada h1{font-size:clamp(40px,6.4vw,74px);margin:12px 0 4px;letter-spacing:.005em}
-  #portada .lema{color:#a9a191;font-size:14.5px;letter-spacing:.05em;margin:0 0 34px;
-    max-width:40ch;line-height:1.65;text-shadow:0 2px 10px rgba(0,0,0,.9)}
+  /* La sombra de todo el bloque, de una sola vez (ver .oro). */
+  #portada .tapa{position:relative;z-index:2;padding:0 clamp(26px,7vw,104px);max-width:660px;
+    filter:drop-shadow(0 3px 14px rgba(0,0,0,.9))}
+  /* El nombre, con la letra grabada del afiche: una romana de capitales, la
+     misma familia de titular que el jpg. Si no baja la fuente de la red queda
+     Georgia, que es lo más parecido que hay puesto en cualquier máquina. */
+  #portada h1{font-family:"Cinzel","Libre Caslon Display",Georgia,serif;font-weight:700;
+    font-size:clamp(42px,6.2vw,82px);letter-spacing:.055em;line-height:1;
+    margin:0 0 10px;text-transform:uppercase;white-space:nowrap}
+  #portada .campana{font-family:"Cinzel","Libre Caslon Display",Georgia,serif;font-weight:400;
+    font-size:clamp(13px,1.35vw,18px);letter-spacing:.3em;text-transform:uppercase;
+    margin:0 0 40px}
 
   /* ---- el menú ----
      Cinco renglones y nada más. El botón no tiene caja: la caja la hace el oro
@@ -208,23 +219,38 @@
   .menu{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
   /* background-COLOR y no el atajo `background`: el atajo también borra el
      background-image, que es justo el degradado de oro con el que .oro pinta
-     la letra — y el renglón entero salía transparente sobre transparente. */
+     la letra — y el renglón entero salía transparente sobre transparente.
+     Y LO ÚNICO QUE SE ANIMA ES `transform`. La primera versión movía el
+     padding-left, que obliga al navegador a recalcular la posición de todo el
+     menú en CADA cuadro de la animación, y encendía además un filter sobre la
+     letra: por eso se trababa. Un transform lo resuelve el compositor, sin
+     tocar el layout y sin volver a pintar. */
   .entrada{position:relative;background-color:transparent;border:0;padding:7px 0 7px 30px;cursor:pointer;
     text-align:left;text-transform:none;letter-spacing:.055em;
-    font-family:"Libre Caslon Display",Georgia,"Times New Roman",serif;font-weight:400;
-    font-size:clamp(23px,2.5vw,30px);line-height:1.15;
-    transition:padding-left .16s ease,filter .16s ease}
+    font-family:"Cinzel","Libre Caslon Display",Georgia,"Times New Roman",serif;font-weight:400;
+    font-size:clamp(21px,2.2vw,27px);line-height:1.15;
+    transition:transform .16s ease}
   .entrada::before{content:'';position:absolute;left:0;top:50%;width:18px;height:1px;
-    background:linear-gradient(90deg,rgba(198,155,84,0),#e3c67e);
+    background:linear-gradient(90deg,rgba(159,26,30,0),#e8484a);
     transform:scaleX(0);transform-origin:left;transition:transform .18s ease}
-  .entrada:hover,.entrada:focus-visible{padding-left:38px;outline:none;
-    filter:drop-shadow(0 0 12px rgba(227,198,126,.4)) drop-shadow(0 2px 10px rgba(0,0,0,.85))}
+  /* ENCIMA SE PONE COLORADA — y acá hay que volver a declarar el recorte.
+     La regla global `button:hover{background:#D8AC63}` usa el ATAJO
+     `background`, que no sólo pinta el fondo: devuelve background-clip a
+     border-box. Medido: quieto el renglón daba clip `text` y encima daba
+     `border-box`, o sea que el degradado dejaba de seguir la letra y pintaba
+     la caja entera. Se veía un ladrillo dorado con la letra borrada, que es
+     exactamente el defecto que había que arreglar. No alcanza con cambiarle el
+     color: hay que reponer el recorte y el fondo transparente. */
+  .entrada:hover,.entrada:focus-visible{outline:none;transform:translateX(8px);
+    background-color:transparent;
+    -webkit-background-clip:text;background-clip:text;
+    background-image:linear-gradient(180deg,#ffc3ac 0%,#ee5a52 38%,#cf2f2f 66%,#8f2126 100%)}
   .entrada:hover::before,.entrada:focus-visible::before{transform:scaleX(1)}
   .entrada:focus-visible{text-decoration:underline;text-underline-offset:7px}
   .entrada i{display:block;font-style:normal;font-family:var(--ui);font-size:10.5px;
     letter-spacing:.16em;text-transform:uppercase;color:#7d7666;margin-top:1px;
     -webkit-text-fill-color:#7d7666;filter:none}
-  .entrada:hover i,.entrada:focus-visible i{-webkit-text-fill-color:#b3aa93;color:#b3aa93}
+  .entrada:hover i,.entrada:focus-visible i{-webkit-text-fill-color:#d98a80;color:#d98a80}
 
   /* ---- el pie ----
      Los dos renglones chicos, uno en cada punta, como en un afiche. */
@@ -492,11 +518,11 @@
   <div class="velo"></div>
 
   <div class="tapa" id="portada-menu">
-    <div class="franja"><i></i><i></i><i></i></div>
-    <div class="eyebrow">San Lorenzo · 3 de febrero de 1813</div>
-    <h1 class="oro">El clarín de San Lorenzo</h1>
-    <p class="lema">Quince minutos de pelea a orillas del Paraná. Sos José de San Martín
-      y todavía no sos nadie.</p>
+    <!-- El corte va escrito y no librado al ancho: en un solo renglón el
+         nombre se le monta encima a la cabeza de San Martín, y dónde corta
+         dependería de qué tipografía llegó a bajarse. -->
+    <h1 class="oro">San<br>Martín</h1>
+    <p class="campana oro">La campaña a la revolución</p>
 
     <nav class="menu">
       <button class="entrada oro" id="modo-batalla">Un jugador<i>La carga de los ciento veinte</i></button>
