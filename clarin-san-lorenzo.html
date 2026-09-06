@@ -91,6 +91,17 @@
     width:var(--f,0%);background:#c9a24a}
   #forcejeo b{display:block;margin-top:7px;font-size:12px;letter-spacing:.22em;
     color:#e6dcc2;font-weight:600}
+  /* DE DÓNDE TE ESTÁN PEGANDO.
+     Un arco colorado sobre un círculo centrado en la mira, en el rumbo del que
+     te tiró. Es una BRÚJULA: el ángulo se recalcula cada cuadro contra hacia
+     dónde estás mirando, así que si girás, el arco gira con vos y te lleva al
+     tirador. Colorado suave y no rojo pleno: tiene que avisar sin tapar. */
+  #dano{position:fixed;left:50%;top:50%;width:min(52vmin,420px);height:min(52vmin,420px);
+    transform:translate(-50%,-50%);pointer-events:none;z-index:8}
+  #dano svg{width:100%;height:100%;overflow:visible}
+  #dano path{fill:none;stroke:#b0332e;stroke-width:5;stroke-linecap:round;opacity:0;
+    filter:drop-shadow(0 0 4px rgba(0,0,0,.6))}
+
   #metralla{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;
     background:radial-gradient(ellipse 78% 74% at center,rgba(0,0,0,0) 46%,rgba(150,26,20,.62) 100%);
     animation:pulsoMetralla .55s ease-in-out infinite}
@@ -537,6 +548,12 @@
 </div>
 <div id="forcejeo"><i></i><b>ESPACIO</b></div>
 <div id="metralla"></div>
+<div id="dano"><svg viewBox="-50 -50 100 100">
+    <path d="M-14.85 -34.98 A38 38 0 0 1 14.85 -34.98"/>
+    <path d="M-14.85 -34.98 A38 38 0 0 1 14.85 -34.98"/>
+    <path d="M-14.85 -34.98 A38 38 0 0 1 14.85 -34.98"/>
+    <path d="M-14.85 -34.98 A38 38 0 0 1 14.85 -34.98"/>
+</svg></div>
 <div id="sangre"></div>
 <div id="flash"></div>
 
@@ -32335,6 +32352,7 @@ var REGEN_TASA = 21;
 var VENDA_CURA = 48;
 var VENDA_TIEMPO = 1.4;
 var ALTURA_CAIDO = 0.62;
+var ROLL_MUERTO = 1.22;
 var CAER_CABEZA = 1.6;
 var VUELO = 26;
 var VUELO_RAPIDO = 62;
@@ -32451,7 +32469,10 @@ var Jugador = class {
     this.tSinDano = 0;
     this.vendando = 0;
     this.sacudir(Math.min(0.9, 0.25 + dano / 90));
-    if (desde) this.golpeDesde = Math.atan2(desde.x, desde.z);
+    if (desde) {
+      this.golpeDesde = Math.atan2(desde.x, desde.z);
+      if (this.alGolpe) this.alGolpe(-desde.x, -desde.z);
+    }
     if (this.vida <= 0 && this.alMorir) this.alMorir();
   }
   vendar() {
@@ -32583,6 +32604,7 @@ var Jugador = class {
         g = Math.atan2(Math.sin(g), Math.cos(g));
         this.yaw += g * Math.min(1, 1.1 * dt);
         this.pitch += (this.pitchAtrapado - this.pitch) * Math.min(1, 1.1 * dt);
+        this.balanceo += (ROLL_MUERTO - this.balanceo) * Math.min(1, 1.3 * dt);
       }
       this._aplicarCamara(dt, 0);
       return;
@@ -32763,8 +32785,8 @@ var Jugador = class {
     const amp = jinete ? Math.min(1, rapidez / 5.6) : Math.min(1, rapidez / 4);
     const bobY = Math.sin(this.bob * 2) * (jinete ? 0.072 : 0.032) * amp;
     const bobX = Math.cos(this.bob) * (jinete ? 0.04 : 0.022) * amp;
-    const falta = Math.max(1 - this.aliento / 100, 1 - this.vida / this.vidaMax);
-    const resp = Math.sin(t * (2.2 + falta * 3.6)) * (4e-3 + falta * 0.018);
+    const falta = this.vivo ? Math.max(1 - this.aliento / 100, 1 - this.vida / this.vidaMax) : 0;
+    const resp = this.vivo ? Math.sin(t * (2.2 + falta * 3.6)) * (4e-3 + falta * 0.018) : 0;
     this.retroPitch *= Math.exp(-9 * dt);
     this.camara.position.set(this.pos.x + bobX * 0.4, this.pos.y + bobY + resp, this.pos.z);
     this.camara.rotation.set(0, 0, 0);
@@ -37664,6 +37686,7 @@ var Pinza = class {
 
 // src/hud.js
 var $ = (s) => document.querySelector(s);
+var DANO_DURA = 2.4;
 var Hud = class {
   constructor() {
     this.paso = $("#paso");
@@ -37685,6 +37708,8 @@ var Hud = class {
     this.cartelT = 0;
     this.placaEl = $("#placa");
     this.placaT = 0;
+    this.arcos = [...document.querySelectorAll("#dano path")];
+    this.golpes = this.arcos.map(() => ({ t: 0, x: 0, z: 0 }));
     this.tFrase = 0;
     this.tomar = $("#tomar");
     this.aviso = $("#aviso");
@@ -37734,6 +37759,45 @@ var Hud = class {
     }
     this.frase.classList.add("si");
     this.tFrase = segundos || 3.2;
+  }
+  // DE DÓNDE TE PEGARON.
+  //
+  // Se guarda el VECTOR AL AGRESOR en coordenadas del mundo, no el ángulo ya
+  // resuelto contra la pantalla. Ésa es toda la diferencia entre un indicador y
+  // una brújula: el ángulo se rehace en cada cuadro contra hacia dónde estás
+  // mirando, así que girando la cabeza el arco se corre y te lleva al que te
+  // tiró. Con el ángulo guardado, el arco se quedaría clavado en la pantalla y
+  // no serviría para buscar a nadie.
+  //
+  // Cuatro a la vez y se pisa el más viejo: en una descarga te pegan de tres
+  // lados y lo que hace falta es ver los tres, no el último.
+  marcarDano(x, z) {
+    if (!this.golpes.length) return;
+    const d = Math.hypot(x, z);
+    if (!d) return;
+    let peor = 0;
+    for (let i = 1; i < this.golpes.length; i++) {
+      if (this.golpes[i].t < this.golpes[peor].t) peor = i;
+    }
+    this.golpes[peor] = { t: DANO_DURA, x: x / d, z: z / d };
+  }
+  // y se dibujan: uno por arco, girados al rumbo que les toca AHORA
+  _pintarDano(dt, yaw) {
+    const co = Math.cos(yaw), si = Math.sin(yaw);
+    for (let i = 0; i < this.golpes.length; i++) {
+      const g = this.golpes[i], p = this.arcos[i];
+      if (g.t <= 0) {
+        if (p.style.opacity !== "0") p.style.opacity = "0";
+        continue;
+      }
+      g.t = Math.max(0, g.t - dt);
+      const adelante = g.x * -si + g.z * -co;
+      const derecha = g.x * co + g.z * -si;
+      const grados = Math.atan2(derecha, adelante) * 180 / Math.PI;
+      p.setAttribute("transform", `rotate(${grados.toFixed(1)})`);
+      const v = g.t / DANO_DURA;
+      p.style.opacity = (Math.min(1, v * 2.2) * 0.58).toFixed(3);
+    }
   }
   // EL HUD SE CALLA. Lo pide la apertura mientras dura la cinemática: con el
   // contador de cartuchos y la barra de recarga puestos, lo que se ve no es
@@ -37861,6 +37925,7 @@ var Hud = class {
     this.cartelEl.classList.toggle("si", !!texto);
   }
   actualizar(dt, datos) {
+    this._pintarDano(dt, datos.yaw || 0);
     if (this.placaT > 0) {
       this.placaT -= dt;
       if (this.placaT <= 0) this.placaEl.classList.remove("si");
@@ -38048,7 +38113,7 @@ function armarCombate(ctx) {
     if (!montado2()) return false;
     const c = jugador2.monta;
     jugador2.desmontar();
-    jugador2.recibir(CAIDA, new Vector3(0, 0, 1));
+    jugador2.recibir(CAIDA);
     jugador2.sacudir(0.9);
     sonido2.golpeRecibido(1.25);
     c.andar = 3;
@@ -38292,7 +38357,10 @@ function armarCombate(ctx) {
         jugador2.monta.recibir(metrallaAlCaballo(f));
         hud2.mostrarAviso("\xA1METRALLA!", "malo");
       } else {
-        jugador2.recibir(Math.round(DANO_METRALLA * f), new Vector3(0, 0, -1));
+        jugador2.recibir(
+          Math.round(DANO_METRALLA * f),
+          new Vector3().subVectors(jugador2.pos, canon.pos).normalize()
+        );
         hud2.mostrarAviso("\xA1Metralla!", "malo");
       }
     }
@@ -44203,6 +44271,7 @@ campo.alFormar = () => {
   fuego.limpiarManchas();
 };
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
+jugador.alGolpe = (x, z) => hud.marcarDano(x, z);
 var ULTIMAS = [
   ["Ser\xE1s lo que debas ser, o no ser\xE1s nada.", "Jos\xE9 de San Mart\xEDn"],
   ["Seamos libres, que lo dem\xE1s no importa nada.", "Jos\xE9 de San Mart\xEDn"],
@@ -44462,6 +44531,9 @@ function cuadro() {
   };
   ultimoInfo = info;
   hud.actualizar(crudo, {
+    // hacia dónde mirás: el arco del daño se orienta contra esto cada cuadro,
+    // que es lo que lo vuelve una brújula y no una calcomanía
+    yaw: jugador.yaw,
     paso: arma ? arma.infoPaso() : null,
     aliento: jugador.aliento,
     cartuchos: arsenal.cartuchos,

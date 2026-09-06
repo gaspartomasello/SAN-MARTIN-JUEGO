@@ -152,7 +152,9 @@ export function armarCombate (ctx) {
     if (!montado()) return false;
     const c = jugador.monta;
     jugador.desmontar();
-    jugador.recibir(CAIDA, new THREE.Vector3(0, 0, 1));
+    // SIN DIRECCIÓN: caerse del caballo no lo hizo nadie, y un arco colorado
+    // señalando al norte mandaría al jugador a buscar a un tirador que no existe.
+    jugador.recibir(CAIDA);
     jugador.sacudir(0.9);
     // CAERSE DE UN CABALLO NO ES QUE TE PEGUEN. Vas a dos metros del piso y a
     // diez metros por segundo: el golpe te deja unos segundos sin mundo. Es el
@@ -490,7 +492,12 @@ export function armarCombate (ctx) {
         jugador.monta.recibir(metrallaAlCaballo(f));
         hud.mostrarAviso('¡METRALLA!', 'malo');
       } else {
-        jugador.recibir(Math.round(DANO_METRALLA * f), new THREE.Vector3(0, 0, -1));
+        // LA DIRECCIÓN, DE LA PIEZA DE VERDAD. Era un (0,0,-1) fijo, o sea que
+        // la metralla siempre venía del norte viniera de donde viniera. Antes
+        // no molestaba porque nadie leía esa dirección; ahora la lee el arco
+        // del daño, y un arco que apunta mal es peor que ninguno.
+        jugador.recibir(Math.round(DANO_METRALLA * f),
+          new THREE.Vector3().subVectors(jugador.pos, canon.pos).normalize());
         hud.mostrarAviso('¡Metralla!', 'malo');
       }
     }

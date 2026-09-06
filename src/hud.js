@@ -4,6 +4,10 @@
 
 const $ = s => document.querySelector(s);
 
+// Cuánto dura en pantalla la marca de un golpe. No es un número de combate: es
+// cuánto tarda alguien en girar la cabeza para buscar de dónde vino.
+const DANO_DURA = 2.4;
+
 export class Hud {
   constructor () {
     this.paso = $('#paso');
@@ -25,6 +29,9 @@ export class Hud {
     this.cartelT = 0;
     this.placaEl = $('#placa');
     this.placaT = 0;
+    // los cuatro arcos del indicador de daño, y de dónde vino cada golpe
+    this.arcos = [...document.querySelectorAll('#dano path')];
+    this.golpes = this.arcos.map(() => ({ t: 0, x: 0, z: 0 }));
     this.tFrase = 0;
     this.tomar = $('#tomar');
     this.aviso = $('#aviso');
@@ -74,6 +81,50 @@ export class Hud {
     }
     this.frase.classList.add('si');
     this.tFrase = segundos || 3.2;
+  }
+
+  // DE DÓNDE TE PEGARON.
+  //
+  // Se guarda el VECTOR AL AGRESOR en coordenadas del mundo, no el ángulo ya
+  // resuelto contra la pantalla. Ésa es toda la diferencia entre un indicador y
+  // una brújula: el ángulo se rehace en cada cuadro contra hacia dónde estás
+  // mirando, así que girando la cabeza el arco se corre y te lleva al que te
+  // tiró. Con el ángulo guardado, el arco se quedaría clavado en la pantalla y
+  // no serviría para buscar a nadie.
+  //
+  // Cuatro a la vez y se pisa el más viejo: en una descarga te pegan de tres
+  // lados y lo que hace falta es ver los tres, no el último.
+  marcarDano (x, z) {
+    if (!this.golpes.length) return;
+    const d = Math.hypot(x, z);
+    if (!d) return;
+    let peor = 0;
+    for (let i = 1; i < this.golpes.length; i++) {
+      if (this.golpes[i].t < this.golpes[peor].t) peor = i;
+    }
+    this.golpes[peor] = { t: DANO_DURA, x: x / d, z: z / d };
+  }
+
+  // y se dibujan: uno por arco, girados al rumbo que les toca AHORA
+  _pintarDano (dt, yaw) {
+    const co = Math.cos(yaw), si = Math.sin(yaw);
+    for (let i = 0; i < this.golpes.length; i++) {
+      const g = this.golpes[i], p = this.arcos[i];
+      if (g.t <= 0) { if (p.style.opacity !== '0') p.style.opacity = '0'; continue; }
+      g.t = Math.max(0, g.t - dt);
+      // adelante es (-sen, -cos) y la derecha (cos, -sen): son las mismas dos
+      // que usa audio.js para panear, y por eso el oído y la vista coinciden
+      const adelante = g.x * -si + g.z * -co;
+      const derecha = g.x * co + g.z * -si;
+      const grados = Math.atan2(derecha, adelante) * 180 / Math.PI;
+      p.setAttribute('transform', `rotate(${grados.toFixed(1)})`);
+      // entra de golpe y se va apagando: un aviso que se enciende despacio
+      // llega tarde, y lo que hay que hacer con esto es girar YA
+      const v = g.t / DANO_DURA;
+      // COLORADO SUAVE: tiene que avisar de dónde vino sin taparte el campo.
+      // A 0,85 y con trazo grueso era un cartel encima de la pelea.
+      p.style.opacity = (Math.min(1, v * 2.2) * 0.58).toFixed(3);
+    }
   }
 
   // EL HUD SE CALLA. Lo pide la apertura mientras dura la cinemática: con el
@@ -200,6 +251,7 @@ export class Hud {
   }
 
   actualizar (dt, datos) {
+    this._pintarDano(dt, datos.yaw || 0);
     // la placa se apaga sola, como el cartel
     if (this.placaT > 0) {
       this.placaT -= dt;

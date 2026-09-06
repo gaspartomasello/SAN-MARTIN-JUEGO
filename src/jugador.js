@@ -47,6 +47,10 @@ const VENDA_TIEMPO = 1.4;
 // batalla dura tres minutos: si se cruza despacio, mirar es un castigo.
 // Lo que tarda la cabeza en llegar al pasto: casi un segundo, no un cuadro.
 const ALTURA_CAIDO = 0.62;
+// Cuánto se tumba la cámara del que cae. Setenta grados y no noventa: apoyado
+// del todo se ve medio cuadro de tierra y nada más, y lo último que hay que ver
+// es el campo donde te mataron.
+const ROLL_MUERTO = 1.22;
 const CAER_CABEZA = 1.6;
 
 const VUELO = 26;             // metros por segundo
@@ -162,7 +166,13 @@ export class Jugador {
     this.tSinDano = 0;
     this.vendando = 0;
     this.sacudir(Math.min(0.9, 0.25 + dano / 90));
-    if (desde) this.golpeDesde = Math.atan2(desde.x, desde.z);
+    // `desde` es la dirección en la que VIAJA el golpe —del que pega al que
+    // recibe—, así que el agresor está justo del otro lado. El nombre engaña y
+    // por eso se invierte acá y en un solo lugar.
+    if (desde) {
+      this.golpeDesde = Math.atan2(desde.x, desde.z);
+      if (this.alGolpe) this.alGolpe(-desde.x, -desde.z);
+    }
     if (this.vida <= 0 && this.alMorir) this.alMorir();
   }
 
@@ -309,6 +319,11 @@ export class Jugador {
         g = Math.atan2(Math.sin(g), Math.cos(g));
         this.yaw += g * Math.min(1, 1.1 * dt);
         this.pitch += (this.pitchAtrapado - this.pitch) * Math.min(1, 1.1 * dt);
+        // Y LA CABEZA TERMINA DE COSTADO. Bajaba a sesenta centímetros del
+        // pasto y giraba el cuello, pero se quedaba DERECHA: una cámara a la
+        // altura del pasto con el horizonte horizontal no es un hombre tirado,
+        // es una cámara baja. El que cae apoya la oreja en la tierra.
+        this.balanceo += (ROLL_MUERTO - this.balanceo) * Math.min(1, 1.3 * dt);
       }
       this._aplicarCamara(dt, 0);
       return;
@@ -562,9 +577,16 @@ export class Jugador {
     const bobY = Math.sin(this.bob * 2) * (jinete ? 0.072 : 0.032) * amp;
     const bobX = Math.cos(this.bob) * (jinete ? 0.040 : 0.022) * amp;
 
-    // la respiración se acelera con poco aliento y con poca vida
-    const falta = Math.max(1 - this.aliento / 100, 1 - this.vida / this.vidaMax);
-    const resp = Math.sin(t * (2.2 + falta * 3.6)) * (0.004 + falta * 0.018);
+    // LA RESPIRACIÓN SE ACELERA CON POCO ALIENTO Y CON POCA VIDA… Y UN MUERTO NO
+    // RESPIRA.
+    //
+    // Acá estaba la vibración del cadáver. `falta` sale de la vida, así que con
+    // vida cero valía UNO: la cámara de un muerto respiraba al máximo —dos
+    // centímetros a casi seis radianes por segundo— y no paraba nunca, porque
+    // esto no depende del trauma ni decae con el tiempo. El fundido a negro
+    // tardaba siete segundos y en esos siete segundos la imagen temblaba.
+    const falta = this.vivo ? Math.max(1 - this.aliento / 100, 1 - this.vida / this.vidaMax) : 0;
+    const resp = this.vivo ? Math.sin(t * (2.2 + falta * 3.6)) * (0.004 + falta * 0.018) : 0;
 
     this.retroPitch *= Math.exp(-9 * dt);
 

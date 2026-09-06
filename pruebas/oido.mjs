@@ -391,6 +391,66 @@ r.push([tambor.antesDeQuebrar > 0 && tambor.quebrado === 0 ? 'OK ' : 'MAL',
   'y quebrado tampoco: el que corre no va tocando',
   `antes ${tambor.antesDeQuebrar} · después ${tambor.quebrado}`]);
 
+// ---------------------------------------------------------------------------
+// LA CÁMARA DEL QUE CAE, Y DE DÓNDE TE PEGARON
+// ---------------------------------------------------------------------------
+const caer = await pag.evaluate(() => {
+  const j = window.juego, o = {};
+  const p = j.jugador, cam = j.camara;
+  p.revivir(); p.vida = 100; p.pos.set(0, 1.68, 0); p.yaw = 0; p.pitch = 0;
+  if (p.monta) p.desmontar();
+  p.recibir(999);
+  for (let i = 0; i < 60 * 3.5; i++) j.simular(1 / 60);
+  o.altura = +p.pos.y.toFixed(3);
+  o.vuelco = Math.round(p.balanceo * 180 / Math.PI);
+  o.trauma = +p.trauma.toFixed(4);
+  // LA VIBRACIÓN, MEDIDA DE MANERA QUE SE NOTE. Comparar la cámara cuadro a
+  // cuadro en un bucle apretado NO la agarra: el temblor sale de un seno de
+  // performance.now() y entre dos vueltas de un for el reloj de pared casi no
+  // se mueve —así medido daba 0,39 mm con el bug puesto—. Lo que sí es exacto:
+  // con el muerto quieto la cámara tiene que estar EXACTAMENTE donde la cabeza,
+  // porque la respiración y el balanceo del paso son sumandos sobre esa Y. Con
+  // el bug daban 21,98 mm de sobra.
+  o.sobra = Math.abs(cam.position.y - p.pos.y);
+
+  // el arco del daño, que es una brújula y no una calcomanía
+  const V3 = Object.getPrototypeOf(p.pos).constructor;
+  const arcos = [...document.querySelectorAll('#dano path')];
+  const ang = i => { const tr = arcos[i].getAttribute('transform');
+    return tr ? +/rotate\(([-\d.]+)\)/.exec(tr)[1] : null; };
+  const pintar = () => j.hud.actualizar(0.016, { yaw: p.yaw });
+  o.arcos = arcos.length;
+  p.revivir(); p.vida = 100; p.yaw = 0;
+  j.hud.golpes.forEach(g => { g.t = 0; }); pintar();
+  p.recibir(5, new V3(-1, 0, 0));         // el golpe viaja hacia -X: le pegan desde la derecha
+  pintar();
+  const i = j.hud.golpes.findIndex(g => g.t > 0);
+  o.derecha = ang(i);
+  o.prende = +arcos[i].style.opacity;
+  // OJO CON EL SENTIDO: adelante es (-sen, -cos), o sea que yaw creciente gira
+  // a la IZQUIERDA. Para encarar a uno que está a la derecha hay que restar.
+  p.yaw -= Math.PI / 2; pintar(); o.encarado = ang(i);
+  p.yaw += Math.PI;     pintar(); o.despaldas = Math.abs(ang(i));
+  j.hud.golpes.forEach(g => { g.t = 0; });
+  for (let k = 0; k < 4; k++) j.hud.actualizar(0.9, { yaw: p.yaw });
+  o.apagados = arcos.every((_, k) => +arcos[k].style.opacity === 0);
+  return o;
+});
+r.push([caer.altura < 0.75 ? 'OK ' : 'MAL', 'la cabeza del muerto queda en el pasto', `${caer.altura} m`]);
+r.push([Math.abs(caer.vuelco) > 60 ? 'OK ' : 'MAL', 'y la cámara cae DE COSTADO', `${caer.vuelco}°`]);
+r.push([caer.trauma < 0.01 ? 'OK ' : 'MAL', 'el temblor del golpe se apaga', `trauma ${caer.trauma}`]);
+r.push([caer.sobra < 1e-9 ? 'OK ' : 'MAL',
+  'y no vibra: la cámara está exactamente donde la cabeza',
+  `${(caer.sobra * 1000).toFixed(4)} mm de sobra`]);
+r.push([caer.arcos === 4 ? 'OK ' : 'MAL', 'hay cuatro arcos para el daño', `${caer.arcos}`]);
+r.push([Math.abs(caer.derecha - 90) < 2 && caer.prende > 0.3 ? 'OK ' : 'MAL',
+  'un golpe por la derecha marca a la derecha', `${caer.derecha}°`]);
+r.push([Math.abs(caer.encarado) < 2 ? 'OK ' : 'MAL',
+  'y es una brújula: encarándolo el arco se va al frente', `${caer.encarado}°`]);
+r.push([Math.abs(caer.despaldas - 180) < 2 ? 'OK ' : 'MAL',
+  'y dándole la espalda, se va atrás', `${caer.despaldas}°`]);
+r.push([caer.apagados ? 'OK ' : 'MAL', 'los arcos se apagan solos', '']);
+
 for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(48), x);
 const mal = r.filter(x => x[0] === 'MAL').length;
 console.log(`\n${r.length - mal} bien, ${mal} mal`);

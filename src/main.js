@@ -245,6 +245,8 @@ campo.alFormar = () => {
 };
 
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
+// y de dónde vino el golpe, para el arco de la brújula
+jugador.alGolpe = (x, z) => hud.marcarDano(x, z);
 // AL MORIR EN UNA PARTIDA DE A DOS SE PASA A MIRAR, no a esperar. En solitario
 // no: ahí morirte es el final de tu partida y volvés con Enter cuando quieras,
 // sin nadie a quien hacer esperar. En red los otros siguen peleando y quedarte
@@ -685,6 +687,9 @@ function cuadro () {
   ultimoInfo = info;   // render.info se reinicia en cada render(); ésta es la suma real
 
   hud.actualizar(crudo, {
+    // hacia dónde mirás: el arco del daño se orienta contra esto cada cuadro,
+    // que es lo que lo vuelve una brújula y no una calcomanía
+    yaw: jugador.yaw,
     paso: arma ? arma.infoPaso() : null,
     aliento: jugador.aliento,
     cartuchos: arsenal.cartuchos,
