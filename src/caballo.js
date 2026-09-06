@@ -19,6 +19,19 @@ import { CAMPO_X, CAMPO_Z0, CAMPO_Z1 } from './jugador.js';
 // que un hombre.
 const ASENTADO_CABALLO = 0.12;
 
+// UN SOLO PELAJE PARA LA TROPA, Y NO ES POR FALTA DE GANAS.
+//
+// Ciento veinte animales del mismo castaño exacto se leen como ciento veinte
+// copias, y darles cuatro pelajes de la época estaba escrito y andaba. Se
+// revirtió por lo que cuesta del otro lado: la Lejanía hornea a los de más de
+// treinta metros en lotes instanciados, y hay SIETE —tres de lancero y cuatro
+// de caballo suelto—. Cuatro pelajes son veintiocho lotes: veintiuna llamadas
+// de dibujo más y cuatro veces el horneado de arranque, que ya es lo que más
+// tarda al cargar. Y hornear uno solo deja a un caballo cambiando de color al
+// cruzar los treinta metros, que es peor que ciento veinte iguales.
+//
+// Si algún día hace falta, la salida es el color por instancia del lote; hoy no
+// sirve porque la instancia lleva al jinete adentro y le teñiría la casaca.
 const PELAJE = 0x54392a;
 const PELAJE_CLARO = 0x6b4a34;
 // EL CABALLO DE SAN MARTÍN. Entre ciento veinte animales todos del mismo

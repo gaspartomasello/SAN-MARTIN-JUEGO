@@ -30187,7 +30187,7 @@ function barrancaYRio(escena2, colisiones) {
   escena2.add(cuesta);
   const rio = new Mesh(
     new PlaneGeometry(ANCHO3 * 1.6, 220),
-    new MeshStandardMaterial({ color: 9280156, roughness: 0.28, metalness: 0.18 })
+    new MeshStandardMaterial({ color: 6058108, roughness: 0.22, metalness: 0.22 })
   );
   rio.rotation.x = -Math.PI / 2;
   rio.position.set(0, HONDO + 0.15, Z12 - 108);
@@ -30259,6 +30259,25 @@ function tierraTextura() {
   t.repeat.set(40, 40);
   t.colorSpace = SRGBColorSpace;
   return t;
+}
+var TIERRA_SECA = new Color(16771520);
+var TIERRA_VERDE = new Color(12570774);
+function tierraConManchas(an, al, nx, ny) {
+  const g = new PlaneGeometry(an, al, nx, ny);
+  const pos = g.attributes.position;
+  const col = [];
+  const c = new Color();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getY(i);
+    const n1 = Math.sin(x * 0.021) * Math.cos(z * 0.017 + 1.3);
+    const n2 = Math.sin(x * 0.058 + 2.1) * Math.cos(z * 0.049 - 0.7);
+    const n3 = Math.sin((x + z) * 0.15 + 0.4);
+    const t = Math.pow(0.5 + 0.5 * (n1 * 0.62 + n2 * 0.28 + n3 * 0.1), 1.7);
+    c.copy(TIERRA_SECA).lerp(TIERRA_VERDE, t);
+    col.push(c.r, c.g, c.b);
+  }
+  g.setAttribute("color", new Float32BufferAttribute(col, 3));
+  return g;
 }
 function pastoTextura() {
   const c = document.createElement("canvas");
@@ -30492,8 +30511,8 @@ function construirMundo(escena2) {
   escena2.add(sol);
   escena2.add(new HemisphereLight(12374760, 9075282, 0.55));
   const suelo = new Mesh(
-    new PlaneGeometry(400, 290, 1, 1),
-    new MeshStandardMaterial({ map: tierraTextura(), roughness: 1 })
+    tierraConManchas(400, 290, 64, 48),
+    new MeshStandardMaterial({ map: tierraTextura(), roughness: 1, vertexColors: true })
   );
   suelo.position.z = 61;
   suelo.rotation.x = -Math.PI / 2;
@@ -30650,8 +30669,10 @@ function construirMundo(escena2) {
     e.set(s, s * (0.65 + Math.random() * 0.95), s);
     m4.compose(p, q, e);
     matas.setMatrixAt(i, m4);
-    const t = 0.5 + 0.5 * Math.sin(p.x * 0.045) * Math.cos(p.z * 0.038);
-    col.setHSL(0.13 - t * 0.02, 0.2 + t * 0.16, 0.44 + t * 0.16);
+    const n1 = Math.sin(p.x * 0.045) * Math.cos(p.z * 0.038);
+    const n2 = Math.sin(p.x * 0.019 + 1.7) * Math.cos(p.z * 0.023 - 0.9);
+    const t = Math.pow(0.5 + 0.5 * (n1 * 0.55 + n2 * 0.45), 1.7);
+    col.setHSL(0.145 - t * 0.035, 0.17 + t * 0.22, 0.38 + t * 0.26);
     matas.setColorAt(i, col);
   }
   matas.instanceMatrix.needsUpdate = true;
@@ -30700,22 +30721,41 @@ function construirMundo(escena2) {
   troncos.receiveShadow = true;
   const _m = new Matrix4();
   const _q = new Quaternion();
+  const _c = new Color();
+  const azar = (n) => {
+    const s = Math.sin(n * 127.1) * 43758.5453;
+    return s - Math.floor(s);
+  };
   arboles.forEach(([x, z, radio, alto, copaR], i) => {
     _m.compose(new Vector3(x, alto / 2, z), _q, new Vector3(radio, alto, radio));
     troncos.setMatrixAt(i, _m);
+    _c.setHSL(0.09, 0.1 + azar(i + 7) * 0.16, 0.78 + azar(i + 13) * 0.34);
+    troncos.setColorAt(i, _c);
     LOBULOS.forEach(([lx, ly, lz, r], k) => {
+      const j = i * 3 + k;
+      const dx = (azar(j + 1) - 0.5) * 0.52, dy = (azar(j + 31) - 0.5) * 0.3;
+      const dz = (azar(j + 61) - 0.5) * 0.52, dr = 0.86 + azar(j + 91) * 0.3;
       _m.compose(
-        new Vector3(x + lx * copaR, alto + copaR * (0.34 + ly * 0.78), z + lz * copaR),
+        new Vector3(
+          x + (lx + dx) * copaR,
+          alto + copaR * (0.34 + (ly + dy) * 0.78),
+          z + (lz + dz) * copaR
+        ),
         _q,
-        new Vector3(copaR * 1.02 * r, copaR * 0.94 * r, copaR * 1 * r)
+        new Vector3(copaR * 1.02 * r * dr, copaR * 0.94 * r * dr, copaR * 1 * r * dr)
       );
       copas.setMatrixAt(i * LOBULOS.length + k, _m);
+      const verde = azar(i + 3);
+      _c.setHSL(0.2 + verde * 0.06, 0.26 + verde * 0.22, 0.74 + verde * 0.3 + k * 0.05);
+      copas.setColorAt(i * LOBULOS.length + k, _c);
     });
     colisiones.push(new Box3(
       new Vector3(x - radio, 0, z - radio),
       new Vector3(x + radio, alto, z + radio)
     ));
   });
+  troncos.instanceColor.needsUpdate = true;
+  copas.instanceColor.needsUpdate = true;
   escena2.add(troncos);
   escena2.add(copas);
   const niebla = capasDeNiebla(escena2);

@@ -258,10 +258,19 @@ function barrancaYRio (escena, colisiones) {
   cuesta.receiveShadow = true;
   escena.add(cuesta);
 
-  // el Paraná: una lámina quieta y ancha, más clara contra la niebla
+  // EL PARANÁ. Era 0x8d9a9c: un gris casi del mismo valor que la niebla del
+  // horizonte, así que el agua y el cielo se fundían en una sola banda pálida y
+  // los once buques parecían pegados sobre el aire. No estaban flotando —el
+  // casco apoya en -8,80 y el agua está en -8,85, cinco centímetros— pero se
+  // veían así porque no había contra qué recortarlos.
+  //
+  // Ahora el agua es más oscura y más fría que la niebla. Con eso la línea de
+  // la costa aparece sola, los cascos tienen sobre qué apoyarse, y de paso el
+  // río se lee como río: el Paraná bajo el sol de la mañana no es una chapa
+  // blanca.
   const rio = new THREE.Mesh(
     new THREE.PlaneGeometry(ANCHO * 1.6, 220),
-    new THREE.MeshStandardMaterial({ color: 0x8d9a9c, roughness: 0.28, metalness: 0.18 })
+    new THREE.MeshStandardMaterial({ color: 0x5c707c, roughness: 0.22, metalness: 0.22 })
   );
   rio.rotation.x = -Math.PI / 2;
   rio.position.set(0, HONDO + 0.15, Z1 - 108);

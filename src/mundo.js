@@ -38,6 +38,42 @@ function tierraTextura () {
   return t;
 }
 
+// EL SUELO CON MANCHAS. Tres ruidos de distinta escala sumados —uno de treinta
+// metros que hace las manchas grandes, uno de once que las rompe y uno de
+// cuatro que le saca el aire de tablero de ajedrez— y con eso se mueven el tono
+// y el verde. Sin el tercero se ve la grilla del seno; con los tres, no.
+const TIERRA_SECA = new THREE.Color(0xffe9c0);    // lo pisado y quemado
+const TIERRA_VERDE = new THREE.Color(0xbfd096);   // lo que todavía aguanta
+
+function tierraConManchas (an, al, nx, ny) {
+  const g = new THREE.PlaneGeometry(an, al, nx, ny);
+  const pos = g.attributes.position;
+  const col = [];
+  const c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    // el plano todavía está de pie: su Y es la Z del mundo
+    const x = pos.getX(i), z = pos.getY(i);
+    const n1 = Math.sin(x * 0.021) * Math.cos(z * 0.017 + 1.3);
+    const n2 = Math.sin(x * 0.058 + 2.1) * Math.cos(z * 0.049 - 0.7);
+    const n3 = Math.sin((x + z) * 0.15 + 0.4);
+    // Y EL VERDE ES MINORÍA. Es el 3 de febrero: pleno verano en Santa Fe, con
+    // el campo quemado. Repartido mitad y mitad quedaba una pradera irlandesa;
+    // elevado a 1,7 el verde se retira a las bajas y el resto queda seco, que
+    // es lo que había.
+    const t = Math.pow(0.5 + 0.5 * (n1 * 0.62 + n2 * 0.28 + n3 * 0.10), 1.7);
+    // LOS DOS EXTREMOS RONDAN EL BLANCO, y eso no es un detalle: el color por
+    // vértice MULTIPLICA la textura, así que cualquier cosa lejos del blanco le
+    // cambia el tono medio a todo el campo. El primer intento usó valores de
+    // 0,76 a 0,92 de luz y dejó los cuatrocientos metros pálidos y fríos.
+    // Acá los dos extremos promedian uno: uno tira a tierra caliente y el otro
+    // a verde apagado, y el tono general queda donde estaba.
+    c.copy(TIERRA_SECA).lerp(TIERRA_VERDE, t);
+    col.push(c.r, c.g, c.b);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return g;
+}
+
 function pastoTextura () {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
@@ -276,9 +312,21 @@ export function construirMundo (escena) {
   // --- suelo ---
   // El suelo llega hasta el borde de la barranca y no más: de ahí para allá
   // manda la cuesta y abajo está el río. Un plano infinito taparía las dos.
+  //
+  // Y NO ES UN PLANO LISO DE DOS TRIÁNGULOS. Lo era, con la textura de moteado
+  // repetida cuarenta veces: eso da grano fino y CERO estructura grande, así
+  // que cuatrocientos metros de campo eran un solo tono parejo de punta a
+  // punta. Un campo de verdad tiene manchones de diez o veinte metros —lo
+  // pisado, lo que todavía tiene verde, la tierra pelada de un camino— y eso
+  // no lo puede dar una textura de veinticinco centímetros por lado.
+  //
+  // Se resuelve con COLOR POR VÉRTICE sobre una malla subdividida, que el
+  // material multiplica contra la textura: el grano fino sigue siendo el mapa
+  // y las manchas anchas las pone la geometría. Son 6.144 triángulos —contra
+  // los 300.000 que ya dibuja una batalla— y NI UNA llamada de dibujo más.
   const suelo = new THREE.Mesh(
-    new THREE.PlaneGeometry(400, 290, 1, 1),
-    new THREE.MeshStandardMaterial({ map: tierraTextura(), roughness: 1 })
+    tierraConManchas(400, 290, 64, 48),
+    new THREE.MeshStandardMaterial({ map: tierraTextura(), roughness: 1, vertexColors: true })
   );
   suelo.position.z = 61;
   suelo.rotation.x = -Math.PI / 2;
@@ -428,8 +476,19 @@ export function construirMundo (escena) {
     // MANCHONES, no una alfombra pareja. Un campo de verdad tiene pasto
     // quemado al lado de pasto que todavía aguanta, y el ruido suave hace
     // parches anchos en vez de confeti: se ve el terreno, no la instancia.
-    const t = 0.5 + 0.5 * Math.sin(p.x * 0.045) * Math.cos(p.z * 0.038);
-    col.setHSL(0.13 - t * 0.02, 0.20 + t * 0.16, 0.44 + t * 0.16);
+    //
+    // UN SOLO SENO POR EJE DABA UNA GRILLA. El producto seno·coseno se repite
+    // cada ciento cuarenta metros en cada eje y en un campo de doscientos
+    // cuarenta eso se ve: las manchas quedaban ordenadas en filas. Con un
+    // segundo ruido de otra escala y otro origen, no.
+    //
+    // Y el rango era angosto: todo el pasto caía entre dos pajas casi iguales.
+    // Ahora va de la paja quemada al verde que todavía queda en las bajas, que
+    // es lo que hace que el campo se lea como terreno y no como alfombra.
+    const n1 = Math.sin(p.x * 0.045) * Math.cos(p.z * 0.038);
+    const n2 = Math.sin(p.x * 0.019 + 1.7) * Math.cos(p.z * 0.023 - 0.9);
+    const t = Math.pow(0.5 + 0.5 * (n1 * 0.55 + n2 * 0.45), 1.7);
+    col.setHSL(0.145 - t * 0.035, 0.17 + t * 0.22, 0.38 + t * 0.26);
     matas.setColorAt(i, col);
   }
   matas.instanceMatrix.needsUpdate = true;
@@ -476,18 +535,47 @@ export function construirMundo (escena) {
   troncos.receiveShadow = true;
   const _m = new THREE.Matrix4();
   const _q = new THREE.Quaternion();
+  // NI DOS ÁRBOLES IGUALES, Y SIN UNA LLAMADA DE DIBUJO MÁS.
+  //
+  // Eran veintiuno con el MISMO verde y los tres lóbulos SIEMPRE en la misma
+  // posición: veintiún ejemplares del mismo árbol, cambiados de tamaño. Se ve
+  // sobre todo en el monte de los flancos, donde caen tres o cuatro juntos.
+  //
+  // Las dos cosas salen gratis porque ya son mallas instanciadas: el color va
+  // por instancia —`setColorAt`, que el material multiplica— y la silueta sale
+  // de correr los lóbulos con un ruido sacado del índice del árbol. Nada de
+  // Math.random: así el bosque es el mismo en las dos máquinas de una partida
+  // de a dos y entre una corrida y la siguiente de las pruebas.
+  const _c = new THREE.Color();
+  const azar = (n) => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
   arboles.forEach(([x, z, radio, alto, copaR], i) => {
     _m.compose(new THREE.Vector3(x, alto / 2, z), _q, new THREE.Vector3(radio, alto, radio));
     troncos.setMatrixAt(i, _m);
+    // la corteza, de gris claro a pardo oscuro
+    _c.setHSL(0.09, 0.10 + azar(i + 7) * 0.16, 0.78 + azar(i + 13) * 0.34);
+    troncos.setColorAt(i, _c);
     LOBULOS.forEach(([lx, ly, lz, r], k) => {
+      const j = i * 3 + k;
+      const dx = (azar(j + 1) - 0.5) * 0.52, dy = (azar(j + 31) - 0.5) * 0.30;
+      const dz = (azar(j + 61) - 0.5) * 0.52, dr = 0.86 + azar(j + 91) * 0.30;
       _m.compose(
-        new THREE.Vector3(x + lx * copaR, alto + copaR * (0.34 + ly * 0.78), z + lz * copaR),
-        _q, new THREE.Vector3(copaR * 1.02 * r, copaR * 0.94 * r, copaR * 1.0 * r));
+        new THREE.Vector3(x + (lx + dx) * copaR, alto + copaR * (0.34 + (ly + dy) * 0.78),
+          z + (lz + dz) * copaR),
+        _q, new THREE.Vector3(copaR * 1.02 * r * dr, copaR * 0.94 * r * dr, copaR * 1.0 * r * dr));
       copas.setMatrixAt(i * LOBULOS.length + k, _m);
+      // EL VERDE ES DEL ÁRBOL, NO DEL LÓBULO: si cada lóbulo tirara su propio
+      // color, una copa quedaría con tres tonos y se leería como tres arbustos
+      // apilados. Varía de árbol a árbol, y apenas dentro de la copa para dar
+      // volumen —el de arriba un poco más claro, que es donde pega el sol—.
+      const verde = azar(i + 3);
+      _c.setHSL(0.20 + verde * 0.06, 0.26 + verde * 0.22, 0.74 + verde * 0.30 + k * 0.05);
+      copas.setColorAt(i * LOBULOS.length + k, _c);
     });
     colisiones.push(new THREE.Box3(
       new THREE.Vector3(x - radio, 0, z - radio), new THREE.Vector3(x + radio, alto, z + radio)));
   });
+  troncos.instanceColor.needsUpdate = true;
+  copas.instanceColor.needsUpdate = true;
   escena.add(troncos);
   escena.add(copas);
 
