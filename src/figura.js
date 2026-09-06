@@ -639,12 +639,109 @@ const POSES = {
   }
 };
 
+// ---------------------------------------------------------------------------
+// EL TAMBOR Y LA BANDERA
+// ---------------------------------------------------------------------------
+// Los dos hombres que sostienen una línea sin disparar un tiro. No son adorno:
+// el redoble es la cadencia con la que se carga y se recarga, y el paño es
+// dónde te volvés a juntar cuando ya no ves a tu sargento. Matarlos vale, y
+// vale porque cuestan de encontrar entre doscientos cincuenta iguales.
+//
+// LOS DOS ENTRAN EN LA MALLA DEL CUERPO. Se cuelgan de huesos normales —cadera
+// y torso— y no de un grupo `suelto`, así que el Taller los junta con el resto
+// del hombre y un tambor no agrega una sola llamada de dibujo. Por eso puede
+// haber uno en el medio de la multitud sin que cueste nada.
+
+const PARCHE = 0xe8e0c8;      // el cuero del parche, crudo
+const CAJA_TAMBOR = 0xb9832f; // la caja de latón
+const ARO = 0x8f2126;         // los aros, colorados como el vivo
+
+// EL TAMBOR va colgado de la cadera y adelante del muslo izquierdo, inclinado:
+// es como se marcha con él, no como se posa en una vitrina. La correa le cruza
+// el pecho desde el hombro derecho, que es la mitad de lo que lo hace
+// reconocible de lejos —la silueta tiene una diagonal que ningún otro tiene—.
+function tambor (taller, h) {
+  // OJO CON EL SIGNO DE Z: en este modelo −Z es el frente —el fusil sale por
+  // ahí— y +Z es la espalda, donde va la mochila. La primera versión de esto
+  // tenía el tambor en +0,10 y quedaba colgado del lomo, tapado por el propio
+  // cuerpo. Un tambor de marcha va ADELANTE del muslo izquierdo.
+  const R = 0.185, ALTO = 0.255;
+  const p = [-0.225, -0.185, -0.135], r = [0.34, 0, 0.38];
+  taller.add(h.cadera, cil(R, R, ALTO, 12), CAJA_TAMBOR, { p, r, metal: true });
+  // los dos parches, apenas más anchos que la caja
+  for (const s of [-1, 1]) {
+    taller.add(h.cadera, cil(R * 1.02, R * 1.02, 0.012, 12), PARCHE,
+      { p: [p[0] + s * 0.005, p[1] + s * ALTO / 2, p[2]], r });
+    taller.add(h.cadera, cil(R * 1.06, R * 1.06, 0.022, 12), ARO,
+      { p: [p[0] + s * 0.004, p[1] + s * (ALTO / 2 - 0.014), p[2]], r });
+  }
+  // el cordaje en zigzag: seis tirantes, que es lo que se lee a diez metros
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    taller.add(h.cadera, caja(0.012, ALTO * 0.94, 0.012), PARCHE,
+      { p: [p[0] + Math.cos(a) * R * 0.99, p[1], p[2] + Math.sin(a) * R * 0.99],
+        r: [r[0], 0, r[2] + (i % 2 ? 0.24 : -0.24)] });
+  }
+  // la correa cruzada, del hombro derecho a la cadera izquierda
+  taller.add(h.torso, caja(0.055, 0.52, 0.30), PARCHE, { p: [0, 0.27, 0], r: [0, 0, -0.66] });
+  // y los palillos: uno en cada mano, cortos y claros
+  // los palillos, cruzados sobre el parche y apuntando hacia adentro: es el
+  // gesto que dice «está tocando» y no «lleva una caja atada»
+  for (const [m, s] of [[h.manoI, -1], [h.manoD, 1]]) {
+    taller.add(m, cil(0.013, 0.019, 0.34, 6), 0xd9c9a4,
+      { p: [0, -0.07, -0.09], r: [1.15, 0, s * 0.42] });
+  }
+}
+
+// LA BANDERA es la cruz de Borgoña: aspa colorada sobre blanco, que es lo que
+// llevaban las tropas españolas en 1813. Va colgada del TORSO y no de la mano
+// porque la mano está animada —apunta, recarga, se levanta— y un asta que
+// sigue al fusil terminaría horizontal en la mitad de las poses. Del torso
+// sale siempre para arriba, que es donde tiene que estar para que se la vea
+// desde el otro lado del campo.
+const PANO = 0xf2efe4;
+const ASPA = 0xc22b2b;
+
+function bandera (taller, h) {
+  // EL ASTA Y EL PAÑO SE CALCULAN, NO SE TANTEAN. La primera versión le puso
+  // al asta una inclinación en X que el paño no tenía y los dos quedaron a
+  // sesenta centímetros de distancia en profundidad: la bandera flotaba al
+  // lado del palo. Ahora el asta se inclina en UN solo eje y el paño se cuelga
+  // de donde el asta realmente está a esa altura.
+  const ASTA = 2.05, INCLINA = -0.16;
+  taller.add(h.torso, cil(0.021, 0.026, ASTA, 6), 0x6b4a2a,
+    { p: [0.333, 1.272, -0.020], r: [0, 0, INCLINA] });
+  // la moharra de latón, en la punta
+  taller.add(h.torso, cil(0.004, 0.030, 0.15, 6), 0xb9832f,
+    { p: [0.509, 2.344, -0.020], r: [0, 0, INCLINA], metal: true });
+
+  // EL PAÑO. Su propio plano, y el aspa armada con dos tiras giradas adentro
+  // de ese plano, una de cada lado para que se vea por las dos caras. La cruz
+  // de Borgoña tiene dientes de sierra en los bordes: dibujarlos serían
+  // cuarenta cajas para algo que a quince metros es una equis, y acá lo que
+  // importa es reconocerla, no catalogarla.
+  const AN = 0.86, AL = 0.62, GRUESO = 0.012;
+  const cen = [0.854, 1.834, -0.020];
+  taller.add(h.torso, caja(AN, AL, GRUESO), PANO, { p: cen, r: [0, 0, INCLINA] });
+  const diag = Math.hypot(AN, AL) * 0.99, giro = Math.atan2(AL, AN);
+  for (const s of [-1, 1]) {
+    for (const cara of [-1, 1]) {
+      taller.add(h.torso, caja(diag, 0.135, GRUESO * 0.5), ASPA,
+        { p: [cen[0], cen[1], cen[2] + cara * GRUESO * 0.75],
+          r: [0, 0, INCLINA + s * giro] });
+    }
+  }
+}
+
 const V = () => new THREE.Vector3();
 
 export class Figura {
   // op.tez      — color de piel fijo (Cabral, por ejemplo); si no, lo sortea
   // op.arma     — 'lanza' para el granadero montado; si no, el arma del bando
   // op.sombrero — 'bicornio' para San Martín en el acto Cabral
+  // op.papel    — 'tambor' o 'abanderado': los dos realistas que sostienen la
+  //               línea sin disparar. Ninguno lleva fusil: uno tiene las manos
+  //               en los palillos y el otro en el asta.
   constructor (bando, semilla = Math.random(), op = {}) {
     const c = PINTA[bando] || PINTA.realista;
     const piel = op.tez || PIELES[Math.floor(semilla * PIELES.length) % PIELES.length];
@@ -676,7 +773,13 @@ export class Figura {
     // otros jugadores —nueve como mucho—. Dárselo a los ciento veinte bots
     // sería multiplicar por cuatro la geometría del arma para nada: un bot no
     // cambia de arma en toda la batalla.
-    if (op.armas) {
+    // NI EL TAMBOR NI EL ABANDERADO LLEVAN FUSIL, y no es un detalle de
+    // ambientación: es lo que los hace matables. Un hombre con las dos manos
+    // ocupadas no te contesta el tiro, así que ir a buscarlos adentro del
+    // grupo es una decisión y no un trámite.
+    if (op.papel === 'tambor') { tambor(taller, h); sableAlCinto(taller, h.cadera); }
+    else if (op.papel === 'abanderado') { bandera(taller, h); sableAlCinto(taller, h.cadera); }
+    else if (op.armas) {
       this.armero = {};
       for (const [nombre, armar] of [['tercerola', tercerolaGranadero], ['lanza', lanzaGranadero],
         ['sable', sableEnMano], ['pistolon', pistolonEnMano]]) {

@@ -133,6 +133,7 @@ export function armarDespliegue (ctx) {
     }
     if (op.tez) sop.tez = op.tez;
     if (op.sombrero) sop.sombrero = op.sombrero;
+    if (op.papel) { sop.papel = op.papel; sop.pos = pos; }
     const s = new Soldado(escena, humo, sonido, pos, bando, sop);
     // los dos ganchos por los que un soldado le pide a combate.js que resuelva
     s.alDisparar = disparoEnemigo;

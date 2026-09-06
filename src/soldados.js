@@ -212,9 +212,13 @@ export class Soldado {
     // verían la misma batalla peleada por dos ejércitos distintos.
     this.semilla = op.semilla !== undefined ? op.semilla : Math.random();
     this.tez = op.tez || null;
+    // EL PAPEL: 'tambor' o 'abanderado'. Se guarda en el soldado y no sólo en
+    // la figura porque de él dependen la moral de los que lo rodean y lo que
+    // pasa cuando cae.
+    this.papel = op.papel || null;
     this.fig = new Figura(this.bando, this.semilla,
       { tez: op.tez, sombrero: op.sombrero, arma: this.lancero ? 'lanza' : null,
-        armas: op.armas });
+        armas: op.armas, papel: this.papel });
     // la malla exterior lleva el rumbo; la figura de adentro, el desplome
     this.malla = new THREE.Group();
     this.malla.add(this.fig.raiz);
@@ -396,7 +400,18 @@ export class Soldado {
   // decide la distancia y nada más. La IA corre igual de un lado y del otro:
   // el que está a ochenta metros apunta, avisa, dispara y muere exactamente
   // como el que tenés encima.
+  // EL TAMBOR Y EL ABANDERADO NO SE VAN NUNCA AL LEJOS.
+  //
+  // La Lejanía dibuja a los de más de treinta metros con posturas horneadas de
+  // una figura genérica, que no tiene ni caja ni paño: cruzando ese umbral se
+  // les caía lo único por lo que se los busca. La alternativa era hornear dos
+  // juegos más —doce lotes instanciados, doce llamadas de dibujo— para DOS
+  // hombres en toda la batalla. Dejarlos siempre articulados cuesta dos.
+  //
+  // Y encima es lo que el juego necesita: una bandera que desaparece a treinta
+  // metros no se puede ir a buscar, y buscarla es la mecánica.
   ponerLejos (v) {
+    if (this.papel) v = false;
     this._lejos = v;
     this.fig.lejos = v;
     this.malla.visible = !v;
