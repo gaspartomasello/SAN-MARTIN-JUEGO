@@ -33645,6 +33645,11 @@ function vestir(taller, h, c, piel, pelo, sombrero) {
   taller.add(h.cadera, caja(0.17, 0.12, 0.085), CUERO, { p: [0.1, -0.06, 0.13], r: [0, -0.3, 0] });
   taller.add(h.cadera, caja(0.155, 0.13, 0.075), LIENZO, { p: [-0.125, -0.11, -0.095], r: [0.1, 0.35, 0] });
   taller.add(h.cadera, caja(0.155, 0.04, 0.08), CUERO, { p: [-0.125, -0.05, -0.097], r: [0.1, 0.35, 0] });
+  for (const s of [-1, 1]) {
+    taller.add(h.cadera, caja(0.088, 0.2, 0.035), c.casaca, { p: [s * 0.052, -0.285, 0.128] });
+    taller.add(h.cadera, caja(0.03, 0.185, 0.04), c.vivo, { p: [s * 0.014, -0.285, 0.131] });
+    taller.add(h.cadera, bola(0.01, 6), LATON, { p: [s * 0.052, -0.185, 0.146], metal: true });
+  }
   taller.add(h.torso, cil(0.185, 0.156, 0.5, 10), c.casaca, { p: [0, 0.25, 0], s: [1, 1, 0.7] });
   taller.add(h.torso, caja(0.2, 0.42, 0.03), c.forro, { p: [0, 0.26, -0.122] });
   for (const s of [-1, 1]) {

@@ -284,6 +284,27 @@ function vestir (taller, h, c, piel, pelo, sombrero) {
   taller.add(h.cadera, caja(0.155, 0.13, 0.075), LIENZO, { p: [-0.125, -0.11, -0.095], r: [0.1, 0.35, 0] });
   taller.add(h.cadera, caja(0.155, 0.04, 0.08), CUERO, { p: [-0.125, -0.05, -0.097], r: [0.1, 0.35, 0] });
 
+  // LOS FALDONES DE ATRÁS, CON SU VUELTA.
+  //
+  // El faldón era un cono liso alrededor de la cadera: una campana. Pero una
+  // casaca de 1813 no termina en una campana, termina en DOS COLAS colgando
+  // atrás, forradas del color del regimiento y vueltas hacia afuera. Es la
+  // silueta que distingue una casaca de una camisa larga, y de espaldas —que
+  // es como se ve a la tropa formada la mitad de la batalla— es lo único que
+  // hay para mirar.
+  //
+  // Van pegadas al hueso de la cadera, así que se mueven con el paso, y las
+  // llevan los dos bandos: la tuvieron las dos infanterías.
+  for (const s of [-1, 1]) {
+    // CORTOS A PROPÓSITO: la rodilla de la pierna que va para atrás pasa por
+    // z ≈ 0,15 en plena zancada, y un faldón largo se la comería.
+    taller.add(h.cadera, caja(0.088, 0.20, 0.035), c.casaca, { p: [s * 0.052, -0.285, 0.128] });
+    // la vuelta: el forro doblado hacia afuera sobre el borde de adentro
+    taller.add(h.cadera, caja(0.030, 0.185, 0.040), c.vivo, { p: [s * 0.014, -0.285, 0.131] });
+    // y el botón donde arranca
+    taller.add(h.cadera, bola(0.010, 6), LATON, { p: [s * 0.052, -0.185, 0.146], metal: true });
+  }
+
   // ---- torso
   taller.add(h.torso, cil(0.185, 0.156, 0.50, 10), c.casaca, { p: [0, 0.25, 0], s: [1, 1, 0.70] });
   // solapas: el paño del frente y los vivos que lo bordean
