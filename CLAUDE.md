@@ -33,22 +33,65 @@ y se rearma** — no se resuelve a mano, no tiene información propia.
 
 ## Estructura
 
-`src/` es plano a propósito. **No crear carpetas.** Se divide en dos por lo que
-significa, no por dónde está:
+`src/` es plano a propósito. **No crear carpetas.** La división es por CAPÍTULO
+y por lo que significa, no por dónde está el archivo.
 
-**El sistema** — vale para cualquier batalla de la campaña:
-`balance` · `combate` · `moral` · `soldados` · `armas` · `arsenal` · `sable` ·
-`caballo` · `figura` · `jugador` · `mando` · `hud` · `humo` · `fuego` · `audio` ·
-`lejania` · `gentio` · `estorbos` · `mundo`
+### Núcleo — la campaña entera
 
-**San Lorenzo** — contenido de esta batalla:
-`sanlorenzo` (el convento, la barranca, el Paraná) · `despliegue` · `pinza` ·
-`canon` · `acto` · `plano`
+Todo lo que sirve igual en San Lorenzo, en el Cruce y en Chacabuco:
 
-**Aislado:** `red` + `protocolo` (multiplayer, hoy en pausa). No meter
-dependencias de red en gameplay.
+`balance` · `combate` · `moral` · `soldados` · `figura` · `caballo` · `armas` ·
+`armas-modelos` · `arsenal` · `sable` · `jugador` · `mando` · `hud` · `audio` ·
+`humo` · `fuego` · `lejania` · `gentio` · `estorbos` · `mundo` ·
+`pasadaArma` · `pasadaVelocidad` · `main`
 
 `main.js` **coordina**: no lleva reglas de combate, moral, IA ni daño.
+
+### Capítulo 1 · Batalla de San Lorenzo
+
+`sanlorenzo` (el convento, la barranca, el Paraná, la escuadra) · `despliegue` ·
+`pinza` · `canon` · `acto` · `plano`
+
+### Capítulo 2 · Cruce de los Andes
+
+Todavía no hay ninguno.
+
+### Aislado
+
+`red` + `protocolo` (multiplayer, hoy en pausa). No meter dependencias de red en
+gameplay.
+
+---
+
+### Dónde está cada cosa cuando hay que ir a buscarla
+
+Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parece:
+
+- **El uniforme y el cuerpo** están en `figura.js`, que es NÚCLEO y no Capítulo
+  1: los Granaderos a Caballo son el mismo regimiento en Chacabuco y en Maipú.
+  Y vive en TRES lugares que hay que mantener juntos —`figura.js` el cuerpo de
+  la tropa, `armas-modelos.js` el brazo que ves vos en primera persona,
+  `red.js` el morrión de oficial del otro jugador—. Tocar uno solo los
+  desincroniza, y el que más se olvida es el brazo.
+- **Los números de pelea**, todos en `balance.js`. Ningún otro archivo inventa
+  uno. Lo que NO va ahí: tiempos de animación, velocidades de marcha,
+  distancias de aviso.
+- **El terreno de una batalla** va en su archivo de capítulo (`sanlorenzo.js`),
+  pero el suelo, el cielo, la niebla y la arboleda son de `mundo.js`.
+- **Las poses y el esqueleto** en `figura.js`; **la IA del hombre** en
+  `soldados.js`; **lo que ve la tropa alrededor** en `moral.js`.
+
+### Tres archivos de frontera, anotados antes de que muerdan
+
+- **`canon.js`** está en Capítulo 1 porque hoy sirve las dos piezas de la playa,
+  pero la pieza en sí es genérica y en el Cruce hay que subir cañones a la
+  cumbre. Cuando llegue ese día, se muda al núcleo.
+- **`pinza.js`** es la maniobra del 3 de febrero, pero la máquina de «una
+  columna que te sigue, se te descuelga y se vuelve a formar» es exactamente lo
+  que necesita el Cruce. Se va a partir en dos: el motor de columnas al núcleo,
+  la pinza en Capítulo 1.
+- **`despliegue.js`** es casi todo San Lorenzo, pero `soltarSoldado` lo usa todo
+  el mundo.
 
 ---
 
