@@ -126,6 +126,7 @@ export class ActoCabral {
     this.sitio = null;
     this.hecho = false;
     this.forcejeo = 0;        // lo que se lee en el HUD: la caída o el levante
+    this.barraLlena = 0;      // segundos que la barra sigue a la vista, ya llena
     this.levante = 0;         // cuánto subió el caballo, de 0 a 1
     this.lento = 1;           // el multiplicador de tiempo que lee main.js
     this.fase = null;
@@ -152,6 +153,7 @@ export class ActoCabral {
   // Es lo único que hace falta para no tener que revisar el campo hombre por
   // hombre: la vara de luz dice cuál es y esto dice cuánto falta.
   get rotulo () {
+    if (this.barraLlena > 0) return 'ESPACIO, MUCHAS VECES';
     if (this.fase !== 'cabral') return null;
     if (this.puedeEmpujar) return 'ESPACIO, MUCHAS VECES';
     const sm = this.sanmartin;
@@ -160,6 +162,10 @@ export class ActoCabral {
     const d = Math.hypot(sm.pos.x - jugador.pos.x, sm.pos.z - jugador.pos.z);
     return 'SAN MARTÍN · ' + Math.max(1, Math.round(d)) + ' M';
   }
+  // Lo que el HUD pregunta para dibujar la barra: o la estás llenando, o
+  // acaba de llenarse y todavía se está viendo.
+  get mostrandoBarra () { return this.puedeEmpujar || this.barraLlena > 0; }
+
   // ¿lo tenés al lado como para empujar el animal?
   get puedeEmpujar () {
     if (this.fase !== 'cabral' || !this.sanmartin) return false;
@@ -407,7 +413,24 @@ export class ActoCabral {
     return s;
   }
 
+  // CABRAL NO LLEGÓ. Se corta el acto y se deja el campo como está: San Martín
+  // queda abajo del caballo. La muerte en sí ya la maneja jugador.alMorir —el
+  // fundido, la frase, los botones—; acá sólo hay que dejar de correr una
+  // cinemática encima de un muerto.
+  _fracaso () {
+    const { hud } = this.ctx;
+    this._apagarMarcas();
+    this.forcejeo = 0;
+    this.barraLlena = 0;
+    this.lento = 1;
+    this.corriendo = false;
+    this.fase = 'perdido';
+    hud.decir('Cabral no llegó. San Martín quedó bajo el caballo.', 5);
+  }
+
   actualizar (dt, teclas) {
+    // la barra llena sigue a la vista aunque el acto ya haya cambiado de fase
+    if (this.barraLlena > 0) { this.barraLlena = Math.max(0, this.barraLlena - dt); this.forcejeo = 1; }
     if (!this.corriendo) return;
     const { jugador, hud, sonido } = this.ctx;
     this.t += dt;
@@ -430,8 +453,14 @@ export class ActoCabral {
 
     // ---- SOS CABRAL. Acá el reloj lo llevan tus piernas. ----
     if (this.fase === 'cabral') {
-      // A Cabral no lo matan antes de tiempo: la historia dice que llegó.
-      jugador.vida = Math.max(jugador.vida, 60);
+      // A CABRAL LO PUEDEN MATAR, Y ESE ES EL PUNTO.
+      //
+      // Acá había un piso —la vida no bajaba de 60— con el argumento de que la
+      // historia dice que Cabral llegó. Pero la historia la estás jugando vos:
+      // con el piso puesto no había forma de fallar, el momento no pedía nada y
+      // se podía terminar la batalla entera sin haber salvado a San Martín.
+      // Que se pueda perder es lo que hace que ganarlo signifique algo.
+      if (!jugador.vivo || jugador.vida <= 0) { this._fracaso(); return; }
       this._empujar(dt, espacio);
       this.forcejeo = this.levante;     // el HUD dibuja la misma barra
 
@@ -470,6 +499,11 @@ export class ActoCabral {
 
       // ---- LEVANTADO: sale la pierna y arranca la cinemática ----
       if (this.levante >= 1) {
+        // LA BARRA LLENA SE QUEDA UN INSTANTE. Se dibuja mientras dura la fase
+        // 'cabral', y la fase cambia en el mismo cuadro en que la barra se
+        // completa: el jugador machacaba el espacio y la barra desaparecía sin
+        // que nunca la viera llena. Medio segundo alcanza para leerla.
+        this.barraLlena = 0.5;
         if (this.caballo) {
           this.caballo.poseFija = true;
           this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * 0.58;

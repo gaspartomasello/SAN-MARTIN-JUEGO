@@ -12,6 +12,11 @@
 //
 // Así que se cuenta cada paso por separado: intentos de apuntar, vetos de la
 // línea, tiros efectivos, y aciertos por franja de distancia.
+//
+// Y UNA COSA MÁS, que es de quién cobra qué: el cuerpo de otro jugador vive en
+// el campo como un soldado más, así que venía comiendo los números de la tropa
+// —nueve balazos para caer— mientras el que juega en su máquina cae de uno.
+// Acá se le tira a los dos con el mismo tiro y se comparan los números.
 import { chromium } from 'playwright';
 const nav = await chromium.launch({ executablePath: process.env.CHROMIUM,
   args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'] });
@@ -109,6 +114,39 @@ const r = await pag.evaluate(async () => {
   c.seg = t;
   return c;
 });
+// ---- el títere cobra como persona y el bot como bot ----
+// se hace en la MISMA página, con la batalla ya armada: abrir otra cuesta
+// media prueba y no hace falta para pesar dos números
+const dosCuerpos = await pag.evaluate(() => {
+  const j = window.juego;
+  const nuevo = (bando, dz) => {
+    const s = j.soltarSoldado(bando);
+    s.pos.copy(j.jugador.pos); s.pos.z -= dz;
+    s.objetivo = null; s.alDisparar = null;
+    return s;
+  };
+  const titere = nuevo('granadero', 6);
+  titere.titere = true;
+  let danoTitere = 0;
+  titere.alCastigo = c => { danoTitere = c.dano; return false; };
+  const bot = nuevo('granadero', 6);
+  let danoBot = 0;
+  const orig = bot.recibir.bind(bot);
+  bot.recibir = (n, ...r) => { danoBot = n; return orig(n, ...r); };
+  const tirador = nuevo('realista', 12);
+  tirador.apuntarA = () => ({ acierto: true });   // lo que se mide es cuánto duele
+  const dir = { x: 0, y: 0, z: -1, clone () { return this; }, normalize () { return this; } };
+  j.combate.disparoEnemigo(tirador, tirador.pos, dir, { soldado: titere, pos: titere.pos });
+  j.combate.disparoEnemigo(tirador, tirador.pos, dir, { soldado: bot, pos: bot.pos });
+  return { danoTitere: +danoTitere.toFixed(2), danoBot: +danoBot.toFixed(2) };
+});
+console.log('\n  el mismo tiro, a un cuerpo de jugador y a un bot');
+console.log(`  al títere ................ ${dosCuerpos.danoTitere}`);
+console.log(`  al bot ................... ${dosCuerpos.danoBot}`);
+console.log(dosCuerpos.danoTitere > dosCuerpos.danoBot * 5
+  ? '  OK   el cuerpo de otro jugador cobra como San Martín, no como la tropa'
+  : '  MAL  el cuerpo de otro jugador sigue cobrando los números de la tropa');
+
 await nav.close();
 if (errs.length) console.log('ERRORES:', errs.slice(0, 3));
 

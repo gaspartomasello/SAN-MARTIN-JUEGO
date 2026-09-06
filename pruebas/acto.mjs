@@ -58,6 +58,17 @@ const r = await pag.evaluate(() => {
   // ---- el cambio de cuerpo ----
   paso(2.4);
   ok('pasás a ser Cabral', acto.fase === 'cabral', `fase ${acto.fase}`);
+  // A CABRAL LO PUEDEN MATAR. Tenía piso de vida en 60 «porque la historia dice
+  // que llegó», y con eso no había forma de fallar: se podía terminar la
+  // batalla entera sin haber salvado a San Martín.
+  const vidaCabral = j.jugador.vida;
+  j.jugador.recibir(45);
+  const dolio = j.jugador.vida;
+  paso(0.5);
+  ok('y a Cabral se le baja la vida como a cualquiera',
+    dolio < vidaCabral && j.jugador.vida <= dolio,
+    `${vidaCabral} → ${dolio} → ${j.jugador.vida}`);
+  j.jugador.vida = vidaCabral;
   ok('y te soltó', j.jugador.atrapado === 0);
   const sm = j.soldados.find(s => s.esSanMartin);
   ok('San Martín queda tirado en el campo', !!sm && sm.tirado > 0);
@@ -199,10 +210,27 @@ const r = await pag.evaluate(() => {
   teclas.delete('Space');
   ok('machacando rápido sale en unos pocos golpes', golpes > 6 && golpes < 22, `${golpes} espacios`);
 
-  machacar(6);
+  // Se machaca HASTA QUE SALE y ni un cuadro más: lo que viene después hay que
+  // mirarlo en el instante en que la barra se llena.
+  let golpe = 0;
+  while (acto.fase === 'cabral' && golpe < 60 * 8) {
+    if (golpe % 6 === 0) teclas.add('Space'); else teclas.delete('Space');
+    paso(1 / 60); golpe++;
+  }
+  teclas.delete('Space');
   ok('machacando sí sale', acto.fase === 'cine', `fase ${acto.fase} · barra ${acto.levante.toFixed(2)}`);
+  // LA BARRA LLENA SE TIENE QUE PODER VER. Se dibuja mientras dura la fase
+  // 'cabral' y la fase cambia en el MISMO cuadro en que se completa: el que
+  // machacaba el espacio la veía desaparecer sin haberla visto nunca llena.
+  ok('y la barra llena queda un momento a la vista',
+    acto.mostrandoBarra && acto.forcejeo >= 0.99,
+    `fase ${acto.fase} · barra ${acto.forcejeo.toFixed(2)}`);
   ok('el caballo quedó levantado', c.raiz.position.y > 0.1, `y=${c.raiz.position.y.toFixed(2)}`);
   ok('y el que lo iba a rematar cayó', acto.verdugo && !acto.verdugo.vivo);
+  // y se le devuelve al reloj lo que el machaque no gastó: antes esto eran seis
+  // segundos fijos y lo que viene después está escrito contra ese reloj
+  paso(Math.max(0, 6 - golpe / 60));
+
 
   // ---- la cinemática ----
   ok('va en cámara lenta', acto.lento < 1, `x${acto.lento}`);
@@ -213,6 +241,10 @@ const r = await pag.evaluate(() => {
     `pitch ${j.jugador.pitchAtrapado.toFixed(2)}`);
 
   ok('levantado el caballo, se apagan las marcas', !acto.baliza && !acto.contorno);
+  // Y LA BARRA TAMPOCO SE QUEDA PEGADA. Ojo con el reloj: la cinemática va en
+  // cámara lenta y `paso` multiplica por acto.lento, así que estos dos segundos
+  // de reloj son bastante menos de acto. De sobra igual para medio segundo.
+  ok('y la barra llena tampoco se queda pegada', !acto.mostrandoBarra);
 
   // A CABRAL SE LO MATA COMO A CUALQUIERA Y SE TIENE QUE VER IGUAL: la vista
   // que se nubla y se cierra, el sonido que se va con ella. Antes era un corte

@@ -92,8 +92,6 @@
   #paso .nombre{font-size:15px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
   #paso .cont{margin-top:7px;width:210px;height:3px;background:rgba(230,226,214,.22);position:relative}
   #paso .prog{position:absolute;inset:0 auto 0 0;width:0;background:var(--hueso)}
-  #paso .win{position:absolute;top:-4px;height:11px;background:var(--bronce);opacity:0;width:0}
-  #paso.golpe .win{opacity:.95}
 
   #aliento{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);
     width:210px;height:2px;background:rgba(230,226,214,.14);opacity:0;transition:opacity .3s}
@@ -104,11 +102,14 @@
   #cartuchera .n{font-family:"Libre Caslon Display",Georgia,serif;font-size:38px;line-height:1}
   #cartuchera .t{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
 
-  #ahora{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:0;
+  /* EL CARTEL GRANDE. Era el ¡AHORA! del minijuego de recarga, que se sacó; la
+     tipografía se queda porque es la voz con la que el juego grita una sola
+     cosa en medio de la pelea. Ahora el texto lo escribe hud.cartel(). */
+  #cartel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:0;
     font-size:clamp(38px,7vw,64px);letter-spacing:.1em;font-weight:600;color:var(--bronce);
     text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 10px rgba(0,0,0,.9);pointer-events:none;
-    transition:opacity .07s linear}
-  #ahora.si{opacity:1}
+    transition:opacity .12s linear;text-align:center;white-space:nowrap}
+  #cartel.si{opacity:1}
   #remate{position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);opacity:0;
     font:700 30px/1 var(--titulo,inherit);letter-spacing:.3em;color:#9BC48F;
     text-shadow:0 2px 18px rgba(0,0,0,.75);text-align:center;pointer-events:none;
@@ -116,7 +117,7 @@
   #remate.si{opacity:1}
   #remate small{display:block;font-size:14px;letter-spacing:.22em;opacity:.85;margin-top:6px;
     font-weight:400}
-  #ahora small{display:block;font-size:15px;letter-spacing:.22em;opacity:.85;margin-top:6px;
+  #cartel small{display:block;font-size:15px;letter-spacing:.22em;opacity:.85;margin-top:6px;
     color:var(--hueso)}
 
   #tomar{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);opacity:0;
@@ -486,10 +487,10 @@
 <div id="flash"></div>
 
 <div id="hud">
-  <div id="paso"><div class="nombre"></div><div class="cont"><div class="prog"></div><div class="win"></div></div></div>
+  <div id="paso"><div class="nombre"></div><div class="cont"><div class="prog"></div></div></div>
   <div id="aliento"><i></i></div>
   <div id="cartuchera"><div class="n">0</div><div class="t">cartuchos</div></div>
-  <div id="ahora">¡AHORA!<small>click izquierdo</small></div>
+  <div id="cartel"></div>
   <div id="remate">¡REMATE!<small>click izquierdo</small></div>
   <div id="tomar"><b>[G]</b> tomar el fusil con bayoneta</div>
   <div id="aviso"></div>
@@ -35795,6 +35796,7 @@ var ActoCabral = class {
     this.sitio = null;
     this.hecho = false;
     this.forcejeo = 0;
+    this.barraLlena = 0;
     this.levante = 0;
     this.lento = 1;
     this.fase = null;
@@ -35822,6 +35824,7 @@ var ActoCabral = class {
   // Es lo único que hace falta para no tener que revisar el campo hombre por
   // hombre: la vara de luz dice cuál es y esto dice cuánto falta.
   get rotulo() {
+    if (this.barraLlena > 0) return "ESPACIO, MUCHAS VECES";
     if (this.fase !== "cabral") return null;
     if (this.puedeEmpujar) return "ESPACIO, MUCHAS VECES";
     const sm = this.sanmartin;
@@ -35829,6 +35832,11 @@ var ActoCabral = class {
     const { jugador: jugador2 } = this.ctx;
     const d = Math.hypot(sm.pos.x - jugador2.pos.x, sm.pos.z - jugador2.pos.z);
     return "SAN MART\xCDN \xB7 " + Math.max(1, Math.round(d)) + " M";
+  }
+  // Lo que el HUD pregunta para dibujar la barra: o la estás llenando, o
+  // acaba de llenarse y todavía se está viendo.
+  get mostrandoBarra() {
+    return this.puedeEmpujar || this.barraLlena > 0;
   }
   // ¿lo tenés al lado como para empujar el animal?
   get puedeEmpujar() {
@@ -36040,7 +36048,25 @@ var ActoCabral = class {
     soldados2.push(s);
     return s;
   }
+  // CABRAL NO LLEGÓ. Se corta el acto y se deja el campo como está: San Martín
+  // queda abajo del caballo. La muerte en sí ya la maneja jugador.alMorir —el
+  // fundido, la frase, los botones—; acá sólo hay que dejar de correr una
+  // cinemática encima de un muerto.
+  _fracaso() {
+    const { hud: hud2 } = this.ctx;
+    this._apagarMarcas();
+    this.forcejeo = 0;
+    this.barraLlena = 0;
+    this.lento = 1;
+    this.corriendo = false;
+    this.fase = "perdido";
+    hud2.decir("Cabral no lleg\xF3. San Mart\xEDn qued\xF3 bajo el caballo.", 5);
+  }
   actualizar(dt, teclas) {
+    if (this.barraLlena > 0) {
+      this.barraLlena = Math.max(0, this.barraLlena - dt);
+      this.forcejeo = 1;
+    }
     if (!this.corriendo) return;
     const { jugador: jugador2, hud: hud2, sonido: sonido2 } = this.ctx;
     this.t += dt;
@@ -36063,7 +36089,10 @@ var ActoCabral = class {
       return;
     }
     if (this.fase === "cabral") {
-      jugador2.vida = Math.max(jugador2.vida, 60);
+      if (!jugador2.vivo || jugador2.vida <= 0) {
+        this._fracaso();
+        return;
+      }
       this._empujar(dt, espacio);
       this.forcejeo = this.levante;
       const sm2 = this.sanmartin;
@@ -36091,6 +36120,7 @@ var ActoCabral = class {
       }
       if (this.levante > 0.05 && this.puedeEmpujar) jugador2.sacudir(0.05);
       if (this.levante >= 1) {
+        this.barraLlena = 0.5;
         if (this.caballo) {
           this.caballo.poseFija = true;
           this.caballo.raiz.rotation.z = 1.5 * this.caballo.lado * 0.58;
@@ -37000,12 +37030,10 @@ var Hud = class {
     this.paso = $("#paso");
     this.pasoNombre = $("#paso .nombre");
     this.pasoProg = $("#paso .prog");
-    this.pasoWin = $("#paso .win");
     this.aliento = $("#aliento");
     this.alientoBarra = $("#aliento i");
     this.cartuchera = $("#cartuchera");
     this.cartucheraN = $("#cartuchera .n");
-    this.ahora = $("#ahora");
     this.remate = $("#remate");
     this.velocidad = $("#velocidad");
     this.fundido = $("#fundido");
@@ -37013,6 +37041,9 @@ var Hud = class {
     this.metralla = $("#metralla");
     this.frase = $("#frase");
     this.forcejeo = $("#forcejeo");
+    this.cartelEl = $("#cartel");
+    this.cartelTexto = "";
+    this.cartelT = 0;
     this.tFrase = 0;
     this.tomar = $("#tomar");
     this.aviso = $("#aviso");
@@ -37026,7 +37057,6 @@ var Hud = class {
     this.flash = $("#flash");
     this.tAviso = 0;
     this.tCartuchera = 0;
-    this.vecesQueAcerto = 0;
     this.verDepurar = false;
     this.tVidaVisible = 0;
   }
@@ -37125,26 +37155,35 @@ var Hud = class {
       this.flash.style.opacity = "0";
     });
   }
+  // EL CARTEL GRANDE. Una sola línea, en el medio de la pantalla y en la
+  // tipografía más grande que tiene el juego: se usa para lo que hay que leer
+  // sin buscarlo —qué tecla apretar ahora, a quién hay que ir a salvar—. Dura
+  // los segundos que se le pidan y se apaga sola. Pedir el mismo texto que ya
+  // está no reinicia el reloj: si no, algo que se pide por cuadro no se apaga
+  // nunca.
+  cartel(texto, seg = 3) {
+    if (!this.cartelEl) return;
+    if (texto && texto === this.cartelTexto) return;
+    this.cartelTexto = texto || "";
+    this.cartelT = texto ? seg : 0;
+    if (texto) this.cartelEl.textContent = texto;
+    this.cartelEl.classList.toggle("si", !!texto);
+  }
   actualizar(dt, datos) {
+    if (this.cartelT > 0) {
+      this.cartelT -= dt;
+      if (this.cartelT <= 0) {
+        this.cartelTexto = "";
+        this.cartelEl.classList.remove("si");
+      }
+    }
     const p = datos.paso;
     if (p) {
       this.paso.style.opacity = "1";
       this.pasoNombre.textContent = `${p.indice}/${p.total} \xB7 ${p.nombre}`;
       this.pasoProg.style.width = (p.progreso * 100).toFixed(1) + "%";
-      if (p.golpe) {
-        this.paso.classList.add("golpe");
-        this.ahora.classList.toggle("si", !!p.enVentana && this.vecesQueAcerto < 6);
-        const [a, b] = p.ventana;
-        this.pasoWin.style.left = (a * 100).toFixed(1) + "%";
-        this.pasoWin.style.width = ((b - a) * 100).toFixed(1) + "%";
-        this.pasoWin.style.background = p.marcado === "mal" ? "#E4797B" : p.marcado === "bien" ? "#9BC48F" : "var(--bronce)";
-      } else {
-        this.paso.classList.remove("golpe");
-        this.ahora.classList.remove("si");
-      }
     } else {
       this.paso.style.opacity = "0";
-      this.ahora.classList.remove("si");
     }
     this.remate.classList.toggle("si", datos.remate > 0);
     const gal = Math.max(0, ((datos.rapidez || 0) - 4.2) / 6);
@@ -37497,9 +37536,10 @@ function armarCombate(ctx) {
         o.monta.recibir(BALA_AL_CABALLO);
         return;
       }
-      o.recibir(balaContraTropa(dist), dir, VOLTEO.bala);
+      o.recibir(esPersona(o) ? danoBalaEnemiga(dist) : balaContraTropa(dist), dir, VOLTEO.bala);
     }
   }
+  const esPersona = (o) => !!o.titere;
   function golpeEnemigo(quien, objetivo) {
     if (objetivo.jugador) {
       if (jugador2.atrapado > 0) {
@@ -37539,11 +37579,11 @@ function armarCombate(ctx) {
     if (objetivo.soldado) {
       const o = objetivo.soldado;
       if (quien.lancero) {
-        o.recibir(LANZA_TROPA, null, VOLTEO.lanza);
+        o.recibir(esPersona(o) ? DANO_BAYONETA : LANZA_TROPA, null, VOLTEO.lanza);
         return;
       }
       if (o.montado && Math.random() < CABALLO_COME) o.monta.recibir(BALA_AL_CABALLO);
-      else o.recibir(BAYONETA_TROPA, null, VOLTEO.bayoneta);
+      else o.recibir(esPersona(o) ? DANO_BAYONETA : BAYONETA_TROPA, null, VOLTEO.bayoneta);
     }
   }
   function resolverMetralla(canon) {
@@ -37566,6 +37606,7 @@ function armarCombate(ctx) {
       const g = canon.fuerzaSobre(s.pos);
       if (g < 0.28) continue;
       if (s.montado) s.monta.recibir(metrallaAlCaballo(g));
+      else if (esPersona(s)) s.recibir(Math.round(DANO_METRALLA * g), null, VOLTEO.metralla);
       else if (Math.random() < g) s.recibir(METRALLA_TROPA, null, VOLTEO.metralla);
     }
   }
@@ -37620,14 +37661,13 @@ var PASOS = {
   // siendo el tiempo largo y el amartillar el corto—; lo que se acortó es el
   // ciclo entero. Y las ventanas del ritmo salen de estas duraciones, así que
   // se achican solas y no hay nada más que tocar.
-  morder: { nombre: "Morder y verter", dur: 0.7, golpe: true },
-  cebar: { nombre: "Cebar la cazoleta", dur: 0.78, golpe: false },
-  baqueta: { nombre: "Bala y baqueta", dur: 1.04, golpe: true },
-  amartillar: { nombre: "Amartillar", dur: 0.48, golpe: true }
+  morder: { nombre: "Morder y verter", dur: 0.7 },
+  cebar: { nombre: "Cebar la cazoleta", dur: 0.78 },
+  baqueta: { nombre: "Bala y baqueta", dur: 1.04 },
+  amartillar: { nombre: "Amartillar", dur: 0.48 }
 };
 var SECUENCIA = ["morder", "cebar", "baqueta", "amartillar"];
 var AUTO_CARGA = 0.5;
-var PENAL = 0.9;
 var RETARDO = 0.09;
 var P_FOGONAZO = 0.04;
 var P_CHISPA = 0.03;
@@ -37697,8 +37737,6 @@ var ArmaFuego = class {
     this.autoCarga = 0;
     this.alPedirCarga = null;
     this.tPaso = 0;
-    this.penal = 0;
-    this.marcado = null;
     this.cargando = false;
     this.guardada = true;
     this.tiros = 0;
@@ -37794,12 +37832,6 @@ var ArmaFuego = class {
     const postura = this.sola ? Math.min(1, this.penalPostura) : this.penalPostura;
     return PASOS[id].dur * this.cfg.cargaMult * postura;
   }
-  _ventana(id) {
-    const d = this._duracion(id) + this.penal;
-    const ancho = d * 0.26 * (1 - this.presion * 0.45);
-    const inicio = d * 0.54;
-    return [inicio, inicio + ancho];
-  }
   // ---------- carga ----------
   iniciarCarga() {
     if (this.guardada || this.tGolpe >= 0) return;
@@ -37839,8 +37871,6 @@ var ArmaFuego = class {
     this.secuencia = SECUENCIA.slice();
     this.paso = 0;
     this.tPaso = 0;
-    this.penal = 0;
-    this.marcado = null;
   }
   // el arma arranca la partida lista para tirar
   cargarDeUnaVez() {
@@ -37852,8 +37882,6 @@ var ArmaFuego = class {
     this.secuencia = SECUENCIA.slice();
     this.paso = 0;
     this.tPaso = 0;
-    this.penal = 0;
-    this.marcado = null;
   }
   _nuevaSecuencia() {
     if (this.cargada && this.cebado && !this.amartillada) this.secuencia = ["amartillar"];
@@ -37861,28 +37889,6 @@ var ArmaFuego = class {
     else this.secuencia = SECUENCIA.slice();
     this.paso = 0;
     this.tPaso = 0;
-    this.penal = 0;
-    this.marcado = null;
-  }
-  // el golpe de tiempo: click izquierdo mientras se carga
-  golpe() {
-    if (!this.cargando || this.paso >= this.secuencia.length) return false;
-    const id = this.pasoActual;
-    if (!PASOS[id].golpe || this.marcado) return false;
-    const [a, b] = this._ventana(id);
-    if (this.tPaso >= a && this.tPaso <= b) {
-      this.marcado = "bien";
-      this.sonido.acierto();
-      this._completarPaso();
-      return "bien";
-    } else {
-      this.marcado = "mal";
-      this.penal += PENAL;
-      this.temblor = 1;
-      this.sonido.torpeza();
-      this._aviso("Torpeza", "malo");
-      return "mal";
-    }
   }
   _completarPaso() {
     const id = this.pasoActual;
@@ -37913,8 +37919,6 @@ var ArmaFuego = class {
     }
     this.paso++;
     this.tPaso = 0;
-    this.penal = 0;
-    this.marcado = null;
     if (this.paso >= this.secuencia.length) {
       this.cargando = false;
       if (this.lista) this._aviso("Lista", "bien");
@@ -37982,8 +37986,6 @@ var ArmaFuego = class {
     this.secuencia = SECUENCIA.slice();
     this.paso = 0;
     this.tPaso = 0;
-    this.penal = 0;
-    this.marcado = null;
     this.sonido.disparo();
     this.fogonazo.material.opacity = 0.95;
     this.luz.intensity = 22;
@@ -38055,18 +38057,7 @@ var ArmaFuego = class {
     if (this.cargando && this.paso < this.secuencia.length) {
       const id = this.pasoActual;
       this.tPaso += dt;
-      const d = this._duracion(id) + this.penal;
-      if (PASOS[id].golpe && !this.marcado && !this.sola) {
-        const [, b] = this._ventana(id);
-        if (this.tPaso > b) {
-          this.marcado = "mal";
-          this.penal += PENAL;
-          this.temblor = 0.8;
-          this.sonido.torpeza();
-          this._aviso("Se pas\xF3 el tiempo", "malo");
-        }
-      }
-      if (this.tPaso >= d) this._completarPaso();
+      if (this.tPaso >= this._duracion(id)) this._completarPaso();
     }
     if (!this.guardada) this._animar(dt);
   }
@@ -38112,7 +38103,7 @@ var ArmaFuego = class {
     let bq = { ...this.baquetaGuardada };
     if (this.cargando && this.paso < this.secuencia.length) {
       const id = this.pasoActual;
-      const d = this._duracion(id) + this.penal;
+      const d = this._duracion(id);
       const u = Math.min(1, this.tPaso / d);
       const zBoca = this.bocaZ;
       switch (id) {
@@ -38148,17 +38139,11 @@ var ArmaFuego = class {
   infoPaso() {
     if (!this.cargando || this.paso >= this.secuencia.length) return null;
     const id = this.pasoActual;
-    const d = this._duracion(id) + this.penal;
-    const [a, b] = this._ventana(id);
     return {
       nombre: PASOS[id].nombre,
       indice: this.paso + 1,
       total: this.secuencia.length,
-      progreso: Math.min(1, this.tPaso / d),
-      golpe: PASOS[id].golpe,
-      enVentana: this.tPaso >= a && this.tPaso <= b && !this.marcado,
-      ventana: [a / d, b / d],
-      marcado: this.marcado
+      progreso: Math.min(1, this.tPaso / this._duracion(id))
     };
   }
 };
@@ -38986,10 +38971,7 @@ function armarMando(ctx) {
     if (jugador2.espectador) return;
     if (ev.button === 0) {
       const a = arsenal2.actual();
-      if (a && a.cargando) {
-        if (a.golpe() === "bien") hud2.vecesQueAcerto++;
-        return;
-      }
+      if (a && a.cargando) return;
       if (a) a.gatillo();
       else sable2.tajo(montado2());
     }
@@ -43633,7 +43615,7 @@ function cuadro() {
     // La barra, sólo al lado del caballo: es lo único que se puede llenar. Los
     // metros van sin barra —ver `rotulo`—, que una barra vacía al lado de un
     // número dice que ese número se está llenando, y no es eso.
-    empujando: acto.puedeEmpujar,
+    empujando: acto.mostrandoBarra,
     forcejeo: acto.forcejeo,
     rotulo: acto.rotulo,
     vida: jugador.vida,

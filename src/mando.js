@@ -122,11 +122,10 @@ export function armarMando (ctx) {
     if (jugador.espectador) return;
     if (ev.button === 0) {
       const a = arsenal.actual();
-      // mientras cargás, el click marca el tiempo en vez de disparar
-      if (a && a.cargando) {
-        if (a.golpe() === 'bien') hud.vecesQueAcerto++;
-        return;
-      }
+      // MIENTRAS CARGÁS, EL CLICK NO HACE NADA. Antes marcaba el tiempo del
+      // minijuego; ahora se lo come igual, que es lo que corresponde: apretar
+      // el gatillo con la baqueta adentro del caño no dispara nada.
+      if (a && a.cargando) return;
       if (a) a.gatillo();
       else sable.tajo(montado());
     }

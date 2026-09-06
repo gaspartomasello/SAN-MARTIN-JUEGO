@@ -648,7 +648,7 @@ function cuadro () {
     // La barra, sólo al lado del caballo: es lo único que se puede llenar. Los
     // metros van sin barra —ver `rotulo`—, que una barra vacía al lado de un
     // número dice que ese número se está llenando, y no es eso.
-    empujando: acto.puedeEmpujar,
+    empujando: acto.mostrandoBarra,
     forcejeo: acto.forcejeo,
     rotulo: acto.rotulo,
     vida: jugador.vida,

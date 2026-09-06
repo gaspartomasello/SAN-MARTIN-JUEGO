@@ -9,12 +9,10 @@ export class Hud {
     this.paso = $('#paso');
     this.pasoNombre = $('#paso .nombre');
     this.pasoProg = $('#paso .prog');
-    this.pasoWin = $('#paso .win');
     this.aliento = $('#aliento');
     this.alientoBarra = $('#aliento i');
     this.cartuchera = $('#cartuchera');
     this.cartucheraN = $('#cartuchera .n');
-    this.ahora = $('#ahora');
     this.remate = $('#remate');
     this.velocidad = $('#velocidad');
     this.fundido = $('#fundido');
@@ -22,6 +20,9 @@ export class Hud {
     this.metralla = $('#metralla');
     this.frase = $('#frase');
     this.forcejeo = $('#forcejeo');
+    this.cartelEl = $('#cartel');
+    this.cartelTexto = '';
+    this.cartelT = 0;
     this.tFrase = 0;
     this.tomar = $('#tomar');
     this.aviso = $('#aviso');
@@ -36,7 +37,6 @@ export class Hud {
 
     this.tAviso = 0;
     this.tCartuchera = 0;
-    this.vecesQueAcerto = 0;     // el cartel grande se apaga solo cuando ya entendiste
     this.verDepurar = false;
     this.tVidaVisible = 0;
   }
@@ -130,29 +130,35 @@ export class Hud {
     });
   }
 
+  // EL CARTEL GRANDE. Una sola línea, en el medio de la pantalla y en la
+  // tipografía más grande que tiene el juego: se usa para lo que hay que leer
+  // sin buscarlo —qué tecla apretar ahora, a quién hay que ir a salvar—. Dura
+  // los segundos que se le pidan y se apaga sola. Pedir el mismo texto que ya
+  // está no reinicia el reloj: si no, algo que se pide por cuadro no se apaga
+  // nunca.
+  cartel (texto, seg = 3) {
+    if (!this.cartelEl) return;
+    if (texto && texto === this.cartelTexto) return;
+    this.cartelTexto = texto || '';
+    this.cartelT = texto ? seg : 0;
+    if (texto) this.cartelEl.textContent = texto;
+    this.cartelEl.classList.toggle('si', !!texto);
+  }
+
   actualizar (dt, datos) {
+    // el cartel se apaga solo
+    if (this.cartelT > 0) {
+      this.cartelT -= dt;
+      if (this.cartelT <= 0) { this.cartelTexto = ''; this.cartelEl.classList.remove('si'); }
+    }
     // --- paso de carga ---
     const p = datos.paso;
     if (p) {
       this.paso.style.opacity = '1';
       this.pasoNombre.textContent = `${p.indice}/${p.total} · ${p.nombre}`;
       this.pasoProg.style.width = (p.progreso * 100).toFixed(1) + '%';
-      if (p.golpe) {
-        this.paso.classList.add('golpe');
-        // el aviso grande: mientras la ventana está abierta y no marcaste
-        this.ahora.classList.toggle('si', !!p.enVentana && this.vecesQueAcerto < 6);
-        const [a, b] = p.ventana;
-        this.pasoWin.style.left = (a * 100).toFixed(1) + '%';
-        this.pasoWin.style.width = ((b - a) * 100).toFixed(1) + '%';
-        this.pasoWin.style.background = p.marcado === 'mal' ? '#E4797B'
-          : (p.marcado === 'bien' ? '#9BC48F' : 'var(--bronce)');
-      } else {
-        this.paso.classList.remove('golpe');
-        this.ahora.classList.remove('si');
-      }
     } else {
       this.paso.style.opacity = '0';
-      this.ahora.classList.remove('si');
     }
 
     // ventana del remate abierta tras una parada perfecta

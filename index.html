@@ -92,8 +92,6 @@
   #paso .nombre{font-size:15px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
   #paso .cont{margin-top:7px;width:210px;height:3px;background:rgba(230,226,214,.22);position:relative}
   #paso .prog{position:absolute;inset:0 auto 0 0;width:0;background:var(--hueso)}
-  #paso .win{position:absolute;top:-4px;height:11px;background:var(--bronce);opacity:0;width:0}
-  #paso.golpe .win{opacity:.95}
 
   #aliento{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);
     width:210px;height:2px;background:rgba(230,226,214,.14);opacity:0;transition:opacity .3s}
@@ -104,11 +102,14 @@
   #cartuchera .n{font-family:"Libre Caslon Display",Georgia,serif;font-size:38px;line-height:1}
   #cartuchera .t{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
 
-  #ahora{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:0;
+  /* EL CARTEL GRANDE. Era el ¡AHORA! del minijuego de recarga, que se sacó; la
+     tipografía se queda porque es la voz con la que el juego grita una sola
+     cosa en medio de la pelea. Ahora el texto lo escribe hud.cartel(). */
+  #cartel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:0;
     font-size:clamp(38px,7vw,64px);letter-spacing:.1em;font-weight:600;color:var(--bronce);
     text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 10px rgba(0,0,0,.9);pointer-events:none;
-    transition:opacity .07s linear}
-  #ahora.si{opacity:1}
+    transition:opacity .12s linear;text-align:center;white-space:nowrap}
+  #cartel.si{opacity:1}
   #remate{position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);opacity:0;
     font:700 30px/1 var(--titulo,inherit);letter-spacing:.3em;color:#9BC48F;
     text-shadow:0 2px 18px rgba(0,0,0,.75);text-align:center;pointer-events:none;
@@ -116,7 +117,7 @@
   #remate.si{opacity:1}
   #remate small{display:block;font-size:14px;letter-spacing:.22em;opacity:.85;margin-top:6px;
     font-weight:400}
-  #ahora small{display:block;font-size:15px;letter-spacing:.22em;opacity:.85;margin-top:6px;
+  #cartel small{display:block;font-size:15px;letter-spacing:.22em;opacity:.85;margin-top:6px;
     color:var(--hueso)}
 
   #tomar{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);opacity:0;
@@ -486,10 +487,10 @@
 <div id="flash"></div>
 
 <div id="hud">
-  <div id="paso"><div class="nombre"></div><div class="cont"><div class="prog"></div><div class="win"></div></div></div>
+  <div id="paso"><div class="nombre"></div><div class="cont"><div class="prog"></div></div></div>
   <div id="aliento"><i></i></div>
   <div id="cartuchera"><div class="n">0</div><div class="t">cartuchos</div></div>
-  <div id="ahora">¡AHORA!<small>click izquierdo</small></div>
+  <div id="cartel"></div>
   <div id="remate">¡REMATE!<small>click izquierdo</small></div>
   <div id="tomar"><b>[G]</b> tomar el fusil con bayoneta</div>
   <div id="aviso"></div>

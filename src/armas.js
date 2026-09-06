@@ -17,8 +17,13 @@ import { CULATAZO, BAYONETAZO } from './balance.js';
 // Lo que se conservó es lo que hay que conservar: los TRES tiempos que se
 // marcan a mano —morder, baqueta y amartillar— y el cebado de la cazoleta, que
 // es el paso propio del arma de chispa y el que se cobra cuando hay fogonazo
-// sin tiro. Con siete pasos y tres marcas, la mitad de la carga era mirar. Con
-// cuatro y tres, casi cada paso pide algo.
+// sin tiro.
+//
+// Y SE CARGA SOLA. Hubo un minijuego encima de esto: una ventana por paso, el
+// cartel ¡AHORA! y un click que si entraba a tiempo adelantaba el paso y si no
+// cobraba nueve décimas. Se sacó entero. Lo que quedó es lo que importaba: los
+// cuatro tiempos con su nombre y su duración, que es lo que hace que un tiro
+// cueste lo que cuesta.
 //
 // Y son más cortos: de 7,70 s de reglamento a 3,45. Un granadero de 1813
 // tardaba veinte segundos y hacía tres disparos por minuto; esto ya era una
@@ -29,10 +34,10 @@ export const PASOS = {
   // siendo el tiempo largo y el amartillar el corto—; lo que se acortó es el
   // ciclo entero. Y las ventanas del ritmo salen de estas duraciones, así que
   // se achican solas y no hay nada más que tocar.
-  morder:     { nombre: 'Morder y verter',        dur: 0.70, golpe: true },
-  cebar:      { nombre: 'Cebar la cazoleta',      dur: 0.78, golpe: false },
-  baqueta:    { nombre: 'Bala y baqueta',         dur: 1.04, golpe: true },
-  amartillar: { nombre: 'Amartillar',             dur: 0.48, golpe: true }
+  morder:     { nombre: 'Morder y verter',        dur: 0.70 },
+  cebar:      { nombre: 'Cebar la cazoleta',      dur: 0.78 },
+  baqueta:    { nombre: 'Bala y baqueta',         dur: 1.04 },
+  amartillar: { nombre: 'Amartillar',             dur: 0.48 }
 };
 
 export const SECUENCIA = ['morder', 'cebar', 'baqueta', 'amartillar'];
@@ -41,7 +46,6 @@ export const SECUENCIA = ['morder', 'cebar', 'baqueta', 'amartillar'];
 // dura el retroceso, para que el disparo se lea antes de que la mano vuelva.
 const AUTO_CARGA = 0.5;
 
-const PENAL = 0.9;
 const RETARDO = 0.09;
 const P_FOGONAZO = 0.04;
 const P_CHISPA = 0.03;
@@ -109,8 +113,6 @@ export class ArmaFuego {
     this.autoCarga = 0;        // > 0: está por ponerse a cargar sola
     this.alPedirCarga = null;  // el arsenal dice si queda cartucho
     this.tPaso = 0;
-    this.penal = 0;
-    this.marcado = null;
     this.cargando = false;
     this.guardada = true;
 
@@ -227,12 +229,6 @@ export class ArmaFuego {
     return PASOS[id].dur * this.cfg.cargaMult * postura;
   }
 
-  _ventana (id) {
-    const d = this._duracion(id) + this.penal;
-    const ancho = d * 0.26 * (1 - this.presion * 0.45);
-    const inicio = d * 0.54;
-    return [inicio, inicio + ancho];
-  }
 
   // ---------- carga ----------
   iniciarCarga () {
@@ -270,7 +266,7 @@ export class ArmaFuego {
     this.amartillada = false;
     this.cargando = false;
     this.secuencia = SECUENCIA.slice();
-    this.paso = 0; this.tPaso = 0; this.penal = 0; this.marcado = null;
+    this.paso = 0; this.tPaso = 0;
   }
 
   // el arma arranca la partida lista para tirar
@@ -281,36 +277,14 @@ export class ArmaFuego {
     this.amartillada = true;
     this.cargando = false;
     this.secuencia = SECUENCIA.slice();
-    this.paso = 0; this.tPaso = 0; this.penal = 0; this.marcado = null;
+    this.paso = 0; this.tPaso = 0;
   }
 
   _nuevaSecuencia () {
     if (this.cargada && this.cebado && !this.amartillada) this.secuencia = ['amartillar'];
     else if (this.cargada && !this.cebado) this.secuencia = ['cebar', 'amartillar'];
     else this.secuencia = SECUENCIA.slice();
-    this.paso = 0; this.tPaso = 0; this.penal = 0; this.marcado = null;
-  }
-
-  // el golpe de tiempo: click izquierdo mientras se carga
-  golpe () {
-    if (!this.cargando || this.paso >= this.secuencia.length) return false;
-    const id = this.pasoActual;
-    if (!PASOS[id].golpe || this.marcado) return false;
-    // devuelve 'bien' o 'mal' según haya entrado en la ventana
-    const [a, b] = this._ventana(id);
-    if (this.tPaso >= a && this.tPaso <= b) {
-      this.marcado = 'bien';
-      this.sonido.acierto();
-      this._completarPaso();
-      return 'bien';
-    } else {
-      this.marcado = 'mal';
-      this.penal += PENAL;
-      this.temblor = 1;
-      this.sonido.torpeza();
-      this._aviso('Torpeza', 'malo');
-      return 'mal';
-    }
+    this.paso = 0; this.tPaso = 0;
   }
 
   _completarPaso () {
@@ -335,8 +309,6 @@ export class ArmaFuego {
     }
     this.paso++;
     this.tPaso = 0;
-    this.penal = 0;
-    this.marcado = null;
     if (this.paso >= this.secuencia.length) {
       this.cargando = false;
       if (this.lista) this._aviso('Lista', 'bien');
@@ -408,7 +380,7 @@ export class ArmaFuego {
     this.cebado = false;
     this.tiros++;
     this.secuencia = SECUENCIA.slice();
-    this.paso = 0; this.tPaso = 0; this.penal = 0; this.marcado = null;
+    this.paso = 0; this.tPaso = 0;
     this.sonido.disparo();
 
     this.fogonazo.material.opacity = 0.95;
@@ -495,19 +467,7 @@ export class ArmaFuego {
     if (this.cargando && this.paso < this.secuencia.length) {
       const id = this.pasoActual;
       this.tPaso += dt;
-      const d = this._duracion(id) + this.penal;
-      // y sin castigo por no marcar el ritmo: no estás mirando el arma
-      if (PASOS[id].golpe && !this.marcado && !this.sola) {
-        const [, b] = this._ventana(id);
-        if (this.tPaso > b) {
-          this.marcado = 'mal';
-          this.penal += PENAL;
-          this.temblor = 0.8;
-          this.sonido.torpeza();
-          this._aviso('Se pasó el tiempo', 'malo');
-        }
-      }
-      if (this.tPaso >= d) this._completarPaso();
+      if (this.tPaso >= this._duracion(id)) this._completarPaso();
     }
 
     if (!this.guardada) this._animar(dt);
@@ -562,7 +522,7 @@ export class ArmaFuego {
     let bq = { ...this.baquetaGuardada };
     if (this.cargando && this.paso < this.secuencia.length) {
       const id = this.pasoActual;
-      const d = this._duracion(id) + this.penal;
+      const d = this._duracion(id);
       const u = Math.min(1, this.tPaso / d);
       const zBoca = this.bocaZ;
       switch (id) {
@@ -594,17 +554,11 @@ export class ArmaFuego {
   infoPaso () {
     if (!this.cargando || this.paso >= this.secuencia.length) return null;
     const id = this.pasoActual;
-    const d = this._duracion(id) + this.penal;
-    const [a, b] = this._ventana(id);
     return {
       nombre: PASOS[id].nombre,
       indice: this.paso + 1,
       total: this.secuencia.length,
-      progreso: Math.min(1, this.tPaso / d),
-      golpe: PASOS[id].golpe,
-      enVentana: this.tPaso >= a && this.tPaso <= b && !this.marcado,
-      ventana: [a / d, b / d],
-      marcado: this.marcado
+      progreso: Math.min(1, this.tPaso / this._duracion(id))
     };
   }
 }

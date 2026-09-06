@@ -393,9 +393,22 @@ export function armarCombate (ctx) {
     if (objetivo.soldado) {
       const o = objetivo.soldado;
       if (o.montado && Math.random() < CABALLO_COME) { o.monta.recibir(BALA_AL_CABALLO); return; }
-      o.recibir(balaContraTropa(dist), dir, VOLTEO.bala);
+      o.recibir(esPersona(o) ? danoBalaEnemiga(dist) : balaContraTropa(dist), dir, VOLTEO.bala);
     }
   }
+
+  // UN TÍTERE ES UNA PERSONA.
+  //
+  // El cuerpo de otro jugador vive en el campo como un soldado más —así lo ven
+  // los bots, y así tiene que ser—, y por eso venía comiendo los números de la
+  // tropa: nueve balazos para caer, mientras el que juega en esta máquina cae
+  // de uno. Dos personas en la misma batalla no pueden tener dos fragilidades
+  // distintas según en qué pantalla estén.
+  //
+  // La asimetría que SÍ es a propósito no se toca: la de los bots contra vos
+  // (ver la tabla de CLAUDE.md). Un bot sigue siendo un bot; un títere pasa a
+  // cobrar lo mismo que San Martín.
+  const esPersona = o => !!o.titere;
 
   function golpeEnemigo (quien, objetivo) {
     if (objetivo.jugador) {
@@ -438,13 +451,16 @@ export function armarCombate (ctx) {
       const o = objetivo.soldado;
       // El lanzazo mata de una: el asta llega antes que la bayoneta y ese metro
       // de diferencia es toda la batalla.
-      if (quien.lancero) { o.recibir(LANZA_TROPA, null, VOLTEO.lanza); return; }
+      if (quien.lancero) {
+        o.recibir(esPersona(o) ? DANO_BAYONETA : LANZA_TROPA, null, VOLTEO.lanza);
+        return;
+      }
       // La misma regla que la bala, y por el mismo motivo: lo que la infantería
       // tiene adelante es el caballo. Sin esto, la bayoneta le pegaba siempre
       // al hombre —lo único que no puede alcanzar desde abajo— y una carga de
       // caballería se deshacía en el primer contacto.
       if (o.montado && Math.random() < CABALLO_COME) o.monta.recibir(BALA_AL_CABALLO);
-      else o.recibir(BAYONETA_TROPA, null, VOLTEO.bayoneta);
+      else o.recibir(esPersona(o) ? DANO_BAYONETA : BAYONETA_TROPA, null, VOLTEO.bayoneta);
     }
   }
 
@@ -483,6 +499,7 @@ export function armarCombate (ctx) {
       const g = canon.fuerzaSobre(s.pos);
       if (g < 0.28) continue;
       if (s.montado) s.monta.recibir(metrallaAlCaballo(g));
+      else if (esPersona(s)) s.recibir(Math.round(DANO_METRALLA * g), null, VOLTEO.metralla);
       else if (Math.random() < g) s.recibir(METRALLA_TROPA, null, VOLTEO.metralla);
     }
   }
