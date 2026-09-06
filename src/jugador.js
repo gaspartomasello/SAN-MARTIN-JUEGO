@@ -58,9 +58,23 @@ const VUELO_RAPIDO = 62;      // con Shift, para cruzar el campo de punta a punt
 const VUELO_PISO = 1.2;       // no se entierra
 const VUELO_TECHO = 90;       // ni se va a la estratósfera
 
-export const CAMPO_X = 120;
-export const CAMPO_Z0 = -105;   // el río
-export const CAMPO_Z1 = 78;     // el fondo del convento
+// HASTA DÓNDE LLEGA EL MUNDO, y por qué esto es un OBJETO y no tres números.
+//
+// Eran tres constantes con los valores de San Lorenzo escritos adentro —el río
+// a −105, el fondo del convento a 78— importadas por el jugador y por el
+// caballo. O sea: un archivo del núcleo con las medidas del capítulo 1 clavadas
+// en el código. No se notó nunca porque el único capítulo era ése, y saltó de
+// golpe en el paso de los Andes: el desfiladero llega a −210 y el jugador se
+// frenaba solo en −105, en el aire, sin nada que lo parara, a sesenta metros de
+// un corral al que no había manera de llegar.
+//
+// Ahora los límites son del CAPÍTULO —cada uno exporta los suyos— y acá queda
+// nada más el objeto que los guarda. Se muta en lugar de reemplazarse por el
+// mismo motivo que las colisiones: el que ya lo importó se quedó con éste.
+export const CAMPO = { x: 120, z0: -105, z1: 78 };
+export function ponerCampo (l) {
+  CAMPO.x = l.x; CAMPO.z0 = l.z0; CAMPO.z1 = l.z1;
+}
 
 export class Jugador {
   constructor (camara, colisiones) {
@@ -144,8 +158,8 @@ export class Jugador {
       this.pos.y += (my / l) * v;
       this.pos.z += (mz / l) * v;
     }
-    this.pos.x = Math.max(-CAMPO_X, Math.min(CAMPO_X, this.pos.x));
-    this.pos.z = Math.max(CAMPO_Z0, Math.min(CAMPO_Z1, this.pos.z));
+    this.pos.x = Math.max(-CAMPO.x, Math.min(CAMPO.x, this.pos.x));
+    this.pos.z = Math.max(CAMPO.z0, Math.min(CAMPO.z1, this.pos.z));
     this.pos.y = Math.max(VUELO_PISO, Math.min(VUELO_TECHO, this.pos.y));
     this.trauma = Math.max(0, this.trauma - dt * 2);
     this._aplicarCamara(dt, 0);
@@ -484,8 +498,8 @@ export class Jugador {
   _mover (dx, dz) {
     this.pos.x += dx;
     this.pos.z += dz;
-    this.pos.x = Math.max(-CAMPO_X, Math.min(CAMPO_X, this.pos.x));
-    this.pos.z = Math.max(CAMPO_Z0, Math.min(CAMPO_Z1, this.pos.z));
+    this.pos.x = Math.max(-CAMPO.x, Math.min(CAMPO.x, this.pos.x));
+    this.pos.z = Math.max(CAMPO.z0, Math.min(CAMPO.z1, this.pos.z));
 
     // Se resuelve empujando al jugador fuera de la caja, no deshaciendo el
     // movimiento: deshacerlo es lo que hacía vibrar la pantalla al quedar

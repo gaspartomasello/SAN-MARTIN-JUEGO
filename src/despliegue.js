@@ -17,6 +17,7 @@ import { Soldado } from './soldados.js';
 import { Caballo } from './caballo.js';
 import { Canon } from './canon.js';
 import { PLAZA_OESTE, PLAZA_ESTE } from './pinza.js';
+import { columnaDelPaso } from './andes.js';
 import { ALIADOS_MAX, ENEMIGOS_MAX, MONTADOS, OLEADA_REALISTA, OLEADA_GRANADERO,
   LINEA_MINIMA } from './balance.js';
 
@@ -201,19 +202,16 @@ export function armarDespliegue (ctx) {
     if (jugador.monta) caballos.push(jugador.monta);
   }
 
-  // ----------------------- LA CORDILLERA, POR AHORA -----------------------
+  // -------------------------- LA MARCHA DEL PASO --------------------------
   //
-  // El reconocimiento del capítulo 2: vos a pie y una partida de granaderos en
-  // poncho subiendo adelante tuyo. NO es la misión del Cruce ni pretende
-  // serlo —el desfiladero, la nieve, las mulas y el sigilo son lo que viene—:
-  // es lo mínimo para que el capítulo se pueda ELEGIR y VER, que es de lo que
-  // se trata un armazón. Sin esto, elegir el capítulo 2 en la portada te deja
-  // parado en un campo vacío y parece roto.
+  // La partida del capítulo 2: vos a pie y una fila de granaderos en poncho
+  // subiendo adelante tuyo. Los ves de espaldas, que es la imagen del Cruce
+  // —una fila de ponchos que se mete en el desfiladero— y no una formación
+  // esperando órdenes, que es justo lo contrario de una marcha.
   //
-  // Vive acá y no en un archivo de capítulo porque TODAVÍA NO HAY archivo de
-  // capítulo, y crear uno para quince renglones es al revés de lo que pide el
-  // proyecto. El día que exista `andes.js`, esto se muda entero y no queda
-  // rastro en despliegue.js.
+  // EL DÓNDE NO ESTÁ ACÁ: sale de `columnaDelPaso()`, que vive en andes.js con
+  // el resto del paso. Este archivo sabe soltar gente y nada más; si mañana la
+  // garganta se angosta, la fila se acomoda sola y nadie toca despliegue.js.
   campo.formarCordillera = function (partida = 14) {
     soltarTodo();
     pinza.desarmar();
@@ -224,26 +222,18 @@ export function armarDespliegue (ctx) {
     canones.length = 0;
     if (jugador.monta && jugador.monta.vivo) jugador.desmontar();
 
-    // VAN ADELANTE Y NO ATRÁS. Los ves de espaldas, subiendo, que es la imagen
-    // del Cruce: una fila de ponchos que se pierde en la bruma. Detrás tuyo no
-    // se ven, y lo único que hay para mirar en este capítulo todavía son ellos.
-    for (let k = 0; k < partida; k++) {
-      const fila = Math.floor(k / 2), lado = (k % 2) ? 1 : -1;
-      const s = soltarSoldado('granadero', {
-        pos: new THREE.Vector3(lado * 1.5 + (Math.random() - 0.5) * 0.8, 0, 24 - fila * 2.6)
-      });
-      // MIRANDO PARA ARRIBA, o sea a −z, que es el rumbo de fábrica de una
-      // figura: los ves de espaldas, subiendo. Vueltos hacia vos parecían una
-      // formación esperando órdenes, que es justo lo contrario de una marcha.
-      s.malla.rotation.y = 0;
-      s.frente = 0;
+    const plan = columnaDelPaso(partida);
+    for (const p of plan.puestos) {
+      const s = soltarSoldado('granadero', { pos: new THREE.Vector3(p.x, 0, p.z) });
+      s.malla.rotation.y = p.rumbo;
+      s.frente = p.rumbo;
     }
-    jugador.pos.set(0, jugador.pos.y, 31);
-    jugador.yaw = 0;
-    jugador.pitch = -0.02;
+    jugador.pos.set(plan.jugador.x, jugador.pos.y, plan.jugador.z);
+    jugador.yaw = plan.jugador.yaw;
+    jugador.pitch = plan.jugador.pitch;
     if (campo.alFormar) campo.alFormar();
-    hud.mostrarAviso('Cruce de los Andes · el paso todavía está en obra', 'bien');
-    return { partida };
+    hud.mostrarAviso('Paso de Los Patos · la partida sube al desfiladero', 'bien');
+    return { partida: plan.puestos.length };
   };
 
   // ------------------------------ LA PINZA ------------------------------

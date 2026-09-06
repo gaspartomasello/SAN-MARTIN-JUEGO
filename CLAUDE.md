@@ -54,21 +54,30 @@ Todo lo que sirve igual en San Lorenzo, en el Cruce y en Chacabuco:
 
 ### Capítulo 2 · Cruce de los Andes
 
-Todavía no hay ningún archivo propio, y hay **armazón**: el capítulo se elige en
-la portada y el juego entra. Lo que existe hoy:
+`andes` (el desfiladero, la nieve, el corral de pircas, los picos)
 
+El capítulo se elige en la portada y se entra. Lo que existe hoy:
+
+- el **paso**, en `andes.js`: el piso de nieve y las dos paredes en UNA malla,
+  el corral de pircas, los peñones, la cordillera del fondo, los límites del
+  mundo y el plano de dónde va la partida;
 - el **vestuario**, en el núcleo a propósito: la pinta `granaderoAndes` de
   `figura.js` —poncho y pañuelo, con variación por hombre— y su silueta
   horneada en `lejania.js`;
-- la **hora y el lugar**, en `mundo.entrarCapitulo()`: madrugada de luna, sin
-  pasto ni arboleda, con San Lorenzo apagado;
-- una **partida de reconocimiento**, `campo.formarCordillera()`, provisional y
-  anotada como tal en `despliegue.js`: se muda entera el día que exista
-  `andes.js`.
+- la **hora**, en `mundo.entrarCapitulo()`: madrugada de luna, con el rebote de
+  la nieve haciendo casi toda la luz.
 
-Falta todo lo demás: el desfiladero, la nieve, las mulas, el sigilo y la moral
-de la altura. El capítulo 1 no se entera de nada de esto porque lee la pinta
-`granadero`, que quedó palabra por palabra igual.
+Falta la misión: las mulas, el sigilo, los centinelas y la moral de la altura.
+El capítulo 1 no se entera de nada de esto porque lee la pinta `granadero`, que
+quedó palabra por palabra igual.
+
+**El piso del paso es plano y es una decisión, no una concesión.** Un terreno
+con pendiente obliga a que el jugador, los trescientos hombres y los caballos
+sepan a qué altura está el suelo, y hoy nadie lo sabe: se camina sobre `y = 0` y
+lo que frena son cajas. Eso es un cambio de sistema y arrastra la moral, la IA y
+el LOD. La subida la cuenta lo que se ve —las paredes que se cierran, los picos
+que crecen—. Cuando haga falta caminar en pendiente, se hace de frente y con su
+prueba.
 
 **Un capítulo no se carga: se prende.** Todo se arma una vez al arrancar y
 cambiar de capítulo es apagar un grupo y cambiar la luz —un grupo invisible no
@@ -107,6 +116,14 @@ Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parec
   `Soldado` → `Figura`. Los tres saltos hay que hacerlos: el primer poncho no
   se le veía a nadie porque `soltarSoldado` armaba su propio paquete de
   opciones y se comía la palabra en el camino.
+- **Hasta dónde llega el mundo** es del capítulo: cada uno exporta sus
+  `LIMITES` y `jugador.js` guarda nada más el objeto `CAMPO`. Estaban escritos
+  en `jugador.js` con los valores de San Lorenzo —el río a −105, el convento a
+  78—, o sea un archivo del núcleo con las medidas del capítulo 1 clavadas. No
+  se notó nunca porque el único capítulo era ése: saltó en el paso de los
+  Andes, donde el jugador se frenaba en el aire a sesenta metros de un corral
+  al que no había manera de llegar. **Antes de agregar un número a un archivo
+  del núcleo, preguntate de qué capítulo es.**
 - **En qué capítulo estamos** lo sabe `main.entrarCapitulo()` y NADIE más lo
   pregunta. Se lo avisa a los dos únicos que se enteran: `mundo.js` prende el
   lugar y la hora, `despliegue.js` decide con qué ropa sale un granadero. Ni
@@ -124,6 +141,11 @@ Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parec
   la pinza en Capítulo 1.
 - **`despliegue.js`** es casi todo San Lorenzo, pero `soltarSoldado` lo usa todo
   el mundo.
+- **`Horno` y `MAT`** son genéricos —juntan cajas en una sola malla con color
+  por vértice— y viven en `sanlorenzo.js`, que es Capítulo 1. Los importan
+  `canon.js`, `mundo.js` y `andes.js`. Mudarlos al núcleo hoy arma un ciclo
+  —`mundo.js` importa `construirSanLorenzo`—, así que se mudan el día que se
+  saque esa llamada de `mundo.js`, y no antes.
 
 ---
 

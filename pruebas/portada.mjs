@@ -154,6 +154,7 @@ const cordillera = await pag.evaluate(() => {
     conPoncho: j.soldados.filter(s => s.fig.conPoncho).length,
     claves: [...new Set(j.soldados.map(s => s.claveLejos))].join(' '),
     niebla: '#' + j.escena.fog.color.getHexString(),
+    limite: j.mundo.limite,
     draws: j.info.calls
   };
 });
@@ -161,7 +162,10 @@ console.log('la cordillera:', JSON.stringify(cordillera));
 const malAndes = [];
 if (cordillera.capitulo !== 'andes') malAndes.push('no entró al capítulo 2');
 if (cordillera.sanLorenzoPrendido) malAndes.push('San Lorenzo sigue dibujándose');
-if (cordillera.colisiones !== 0) malAndes.push('quedaron colisiones del convento');
+// las colisiones tienen que ser LAS DEL PASO y no las del convento: son otras
+// tantas, pero lo que importa es que se hayan cambiado enteras
+if (cordillera.colisiones < 60) malAndes.push('el paso se quedó sin sus colisiones');
+if (cordillera.limite > -200) malAndes.push('el mundo sigue terminando en el río: ' + cordillera.limite);
 if (cordillera.hombres < 10) malAndes.push('no salió la partida');
 if (cordillera.conPoncho < 5) malAndes.push('los granaderos salieron sin poncho');
 if (cordillera.claves !== 'granaderoAndes') malAndes.push('de lejos se cambian de ropa: ' + cordillera.claves);

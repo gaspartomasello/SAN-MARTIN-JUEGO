@@ -99,6 +99,9 @@ export const CONVENTO = { x0: -31, x1: 31, z0: 16, z1: 68 };
 // convento se mueve, se mueve con él y nadie tiene que acordarse.
 export const PORTON = { x: 0, z: 16 };
 export const IGLESIA = { x0: -19.5, x1: -6.5, z0: 17, z1: 37 };
+// HASTA DÓNDE LLEGA EL MUNDO EN ESTA BATALLA. Vivía en jugador.js, que es
+// núcleo: son medidas del 3 de febrero y van con el convento.
+export const LIMITES = { x: 120, z0: -105, z1: 78 };
 export const Z_BARRANCA = -84;   // el labio por donde se cae el terreno
 export const Z_RIO = -99;
 

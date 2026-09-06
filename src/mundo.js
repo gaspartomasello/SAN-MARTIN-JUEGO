@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { construirSanLorenzo, Horno, MAT, BOTES } from './sanlorenzo.js';
+import { construirSanLorenzo, Horno, MAT, BOTES, LIMITES as LIM_SANLORENZO } from './sanlorenzo.js';
+import { construirAndes, LIMITES as LIM_ANDES } from './andes.js';
+import { ponerCampo } from './jugador.js';
 
 // Cuartel del Retiro, amanecer. Sol rasante, pasto seco de verano, cal blanca.
 // Nada de fotorrealismo: paleta corta y formas simples, como un óleo de batalla.
@@ -619,6 +621,14 @@ export function construirMundo (escena) {
   // con el de antes, y estarían chocando contra un convento que ya no se ve.
   const colSanLorenzo = colisiones.slice();
 
+  // EL PASO DE LOS ANDES, armado y apagado. Se arma acá y no cuando se lo
+  // elige por lo mismo que todo lo demás: diferirlo obliga a diferir el mundo
+  // entero. Apagado no gasta una llamada de dibujo, y lo único que paga San
+  // Lorenzo es el armado del arranque.
+  const colAndes = [];
+  const paso = construirAndes(escena, colAndes);
+  paso.visible = false;
+
   // Las dos horas del día que hay. San Lorenzo es el amanecer del 3 de febrero
   // —naranja rasante— y el Cruce es de madrugada, que es cuando se marchaba
   // para que la nieve estuviera dura y las mulas no se hundieran.
@@ -626,19 +636,21 @@ export function construirMundo (escena) {
     sanlorenzo: {
       cielo: [0x6d92bd, 0xa8bccf, 0xe8c793], sol: [48, 15, -26],
       luz: 0xffd9a0, fuerza: 2.5, rebote: [0xbcd2e8, 0x8a7a52, 0.55],
-      niebla: 0xd2d0c2, cerca: 20, lejos: 175, suelo: 0xffffff, exposicion: 1.05
+      niebla: 0xd2d0c2, cerca: 20, lejos: 175, exposicion: 1.05
     },
     andes: {
       cielo: [0x101c34, 0x1d2c48, 0x3b4560], sol: [-34, 26, 42],
-      // la luna no es un sol chiquito: es fría, y de tan poca fuerza que lo que
-      // termina de dibujar el terreno es el rebote de la nieve
-      luz: 0xb9cbe8, fuerza: 0.72, rebote: [0x40567c, 0x6a7284, 0.42],
-      // El suelo NO es la nieve: es el campo de San Lorenzo apagado. La textura
-      // de la tierra tira a verde y ningún color multiplicado le saca el
-      // verde a un mapa verde, así que lo que se hace acá es lo honesto —bajar
-      // la luz hasta que el terreno sea un piso oscuro y frío— y no fingir un
-      // manto que todavía no está modelado. La nieve llega con el desfiladero.
-      niebla: 0x18202f, cerca: 12, lejos: 120, suelo: 0x8a94ad, exposicion: 1.0
+      // LA LUNA Y, SOBRE TODO, EL REBOTE DE LA NIEVE. La luna es fría y floja;
+      // lo que dibuja el piso de un nevado de noche es la propia nieve
+      // devolviendo luz, así que el color de TIERRA del hemisférico es casi
+      // blanco y no pardo. Con el pardo de San Lorenzo el piso salía azul
+      // oscuro y con las olas del viento encima parecía un río: un desfiladero
+      // con un río abajo, que no es el Cruce de los Andes.
+      luz: 0xcfdcf2, fuerza: 0.95, rebote: [0x6b83ab, 0xbcc8da, 0.60],
+      // La niebla se va más lejos que en el Paraná: adentro del desfiladero lo
+      // que hay que ver es la pared enfrente y los picos del fondo, y con la
+      // niebla corta el paso se cerraba a veinte metros y parecía un pasillo.
+      niebla: 0x1b2434, cerca: 18, lejos: 210, exposicion: 1.15
     }
   };
 
@@ -649,8 +661,14 @@ export function construirMundo (escena) {
     capitulo = HORAS[cual] ? cual : 'sanlorenzo';
     const enAndes = capitulo === 'andes';
 
-    // el lugar de la batalla del capítulo 1, y lo que lo acompaña
+    // el lugar de cada capítulo, y lo que lo acompaña
     lugar.visible = !enAndes;
+    paso.visible = enAndes;
+    // EL PISO TAMBIÉN CAMBIA. El del capítulo 1 es tierra con manchones de
+    // pasto quemado y su textura tira a verde: ningún color multiplicado le
+    // saca el verde a un mapa verde, así que arriba se apaga entero y manda el
+    // piso de nieve del paso, que trae el suyo.
+    suelo.visible = !enAndes;
     parqueMalla.visible = !enAndes;
     poligono.visible = !enAndes;
     // arriba de los tres mil metros no hay pasto ni arboleda
@@ -674,20 +692,10 @@ export function construirMundo (escena) {
     escena.fog.color.setHex(h.niebla);
     escena.fog.near = h.cerca;
     escena.fog.far = h.lejos;
-    suelo.material.color.setHex(h.suelo);
-    // LOS MANCHONES DEL SUELO SE APAGAN EN LA CORDILLERA. El color por vértice
-    // pinta lo pisado y lo que todavía tiene verde, que es un campo de febrero
-    // sobre el Paraná: multiplicado por cualquier tono frío sigue dando pasto
-    // de noche, no nieve. Apagarlo deja el grano de la textura y nada más, que
-    // es lo que hay que ver arriba de los tres mil metros. Recompila el
-    // material una vez, y pasa al apretar un botón del menú y no por cuadro.
-    if (suelo.material.vertexColors === enAndes) {
-      suelo.material.vertexColors = !enAndes;
-      suelo.material.needsUpdate = true;
-    }
-
     colisiones.length = 0;
-    if (!enAndes) for (const c of colSanLorenzo) colisiones.push(c);
+    for (const c of (enAndes ? colAndes : colSanLorenzo)) colisiones.push(c);
+    // y hasta dónde se puede caminar, que también es del capítulo
+    ponerCampo(enAndes ? LIM_ANDES : LIM_SANLORENZO);
     return capitulo;
   }
 
@@ -700,6 +708,8 @@ export function construirMundo (escena) {
     botes: BOTES,
     entrarCapitulo,
     get capitulo () { return capitulo; },
+    // hasta dónde llega el mundo del capítulo puesto, para el que lo quiera mirar
+    get limite () { return (capitulo === 'andes' ? LIM_ANDES : LIM_SANLORENZO).z0; },
     exposicionDe: cual => (HORAS[cual] || HORAS.sanlorenzo).exposicion
   };
 }
