@@ -706,29 +706,60 @@ function bandera (taller, h) {
   // EL ASTA Y EL PAÑO SE CALCULAN, NO SE TANTEAN. La primera versión le puso
   // al asta una inclinación en X que el paño no tenía y los dos quedaron a
   // sesenta centímetros de distancia en profundidad: la bandera flotaba al
-  // lado del palo. Ahora el asta se inclina en UN solo eje y el paño se cuelga
-  // de donde el asta realmente está a esa altura.
+  // lado del palo. Ahora el asta se inclina en UN solo eje y todo lo demás
+  // sale de dónde está el asta a cada altura.
   const ASTA = 2.05, INCLINA = -0.16;
+  const bx = 0.17, by = 0.26, bz = -0.02;
+  const dx = Math.sin(-INCLINA), dy = Math.cos(-INCLINA);   // el eje del asta
   taller.add(h.torso, cil(0.021, 0.026, ASTA, 6), 0x6b4a2a,
-    { p: [0.333, 1.272, -0.020], r: [0, 0, INCLINA] });
-  // la moharra de latón, en la punta
-  taller.add(h.torso, cil(0.004, 0.030, 0.15, 6), 0xb9832f,
-    { p: [0.509, 2.344, -0.020], r: [0, 0, INCLINA], metal: true });
+    { p: [bx + dx * ASTA / 2, by + dy * ASTA / 2, bz], r: [0, 0, INCLINA] });
+  taller.add(h.torso, cil(0.004, 0.030, 0.15, 6), 0xb9832f,          // la moharra
+    { p: [bx + dx * ASTA + 0.012, by + dy * ASTA + 0.06, bz], r: [0, 0, INCLINA], metal: true });
 
-  // EL PAÑO. Su propio plano, y el aspa armada con dos tiras giradas adentro
-  // de ese plano, una de cada lado para que se vea por las dos caras. La cruz
-  // de Borgoña tiene dientes de sierra en los bordes: dibujarlos serían
-  // cuarenta cajas para algo que a quince metros es una equis, y acá lo que
-  // importa es reconocerla, no catalogarla.
-  const AN = 0.86, AL = 0.62, GRUESO = 0.012;
-  const cen = [0.854, 1.834, -0.020];
-  taller.add(h.torso, caja(AN, AL, GRUESO), PANO, { p: cen, r: [0, 0, INCLINA] });
-  const diag = Math.hypot(AN, AL) * 0.99, giro = Math.atan2(AL, AN);
-  for (const s of [-1, 1]) {
-    for (const cara of [-1, 1]) {
-      taller.add(h.torso, caja(diag, 0.135, GRUESO * 0.5), ASPA,
-        { p: [cen[0], cen[1], cen[2] + cara * GRUESO * 0.75],
-          r: [0, 0, INCLINA + s * giro] });
+  // ---- EL PAÑO, QUE FLAMEA ----
+  //
+  // Un paño rígido es una chapa pintada. Pero animarlo por cuadro querría
+  // decir tocar los vértices en el bucle de dibujo, que en este proyecto no se
+  // hace. La salida es el esqueleto, que ya está: el paño se parte en TRES
+  // TIRAS y cada tira cuelga de su propio hueso, encadenados uno al otro desde
+  // el asta hacia afuera. Girar esos huesos —lo hace Figura.actualizar— ondula
+  // la tela sin crear ni tocar una sola geometría, y como el Taller junta por
+  // hueso, las tres tiras siguen entrando en la misma malla del cuerpo.
+  //
+  // Encadenados y no hermanos: así el giro se ACUMULA y la punta se mueve
+  // mucho más que el borde pegado al asta, que es como flamea una bandera.
+  const AN = 0.86, AL = 0.62, GRUESO = 0.012, TIRAS = 3;
+  const fy = by + dy * ASTA - 0.14 - AL / 2;            // el paño cuelga de arriba
+  const px = bx + dx * (fy - by) / dy;                  // el asta, a esa altura
+  const ancho = AN / TIRAS;
+
+  let padre = h.torso;
+  const huesos = [];
+  for (let i = 0; i < TIRAS; i++) {
+    const g = new THREE.Group();
+    if (i === 0) { g.position.set(px, fy, bz); g.rotation.z = INCLINA; }
+    else g.position.set(ancho, 0, 0);
+    padre.add(g);
+    padre = g;
+    huesos.push(g);
+  }
+  h.trapo = huesos.slice(1);        // los dos que se mueven; el primero es el nudo
+
+  // EL ASPA se dibuja POR TIRA. La cruz de Borgoña cruza el paño entero, así
+  // que en cada tira entra un pedazo de cada brazo: el centro de ese pedazo
+  // está donde la diagonal pasa por el medio de la tira, y su largo es el
+  // ancho de la tira estirado por la pendiente.
+  const giro = Math.atan2(AL, AN), largo = ancho / Math.cos(giro);
+  for (let i = 0; i < TIRAS; i++) {
+    const g = huesos[i];
+    const cx = ancho / 2;                       // el medio de la tira, en su hueso
+    const xEnPano = cx + i * ancho - AN / 2;    // y dónde cae eso en el paño entero
+    taller.add(g, caja(ancho, AL, GRUESO), PANO, { p: [cx, 0, 0] });
+    for (const s of [-1, 1]) {
+      for (const cara of [-1, 1]) {
+        taller.add(g, caja(largo, 0.135, GRUESO * 0.5), ASPA,
+          { p: [cx, s * xEnPano * (AL / AN), cara * GRUESO * 0.75], r: [0, 0, s * giro] });
+      }
     }
   }
 }
@@ -954,6 +985,21 @@ export class Figura {
   }
 
   actualizar (dt, andando, ritmo) {
+    // LA BANDERA FLAMEA AUNQUE EL HOMBRE ESTÉ QUIETO, y encima del paso. Son
+    // dos senos con distinta frecuencia y desfasados: uno solo da un abanico
+    // que va y viene siempre igual, y eso se lee como una animación en bucle.
+    // El giro es en Y —el eje vertical del paño— así que la punta se mueve en
+    // profundidad, que es como ondula la tela. Y como los huesos están
+    // encadenados, el segundo suma lo del primero: la punta hace el doble.
+    if (this.h.trapo) {
+      this.tTrapo = (this.tTrapo || 0) + dt;
+      const w = this.tTrapo;
+      const [a, b] = this.h.trapo;
+      a.rotation.y = Math.sin(w * 2.3) * 0.26 + Math.sin(w * 3.7) * 0.09;
+      a.rotation.z = Math.sin(w * 1.9) * 0.05;
+      b.rotation.y = Math.sin(w * 2.3 - 0.9) * 0.34 + Math.sin(w * 4.6 - 0.4) * 0.13;
+      b.rotation.z = Math.sin(w * 1.9 - 0.7) * 0.07;
+    }
     if (this.lejos) { if (andando) this.paso += dt * 6.6 * (ritmo || 1); return; }
     const p = POSES[this.pose] || POSES.marcha;
     const c = this.cur;

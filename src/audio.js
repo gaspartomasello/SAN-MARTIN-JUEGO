@@ -495,6 +495,39 @@ export class Sonido {
   //
   // `origen` es opcional y ubica el grito: en una desbandada lo que dice de
   // qué lado se está rompiendo la línea es de dónde vienen los gritos.
+  // EL REDOBLE DEL TAMBOR REALISTA.
+  //
+  // No es ambientación: es la única pista de dónde está el hombre que sostiene
+  // la moral de esa parte de la línea. Por eso pasa por `_lejania` como
+  // cualquier otro sonido del campo —gana con la cercanía, panea al oído que
+  // corresponde, pierde agudos con el aire y llega tarde a mil metros por
+  // segundo—: acercarse se OYE, y ésa es la mecánica. Buscarlo entre
+  // doscientos cincuenta hombres iguales con la vista sola sería suerte.
+  //
+  // Un golpe de caja son tres cosas a la vez: el parche (un tono grave que cae
+  // rápido), la bordonera (el siseo agudo, que es lo que lo hace una caja y no
+  // un bombo) y el ataque del palillo. La cadencia es de marcha: un acento y
+  // dos flojos, dos veces, que es lo que se toca para que una línea camine.
+  redoble (origen) {
+    if (!this.ctx) return;
+    const l = this._lejania(origen);
+    if (!l) return;
+    const a = this._salida(l);
+    const c = l.gan * l.aire;
+    // el compás: [cuándo, cuánto pega]
+    const golpes = [[0, 1], [0.20, 0.5], [0.40, 0.5], [0.62, 1], [0.82, 0.5], [1.02, 0.5]];
+    for (const [w, f] of golpes) {
+      const cuando = l.retardo + w;
+      // el parche
+      this._tono(196, 92, 0.085, 0.16 * f * c, 'triangle', { cuando, a });
+      // la bordonera: el siseo de los cordeles contra el parche de abajo
+      this._ruido(0.105 * (0.7 + f * 0.5), 0.115 * f * c, 'highpass', 2900, 0.6,
+        { cuando, ataque: 0.001, a });
+      // el palillo contra el cuero
+      this._ruido(0.028, 0.09 * f * c, 'bandpass', 1150, 1.2, { cuando, ataque: 0.001, a });
+    }
+  }
+
   grito (origen) {
     if (!this.ctx) return;
     const l = this._lejania(origen);

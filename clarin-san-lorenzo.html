@@ -31918,6 +31918,40 @@ var Sonido = class {
   //
   // `origen` es opcional y ubica el grito: en una desbandada lo que dice de
   // qué lado se está rompiendo la línea es de dónde vienen los gritos.
+  // EL REDOBLE DEL TAMBOR REALISTA.
+  //
+  // No es ambientación: es la única pista de dónde está el hombre que sostiene
+  // la moral de esa parte de la línea. Por eso pasa por `_lejania` como
+  // cualquier otro sonido del campo —gana con la cercanía, panea al oído que
+  // corresponde, pierde agudos con el aire y llega tarde a mil metros por
+  // segundo—: acercarse se OYE, y ésa es la mecánica. Buscarlo entre
+  // doscientos cincuenta hombres iguales con la vista sola sería suerte.
+  //
+  // Un golpe de caja son tres cosas a la vez: el parche (un tono grave que cae
+  // rápido), la bordonera (el siseo agudo, que es lo que lo hace una caja y no
+  // un bombo) y el ataque del palillo. La cadencia es de marcha: un acento y
+  // dos flojos, dos veces, que es lo que se toca para que una línea camine.
+  redoble(origen) {
+    if (!this.ctx) return;
+    const l = this._lejania(origen);
+    if (!l) return;
+    const a = this._salida(l);
+    const c = l.gan * l.aire;
+    const golpes = [[0, 1], [0.2, 0.5], [0.4, 0.5], [0.62, 1], [0.82, 0.5], [1.02, 0.5]];
+    for (const [w, f] of golpes) {
+      const cuando = l.retardo + w;
+      this._tono(196, 92, 0.085, 0.16 * f * c, "triangle", { cuando, a });
+      this._ruido(
+        0.105 * (0.7 + f * 0.5),
+        0.115 * f * c,
+        "highpass",
+        2900,
+        0.6,
+        { cuando, ataque: 1e-3, a }
+      );
+      this._ruido(0.028, 0.09 * f * c, "bandpass", 1150, 1.2, { cuando, ataque: 1e-3, a });
+    }
+  }
   grito(origen) {
     if (!this.ctx) return;
     const l = this._lejania(origen);
@@ -33842,33 +33876,53 @@ var PANO = 15921124;
 var ASPA = 12725035;
 function bandera(taller, h) {
   const ASTA = 2.05, INCLINA = -0.16;
+  const bx = 0.17, by = 0.26, bz = -0.02;
+  const dx = Math.sin(-INCLINA), dy = Math.cos(-INCLINA);
   taller.add(
     h.torso,
     cil(0.021, 0.026, ASTA, 6),
     7031338,
-    { p: [0.333, 1.272, -0.02], r: [0, 0, INCLINA] }
+    { p: [bx + dx * ASTA / 2, by + dy * ASTA / 2, bz], r: [0, 0, INCLINA] }
   );
   taller.add(
     h.torso,
     cil(4e-3, 0.03, 0.15, 6),
     12157743,
-    { p: [0.509, 2.344, -0.02], r: [0, 0, INCLINA], metal: true }
+    // la moharra
+    { p: [bx + dx * ASTA + 0.012, by + dy * ASTA + 0.06, bz], r: [0, 0, INCLINA], metal: true }
   );
-  const AN = 0.86, AL = 0.62, GRUESO = 0.012;
-  const cen = [0.854, 1.834, -0.02];
-  taller.add(h.torso, caja(AN, AL, GRUESO), PANO, { p: cen, r: [0, 0, INCLINA] });
-  const diag = Math.hypot(AN, AL) * 0.99, giro = Math.atan2(AL, AN);
-  for (const s of [-1, 1]) {
-    for (const cara of [-1, 1]) {
-      taller.add(
-        h.torso,
-        caja(diag, 0.135, GRUESO * 0.5),
-        ASPA,
-        {
-          p: [cen[0], cen[1], cen[2] + cara * GRUESO * 0.75],
-          r: [0, 0, INCLINA + s * giro]
-        }
-      );
+  const AN = 0.86, AL = 0.62, GRUESO = 0.012, TIRAS = 3;
+  const fy = by + dy * ASTA - 0.14 - AL / 2;
+  const px2 = bx + dx * (fy - by) / dy;
+  const ancho = AN / TIRAS;
+  let padre = h.torso;
+  const huesos = [];
+  for (let i = 0; i < TIRAS; i++) {
+    const g = new Group();
+    if (i === 0) {
+      g.position.set(px2, fy, bz);
+      g.rotation.z = INCLINA;
+    } else g.position.set(ancho, 0, 0);
+    padre.add(g);
+    padre = g;
+    huesos.push(g);
+  }
+  h.trapo = huesos.slice(1);
+  const giro = Math.atan2(AL, AN), largo = ancho / Math.cos(giro);
+  for (let i = 0; i < TIRAS; i++) {
+    const g = huesos[i];
+    const cx = ancho / 2;
+    const xEnPano = cx + i * ancho - AN / 2;
+    taller.add(g, caja(ancho, AL, GRUESO), PANO, { p: [cx, 0, 0] });
+    for (const s of [-1, 1]) {
+      for (const cara of [-1, 1]) {
+        taller.add(
+          g,
+          caja(largo, 0.135, GRUESO * 0.5),
+          ASPA,
+          { p: [cx, s * xEnPano * (AL / AN), cara * GRUESO * 0.75], r: [0, 0, s * giro] }
+        );
+      }
     }
   }
 }
@@ -34066,6 +34120,15 @@ var Figura = class {
     this.arma.quaternion.copy(qMano.invert()).multiply(qArma);
   }
   actualizar(dt, andando, ritmo) {
+    if (this.h.trapo) {
+      this.tTrapo = (this.tTrapo || 0) + dt;
+      const w = this.tTrapo;
+      const [a, b] = this.h.trapo;
+      a.rotation.y = Math.sin(w * 2.3) * 0.26 + Math.sin(w * 3.7) * 0.09;
+      a.rotation.z = Math.sin(w * 1.9) * 0.05;
+      b.rotation.y = Math.sin(w * 2.3 - 0.9) * 0.34 + Math.sin(w * 4.6 - 0.4) * 0.13;
+      b.rotation.z = Math.sin(w * 1.9 - 0.7) * 0.07;
+    }
     if (this.lejos) {
       if (andando) this.paso += dt * 6.6 * (ritmo || 1);
       return;
@@ -34853,6 +34916,7 @@ function separar(soldados2, rejilla, radio = RADIO_HOMBRE) {
 }
 
 // src/soldados.js
+var REDOBLE_CADA = 1.24;
 var VEL = 1.85;
 var VEL_CARRERA = 4.3;
 var ALCANCE_TIRO = 62;
@@ -34897,6 +34961,7 @@ var Soldado = class _Soldado {
     this.semilla = op.semilla !== void 0 ? op.semilla : Math.random();
     this.tez = op.tez || null;
     this.papel = op.papel || null;
+    this.tRedoble = Math.random() * 1.2;
     this.fig = new Figura(
       this.bando,
       this.semilla,
@@ -35303,6 +35368,13 @@ var Soldado = class _Soldado {
   }
   actualizar(dt, jugador2, soldados2) {
     if (this.titere) return this.actualizarTitere(dt);
+    if (this.papel === "tambor" && this.vivo && !this.quebrado) {
+      this.tRedoble -= dt;
+      if (this.tRedoble <= 0) {
+        this.tRedoble = REDOBLE_CADA;
+        this.sonido.redoble(this.pos);
+      }
+    }
     if (this.tendido) {
       this.fig.desplomar(1);
       this.malla.position.y = -0.1;

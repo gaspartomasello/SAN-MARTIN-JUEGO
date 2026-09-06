@@ -39,6 +39,11 @@ import {
 // Y el fallo SE VE. Si la bala pasó cerca, zumba; si dio en el piso, levanta
 // tierra. Un tiro que falla sin dejar rastro es indistinguible de un tiro que
 // no existió.
+// EL COMPÁS DEL TAMBOR. La cadencia dura 1,12 s; repetirla cada 1,24 deja el
+// hueco justo de una marcha y no un redoble continuo. No es un número de
+// combate: es un tiempo de animación, así que vive acá y no en balance.js.
+const REDOBLE_CADA = 1.24;
+
 const VEL = 1.85;
 const VEL_CARRERA = 4.3;        // a la carrera, con el fusil corto y bajo
 const ALCANCE_TIRO = 62;
@@ -216,6 +221,8 @@ export class Soldado {
     // la figura porque de él dependen la moral de los que lo rodean y lo que
     // pasa cuando cae.
     this.papel = op.papel || null;
+    // el compás del tambor arranca desfasado, que si no se acopla al cuadro
+    this.tRedoble = Math.random() * 1.2;
     this.fig = new Figura(this.bando, this.semilla,
       { tez: op.tez, sombrero: op.sombrero, arma: this.lancero ? 'lanza' : null,
         armas: op.armas, papel: this.papel });
@@ -695,6 +702,19 @@ export class Soldado {
 
   actualizar (dt, jugador, soldados) {
     if (this.titere) return this.actualizarTitere(dt);
+    // EL REDOBLE, MIENTRAS ESTÉ VIVO Y EN SU PUESTO.
+    //
+    // Va acá arriba y no en el audio porque el que sabe si el tambor sigue
+    // tocando es el tambor. Suena desde donde está el hombre —audio.js le pone
+    // la distancia, el paneo y el retardo—, así que acercarse se oye antes de
+    // verse: es la manera de encontrarlo entre doscientos cincuenta iguales.
+    //
+    // Y CALLA CUANDO CAE, que es la mitad del sentido de ir a buscarlo. Calla
+    // también si se quiebra: un hombre que corre a la barranca no va tocando.
+    if (this.papel === 'tambor' && this.vivo && !this.quebrado) {
+      this.tRedoble -= dt;
+      if (this.tRedoble <= 0) { this.tRedoble = REDOBLE_CADA; this.sonido.redoble(this.pos); }
+    }
     // Tendido: no es un cadáver —está vivo y se va a levantar— pero tampoco un
     // hombre de pie que se anima solo. Mientras dure, la pose la lleva el que
     // lo puso ahí. Va antes que todo, como `poseFija` en el caballo.

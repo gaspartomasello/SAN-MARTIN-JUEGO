@@ -325,6 +325,67 @@ r.push([devuelta.formada && !devuelta.tocado && devuelta.hombres === antes.hombr
 r.push([!devuelta.botones && devuelta.negro === '0' ? 'OK ' : 'MAL',
   'los botones se van y la pantalla se abre', `negro=${devuelta.negro}`]);
 
+// ---------------------------------------------------------------------------
+// EL REDOBLE DEL TAMBOR REALISTA
+// ---------------------------------------------------------------------------
+// No es ambientación. Es la ÚNICA pista de dónde está el hombre que sostiene la
+// moral de esa parte de la línea, y por eso lo que se prueba acá es que la
+// distancia se oiga: si sonara igual de cerca que de lejos, buscarlo entre
+// doscientos cincuenta hombres iguales sería suerte y no juego.
+const tambor = await pag.evaluate(() => {
+  const j = window.juego, o = {};
+  j.soldados.forEach(s => s.quitar()); j.soldados.length = 0;
+  j.canones.forEach(c => { c.vivo = false; });
+  const p = j.jugador; p.vida = 100; p.vivo = true;
+  if (p.monta) p.desmontar();
+  p.pos.set(0, 1.68, 4); p.yaw = 0;
+
+  const oidas = [];
+  const real = j.sonido.redoble.bind(j.sonido);
+  j.sonido.redoble = (x) => { oidas.push(1); real(x); };
+
+  const t1 = j.soltarSoldado('realista', { papel: 'tambor' });
+  t1.pos.set(0, 0, 0); t1.malla.position.set(0, 0, 0);
+  const raso = j.soltarSoldado('realista');
+  const correr = (s, seg) => { for (let i = 0; i < seg * 60; i++) s.actualizar(1 / 60, p, j.soldados); };
+
+  correr(t1, 6);
+  o.toca = oidas.length;
+  oidas.length = 0; correr(raso, 6);
+  o.rasoToca = oidas.length;
+
+  // la curva de la distancia, que es de lo que se trata
+  j.sonido.oyente.x = 0; j.sonido.oyente.y = 1.7; j.sonido.oyente.z = 0;
+  o.curva = [3, 10, 25, 50, 90].map(d => {
+    const l = j.sonido._lejania({ x: d, y: 1.7, z: 0 });
+    return [d, l ? +(l.gan * l.aire).toFixed(3) : 0];
+  });
+
+  oidas.length = 0; t1.recibir(999); correr(t1, 6);
+  o.muerto = oidas.length;
+
+  const t2 = j.soltarSoldado('realista', { papel: 'tambor' });
+  oidas.length = 0; correr(t2, 6); o.antesDeQuebrar = oidas.length;
+  t2.quebrar();
+  oidas.length = 0; correr(t2, 6); o.quebrado = oidas.length;
+  j.sonido.redoble = real;
+  return o;
+});
+const cur = tambor.curva;
+r.push([tambor.toca >= 4 ? 'OK ' : 'MAL',
+  'el tambor toca solo, sin que nadie lo llame', `${tambor.toca} redobles en 6 s`]);
+r.push([tambor.rasoToca === 0 ? 'OK ' : 'MAL',
+  'y un realista raso no toca nada', `${tambor.rasoToca}`]);
+r.push([cur.every((c, i) => i === 0 || c[1] < cur[i - 1][1]) ? 'OK ' : 'MAL',
+  'se oye más fuerte de cerca que de lejos', cur.map(([d, g]) => `${d}m=${g}`).join(' · ')]);
+r.push([cur[0][1] > cur[3][1] * 8 ? 'OK ' : 'MAL',
+  'y la diferencia alcanza para orientarse', `a 3 m ${cur[0][1]} contra ${cur[3][1]} a 50 m`]);
+r.push([tambor.muerto === 0 ? 'OK ' : 'MAL',
+  'muerto deja de sonar', `${tambor.muerto} redobles`]);
+r.push([tambor.antesDeQuebrar > 0 && tambor.quebrado === 0 ? 'OK ' : 'MAL',
+  'y quebrado tampoco: el que corre no va tocando',
+  `antes ${tambor.antesDeQuebrar} · después ${tambor.quebrado}`]);
+
 for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(48), x);
 const mal = r.filter(x => x[0] === 'MAL').length;
 console.log(`\n${r.length - mal} bien, ${mal} mal`);
