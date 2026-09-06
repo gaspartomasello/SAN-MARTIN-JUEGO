@@ -33594,8 +33594,43 @@ var PINTA = {
     morrion: false,
     penacho: 9380134,
     mochila: true
+  },
+  // EL GRANADERO DEL CRUCE. Mismo regimiento, misma casaca, misma cara: lo que
+  // cambia es que arriba lleva poncho, porque a cuatro mil metros en enero de
+  // 1817 no se cruza de casaca. Es una ENTRADA APARTE y no un retoque de la de
+  // arriba, y ésa es toda la garantía de que el capítulo 1 no se entera: San
+  // Lorenzo sigue leyendo `granadero`, palabra por palabra la misma.
+  granaderoAndes: {
+    casaca: 2373214,
+    vivo: 9380134,
+    forro: 2373214,
+    correa: 15656917,
+    calzon: 14736070,
+    pierna: 1645086,
+    bota: 1315863,
+    morrion: true,
+    penacho: 9380134,
+    mochila: false,
+    poncho: true
   }
 };
+var PONCHOS = [
+  [7033664, 10257511],
+  // pardo de la pampa, con la lista más clara
+  [8221798, 11116689],
+  // gris natural de lana cruda
+  [6244915, 9664847],
+  // barroso
+  [8011574, 11101524]
+  // colorado apagado
+];
+var CON_PONCHO = 0.7;
+var PANUELOS = [12103840, 9395018, 7174762, 10260318];
+var CON_PANUELO = 0.3;
+function sorteo(semilla, sal) {
+  const x = Math.sin(semilla * 127.1 + sal) * 43758.5453;
+  return x - Math.floor(x);
+}
 var PIELES = [
   11567193,
   10646093,
@@ -33994,6 +34029,73 @@ var POSES = {
     cabeza: [0.08, 0, 0]
   }
 };
+function poncho(taller, h, pano2, lista) {
+  const TAPA = 0.455;
+  const RUEDO = -0.2;
+  const ALTO2 = TAPA - RUEDO;
+  const Y2 = (TAPA + RUEDO) / 2;
+  const ABRE = 0.13;
+  const CANTO = 0.052;
+  taller.add(
+    h.torso,
+    caja(0.5, ALTO2, 0.035),
+    pano2,
+    { p: [0, Y2, 0.15], r: [-ABRE, 0, 0] }
+  );
+  taller.add(
+    h.torso,
+    caja(0.5, CANTO, 0.04),
+    lista,
+    { p: [0, RUEDO + 0.012 - 0.02, 0.15 + 0.043], r: [-ABRE, 0, 0] }
+  );
+  const FRENTE2 = ALTO2 - 0.075;
+  for (const s of [-1, 1]) {
+    taller.add(
+      h.torso,
+      caja(0.175, FRENTE2, 0.035),
+      pano2,
+      { p: [s * 0.152, Y2 + 0.037, -0.15], r: [ABRE, 0, 0] }
+    );
+    taller.add(
+      h.torso,
+      caja(0.175, CANTO, 0.04),
+      lista,
+      { p: [s * 0.152, RUEDO + 0.095, -0.15 - 0.04], r: [ABRE, 0, 0] }
+    );
+    taller.add(
+      h.torso,
+      caja(0.035, ALTO2, 0.27),
+      pano2,
+      { p: [s * 0.245, Y2, 5e-3], r: [0, 0, s * ABRE] }
+    );
+    taller.add(
+      h.torso,
+      caja(0.3, 0.062, 0.3),
+      pano2,
+      { p: [s * 0.15, HOMBRO + 0.048, 0], r: [0, 0, -s * 0.4] }
+    );
+  }
+  taller.add(
+    h.torso,
+    cil(0.135, 0.148, 0.105, 10),
+    lista,
+    { p: [0, HOMBRO + 0.03, 0], s: [1, 1, 0.86] }
+  );
+}
+function panuelo(taller, h, color) {
+  taller.add(
+    h.torso,
+    cil(0.116, 0.126, 0.085, 10),
+    color,
+    { p: [0, HOMBRO + 0.075, 0], s: [1, 1, 0.9] }
+  );
+  taller.add(
+    h.torso,
+    caja(0.075, 0.13, 0.03),
+    color,
+    { p: [-0.052, HOMBRO - 0.015, -0.098], r: [0, 0, 0.22] }
+  );
+}
 var PARCHE = 15261896;
 var CAJA_TAMBOR = 12157743;
 var ARO = 9380134;
@@ -34133,8 +34235,11 @@ var Figura = class {
   // op.papel    — 'tambor' o 'abanderado': los dos realistas que sostienen la
   //               línea sin disparar. Ninguno lleva fusil: uno tiene las manos
   //               en los palillos y el otro en el asta.
+  // op.vestuario — con qué ropa se lo viste. Por defecto, la del bando: así el
+  //                capítulo 1 sigue leyendo `granadero` y no se entera de que
+  //                existe un capítulo 2.
   constructor(bando, semilla = Math.random(), op = {}) {
-    const c = PINTA[bando] || PINTA.realista;
+    const c = PINTA[op.vestuario] || PINTA[bando] || PINTA.realista;
     const piel = op.tez || PIELES[Math.floor(semilla * PIELES.length) % PIELES.length];
     const pelo = PELOS[Math.floor(semilla * 977) % PELOS.length];
     const { raiz, h } = esqueleto();
@@ -34144,8 +34249,19 @@ var Figura = class {
     this.montura = false;
     this.lejos = false;
     this.rodilla = false;
+    const conPoncho = !!c.poncho && sorteo(semilla, 11.3) < CON_PONCHO;
+    const conPanuelo = !!c.poncho && sorteo(semilla, 47.9) < CON_PANUELO;
+    this.conPoncho = conPoncho;
+    this.conPanuelo = conPanuelo;
     const taller = new Taller();
     vestir(taller, h, c, piel, pelo, op.sombrero);
+    if (conPanuelo) {
+      panuelo(taller, h, PANUELOS[Math.floor(sorteo(semilla, 83.1) * PANUELOS.length)]);
+    }
+    if (conPoncho) {
+      const [pano2, lista] = PONCHOS[Math.floor(sorteo(semilla, 5.7) * PONCHOS.length)];
+      poncho(taller, h, pano2, lista);
+    }
     if (op.papel === "tambor") {
       tambor(taller, h);
       sableAlCinto(taller, h.cadera);
@@ -35236,6 +35352,7 @@ var HUIDA_SEGURO = 26;
 var Soldado = class _Soldado {
   // op.tez      — color de piel fijo (Cabral)
   // op.sombrero — 'bicornio' para el San Martín del acto
+  // op.vestuario — con qué ropa se lo viste: 'granaderoAndes' para el Cruce
   // op.caballo  — lo monta desde el arranque; si trae caballo, va con lanza
   constructor(escena2, humo2, sonido2, pos, bando, op = {}) {
     this.escena = escena2;
@@ -35247,6 +35364,8 @@ var Soldado = class _Soldado {
     this.tez = op.tez || null;
     this.papel = op.papel || null;
     this.tRedoble = Math.random() * 1.2;
+    this.vestuario = op.vestuario || null;
+    this.claveLejos = this.vestuario && this.vestuario !== this.bando ? this.vestuario : this.bando === "granadero" ? "granadero" : "realista";
     this.fig = new Figura(
       this.bando,
       this.semilla,
@@ -35255,7 +35374,8 @@ var Soldado = class _Soldado {
         sombrero: op.sombrero,
         arma: this.lancero ? "lanza" : null,
         armas: op.armas,
-        papel: this.papel
+        papel: this.papel,
+        vestuario: op.vestuario
       }
     );
     this.malla = new Group();
@@ -35418,7 +35538,7 @@ var Soldado = class _Soldado {
     const fase = !this.vivo ? 3 : this.rodilla ? 4 : p === "apuntar" || p === "recargar" ? 5 : this.andando ? Math.sin(this.fig.paso) > 0 ? 1 : 2 : 0;
     const m = this.malla;
     lej.poner(
-      this.bando === "granadero" ? "granadero" : "realista",
+      this.claveLejos,
       fase,
       m.position.x,
       m.position.y,
@@ -37259,12 +37379,18 @@ var Lejania = class {
   _hornearTodo() {
     const tacho = new Group();
     const geos = /* @__PURE__ */ new Map();
-    for (const bando of ["granadero", "realista"]) {
-      const f = () => new Figura(bando, 0.5);
+    const ROPA = {
+      granadero: {},
+      realista: {},
+      granaderoAndes: { vestuario: "granaderoAndes" }
+    };
+    for (const bando of ["granadero", "realista", "granaderoAndes"]) {
+      const cuerpo = bando === "granaderoAndes" ? "granadero" : bando;
+      const f = () => new Figura(cuerpo, 0.5, ROPA[bando]);
       const caido = f();
       posar(caido, "marcha");
       caido.desplomar(1);
-      const hincado = new Figura(bando, 0.5);
+      const hincado = new Figura(cuerpo, 0.5, ROPA[bando]);
       hincado.rodilla = true;
       posar(hincado, "apuntar");
       geos.set(bando, [
@@ -39467,6 +39593,8 @@ function armarDespliegue(ctx) {
     }
     if (op.tez) sop.tez = op.tez;
     if (op.sombrero) sop.sombrero = op.sombrero;
+    if (op.vestuario) sop.vestuario = op.vestuario;
+    if (op.semilla !== void 0) sop.semilla = op.semilla;
     if (op.papel) {
       sop.papel = op.papel;
       sop.pos = pos;

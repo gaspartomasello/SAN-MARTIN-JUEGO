@@ -206,8 +206,61 @@ const PINTA = {
     correa: 0x6a5539,
     calzon: 0x6e6a60, pierna: 0x6e6a60, bota: 0x1b1b1e,
     morrion: false, penacho: 0x8f2126, mochila: true
+  },
+
+  // EL GRANADERO DEL CRUCE. Mismo regimiento, misma casaca, misma cara: lo que
+  // cambia es que arriba lleva poncho, porque a cuatro mil metros en enero de
+  // 1817 no se cruza de casaca. Es una ENTRADA APARTE y no un retoque de la de
+  // arriba, y ésa es toda la garantía de que el capítulo 1 no se entera: San
+  // Lorenzo sigue leyendo `granadero`, palabra por palabra la misma.
+  granaderoAndes: {
+    casaca: 0x24365e, vivo: 0x8f2126, forro: 0x24365e,
+    correa: 0xeee7d5,
+    calzon: 0xe0dac6, pierna: 0x191a1e, bota: 0x141417,
+    morrion: true, penacho: 0x8f2126, mochila: false,
+    poncho: true
   }
 };
+
+// LOS PONCHOS. No todos llevan, y los que llevan no llevan el mismo: el
+// Ejército de los Andes se abrigó con lo que había en Cuyo. Cuatro paños
+// sobrios —el pardo de la pampa, el gris natural, el barroso y uno colorado
+// apagado—, todos más CLAROS que la casaca azul, que es lo que hace que la
+// prenda se lea como prenda y no como una sombra pegada al hombre. La primera
+// tanda era más oscura que el uniforme y de veinte metros los granaderos
+// parecían tener un agujero en el torso.
+const PONCHOS = [
+  [0x6b5340, 0x9c8467],   // pardo de la pampa, con la lista más clara
+  [0x7d7466, 0xa9a091],   // gris natural de lana cruda
+  [0x5f4a33, 0x93794f],   // barroso
+  [0x7a3f36, 0xa96554]    // colorado apagado
+];
+
+// CUÁNTOS LLEVAN. Siete de cada diez: con todos se pierde la tropa —una
+// columna de bultos iguales— y con pocos no se lee que hace frío.
+const CON_PONCHO = 0.7;
+
+// EL PAÑUELO AL CUELLO: la otra media prenda de abrigo, y la que se ve de
+// cerca. Va en tres de cada diez y NO depende del poncho —el que no tiene
+// poncho es justamente el que se ata lo que encuentra—, así que las dos
+// variaciones se cruzan y no hay dos hombres iguales en la fila.
+const PANUELOS = [0xb8b0a0, 0x8f5b4a, 0x6d7a6a, 0x9c8f5e];
+const CON_PANUELO = 0.3;
+
+// EL SORTEO DE LA SEMILLA. Devuelve un número de 0 a 1 y hay que revolverla de
+// verdad, no partirla: la primera versión hacía `Math.floor(semilla * 613) % 10`
+// y con semillas EN FILA —una cada 0,0163, que es como las reparte una prueba—
+// 0,0163 × 613 da 9,99, o sea que el resto casi no se movía y los sesenta
+// hombres salían con el mismo poncho. Con `Math.random()` no se notaba y por
+// eso el bicho aguantó: se ve sólo cuando alguien pide una fila pareja.
+//
+// La sal separa los sorteos. Con una sola cuenta, el que lleva poncho es
+// siempre el mismo que lleva pañuelo y la fila vuelve a tener dos clases de
+// hombre en vez de cuatro.
+function sorteo (semilla, sal) {
+  const x = Math.sin(semilla * 127.1 + sal) * 43758.5453;
+  return x - Math.floor(x);
+}
 
 // Tez. El Regimiento de Granaderos a Caballo se nutrió de libertos y morenos;
 // el sargento Juan Bautista Cabral, hijo de esclavos, era uno de ellos. Una
@@ -660,6 +713,78 @@ const POSES = {
   }
 };
 
+// EL PONCHO.
+//
+// Cae de los hombros y termina abajo del cinto, no a media pierna: tapa el
+// torso y la mochila —que es lo que hay que abrigar— y deja ver el morrión
+// arriba y los faldones, el sable y el calzón abajo. Un poncho hasta la rodilla
+// convierte al granadero en un bulto y a treinta metros la columna deja de
+// leerse como tropa.
+//
+// Y VA ABIERTO ADELANTE, que es como cae de verdad. Eso no es un detalle
+// bonito: por el hueco del frente sigue asomando la cruz blanca de las correas
+// cruzadas, que es lo que distingue a un granadero de cualquier otro hombre a
+// cincuenta metros. Con el frente cerrado se perdía la silueta entera.
+//
+// LO QUE LO SACA DE «TABLA COLGADA»: la primera versión eran cinco cajas
+// verticales de canto cuadrado y de lejos parecía una valija atada a la
+// espalda. Tres cosas lo arreglan y las tres son de forma, no de color:
+//   · el paño APOYA EN EL HOMBRO —dos hojas inclinadas desde el cuello hacia
+//     afuera— así el brazo sale de abajo de la tela y no al lado de una tabla;
+//   · el RUEDO SE ABRE: los paños van rotados unos grados para que la punta de
+//     abajo se despegue del cuerpo, que es lo que hace la lana con su peso;
+//   · el ruedo de adelante queda MÁS CORTO que el de atrás, porque un contorno
+//     parejo es lo que lee el ojo como cartón.
+function poncho (taller, h, pano, lista) {
+  const TAPA = 0.455;              // arranca apenas abajo del hombro
+  const RUEDO = -0.20;             // y termina un palmo abajo del cinto
+  const ALTO = TAPA - RUEDO;
+  const Y = (TAPA + RUEDO) / 2;
+  const ABRE = 0.13;               // los grados que el ruedo se despega
+  const CANTO = 0.052;             // el alto de la lista del ruedo
+
+  // LA ESPALDA, entera y ancha, con el ruedo abierto hacia atrás.
+  taller.add(h.torso, caja(0.50, ALTO, 0.035), pano,
+    { p: [0, Y, 0.150], r: [-ABRE, 0, 0] });
+  taller.add(h.torso, caja(0.50, CANTO, 0.040), lista,
+    { p: [0, RUEDO + 0.012 - 0.020, 0.150 + 0.043], r: [-ABRE, 0, 0] });
+
+  // EL FRENTE, en dos hojas que dejan una V de pecho a la vista, y más cortas
+  // que la espalda para que el contorno no cierre parejo.
+  const FRENTE = ALTO - 0.075;
+  for (const s of [-1, 1]) {
+    taller.add(h.torso, caja(0.175, FRENTE, 0.035), pano,
+      { p: [s * 0.152, Y + 0.037, -0.150], r: [ABRE, 0, 0] });
+    taller.add(h.torso, caja(0.175, CANTO, 0.040), lista,
+      { p: [s * 0.152, RUEDO + 0.095, -0.150 - 0.040], r: [ABRE, 0, 0] });
+    // el costado, que cierra el hueco entre espalda y frente sin trabar el brazo
+    taller.add(h.torso, caja(0.035, ALTO, 0.27), pano,
+      { p: [s * 0.245, Y, 0.005], r: [0, 0, s * ABRE] });
+    // LA HOJA DEL HOMBRO: sale del cuello y baja hasta pasar la juntura del
+    // brazo. Es la pieza que convierte cinco tablas en una prenda.
+    // Va apenas ARRIBA del hombro y no encima: la punta de la correa cruzada
+    // llega a 0,48 y con el paño más abajo asomaba un triángulo blanco que de
+    // atrás parecía un agujero en la tela.
+    taller.add(h.torso, caja(0.30, 0.062, 0.30), pano,
+      { p: [s * 0.150, HOMBRO + 0.048, 0], r: [0, 0, -s * 0.40] });
+  }
+
+  // el cuello: el paño doblado alrededor de la abertura de la cabeza
+  taller.add(h.torso, cil(0.135, 0.148, 0.105, 10), lista,
+    { p: [0, HOMBRO + 0.030, 0], s: [1, 1, 0.86] });
+}
+
+// EL PAÑUELO. Dos vueltas de lana arriba del cuello de la casaca y una punta
+// caída sobre el pecho. Se cuelga del TORSO y no de la cabeza: un pañuelo que
+// gira con la cara parece una bufanda cosida al mentón.
+function panuelo (taller, h, color) {
+  taller.add(h.torso, cil(0.116, 0.126, 0.085, 10), color,
+    { p: [0, HOMBRO + 0.075, 0], s: [1, 1, 0.90] });
+  // la punta, corta y torcida, que es lo que le saca la simetría
+  taller.add(h.torso, caja(0.075, 0.13, 0.030), color,
+    { p: [-0.052, HOMBRO - 0.015, -0.098], r: [0, 0, 0.22] });
+}
+
 // ---------------------------------------------------------------------------
 // EL TAMBOR Y LA BANDERA
 // ---------------------------------------------------------------------------
@@ -885,8 +1010,11 @@ export class Figura {
   // op.papel    — 'tambor' o 'abanderado': los dos realistas que sostienen la
   //               línea sin disparar. Ninguno lleva fusil: uno tiene las manos
   //               en los palillos y el otro en el asta.
+  // op.vestuario — con qué ropa se lo viste. Por defecto, la del bando: así el
+  //                capítulo 1 sigue leyendo `granadero` y no se entera de que
+  //                existe un capítulo 2.
   constructor (bando, semilla = Math.random(), op = {}) {
-    const c = PINTA[bando] || PINTA.realista;
+    const c = PINTA[op.vestuario] || PINTA[bando] || PINTA.realista;
     const piel = op.tez || PIELES[Math.floor(semilla * PIELES.length) % PIELES.length];
     const pelo = PELOS[Math.floor(semilla * 977) % PELOS.length];
 
@@ -902,8 +1030,24 @@ export class Figura {
     this.lejos = false;
     this.rodilla = false;        // true: rodilla derecha en tierra, postura de tiro
 
+    // ¿ÉSTE LLEVA PONCHO? Sale de la SEMILLA y no de un sorteo: la semilla ya
+    // decide la cara, el pelo y la estatura, viaja por el cable en una partida
+    // de a dos y es la misma entre corridas de las pruebas. Un hombre no se
+    // pone y se saca el poncho entre cuadros.
+    const conPoncho = !!c.poncho && sorteo(semilla, 11.3) < CON_PONCHO;
+    const conPanuelo = !!c.poncho && sorteo(semilla, 47.9) < CON_PANUELO;
+    this.conPoncho = conPoncho;
+    this.conPanuelo = conPanuelo;
+
     const taller = new Taller();
     vestir(taller, h, c, piel, pelo, op.sombrero);
+    if (conPanuelo) {
+      panuelo(taller, h, PANUELOS[Math.floor(sorteo(semilla, 83.1) * PANUELOS.length)]);
+    }
+    if (conPoncho) {
+      const [pano, lista] = PONCHOS[Math.floor(sorteo(semilla, 5.7) * PONCHOS.length)];
+      poncho(taller, h, pano, lista);
+    }
     // EL ARMERO COMPLETO, sólo para quien cambia de arma.
     //
     // El Taller junta por hueso, así que todo lo que se cuelgue de la mano

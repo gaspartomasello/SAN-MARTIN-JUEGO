@@ -165,7 +165,65 @@ const piso = await ev(() => {
   return o;
 });
 
+// ---------------------------------------------------------------------------
+// EL VESTUARIO DEL CRUCE
+// ---------------------------------------------------------------------------
+// El poncho es del CAPÍTULO 2 y tiene que llegar por el mismo caño que la tez
+// y el sombrero. La primera versión no llegaba: `soltarSoldado` armaba su
+// propio paquete de opciones y se comía `vestuario` en el camino, así que
+// nadie en la cordillera se abrigaba y el bug no lo agarraba nadie porque la
+// figura por su cuenta andaba bien. Lo que se prueba acá es el CAÑO ENTERO,
+// desde `soltarSoldado` hasta la silueta horneada de la lejanía.
+const ropa = await ev(() => {
+  const j = window.juego, o = {};
+  j.soldados.forEach(s => s.quitar()); j.soldados.length = 0;
+  const clases = {};
+  let andes = 0, sanlorenzo = 0;
+  for (let i = 0; i < 60; i++) {
+    const sem = (i * 0.0163 + 0.011) % 1;
+    const a = j.soltarSoldado('granadero', { semilla: sem, vestuario: 'granaderoAndes' });
+    const b = j.soltarSoldado('granadero', { semilla: sem });
+    if (a.fig.conPoncho) andes++;
+    if (b.fig.conPoncho) sanlorenzo++;
+    clases[(a.fig.conPoncho ? 'P' : '-') + (a.fig.conPanuelo ? 'ñ' : '-')] = 1;
+    a.quitar(); b.quitar();
+  }
+  j.soldados.length = 0;
+  o.andes = andes;
+  o.sanlorenzo = sanlorenzo;
+  o.clases = Object.keys(clases).sort().join(' ');
+
+  // y de lejos: que no se cambie de ropa al cruzar los treinta metros
+  const uno = j.soltarSoldado('granadero', { semilla: 0.5, vestuario: 'granaderoAndes' });
+  const otro = j.soltarSoldado('granadero', { semilla: 0.5 });
+  o.clave = uno.claveLejos;
+  o.claveVieja = otro.claveLejos;
+  o.hayLote = j.lejania.lotes.has('granaderoAndes');
+  j.lejania.comenzar();
+  uno.ponerLejos(true); uno.pintarLejos(j.lejania);
+  otro.ponerLejos(true); otro.pintarLejos(j.lejania);
+  j.lejania.terminar();
+  o.lotesEncendidos = j.lejania.dibujando;
+  o.instancias = j.lejania.instancias;
+  uno.quitar(); otro.quitar(); j.soldados.length = 0;
+  return o;
+});
+
 const T = [];
+T.push([ropa.sanlorenzo === 0 ? 'OK ' : 'MAL',
+  'el granadero de San Lorenzo no se abriga nunca',
+  `${ropa.sanlorenzo} de 60 con poncho`]);
+T.push([ropa.andes > 33 && ropa.andes < 51 ? 'OK ' : 'MAL',
+  'y el del Cruce sí, pero no todos',
+  `${ropa.andes} de 60 con poncho`]);
+T.push([ropa.clases.split(' ').length === 4 ? 'OK ' : 'MAL',
+  'poncho y pañuelo se cruzan: cuatro clases de hombre', ropa.clases]);
+T.push([ropa.clave === 'granaderoAndes' && ropa.claveVieja === 'granadero' && ropa.hayLote ? 'OK ' : 'MAL',
+  'de lejos cada uno va a su propia silueta horneada',
+  `${ropa.claveVieja} · ${ropa.clave}`]);
+T.push([ropa.lotesEncendidos === 2 && ropa.instancias === 2 ? 'OK ' : 'MAL',
+  'y los dos juntos son dos lotes, no doce',
+  `${ropa.lotesEncendidos} lotes para ${ropa.instancias} hombres`]);
 T.push([papeles.trapos === 2 ? 'OK ' : 'MAL', 'el paño se parte en tiras con hueso propio',
   `${papeles.trapos} huesos que se mueven`]);
 T.push([papeles.rasoSinTrapos ? 'OK ' : 'MAL', 'y nadie más los tiene, que son 250 esqueletos', '']);

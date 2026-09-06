@@ -177,15 +177,30 @@ export class Lejania {
     const tacho = new THREE.Group();
     const geos = new Map();
 
-    for (const bando of ['granadero', 'realista']) {
-      const f = () => new Figura(bando, 0.5);
+    // Las TRES siluetas horneadas. La tercera es el granadero del Cruce: la
+    // misma figura con poncho, y va como CLAVE APARTE porque a treinta metros
+    // un hombre no puede cambiarse de ropa al cruzar el umbral.
+    //
+    // No cuesta nada en San Lorenzo. Un lote vacío se apaga solo —`visible` es
+    // `n > 0`— así que los seis lotes del Cruce no gastan una llamada de
+    // dibujo en un capítulo donde nadie los usa; lo único que pagan es el
+    // horneado del arranque.
+    //
+    // Se hornea CON poncho porque lo llevan siete de cada diez: la silueta de
+    // la mayoría es la que hay que acertar.
+    const ROPA = {
+      granadero: {}, realista: {}, granaderoAndes: { vestuario: 'granaderoAndes' }
+    };
+    for (const bando of ['granadero', 'realista', 'granaderoAndes']) {
+      const cuerpo = bando === 'granaderoAndes' ? 'granadero' : bando;
+      const f = () => new Figura(cuerpo, 0.5, ROPA[bando]);
       const caido = f();
       posar(caido, 'marcha');
       caido.desplomar(1);          // el hundimiento de 10 cm lo pone la instancia
       // la rodilla en tierra SE HORNEA. Es el aviso de que va a disparar y se
       // tiene que leer desde donde alcanza el fusil, no desde donde se le ve
       // la cara: sesenta metros, no veinte.
-      const hincado = new Figura(bando, 0.5);
+      const hincado = new Figura(cuerpo, 0.5, ROPA[bando]);
       hincado.rodilla = true;
       posar(hincado, 'apuntar');
       geos.set(bando, [

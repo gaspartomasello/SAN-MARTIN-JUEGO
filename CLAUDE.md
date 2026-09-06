@@ -54,7 +54,11 @@ Todo lo que sirve igual en San Lorenzo, en el Cruce y en Chacabuco:
 
 ### Capítulo 2 · Cruce de los Andes
 
-Todavía no hay ninguno.
+Todavía no hay ningún archivo propio. Lo único que ya existe del Cruce es el
+**vestuario**, y vive en el núcleo a propósito: la pinta `granaderoAndes` de
+`figura.js` —poncho y pañuelo, con variación por hombre— y su silueta horneada
+en `lejania.js`. El capítulo 1 no se entera porque lee la pinta `granadero`,
+que quedó palabra por palabra igual.
 
 ### Aislado
 
@@ -80,6 +84,11 @@ Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parec
   pero el suelo, el cielo, la niebla y la arboleda son de `mundo.js`.
 - **Las poses y el esqueleto** en `figura.js`; **la IA del hombre** en
   `soldados.js`; **lo que ve la tropa alrededor** en `moral.js`.
+- **La ropa de un capítulo** es una PINTA nueva en `figura.js` y una clave
+  horneada en `lejania.js`, y viaja como `vestuario` por `soltarSoldado` →
+  `Soldado` → `Figura`. Los tres saltos hay que hacerlos: el primer poncho no
+  se le veía a nadie porque `soltarSoldado` armaba su propio paquete de
+  opciones y se comía la palabra en el camino.
 
 ### Tres archivos de frontera, anotados antes de que muerdan
 

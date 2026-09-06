@@ -204,6 +204,7 @@ const HUIDA_SEGURO = 26;        // a esta distancia del enemigo, se recompone
 export class Soldado {
   // op.tez      — color de piel fijo (Cabral)
   // op.sombrero — 'bicornio' para el San Martín del acto
+  // op.vestuario — con qué ropa se lo viste: 'granaderoAndes' para el Cruce
   // op.caballo  — lo monta desde el arranque; si trae caballo, va con lanza
   constructor (escena, humo, sonido, pos, bando, op = {}) {
     this.escena = escena;
@@ -227,9 +228,16 @@ export class Soldado {
     this.papel = op.papel || null;
     // el compás del tambor arranca desfasado, que si no se acopla al cuadro
     this.tRedoble = Math.random() * 1.2;
+    // CON QUÉ ROPA. El vestuario es del capítulo y no del bando, y también
+    // elige la silueta horneada de la Lejanía: si no, el granadero del Cruce
+    // se sacaría el poncho al pasar los treinta metros.
+    this.vestuario = op.vestuario || null;
+    this.claveLejos = this.vestuario && this.vestuario !== this.bando
+      ? this.vestuario
+      : (this.bando === 'granadero' ? 'granadero' : 'realista');
     this.fig = new Figura(this.bando, this.semilla,
       { tez: op.tez, sombrero: op.sombrero, arma: this.lancero ? 'lanza' : null,
-        armas: op.armas, papel: this.papel });
+        armas: op.armas, papel: this.papel, vestuario: op.vestuario });
     // la malla exterior lleva el rumbo; la figura de adentro, el desplome
     this.malla = new THREE.Group();
     this.malla.add(this.fig.raiz);
@@ -452,7 +460,7 @@ export class Soldado {
       : this.andando ? (Math.sin(this.fig.paso) > 0 ? 1 : 2)
       : 0;
     const m = this.malla;
-    lej.poner(this.bando === 'granadero' ? 'granadero' : 'realista', fase,
+    lej.poner(this.claveLejos, fase,
       m.position.x, m.position.y, m.position.z, m.rotation.y, this.fig.raiz.scale.y);
   }
 
