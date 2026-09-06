@@ -35,7 +35,15 @@ import { PORTON } from './sanlorenzo.js';
 // segundo jugador le matan el caballo y se cae, como a todo el mundo.
 // -------------------------------------------------------------------------
 
-const FRASE = 'Muero contento, hemos batido al enemigo.';
+// LO ÚLTIMO QUE DICE CABRAL, y a QUIÉN se lo dice. Los puntos suspensivos no
+// son adorno: es un hombre atravesado por una bayoneta y la frase le sale
+// cortada. Y empieza en «Mi Coronel» porque San Martín era coronel del
+// regimiento, no general todavía: en San Lorenzo nadie es nadie.
+//
+// Por eso la frase de entrada al acto dice «el Coronel» y no «San Martín». Es
+// el mismo hilo: se nombra el grado cuando te metés en el cuerpo del sargento
+// para que dos minutos después «Mi Coronel» cierre sobre algo ya dicho.
+const FRASE = 'Mi Coronel... muero contento... hemos batido al enemigo.';
 
 // LA CAÍDA, que sigue siendo de San Martín y en primera persona. Son dos
 // segundos y medio tirado sin poder hacer nada: sin eso el cambio de cuerpo no
@@ -294,7 +302,7 @@ export class ActoCabral {
     this.t = 0;
     sonido.grito();
     hud.fundir(0, 1.1);
-    hud.decir('Sos el sargento Juan Bautista Cabral. Llegá hasta él.', 5.4);
+    hud.decir('Ahora sos el sargento Juan Bautista Cabral. El Coronel está abajo del caballo. Sacalo.', 5.4);
   }
 
   // Y LA VUELTA. Se muere Cabral, no vos: el juego sigue con San Martín.
@@ -425,7 +433,7 @@ export class ActoCabral {
     this.lento = 1;
     this.corriendo = false;
     this.fase = 'perdido';
-    hud.decir('Cabral no llegó. San Martín quedó bajo el caballo.', 5);
+    hud.decir('Cabral no llegó. El Coronel quedó abajo del caballo.', 5);
   }
 
   actualizar (dt, teclas) {
@@ -479,7 +487,7 @@ export class ActoCabral {
       // el aviso de la tecla aparece cuando estás al lado, no antes
       if (this.puedeEmpujar && this._paso < 3) {
         this._paso = 3;
-        hud.decir('ESPACIO, muchas veces', 3.4);
+        hud.decir('Le tiene la pierna atrapada. ESPACIO, sin parar.', 3.4);
       }
 
       // el latido de las marcas: no llaman la atención quietas
@@ -637,7 +645,7 @@ export class ActoVictoria {
     if (sonido.clarin) sonido.clarin();
     this.marca = baliza(escena, PORTON.x, PORTON.z - 2.5);
     setTimeout(() => {
-      if (this.fase === 'llamando') hud.decir('Al portón del convento. Ahí formaron a las cinco y media.', 7);
+      if (this.fase === 'llamando') hud.decir('Al portón del convento. Ahí formaron a las cinco y media de la mañana.', 7);
     }, 5000);
     this._formar();
     if (mio && this.alEmpezar) this.alEmpezar();

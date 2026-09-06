@@ -35746,7 +35746,7 @@ Soldado.censar = function(soldados2) {
 Soldado.proximoOrden = 0;
 
 // src/acto.js
-var FRASE = "Muero contento, hemos batido al enemigo.";
+var FRASE = "Mi Coronel... muero contento... hemos batido al enemigo.";
 var T_CAIDA = 2.5;
 var T_FUNDIDO = 1;
 var T_AMENAZA = 1.2;
@@ -35939,7 +35939,7 @@ var ActoCabral = class {
     this.t = 0;
     sonido2.grito();
     hud2.fundir(0, 1.1);
-    hud2.decir("Sos el sargento Juan Bautista Cabral. Lleg\xE1 hasta \xE9l.", 5.4);
+    hud2.decir("Ahora sos el sargento Juan Bautista Cabral. El Coronel est\xE1 abajo del caballo. Sacalo.", 5.4);
   }
   // Y LA VUELTA. Se muere Cabral, no vos: el juego sigue con San Martín.
   _serSanMartin() {
@@ -36060,7 +36060,7 @@ var ActoCabral = class {
     this.lento = 1;
     this.corriendo = false;
     this.fase = "perdido";
-    hud2.decir("Cabral no lleg\xF3. San Mart\xEDn qued\xF3 bajo el caballo.", 5);
+    hud2.decir("Cabral no lleg\xF3. El Coronel qued\xF3 abajo del caballo.", 5);
   }
   actualizar(dt, teclas) {
     if (this.barraLlena > 0) {
@@ -36105,7 +36105,7 @@ var ActoCabral = class {
       }
       if (this.puedeEmpujar && this._paso < 3) {
         this._paso = 3;
-        hud2.decir("ESPACIO, muchas veces", 3.4);
+        hud2.decir("Le tiene la pierna atrapada. ESPACIO, sin parar.", 3.4);
       }
       const pulso = 0.5 + 0.5 * Math.sin(this.t * 4.2);
       if (this.baliza) {
@@ -36226,7 +36226,7 @@ var ActoVictoria = class {
     if (sonido2.clarin) sonido2.clarin();
     this.marca = baliza(escena2, PORTON.x, PORTON.z - 2.5);
     setTimeout(() => {
-      if (this.fase === "llamando") hud2.decir("Al port\xF3n del convento. Ah\xED formaron a las cinco y media.", 7);
+      if (this.fase === "llamando") hud2.decir("Al port\xF3n del convento. Ah\xED formaron a las cinco y media de la ma\xF1ana.", 7);
     }, 5e3);
     this._formar();
     if (mio && this.alEmpezar) this.alEmpezar();
@@ -38729,7 +38729,7 @@ function armarDespliegue(ctx) {
     campo2.oleadas = false;
     if (campo2.alFormar) campo2.alFormar();
     hud2.mostrarAviso("Tu columna est\xE1 formada \xB7 [T] toca el clar\xEDn", "bien");
-    hud2.decir("Sesenta granaderos esper\xE1ndote. Todav\xEDa no saben que est\xE1s ac\xE1.", 7);
+    hud2.decir("Sesenta granaderos formados a tu espalda. Del otro lado del convento, los realistas todav\xEDa no saben que est\xE1s ac\xE1.", 7);
     return { oeste: pinza2.oeste.hombres.length, este: pinza2.este.hombres.length, realistas };
   };
   campo2.actualizarOleadas = function(dt) {
@@ -43430,12 +43430,12 @@ pinza.este.alHeredar = () => {
 pinza.alTocar = () => {
   sonido.clarin();
   hud.mostrarAviso("\xA1A LA CARGA!", "bien");
-  hud.decir("El clar\xEDn. Ciento veinte hombres salen a la vez por los dos costados.", 5);
+  hud.decir("\xA1Atenci\xF3n, Granaderos! \xA1Desplieguen en l\xEDnea! \xA1A la carga!", 5);
   red.contarClarin();
   red.contar(
     "\xA1A LA CARGA!",
     "bien",
-    "El clar\xEDn de San Mart\xEDn. Sal\xEDs vos tambi\xE9n, por el otro costado."
+    "El clar\xEDn de San Mart\xEDn: \xAB\xA1Desplieguen en l\xEDnea! \xA1A la carga!\xBB Sal\xEDs vos tambi\xE9n, por el otro costado."
   );
 };
 var victoria = new ActoVictoria({ escena, hud, sonido, jugador, soldados, pinza });

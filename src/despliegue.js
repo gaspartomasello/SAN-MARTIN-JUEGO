@@ -260,7 +260,7 @@ export function armarDespliegue (ctx) {
 
     if (campo.alFormar) campo.alFormar();
     hud.mostrarAviso('Tu columna está formada · [T] toca el clarín', 'bien');
-    hud.decir('Sesenta granaderos esperándote. Todavía no saben que estás acá.', 7);
+    hud.decir('Sesenta granaderos formados a tu espalda. Del otro lado del convento, los realistas todavía no saben que estás acá.', 7);
     return { oeste: pinza.oeste.hombres.length, este: pinza.este.hombres.length, realistas };
   };
 

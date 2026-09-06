@@ -356,12 +356,12 @@ pinza.este.alHeredar = () => {
 pinza.alTocar = () => {
   sonido.clarin();
   hud.mostrarAviso('¡A LA CARGA!', 'bien');
-  hud.decir('El clarín. Ciento veinte hombres salen a la vez por los dos costados.', 5);
+  hud.decir('¡Atención, Granaderos! ¡Desplieguen en línea! ¡A la carga!', 5);
   // EL CLARÍN SUENA EN LAS DOS MÁQUINAS. Es la única señal de la batalla y la
   // da uno solo: si el otro no la oyera, no habría pinza, habría dos cargas.
   red.contarClarin();
   red.contar('¡A LA CARGA!', 'bien',
-    'El clarín de San Martín. Salís vos también, por el otro costado.');
+    'El clarín de San Martín: «¡Desplieguen en línea! ¡A la carga!» Salís vos también, por el otro costado.');
 };
 
 // EL CIERRE. Hasta acá la batalla se ganaba y no pasaba nada: la última
