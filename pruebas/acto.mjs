@@ -356,8 +356,91 @@ const r = await pag.evaluate(() => {
   ok('y cuando llega el jugador, ahí sí', v.fase === 'llegado', `fase=${v.fase}`);
   ok('y la flecha se levanta', !v.marca);
 
+  // LA PLACA DE CIERRE. No sale en el mismo instante que el «¡VICTORIA!»: se
+  // deja terminar el renglón que cuenta lo que quedó en la barranca.
+  const pla = document.getElementById('placa');
+  ok('al llegar todavía no hay placa de cierre', !pla.classList.contains('si'));
+  for (let i = 0; i < 30; i++) v.actualizar(0.1);
+  ok('a los tres segundos sigue sin salir', !pla.classList.contains('si'));
+  for (let i = 0; i < 20; i++) v.actualizar(0.1);
+  const cierre = ['.t', '.s', '.c'].map(q => pla.querySelector(q).textContent).join(' · ');
+  ok('y a los cuatro y pico entra', pla.classList.contains('si'));
+  ok('diciendo misión cumplida, los quince minutos y para qué sirvió',
+    /MISIÓN CUMPLIDA/.test(cierre) && /15 minutos/.test(cierre) &&
+    /Paraná/.test(cierre) && /Granaderos a Caballo/.test(cierre), cierre.slice(0, 44) + '…');
+
   j.formarPinza(4, 4);
+  ok('y al rearmar el campo la placa se va', !pla.classList.contains('si'));
   ok('al rearmar el campo vuelve a estar por ganarse', v.fase === null, `fase=${v.fase}`);
+
+  // ------------------------------------------------------------------------
+  // LA APERTURA DE LA MISIÓN
+  // ------------------------------------------------------------------------
+  // Se la maneja con su propio reloj adelantado a mano —`adelantar`— porque es
+  // el de pared: esperar diecisiete segundos y medio de verdad para ver si el
+  // cartel sale al final no es una prueba, es una siesta.
+  const ap = j.apertura, H = j.hud;
+  const placa = pla;
+  const elHud = document.getElementById('hud');
+  const negro = () => +getComputedStyle(document.getElementById('fundido')).opacity;
+  const quien = () => { const b = document.querySelector('#frase b'); return b ? b.textContent : ''; };
+  const dicho = () => document.getElementById('frase').classList.contains('si')
+    ? document.getElementById('frase').textContent : '';
+  const cartel = () => document.getElementById('cartel').classList.contains('si')
+    ? document.getElementById('cartel').textContent : '';
+
+  // EL NEGRO INSTANTÁNEO. Es de lo que depende que la placa se lea sobre negro
+  // y no sobre el campo, y estuvo roto: `fundir` hacía `segundos || 0.9`, así
+  // que pedirle cero le daba casi un segundo de fundido.
+  H.fundir(1, 0);
+  ok('el negro en cero segundos es negro de una', negro() > 0.99, `opacidad ${negro()}`);
+  H.fundir(0, 0);
+
+  ap.arrancar();
+  ok('la apertura pone la placa', placa.classList.contains('si'));
+  const pl = ['.t', '.s', '.c'].map(q => placa.querySelector(q).textContent).join(' · ');
+  ok('y dice dónde, cuándo y qué unidad',
+    /San Lorenzo/.test(pl) && /1813/.test(pl) && /05:15/.test(pl) && /Granaderos a Caballo/.test(pl),
+    pl.slice(0, 44) + '…');
+  ok('y calla el HUD: una cinemática no lleva cartuchos', elHud.classList.contains('callado'));
+  ok('el reloj todavía no largó: el primer cuadro es el que tarda', ap.t0 === 0);
+
+  ap.adelantar(1.0);
+  ok('al segundo la placa sigue y no habla nadie', placa.classList.contains('si') && !quien());
+
+  ap.adelantar(3.0);
+  ok('abierto el negro, la placa se baja sola', !placa.classList.contains('si'));
+  ok('y habla el granadero, con su nombre', quien() === 'Granadero', quien());
+  ok('y trae el parte: cuántos y las dos piezas',
+    /doscientos cincuenta/.test(dicho()) && /cañones/.test(dicho()));
+
+  ap.adelantar(6.0);
+  ok('después habla San Martín', quien() === 'San Martín', quien());
+  ok('y parte la fuerza en dos columnas nombrando a Bermúdez',
+    /dos columnas/.test(dicho()) && /Bermúdez/.test(dicho()));
+
+  ap.adelantar(9.0);
+  ok('a los diecisiete y medio se termina', !ap.activo, `t=${ap.t.toFixed(1)}`);
+  ok('y vuelve el HUD', !elHud.classList.contains('callado'));
+  ok('con el cartel del clarín puesto', /CLARÍN/.test(cartel()), cartel());
+  ok('y sin subtítulo abajo pisándolo', !dicho());
+
+  // LA T CORTA LA INTRODUCCIÓN Y NO TOCA EL CLARÍN. Son dos apretones y a
+  // propósito: que un apurado dispare la carga sin haberla pedido es
+  // exactamente lo que no puede pasar.
+  j.formarPinza(6, 6);
+  j.jugador.liberar();
+  ap.arrancar();
+  ap.adelantar(1.0);
+  const teclaT = () => document.dispatchEvent(
+    new KeyboardEvent('keydown', { code: 'KeyT', bubbles: true }));
+  teclaT();
+  ok('la T baja la introducción', !ap.activo);
+  ok('y se lleva la placa con ella', !placa.classList.contains('si'));
+  ok('y devuelve el HUD', !elHud.classList.contains('callado'));
+  ok('pero NO toca el clarín', j.pinza.tocado === false, `tocado=${j.pinza.tocado}`);
+  teclaT();
+  ok('la segunda T sí lo toca', j.pinza.tocado === true, `tocado=${j.pinza.tocado}`);
 
   return out;
 });

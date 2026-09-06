@@ -122,15 +122,33 @@ const antes = await pag.evaluate(() => ({
   draws: window.juego.info.calls
 }));
 
-// y el clarín, como lo toca cualquiera
+// LA T, DOS VECES, DESDE EL TECLADO DE VERDAD. Entrando por la portada la
+// primera baja la introducción de la misión y la segunda toca el clarín. Acá
+// se prueba el camino entero —tecla, mando.js, apertura, pinza— y no la clase
+// suelta, que es lo que ya hace pruebas/acto.mjs.
+const dice = [];
+const dilo = (n, cond, extra) => dice.push([cond ? 'OK ' : 'MAL', n, extra === undefined ? '' : extra]);
+
+dilo('al entrar corre la introducción', await pag.evaluate(() => window.juego.apertura.activo));
+
+await pag.keyboard.press('KeyT');
+await pag.waitForTimeout(900);
+const una = await pag.evaluate(() => ({
+  activo: window.juego.apertura.activo, tocado: window.juego.pinza.tocado }));
+dilo('la primera T la baja', !una.activo);
+dilo('y todavía no toca el clarín', una.tocado === false, `tocado=${una.tocado}`);
+
 await pag.keyboard.press('KeyT');
 await pag.waitForTimeout(900);
 await pag.evaluate(() => { for (let i = 0; i < 60 * 5; i++) window.juego.simular(1 / 60); });
 await pag.waitForTimeout(1800);
 await pag.screenshot({ path: 'tropa/q-2-salida.png' });
 const dur = await pag.evaluate(() => ({ estado: window.juego.pinza.oeste.estado, tocado: window.juego.pinza.tocado }));
+dilo('la segunda sí, y la columna sale', dur.tocado === true && dur.estado !== 'formada',
+  JSON.stringify(dur));
 
 console.log('al elegir la batalla:', JSON.stringify(antes));
-console.log('tras la T:          ', JSON.stringify(dur));
+for (const [e, n, x] of dice) console.log(e.padEnd(4), n.padEnd(38), x);
+if (dice.some(d => d[0] === 'MAL')) errs.push('la T no hace las dos cosas en orden');
 console.log(errs.length ? 'ERRORES: ' + errs.join(' / ') : 'sin errores');
 await nav.close();

@@ -26,11 +26,47 @@
   /* el túnel del galope: se cierra con la velocidad del caballo */
   /* una pieza te tiene en el cono y está cebando: dos segundos para salirte */
   /* la voz del acto: una línea sola, abajo y al centro */
-  #frase{position:fixed;left:0;right:0;bottom:16%;text-align:center;z-index:12;
+  /* ARRIBA DE LA BARRA DE RECARGA, SIEMPRE. El 16% solo alcanza en pantallas
+     altas: `#paso` está anclado a 96 px del piso, así que en una de 620 los dos
+     caían en el mismo renglón y la segunda línea del subtítulo se leía encima
+     de «2/4 · Cebar la cazoleta». El piso de 150 px lo separa en cualquier alto
+     sin mover nada en las pantallas donde ya estaba bien. */
+  #frase{position:fixed;left:0;right:0;bottom:max(16%,150px);text-align:center;z-index:12;
     pointer-events:none;opacity:0;transition:opacity .6s ease;
     font-size:21px;letter-spacing:.03em;color:#f2ead6;
     text-shadow:0 2px 14px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.8);padding:0 8%}
   #frase.si{opacity:1}
+  /* QUIÉN HABLA. Sólo aparece cuando el subtítulo es una voz y no la voz del
+     juego: el nombre en versalitas y bronce, la frase abajo en hueso. */
+  #frase b{display:block;font-family:var(--ui);font-size:13px;font-weight:600;
+    letter-spacing:.26em;text-transform:uppercase;color:var(--bronce);
+    margin-bottom:7px;opacity:.92}
+
+  /* LA PLACA. El cartel de tres renglones que abre y cierra la misión: dónde
+     estamos, qué día es y qué unidad somos. Va por ENCIMA del fundido —z 13
+     contra 9— porque su trabajo es leerse sobre el negro mientras el negro se
+     abre. Es la única tipografía del juego que no es del HUD: acá no está
+     hablando el granadero, está hablando el libro de historia. */
+  /* SU PROPIO VELO. La placa se cruza medio segundo con el campo ya iluminado
+     —el negro termina de abrirse antes de que ella se vaya, a propósito, para
+     que el pase sea blando— y ahí, sin esto, no se leía una palabra. El velo
+     se va con ella en la misma transición. */
+  #placa{position:fixed;left:0;right:0;top:50%;transform:translateY(-50%);z-index:13;
+    pointer-events:none;opacity:0;transition:opacity .7s ease;text-align:center;
+    padding:52px 9%;text-shadow:0 2px 20px rgba(0,0,0,.95),0 0 4px rgba(0,0,0,.9);
+    background:linear-gradient(180deg,rgba(8,10,14,0) 0%,rgba(8,10,14,.72) 26%,
+      rgba(8,10,14,.72) 74%,rgba(8,10,14,0) 100%)}
+  #placa.si{opacity:1}
+  #placa .t{font-family:"Cinzel","Libre Caslon Display",Georgia,serif;font-weight:600;
+    font-size:clamp(26px,3.4vw,44px);letter-spacing:.12em;line-height:1.18;
+    color:var(--hueso)}
+  #placa .s{font-family:var(--ui);font-size:clamp(13px,1.3vw,17px);letter-spacing:.3em;
+    text-transform:uppercase;color:var(--bronce);margin-top:14px}
+  #placa .c{font-family:"Libre Caslon Display",Georgia,serif;
+    font-size:clamp(15px,1.5vw,20px);line-height:1.55;color:var(--hueso);
+    opacity:.88;margin:20px auto 0;max-width:46em}
+  /* un renglón vacío no deja su margen: la placa de apertura no tiene cuerpo */
+  #placa .s:empty,#placa .c:empty{display:none}
   /* ---- caíste ----
      Va DEBAJO de la frase de San Martín y no encima: la frase es el final de
      la escena y los botones son lo que viene después. Aparecen recién cuando
@@ -74,6 +110,12 @@
      lee es un filtro puesto arriba de un juego y no un hombre que se muere. */
   #hud{transition:opacity 1.6s ease-in}
   #hud.ojos{opacity:0}
+  /* EL HUD SE CALLA DURANTE LA APERTURA. No es lo mismo que `ojos` —eso es la
+     vista que se apaga porque te estás muriendo, y tarda—: esto es una
+     cinemática y el HUD tiene que no estar. Con el HUD puesto se leía el
+     contador de cartuchos, la barra de vida y una barra de recarga «1/4 ·
+     Morder y verter» pisando el subtítulo del granadero. */
+  #hud.callado{opacity:0;transition:opacity .45s ease}
   /* el fundido a negro del acto Cabral: tapa el cambio de cuerpo */
   #fundido{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:0;
            background:#000;transition:opacity .9s linear}
@@ -475,6 +517,7 @@
 <div id="velocidad"></div>
 <div id="parpados"></div>
 <div id="fundido"></div>
+<div id="placa"><div class="t"></div><div class="s"></div><div class="c"></div></div>
 <div id="frase"></div>
 <div id="caido" class="oculto">
   <button id="caido-otra">Volver a empezar</button>
@@ -36182,12 +36225,19 @@ var ActoCabral = class {
 };
 var VICTORIA_CERCA = 7;
 var VICTORIA_ESPERA = 2.2;
+var PLACA_ESPERA = 4.2;
 var VICTORIA_FRASE = "De lo que son capaces mis granaderos, s\xF3lo yo lo s\xE9; quien los iguale habr\xE1, quien los exceda, no.";
+var PLACA_FIN = {
+  titulo: "MISI\xD3N CUMPLIDA",
+  sub: "Bautismo de fuego \u2014 3 de febrero de 1813",
+  cuerpo: "El combate dur\xF3 apenas 15 minutos. La victoria en San Lorenzo asegur\xF3 la navegaci\xF3n del r\xEDo Paran\xE1 y consolid\xF3 la creaci\xF3n del Regimiento de Granaderos a Caballo."
+};
 var ActoVictoria = class {
   constructor(ctx) {
     this.ctx = ctx;
     this.fase = null;
     this.t = 0;
+    this.tPlaca = 0;
     this.marca = null;
     this.hubo = false;
     this.alEmpezar = null;
@@ -36226,7 +36276,7 @@ var ActoVictoria = class {
     if (sonido2.clarin) sonido2.clarin();
     this.marca = baliza(escena2, PORTON.x, PORTON.z - 2.5);
     setTimeout(() => {
-      if (this.fase === "llamando") hud2.decir("Al port\xF3n del convento. Ah\xED formaron a las cinco y media de la ma\xF1ana.", 7);
+      if (this.fase === "llamando") hud2.decir("Al port\xF3n del convento. Ah\xED formaron a las cinco y media.", 7);
     }, 5e3);
     this._formar();
     if (mio && this.alEmpezar) this.alEmpezar();
@@ -36248,6 +36298,10 @@ var ActoVictoria = class {
     }
   }
   actualizar(dt) {
+    if (this.tPlaca > 0) {
+      this.tPlaca -= dt;
+      if (this.tPlaca <= 0) this.ctx.hud.placa(PLACA_FIN, 13);
+    }
     if (this.fase !== "llamando") return;
     this.t += dt;
     if (this.marca) {
@@ -36270,6 +36324,7 @@ var ActoVictoria = class {
     }
     hud2.mostrarAviso("\xA1VICTORIA!", "bien");
     hud2.decir("San Lorenzo. Dejaron las dos piezas, la bandera y sus muertos en la barranca.", 12);
+    this.tPlaca = PLACA_ESPERA;
     if (sonido2.clarin) sonido2.clarin();
     if (mio && this.alLlegar) this.alLlegar();
   }
@@ -36279,9 +36334,131 @@ var ActoVictoria = class {
       this.ctx.escena.remove(this.marca);
       this.marca = null;
     }
+    if (this.ctx.hud) this.ctx.hud.placa(null);
     this.fase = null;
     this.t = 0;
+    this.tPlaca = 0;
     this.hubo = false;
+  }
+};
+var PLACA_APERTURA = {
+  titulo: "Convento de San Carlos, San Lorenzo",
+  sub: "3 de febrero de 1813 \u2014 05:15 hs",
+  cuerpo: "Regimiento de Granaderos a Caballo"
+};
+var A_NEGRO = 3;
+var A_PARTE = 3.5;
+var A_ORDEN = 9;
+var A_FIN = 17.5;
+var PARTE = "\xA1Mi Coronel! Ya desembarcaron doscientos cincuenta hombres. Desplegaron los dos ca\xF1ones en la playa.";
+var ORDEN = "\xA1Atenci\xF3n, Granaderos! Dividiremos la carga en dos columnas. Berm\xFAdez, rodee por la derecha. \xA1El resto conmigo por la izquierda! \xA1A paso de carga... y que no quede un solo realista en esta costa!";
+var ActoApertura = class {
+  constructor(ctx) {
+    this.ctx = ctx;
+    this.t = 0;
+    this.t0 = 0;
+    this.corriendo = false;
+    this._paso = 0;
+  }
+  get activo() {
+    return this.corriendo;
+  }
+  // el reloj de pared, en segundos. Aparte para que las pruebas puedan
+  // adelantarlo sin esperar diecisiete segundos de verdad.
+  _ahora() {
+    return (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1e3;
+  }
+  // EL RELOJ NO EMPIEZA ACÁ, EMPIEZA CUANDO EL JUEGO EMPIEZA A DIBUJAR.
+  //
+  // Entrar al campo cuesta un rato: se hornean los lotes de lejanía y el primer
+  // cuadro puede tardar segundos enteros. Medido acá adentro: cinco. Si el
+  // reloj arranca en esta línea, esos cinco segundos se comen la placa y el
+  // negro se abre solo, y el jugador ve la introducción entera en la mitad de
+  // un parpadeo o directamente no la ve.
+  //
+  // Así que esto sólo pone el negro y la placa —que es justamente lo que hay
+  // que tener puesto MIENTRAS carga— y el reloj lo largan los dos primeros
+  // cuadros de `actualizar`: el primero cae al principio del cuadro lento, el
+  // segundo ya del otro lado. Recién ahí se manda a abrir el negro.
+  arrancar() {
+    const { hud: hud2 } = this.ctx;
+    this.t = 0;
+    this.t0 = 0;
+    this._cuadros = 0;
+    this._paso = 0;
+    this.corriendo = true;
+    hud2.fundir(1, 0);
+    hud2.placa(PLACA_APERTURA, 1e6);
+    hud2.callar(true);
+  }
+  // LA T DURANTE LA INTRODUCCIÓN. Baja todo de una y deja al jugador donde iba
+  // a quedar igual: de pie, con la columna formada y el clarín sin tocar.
+  saltar() {
+    if (!this.corriendo) return false;
+    const { hud: hud2 } = this.ctx;
+    this.corriendo = false;
+    hud2.placa(null);
+    hud2.fundir(0, 0.25);
+    hud2.decir("", 0);
+    this._listo();
+    return true;
+  }
+  // El cartel que queda cuando la introducción terminó, se la haya visto o no.
+  // EL HUD VUELVE PRIMERO Y EL CARTEL DESPUÉS: el cartel vive adentro del HUD,
+  // así que pedirlo con el HUD todavía callado es escribirlo abajo de la
+  // sábana. Se lo deja pasar un cuadro.
+  _listo() {
+    const { hud: hud2 } = this.ctx;
+    hud2.decir("");
+    hud2.callar(false);
+    hud2.cartel("[T] TOC\xC1 EL CLAR\xCDN", 3.5);
+  }
+  actualizar() {
+    if (!this.corriendo) return;
+    const { hud: hud2, sonido: sonido2 } = this.ctx;
+    if (!this.t0) {
+      if (++this._cuadros < 2) return;
+      this.t0 = this._ahora();
+      hud2.fundir(0, A_NEGRO);
+    }
+    this.t = this._ahora() - this.t0;
+    if (this.t >= A_NEGRO + 0.4 && this._paso < 1) {
+      this._paso = 1;
+      hud2.placa(null);
+    }
+    if (this.t >= A_PARTE && this._paso < 2) {
+      this._paso = 2;
+      hud2.decir(PARTE, A_ORDEN - A_PARTE - 0.3, "Granadero");
+    }
+    if (this.t >= A_ORDEN && this._paso < 3) {
+      this._paso = 3;
+      hud2.decir(ORDEN, A_FIN - A_ORDEN - 0.3, "San Mart\xEDn");
+      if (sonido2 && sonido2.grito) sonido2.grito();
+    }
+    if (this.t >= A_FIN) {
+      this.corriendo = false;
+      this._listo();
+    }
+  }
+  // adelantar el reloj a mano, para las pruebas: mueve el punto de partida
+  // hacia atrás, que es exactamente lo mismo que haber esperado.
+  adelantar(seg) {
+    if (!this.t0) {
+      this.actualizar();
+      this.actualizar();
+    }
+    this.t0 -= seg;
+    this.actualizar();
+  }
+  reiniciar() {
+    this.corriendo = false;
+    this.t = 0;
+    this.t0 = 0;
+    this._paso = 0;
+    if (this.ctx.hud) {
+      this.ctx.hud.placa(null);
+      this.ctx.hud.callar(false);
+    }
   }
 };
 
@@ -37044,6 +37221,8 @@ var Hud = class {
     this.cartelEl = $("#cartel");
     this.cartelTexto = "";
     this.cartelT = 0;
+    this.placaEl = $("#placa");
+    this.placaT = 0;
     this.tFrase = 0;
     this.tomar = $("#tomar");
     this.aviso = $("#aviso");
@@ -37071,16 +37250,66 @@ var Hud = class {
   }
   // Una línea sola, abajo y al centro. Es la voz del acto: no hay más HUD que
   // esto durante los diecisiete segundos que dura.
-  decir(texto, segundos) {
-    this.frase.textContent = texto;
+  // `quien` es opcional y cambia lo que ES la línea. Sin él, el subtítulo es la
+  // voz del juego —el narrador que cuenta que están bajando la barranca—. Con
+  // él, es alguien hablando en el campo, y entonces hay que decir quién: dos
+  // hombres distintos diciéndose cosas sin nombre encima son un solo texto que
+  // se contradice. El nombre va arriba y en bronce; la frase, abajo.
+  decir(texto, segundos, quien) {
+    if (!texto) {
+      this.tFrase = 0;
+      this.frase.classList.remove("si");
+      return;
+    }
+    if (quien) {
+      this.frase.textContent = "";
+      const b = document.createElement("b");
+      b.textContent = quien;
+      this.frase.appendChild(b);
+      this.frase.appendChild(document.createTextNode(texto));
+    } else {
+      this.frase.textContent = texto;
+    }
     this.frase.classList.add("si");
     this.tFrase = segundos || 3.2;
+  }
+  // EL HUD SE CALLA. Lo pide la apertura mientras dura la cinemática: con el
+  // contador de cartuchos y la barra de recarga puestos, lo que se ve no es
+  // una escena, es una partida con letras encima.
+  callar(si) {
+    const h = document.getElementById("hud");
+    if (h) {
+      h.style.transitionDuration = "";
+      h.classList.toggle("callado", !!si);
+    }
+  }
+  // LA PLACA DE LA MISIÓN. Tres renglones —dónde, cuándo, quiénes— sobre el
+  // negro que se abre al empezar, y los mismos tres al cerrar con el saldo de
+  // la batalla. Es la única parte del juego que habla desde afuera del campo,
+  // así que no se mezcla con el HUD: tiene su capa y su tipografía.
+  //
+  // Se le pasa `null` para bajarla antes de tiempo, que es lo que hace la T
+  // cuando el jugador no quiere ver la introducción.
+  placa(partes, seg = 3) {
+    if (!this.placaEl) return;
+    if (!partes) {
+      this.placaT = 0;
+      this.placaEl.classList.remove("si");
+      return;
+    }
+    const [t, s, c] = [".t", ".s", ".c"].map((q) => this.placaEl.querySelector(q));
+    t.textContent = partes.titulo || "";
+    s.textContent = partes.sub || "";
+    c.textContent = partes.cuerpo || "";
+    this.placaT = seg;
+    this.placaEl.classList.add("si");
   }
   // EL FUNDIDO A NEGRO. Existe por una sola razón y es tapar el cambio de
   // cuerpo del acto Cabral: pasar de estar tirado bajo el caballo a estar de
   // pie once metros más atrás no se puede hacer con un corte, se ve el truco.
   fundir(a, segundos) {
-    this.fundido.style.transition = `opacity ${segundos || 0.9}s linear`;
+    const seg = segundos === void 0 ? 0.9 : segundos;
+    this.fundido.style.transition = `opacity ${seg}s linear`;
     void this.fundido.offsetHeight;
     this.fundido.style.opacity = String(a);
   }
@@ -37170,6 +37399,10 @@ var Hud = class {
     this.cartelEl.classList.toggle("si", !!texto);
   }
   actualizar(dt, datos) {
+    if (this.placaT > 0) {
+      this.placaT -= dt;
+      if (this.placaT <= 0) this.placaEl.classList.remove("si");
+    }
     if (this.cartelT > 0) {
       this.cartelT -= dt;
       if (this.cartelT <= 0) {
@@ -38729,7 +38962,6 @@ function armarDespliegue(ctx) {
     campo2.oleadas = false;
     if (campo2.alFormar) campo2.alFormar();
     hud2.mostrarAviso("Tu columna est\xE1 formada \xB7 [T] toca el clar\xEDn", "bien");
-    hud2.decir("Sesenta granaderos formados a tu espalda. Del otro lado del convento, los realistas todav\xEDa no saben que est\xE1s ac\xE1.", 7);
     return { oeste: pinza2.oeste.hombres.length, este: pinza2.este.hombres.length, realistas };
   };
   campo2.actualizarOleadas = function(dt) {
@@ -38834,7 +39066,7 @@ function armarGentio({ jugador: jugador2, soldados: soldados2, caballos: caballo
 
 // src/mando.js
 function armarMando(ctx) {
-  const { lienzo: lienzo2, jugador: jugador2, sable: sable2, arsenal: arsenal2, campo: campo2, combate: combate2, pinza: pinza2, hud: hud2, sonido: sonido2, red: red2, plano: plano2, acto: acto2, opciones: opciones2 } = ctx;
+  const { lienzo: lienzo2, jugador: jugador2, sable: sable2, arsenal: arsenal2, campo: campo2, combate: combate2, pinza: pinza2, hud: hud2, sonido: sonido2, red: red2, plano: plano2, acto: acto2, apertura: apertura2, opciones: opciones2 } = ctx;
   const teclas = /* @__PURE__ */ new Set();
   const sensibilidad = 21e-4;
   let bloqueado = false;
@@ -38912,6 +39144,7 @@ function armarMando(ctx) {
       // nada hasta que el otro dé la señal— es exactamente lo que se sintió el
       // 3 de febrero a las cinco y media de la mañana.
       case "KeyT": {
+        if (apertura2 && apertura2.saltar()) break;
         if (red2 && red2.esInvitado) {
           hud2.mostrarAviso("El clar\xEDn lo toca San Mart\xEDn", "malo");
           break;
@@ -39077,6 +39310,7 @@ function armarMando(ctx) {
     tSoltado = 0;
     if (acto2) acto2.enBatalla = modo === "batalla";
     if (modo === "batalla") campo2.formarPinza();
+    if (modo === "batalla" && apertura2) apertura2.arrancar();
     lienzo2.requestPointerLock();
   }
   function arrancar(modo) {
@@ -41907,7 +42141,7 @@ function pesoDelParte(nH, nB, nC) {
 }
 
 // src/red.js
-var PARTE = 1 / 20;
+var PARTE2 = 1 / 20;
 var CUERPO = 1 / 30;
 var SEGUIR = 15;
 var CERCA_TIRO = 90;
@@ -43118,7 +43352,7 @@ function armarRed(ctx) {
     }
     if (rol === "anfitrion" && hayGente()) {
       tParte += dt;
-      if (tParte >= PARTE) {
+      if (tParte >= PARTE2) {
         tParte = 0;
         censar();
         while (cola.length) mandar(cola.shift());
@@ -43354,18 +43588,21 @@ var moral = armarMoral({
 campo.alFormar = () => {
   moral.reiniciar();
   victoria.reiniciar();
+  apertura.reiniciar();
   fuego.limpiarManchas();
 };
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 var ULTIMAS = [
-  "Ser\xE1s lo que debas ser, o no ser\xE1s nada.",
-  "Seamos libres, que lo dem\xE1s no importa nada.",
-  "De lo que son capaces mis granaderos, s\xF3lo yo lo s\xE9; quien los iguale habr\xE1, quien los exceda, no.",
-  "Se puede quitar la vida a un hombre, pero no el honor.",
-  "La Patria no hace un soldado para que la deshonre.",
-  "La soberbia y el desprecio, hijo m\xEDo, no son cosa de valientes.",
-  "A la desgracia se la vence con la firmeza.",
-  "Cuando la Patria est\xE1 en peligro, todo es l\xEDcito menos dejarla perecer."
+  ["Ser\xE1s lo que debas ser, o no ser\xE1s nada.", "Jos\xE9 de San Mart\xEDn"],
+  ["Seamos libres, que lo dem\xE1s no importa nada.", "Jos\xE9 de San Mart\xEDn"],
+  ["De lo que son capaces mis granaderos, s\xF3lo yo lo s\xE9; quien los iguale habr\xE1, quien los exceda, no.", "Jos\xE9 de San Mart\xEDn"],
+  ["Se puede quitar la vida a un hombre, pero no el honor.", "Jos\xE9 de San Mart\xEDn"],
+  ["La Patria no hace un soldado para que la deshonre.", "Jos\xE9 de San Mart\xEDn"],
+  ["La soberbia y el desprecio, hijo m\xEDo, no son cosa de valientes.", "Jos\xE9 de San Mart\xEDn"],
+  ["A la desgracia se la vence con la firmeza.", "Jos\xE9 de San Mart\xEDn"],
+  ["Cuando la Patria est\xE1 en peligro, todo es l\xEDcito menos dejarla perecer.", "Jos\xE9 de San Mart\xEDn"],
+  ["\xA1Ay, Patria m\xEDa!", "Manuel Belgrano"],
+  ["Nada debe importarnos tanto como la felicidad del pueblo.", "Manuel Belgrano"]
 ];
 var RED_FUNDIDO = 4.5;
 var ultimaFrase = -1;
@@ -43373,7 +43610,8 @@ function frasePostrera() {
   let i = Math.floor(Math.random() * (ULTIMAS.length - 1));
   if (i >= ultimaFrase) i++;
   ultimaFrase = i % ULTIMAS.length;
-  return ULTIMAS[ultimaFrase];
+  const [texto, autor] = ULTIMAS[ultimaFrase];
+  return texto + " \u2014 " + autor;
 }
 jugador.alMorir = () => {
   hud.mostrarAviso("Fuera de combate", "malo");
@@ -43439,6 +43677,7 @@ pinza.alTocar = () => {
   );
 };
 var victoria = new ActoVictoria({ escena, hud, sonido, jugador, soldados, pinza });
+var apertura = new ActoApertura({ hud, sonido });
 victoria.alEmpezar = () => red.contarVictoria("empieza");
 victoria.alLlegar = () => red.contarVictoria("llego");
 red.alVictoria = (fase) => {
@@ -43446,7 +43685,7 @@ red.alVictoria = (fase) => {
   if (fase === "llego") victoria.llegar(false);
 };
 var plano = armarPlano({ hud });
-var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, opciones });
+var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones });
 addEventListener("resize", () => {
   camara.aspect = innerWidth / innerHeight;
   camara.updateProjectionMatrix();
@@ -43507,6 +43746,7 @@ function simular(dt) {
     }
   }
   acto.actualizar(dt, mando.teclas);
+  apertura.actualizar(dt);
   jugador.actualizar(dt, mando.teclas, quiereApuntar, arma ? arma.cargando : false);
   const p = jugador.cfgPostura;
   const penalMonta = montado() ? penalCargaMontado(jugador.monta.vel) : 1;
@@ -43670,6 +43910,7 @@ window.juego = {
   canones,
   acto,
   victoria,
+  apertura,
   opciones,
   hud,
   simular,

@@ -595,6 +595,7 @@ export class ActoCabral {
 // que el segundo camine para leer lo mismo es hacerlo esperar por nada.
 const VICTORIA_CERCA = 7;      // a esta distancia del portón, llegaste
 const VICTORIA_ESPERA = 2.2;   // lo que se tarda en creerlo, antes del aviso
+const PLACA_ESPERA = 4.2;      // y lo que tarda la placa en entrar, después
 
 // La frase es SUYA y es sobre sus granaderos, que es de lo que trata esta
 // batalla. No hay ninguna cita de San Martín sobre San Lorenzo que se pueda
@@ -603,11 +604,25 @@ const VICTORIA_ESPERA = 2.2;   // lo que se tarda en creerlo, antes del aviso
 const VICTORIA_FRASE = 'De lo que son capaces mis granaderos, sólo yo lo sé; ' +
   'quien los iguale habrá, quien los exceda, no.';
 
+// LA PLACA DE CIERRE. La misma de la apertura y por la misma razón: el que
+// cierra no es el granadero, es el libro de historia. Y dice lo único que el
+// jugador no puede haber visto desde adentro —que fueron quince minutos, y
+// para qué sirvieron—, que es exactamente lo que la placa de apertura dejó
+// planteado cuando dijo la hora.
+const PLACA_FIN = {
+  titulo: 'MISIÓN CUMPLIDA',
+  sub: 'Bautismo de fuego — 3 de febrero de 1813',
+  cuerpo: 'El combate duró apenas 15 minutos. La victoria en San Lorenzo ' +
+    'aseguró la navegación del río Paraná y consolidó la creación del ' +
+    'Regimiento de Granaderos a Caballo.'
+};
+
 export class ActoVictoria {
   constructor (ctx) {
     this.ctx = ctx;
     this.fase = null;          // null · 'llamando' · 'llegado'
     this.t = 0;
+    this.tPlaca = 0;           // lo que falta para la placa de cierre
     this.marca = null;
     this.hubo = false;         // ¿llegó a haber realistas? si no, no hay nada que ganar
     this.alEmpezar = null;     // para contárselo a la otra máquina
@@ -645,7 +660,7 @@ export class ActoVictoria {
     if (sonido.clarin) sonido.clarin();
     this.marca = baliza(escena, PORTON.x, PORTON.z - 2.5);
     setTimeout(() => {
-      if (this.fase === 'llamando') hud.decir('Al portón del convento. Ahí formaron a las cinco y media de la mañana.', 7);
+      if (this.fase === 'llamando') hud.decir('Al portón del convento. Ahí formaron a las cinco y media.', 7);
     }, 5000);
     this._formar();
     if (mio && this.alEmpezar) this.alEmpezar();
@@ -669,6 +684,11 @@ export class ActoVictoria {
   }
 
   actualizar (dt) {
+    // la cuenta de la placa de cierre corre aunque la fase ya no sea 'llamando'
+    if (this.tPlaca > 0) {
+      this.tPlaca -= dt;
+      if (this.tPlaca <= 0) this.ctx.hud.placa(PLACA_FIN, 13);
+    }
     if (this.fase !== 'llamando') return;
     this.t += dt;
     // la flecha late, como la del acto de Cabral
@@ -692,6 +712,14 @@ export class ActoVictoria {
     if (this.marca) { this.ctx.escena.remove(this.marca); this.marca = null; }
     hud.mostrarAviso('¡VICTORIA!', 'bien');
     hud.decir('San Lorenzo. Dejaron las dos piezas, la bandera y sus muertos en la barranca.', 12);
+    // LA PLACA VA DESPUÉS DEL RENGLÓN, no encima. Primero se termina de contar
+    // lo que quedó en la barranca —que todavía es la voz del campo— y recién
+    // ahí entra la que habla desde afuera y da la misión por cerrada.
+    //
+    // Con el reloj del acto y no con un setTimeout: un temporizador del
+    // navegador no sabe que el juego está en pausa ni que se rearmó el campo, y
+    // aparecería igual cuatro segundos después de cualquiera de las dos cosas.
+    this.tPlaca = PLACA_ESPERA;
     if (sonido.clarin) sonido.clarin();
     if (mio && this.alLlegar) this.alLlegar();
   }
@@ -699,8 +727,201 @@ export class ActoVictoria {
   // Cuando se rearma el campo, la victoria vuelve a estar por ganarse.
   reiniciar () {
     if (this.marca) { this.ctx.escena.remove(this.marca); this.marca = null; }
+    if (this.ctx.hud) this.ctx.hud.placa(null);
     this.fase = null;
     this.t = 0;
+    this.tPlaca = 0;
     this.hubo = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// LA APERTURA DE LA MISIÓN.
+//
+// Antes de esto la batalla empezaba con el jugador ya parado en el pasto y un
+// renglón que le contaba cuántos granaderos tenía atrás. No estaba mal, pero
+// no decía DÓNDE ni CUÁNDO ni CONTRA QUIÉN, y esas tres cosas son la mitad de
+// lo que hace que San Lorenzo sea San Lorenzo y no un campo de tiro con
+// uniformes de época.
+//
+// Son tres tiempos y ninguno dura más de lo que se tarda en leerlo:
+//
+//   1. LA PLACA sobre el negro que se abre. Tres renglones —el convento, la
+//      fecha con la hora, el regimiento— mientras el fundido baja de 1 a 0.
+//      Tres segundos, que es el techo que se pidió: lo que se ve detrás es la
+//      columna formada, porque el despliegue ya dejó al jugador mirándola.
+//
+//   2. EL PARTE. Un granadero le dice a San Martín lo que San Martín no puede
+//      ver desde donde está: cuántos desembarcaron y que ya bajaron las dos
+//      piezas a la playa. Es la información táctica de la misión y llega como
+//      llegaba de verdad, en la boca de alguien.
+//
+//   3. LA ORDEN. San Martín parte la fuerza en dos columnas y nombra a
+//      Bermúdez. Es la maniobra entera dicha en voz alta, y es la que el
+//      jugador va a ejecutar cuando toque el clarín.
+//
+// Y SE PUEDE SALTAR CON LA T, que es la misma tecla del clarín. Es a propósito
+// que sea esa y no Escape: el que ya vio la introducción no quiere «cerrar un
+// diálogo», quiere pelear, y la tecla de pelear es la T. La primera T baja la
+// placa y calla a los dos; la segunda toca el clarín. Nunca la misma: que un
+// apretón apurado dispare la carga sin que el jugador la haya pedido es
+// justamente lo que no puede pasar.
+// ---------------------------------------------------------------------------
+
+const PLACA_APERTURA = {
+  titulo: 'Convento de San Carlos, San Lorenzo',
+  sub: '3 de febrero de 1813 — 05:15 hs',
+  cuerpo: 'Regimiento de Granaderos a Caballo'
+};
+
+// Los tiempos, en segundos desde que arranca. El primero es cuánto tarda el
+// negro en abrirse; los otros dos, cuándo entra cada voz.
+const A_NEGRO = 3.0;
+const A_PARTE = 3.5;
+const A_ORDEN = 9.0;
+const A_FIN = 17.5;
+
+const PARTE = '¡Mi Coronel! Ya desembarcaron doscientos cincuenta hombres. ' +
+  'Desplegaron los dos cañones en la playa.';
+const ORDEN = '¡Atención, Granaderos! Dividiremos la carga en dos columnas. ' +
+  'Bermúdez, rodee por la derecha. ¡El resto conmigo por la izquierda! ' +
+  '¡A paso de carga... y que no quede un solo realista en esta costa!';
+
+// EL RELOJ DE ACÁ ES EL DE PARED, Y NO EL DE LA SIMULACIÓN.
+//
+// El primer intento colgó la cinemática del `dt` que reparte main.js, que es lo
+// que hace todo el resto del juego. Está mal, y se ve medido: en 10,7 segundos
+// de reloj de pared la introducción avanzaba 0,2. Ese `dt` no es el tiempo, es
+// el paso de la física, y viene recortado a 0,05 por cuadro para que un tirón
+// no atraviese a nadie contra una pared, multiplicado por la cámara lenta del
+// acto Cabral, y puesto en cero cuando el juego está en pausa.
+//
+// Con quince cuadros por segundo eso ya son tres veces más lento; con los dos o
+// tres que da un rasterizador por software, cincuenta. Y el fundido a negro no
+// se entera de nada de eso, porque es una transición de CSS y corre por el
+// reloj de pared: el negro terminaba de abrirse cuando la placa todavía no
+// había empezado a contar. Dos relojes para una sola escena.
+//
+// Acá no hay física que proteger —nadie se mueve, nadie recibe daño, no se
+// resuelve un solo disparo—, así que la cinemática se cuelga del mismo reloj
+// que el fundido y los dos van juntos por definición. `actualizar` sigue
+// recibiendo el `dt` del bucle para no ser la excepción rara de la firma, pero
+// no lo usa.
+export class ActoApertura {
+  constructor (ctx) {
+    this.ctx = ctx;
+    this.t = 0;
+    this.t0 = 0;
+    this.corriendo = false;
+    this._paso = 0;
+  }
+
+  get activo () { return this.corriendo; }
+
+  // el reloj de pared, en segundos. Aparte para que las pruebas puedan
+  // adelantarlo sin esperar diecisiete segundos de verdad.
+  _ahora () { return (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000; }
+
+  // EL RELOJ NO EMPIEZA ACÁ, EMPIEZA CUANDO EL JUEGO EMPIEZA A DIBUJAR.
+  //
+  // Entrar al campo cuesta un rato: se hornean los lotes de lejanía y el primer
+  // cuadro puede tardar segundos enteros. Medido acá adentro: cinco. Si el
+  // reloj arranca en esta línea, esos cinco segundos se comen la placa y el
+  // negro se abre solo, y el jugador ve la introducción entera en la mitad de
+  // un parpadeo o directamente no la ve.
+  //
+  // Así que esto sólo pone el negro y la placa —que es justamente lo que hay
+  // que tener puesto MIENTRAS carga— y el reloj lo largan los dos primeros
+  // cuadros de `actualizar`: el primero cae al principio del cuadro lento, el
+  // segundo ya del otro lado. Recién ahí se manda a abrir el negro.
+  arrancar () {
+    const { hud } = this.ctx;
+    this.t = 0;
+    this.t0 = 0;                 // 0 = todavía no largó
+    this._cuadros = 0;
+    this._paso = 0;
+    this.corriendo = true;
+    // el negro está puesto ANTES de que se vea un solo cuadro del campo, y se
+    // abre solo durante los tres segundos de la placa
+    hud.fundir(1, 0);
+    // LA PLACA LA BAJA ESTE ACTO Y NO SU PROPIO RELOJ. El de hud.actualizar
+    // corre con el `crudo` del bucle, que también viene recortado a 0,05 por
+    // cuadro: sería un tercer reloj para la misma escena. Se le pide que no se
+    // apague sola y el paso 1 de acá la baja a tiempo.
+    hud.placa(PLACA_APERTURA, 1e6);
+    hud.callar(true);
+  }
+
+  // LA T DURANTE LA INTRODUCCIÓN. Baja todo de una y deja al jugador donde iba
+  // a quedar igual: de pie, con la columna formada y el clarín sin tocar.
+  saltar () {
+    if (!this.corriendo) return false;
+    const { hud } = this.ctx;
+    this.corriendo = false;
+    hud.placa(null);
+    hud.fundir(0, 0.25);
+    hud.decir('', 0);
+    this._listo();
+    return true;
+  }
+
+  // El cartel que queda cuando la introducción terminó, se la haya visto o no.
+  // EL HUD VUELVE PRIMERO Y EL CARTEL DESPUÉS: el cartel vive adentro del HUD,
+  // así que pedirlo con el HUD todavía callado es escribirlo abajo de la
+  // sábana. Se lo deja pasar un cuadro.
+  _listo () {
+    const { hud } = this.ctx;
+    // y se calla la última línea: el cartel y el subtítulo no comparten
+    // momento. El reloj del subtítulo es el del bucle y no el de pared, así que
+    // esperar a que se apague solo no es una garantía de nada.
+    hud.decir('');
+    hud.callar(false);
+    hud.cartel('[T] TOCÁ EL CLARÍN', 3.5);
+  }
+
+  actualizar () {
+    if (!this.corriendo) return;
+    const { hud, sonido } = this.ctx;
+    if (!this.t0) {
+      if (++this._cuadros < 2) return;      // el primero es el cuadro que tarda
+      this.t0 = this._ahora();
+      hud.fundir(0, A_NEGRO);
+    }
+    this.t = this._ahora() - this.t0;
+
+    // se apaga la placa justo después de que el negro terminó de abrirse
+    if (this.t >= A_NEGRO + 0.4 && this._paso < 1) {
+      this._paso = 1;
+      hud.placa(null);
+    }
+    if (this.t >= A_PARTE && this._paso < 2) {
+      this._paso = 2;
+      hud.decir(PARTE, A_ORDEN - A_PARTE - 0.3, 'Granadero');
+    }
+    if (this.t >= A_ORDEN && this._paso < 3) {
+      this._paso = 3;
+      hud.decir(ORDEN, A_FIN - A_ORDEN - 0.3, 'San Martín');
+      if (sonido && sonido.grito) sonido.grito();
+    }
+    if (this.t >= A_FIN) {
+      this.corriendo = false;
+      this._listo();
+    }
+  }
+
+  // adelantar el reloj a mano, para las pruebas: mueve el punto de partida
+  // hacia atrás, que es exactamente lo mismo que haber esperado.
+  adelantar (seg) {
+    if (!this.t0) { this.actualizar(); this.actualizar(); }
+    this.t0 -= seg;
+    this.actualizar();
+  }
+
+  reiniciar () {
+    this.corriendo = false;
+    this.t = 0;
+    this.t0 = 0;
+    this._paso = 0;
+    if (this.ctx.hud) { this.ctx.hud.placa(null); this.ctx.hud.callar(false); }
   }
 }

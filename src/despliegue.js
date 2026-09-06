@@ -259,8 +259,11 @@ export function armarDespliegue (ctx) {
     campo.oleadas = false;           // acá no llegan refuerzos sueltos: es LA batalla
 
     if (campo.alFormar) campo.alFormar();
+    // SIN RENGLÓN ACÁ. Lo que se contaba —cuántos granaderos tenés atrás y que
+    // enfrente todavía no saben que llegaste— ahora lo dice la apertura de la
+    // misión, y mejor: con la fecha, la hora y el parte del que los vio
+    // desembarcar. Un subtítulo en este mismo instante se lo comía la placa.
     hud.mostrarAviso('Tu columna está formada · [T] toca el clarín', 'bien');
-    hud.decir('Sesenta granaderos formados a tu espalda. Del otro lado del convento, los realistas todavía no saben que estás acá.', 7);
     return { oeste: pinza.oeste.hombres.length, este: pinza.este.hombres.length, realistas };
   };
 

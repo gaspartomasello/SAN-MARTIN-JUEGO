@@ -28,7 +28,7 @@ import { Jugador } from './jugador.js';
 import { Sable } from './sable.js';
 import { Soldado } from './soldados.js';
 import { penalCargaMontado } from './caballo.js';
-import { ActoCabral, ActoVictoria } from './acto.js';
+import { ActoCabral, ActoVictoria, ActoApertura } from './acto.js';
 import { PasadaArma } from './pasadaArma.js';
 import { PasadaVelocidad } from './pasadaVelocidad.js';
 import { Lejania } from './lejania.js';
@@ -235,7 +235,7 @@ const moral = armarMoral({
 // Se rearma el campo: la moral vuelve a cero, la victoria vuelve a estar por
 // ganarse, y no quedan manchas de la batalla anterior —son lo único de los
 // efectos que se queda, así que son lo único que hay que barrer—.
-campo.alFormar = () => { moral.reiniciar(); victoria.reiniciar(); fuego.limpiarManchas(); };
+campo.alFormar = () => { moral.reiniciar(); victoria.reiniciar(); apertura.reiniciar(); fuego.limpiarManchas(); };
 
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 // AL MORIR EN UNA PARTIDA DE A DOS SE PASA A MIRAR, no a esperar. En solitario
@@ -244,15 +244,28 @@ jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 // veinte minutos mirando el pasto desde donde caíste no es un modo de juego.
 // LAS ÚLTIMAS PALABRAS. Son de él, no inventadas, y se sortea una: morir tres
 // veces y leer tres veces lo mismo convierte una frase en un cartel.
+// CADA UNA CON SU FIRMA. Una frase sin autor abajo no es una cita, es una
+// leyenda: el jugador lee algo que suena a época y no sabe si lo dijo alguien
+// o lo escribió el que hizo el juego. Y este juego no puede permitirse esa
+// duda, porque la regla de acá es que no se inventa una frase y se le pone un
+// prócer debajo.
+//
+// Y NO SON TODAS DE SAN MARTÍN. La campaña no la hizo él solo y las dos
+// últimas son de Belgrano, que es el que fundó la escarapela, la bandera y el
+// ejército con el que después se cruzan los Andes. «¡Ay, Patria mía!» son sus
+// últimas palabras, el 20 de junio de 1820, y por eso es la que mejor cae en
+// una pantalla en la que te acabás de morir.
 const ULTIMAS = [
-  'Serás lo que debas ser, o no serás nada.',
-  'Seamos libres, que lo demás no importa nada.',
-  'De lo que son capaces mis granaderos, sólo yo lo sé; quien los iguale habrá, quien los exceda, no.',
-  'Se puede quitar la vida a un hombre, pero no el honor.',
-  'La Patria no hace un soldado para que la deshonre.',
-  'La soberbia y el desprecio, hijo mío, no son cosa de valientes.',
-  'A la desgracia se la vence con la firmeza.',
-  'Cuando la Patria está en peligro, todo es lícito menos dejarla perecer.'
+  ['Serás lo que debas ser, o no serás nada.', 'José de San Martín'],
+  ['Seamos libres, que lo demás no importa nada.', 'José de San Martín'],
+  ['De lo que son capaces mis granaderos, sólo yo lo sé; quien los iguale habrá, quien los exceda, no.', 'José de San Martín'],
+  ['Se puede quitar la vida a un hombre, pero no el honor.', 'José de San Martín'],
+  ['La Patria no hace un soldado para que la deshonre.', 'José de San Martín'],
+  ['La soberbia y el desprecio, hijo mío, no son cosa de valientes.', 'José de San Martín'],
+  ['A la desgracia se la vence con la firmeza.', 'José de San Martín'],
+  ['Cuando la Patria está en peligro, todo es lícito menos dejarla perecer.', 'José de San Martín'],
+  ['¡Ay, Patria mía!', 'Manuel Belgrano'],
+  ['Nada debe importarnos tanto como la felicidad del pueblo.', 'Manuel Belgrano']
 ];
 // Y NUNCA DOS VECES SEGUIDAS. Sorteo a secas quiere decir que una de cada
 // ocho muertes repite la anterior, y una frase repetida deja de ser una frase:
@@ -266,7 +279,8 @@ function frasePostrera () {
   let i = Math.floor(Math.random() * (ULTIMAS.length - 1));
   if (i >= ultimaFrase) i++;                  // salta la de la vez pasada
   ultimaFrase = i % ULTIMAS.length;
-  return ULTIMAS[ultimaFrase];
+  const [texto, autor] = ULTIMAS[ultimaFrase];
+  return texto + ' — ' + autor;
 }
 
 jugador.alMorir = () => {
@@ -369,6 +383,11 @@ pinza.alTocar = () => {
 // victoria se marca, el escuadrón vuelve al portón del convento —de donde
 // salieron a las cinco y media— y se cierra cuando llegás.
 const victoria = new ActoVictoria({ escena, hud, sonido, jugador, soldados, pinza });
+
+// LA APERTURA DE LA MISIÓN. No mira el campo ni lo toca: sólo lleva un reloj y
+// escribe en el HUD, así que le alcanza con esos dos. Quien la arranca es
+// mando.js cuando entra a la batalla, y quien la corta es la T.
+const apertura = new ActoApertura({ hud, sonido });
 // EN RED LO CANTA EL QUE LO VE, y lo escuchan todos. El invitado no simula la
 // batalla y por eso no detecta el final: se lo dice el anfitrión. Pero la
 // llegada al portón sí la puede cantar cualquiera, y alcanza con uno.
@@ -380,7 +399,7 @@ red.alVictoria = (fase) => {
 };
 
 const plano = armarPlano({ hud });
-const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, opciones });
+const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones });
 
 addEventListener('resize', () => {
   camara.aspect = innerWidth / innerHeight;
@@ -480,6 +499,7 @@ function simular (dt) {
     }
   }
   acto.actualizar(dt, mando.teclas);
+  apertura.actualizar(dt);
 
   jugador.actualizar(dt, mando.teclas, quiereApuntar, arma ? arma.cargando : false);
 
@@ -685,7 +705,7 @@ window.juego = {
   balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, render,
-  lejania, pasadaVel, pinza, canones, acto, victoria, opciones, hud, simular,
+  lejania, pasadaVel, pinza, canones, acto, victoria, apertura, opciones, hud, simular,
   get armas () { return arsenal.armas; },
   get caballo () { return campo.caballo; },
   get arma () { return arsenal.actual(); },

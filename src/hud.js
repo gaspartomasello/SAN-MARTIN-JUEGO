@@ -23,6 +23,8 @@ export class Hud {
     this.cartelEl = $('#cartel');
     this.cartelTexto = '';
     this.cartelT = 0;
+    this.placaEl = $('#placa');
+    this.placaT = 0;
     this.tFrase = 0;
     this.tomar = $('#tomar');
     this.aviso = $('#aviso');
@@ -52,17 +54,69 @@ export class Hud {
 
   // Una línea sola, abajo y al centro. Es la voz del acto: no hay más HUD que
   // esto durante los diecisiete segundos que dura.
-  decir (texto, segundos) {
-    this.frase.textContent = texto;
+  // `quien` es opcional y cambia lo que ES la línea. Sin él, el subtítulo es la
+  // voz del juego —el narrador que cuenta que están bajando la barranca—. Con
+  // él, es alguien hablando en el campo, y entonces hay que decir quién: dos
+  // hombres distintos diciéndose cosas sin nombre encima son un solo texto que
+  // se contradice. El nombre va arriba y en bronce; la frase, abajo.
+  decir (texto, segundos, quien) {
+    // `decir('')` es «callate»: lo usa la T para cortar la introducción en
+    // seco. Sin esto quedaba el renglón vacío prendido tres segundos más.
+    if (!texto) { this.tFrase = 0; this.frase.classList.remove('si'); return; }
+    if (quien) {
+      this.frase.textContent = '';
+      const b = document.createElement('b');
+      b.textContent = quien;
+      this.frase.appendChild(b);
+      this.frase.appendChild(document.createTextNode(texto));
+    } else {
+      this.frase.textContent = texto;
+    }
     this.frase.classList.add('si');
     this.tFrase = segundos || 3.2;
+  }
+
+  // EL HUD SE CALLA. Lo pide la apertura mientras dura la cinemática: con el
+  // contador de cartuchos y la barra de recarga puestos, lo que se ve no es
+  // una escena, es una partida con letras encima.
+  callar (si) {
+    const h = document.getElementById('hud');
+    if (h) { h.style.transitionDuration = ''; h.classList.toggle('callado', !!si); }
+  }
+
+  // LA PLACA DE LA MISIÓN. Tres renglones —dónde, cuándo, quiénes— sobre el
+  // negro que se abre al empezar, y los mismos tres al cerrar con el saldo de
+  // la batalla. Es la única parte del juego que habla desde afuera del campo,
+  // así que no se mezcla con el HUD: tiene su capa y su tipografía.
+  //
+  // Se le pasa `null` para bajarla antes de tiempo, que es lo que hace la T
+  // cuando el jugador no quiere ver la introducción.
+  placa (partes, seg = 3) {
+    if (!this.placaEl) return;
+    if (!partes) {
+      this.placaT = 0;
+      this.placaEl.classList.remove('si');
+      return;
+    }
+    const [t, s, c] = ['.t', '.s', '.c'].map(q => this.placaEl.querySelector(q));
+    t.textContent = partes.titulo || '';
+    s.textContent = partes.sub || '';
+    c.textContent = partes.cuerpo || '';
+    this.placaT = seg;
+    this.placaEl.classList.add('si');
   }
 
   // EL FUNDIDO A NEGRO. Existe por una sola razón y es tapar el cambio de
   // cuerpo del acto Cabral: pasar de estar tirado bajo el caballo a estar de
   // pie once metros más atrás no se puede hacer con un corte, se ve el truco.
   fundir (a, segundos) {
-    this.fundido.style.transition = `opacity ${segundos || 0.9}s linear`;
+    // CERO SEGUNDOS ES CERO, no «no me dijiste nada». Decía `segundos || 0.9`,
+    // y con eso pedir el negro AL INSTANTE —que es lo que necesita la apertura
+    // para tapar el primer cuadro— daba un fundido de casi un segundo: el
+    // negro recién estaba entrando cuando ya lo mandaban a salir, y la placa
+    // se leía sobre el campo en vez de sobre el negro.
+    const seg = segundos === undefined ? 0.9 : segundos;
+    this.fundido.style.transition = `opacity ${seg}s linear`;
     // OJO: cambiar la transición y el valor en el mismo tick hace que el
     // navegador salte al final en vez de animar —agrupa los dos cambios en un
     // solo recálculo y no le queda un valor de partida—. Leer una propiedad
@@ -146,6 +200,11 @@ export class Hud {
   }
 
   actualizar (dt, datos) {
+    // la placa se apaga sola, como el cartel
+    if (this.placaT > 0) {
+      this.placaT -= dt;
+      if (this.placaT <= 0) this.placaEl.classList.remove('si');
+    }
     // el cartel se apaga solo
     if (this.cartelT > 0) {
       this.cartelT -= dt;

@@ -10,7 +10,7 @@
 // juego, está en el archivo equivocado.
 
 export function armarMando (ctx) {
-  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, opciones } = ctx;
+  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones } = ctx;
 
   const teclas = new Set();
   const sensibilidad = 0.0021;
@@ -75,6 +75,11 @@ export function armarMando (ctx) {
       // nada hasta que el otro dé la señal— es exactamente lo que se sintió el
       // 3 de febrero a las cinco y media de la mañana.
       case 'KeyT': {
+        // LA PRIMERA T BAJA LA INTRODUCCIÓN Y NADA MÁS. El que ya la vio no
+        // quiere leer diecisiete segundos de placa y parte para pelear, y la
+        // tecla que tiene en el dedo es ésta. Pero no toca el clarín: eso lo
+        // decide él con la segunda, apretada a propósito y no de apurado.
+        if (apertura && apertura.saltar()) break;
         if (red && red.esInvitado) {
           hud.mostrarAviso('El clarín lo toca San Martín', 'malo');
           break;
@@ -276,6 +281,11 @@ export function armarMando (ctx) {
     // pone el reloj cuando se entra por la batalla.
     if (acto) acto.enBatalla = modo === 'batalla';
     if (modo === 'batalla') campo.formarPinza();
+    // Y RECIÉN ACÁ LA INTRODUCCIÓN, después de que el campo está armado: la
+    // placa se lee sobre el negro, pero cuando el negro se abre lo que tiene
+    // que haber atrás es la columna formada y no un campo a medio poner. En
+    // práctica no va: ahí no hay misión que abrir, hay un campo de tiro.
+    if (modo === 'batalla' && apertura) apertura.arrancar();
     lienzo.requestPointerLock();
   }
 

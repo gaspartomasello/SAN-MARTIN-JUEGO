@@ -26,11 +26,47 @@
   /* el túnel del galope: se cierra con la velocidad del caballo */
   /* una pieza te tiene en el cono y está cebando: dos segundos para salirte */
   /* la voz del acto: una línea sola, abajo y al centro */
-  #frase{position:fixed;left:0;right:0;bottom:16%;text-align:center;z-index:12;
+  /* ARRIBA DE LA BARRA DE RECARGA, SIEMPRE. El 16% solo alcanza en pantallas
+     altas: `#paso` está anclado a 96 px del piso, así que en una de 620 los dos
+     caían en el mismo renglón y la segunda línea del subtítulo se leía encima
+     de «2/4 · Cebar la cazoleta». El piso de 150 px lo separa en cualquier alto
+     sin mover nada en las pantallas donde ya estaba bien. */
+  #frase{position:fixed;left:0;right:0;bottom:max(16%,150px);text-align:center;z-index:12;
     pointer-events:none;opacity:0;transition:opacity .6s ease;
     font-size:21px;letter-spacing:.03em;color:#f2ead6;
     text-shadow:0 2px 14px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.8);padding:0 8%}
   #frase.si{opacity:1}
+  /* QUIÉN HABLA. Sólo aparece cuando el subtítulo es una voz y no la voz del
+     juego: el nombre en versalitas y bronce, la frase abajo en hueso. */
+  #frase b{display:block;font-family:var(--ui);font-size:13px;font-weight:600;
+    letter-spacing:.26em;text-transform:uppercase;color:var(--bronce);
+    margin-bottom:7px;opacity:.92}
+
+  /* LA PLACA. El cartel de tres renglones que abre y cierra la misión: dónde
+     estamos, qué día es y qué unidad somos. Va por ENCIMA del fundido —z 13
+     contra 9— porque su trabajo es leerse sobre el negro mientras el negro se
+     abre. Es la única tipografía del juego que no es del HUD: acá no está
+     hablando el granadero, está hablando el libro de historia. */
+  /* SU PROPIO VELO. La placa se cruza medio segundo con el campo ya iluminado
+     —el negro termina de abrirse antes de que ella se vaya, a propósito, para
+     que el pase sea blando— y ahí, sin esto, no se leía una palabra. El velo
+     se va con ella en la misma transición. */
+  #placa{position:fixed;left:0;right:0;top:50%;transform:translateY(-50%);z-index:13;
+    pointer-events:none;opacity:0;transition:opacity .7s ease;text-align:center;
+    padding:52px 9%;text-shadow:0 2px 20px rgba(0,0,0,.95),0 0 4px rgba(0,0,0,.9);
+    background:linear-gradient(180deg,rgba(8,10,14,0) 0%,rgba(8,10,14,.72) 26%,
+      rgba(8,10,14,.72) 74%,rgba(8,10,14,0) 100%)}
+  #placa.si{opacity:1}
+  #placa .t{font-family:"Cinzel","Libre Caslon Display",Georgia,serif;font-weight:600;
+    font-size:clamp(26px,3.4vw,44px);letter-spacing:.12em;line-height:1.18;
+    color:var(--hueso)}
+  #placa .s{font-family:var(--ui);font-size:clamp(13px,1.3vw,17px);letter-spacing:.3em;
+    text-transform:uppercase;color:var(--bronce);margin-top:14px}
+  #placa .c{font-family:"Libre Caslon Display",Georgia,serif;
+    font-size:clamp(15px,1.5vw,20px);line-height:1.55;color:var(--hueso);
+    opacity:.88;margin:20px auto 0;max-width:46em}
+  /* un renglón vacío no deja su margen: la placa de apertura no tiene cuerpo */
+  #placa .s:empty,#placa .c:empty{display:none}
   /* ---- caíste ----
      Va DEBAJO de la frase de San Martín y no encima: la frase es el final de
      la escena y los botones son lo que viene después. Aparecen recién cuando
@@ -74,6 +110,12 @@
      lee es un filtro puesto arriba de un juego y no un hombre que se muere. */
   #hud{transition:opacity 1.6s ease-in}
   #hud.ojos{opacity:0}
+  /* EL HUD SE CALLA DURANTE LA APERTURA. No es lo mismo que `ojos` —eso es la
+     vista que se apaga porque te estás muriendo, y tarda—: esto es una
+     cinemática y el HUD tiene que no estar. Con el HUD puesto se leía el
+     contador de cartuchos, la barra de vida y una barra de recarga «1/4 ·
+     Morder y verter» pisando el subtítulo del granadero. */
+  #hud.callado{opacity:0;transition:opacity .45s ease}
   /* el fundido a negro del acto Cabral: tapa el cambio de cuerpo */
   #fundido{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:0;
            background:#000;transition:opacity .9s linear}
@@ -475,6 +517,7 @@
 <div id="velocidad"></div>
 <div id="parpados"></div>
 <div id="fundido"></div>
+<div id="placa"><div class="t"></div><div class="s"></div><div class="c"></div></div>
 <div id="frase"></div>
 <div id="caido" class="oculto">
   <button id="caido-otra">Volver a empezar</button>
