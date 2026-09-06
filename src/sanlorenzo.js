@@ -111,10 +111,64 @@ function convento (horno, colisiones) {
     horno.caja(x, 2.4, Z, ancho, 4.8, 0.9, CAL);
     horno.caja(x, 4.95, Z, ancho + 0.5, 0.3, 1.5, TEJA);
   }
-  // el portón: jambas de piedra y dintel
+  // EL PORTÓN, ABIERTO.
+  //
+  // Estaba cerrado por una tabla lisa de seis metros por cuatro… y se caminaba
+  // a través de ella: la colisión del frente deja libre de x=-7 a x=7 y la hoja
+  // tapaba de -3,15 a 3,15. O sea que el jugador atravesaba una puerta maciza
+  // como si fuera humo. Se arregla abriéndola y no cerrándole el paso: los
+  // granaderos formaron EN el portón a las cinco y media.
+  //
+  // ABIERTAS A SESENTA Y SEIS GRADOS Y NO DE PAR EN PAR. Contra el muro se ven
+  // de canto —veinte centímetros de tabla— y parecen dos postes; a sesenta y
+  // seis se les ve la cara, que es donde están las tablas y los clavos, y el
+  // vano sigue libre de sobra.
+  //
+  // Y NO SE LES PONE COLISIÓN. Meter cajas ahí sería angostar justo el corredor
+  // por el que se llega al portón, que es donde se canta la victoria: el riesgo
+  // no vale veinte centímetros de tabla.
   for (const s of [-1, 1]) horno.caja(s * 3.6, 2.6, Z, 0.9, 5.2, 1.2, PIEDRA);
-  horno.caja(0, 5.1, Z, 8.2, 0.8, 1.2, PIEDRA);
-  horno.caja(0, 2.1, Z, 6.3, 4.2, 0.35, MADERA);
+  horno.caja(0, 5.1, Z, 8.2, 0.8, 1.2, PIEDRA);                       // dintel
+  horno.caja(0, 5.65, Z, 8.8, 0.34, 1.45, PIEDRA);                    // y su cornisa
+
+  const HERRAJE = 0x2e2a24, CLAVO = 0x3b352c;
+  const ABRE = 1.15, W = 2.9, GRUESO = 0.20;
+  for (const s of [-1, 1]) {
+    // la hoja gira sobre el gozne, pegado a la jamba
+    const gx = s * 3.15, phi = s * ABRE;
+    const cx = gx - s * Math.cos(ABRE) * W / 2, cz = Z + Math.sin(ABRE) * W / 2;
+    // un punto de la hoja: u a lo largo de la tabla, w hacia su espesor
+    const en = (u, w) => [cx + u * Math.cos(phi) + w * Math.sin(phi),
+      cz - u * Math.sin(phi) + w * Math.cos(phi)];
+    for (let i = 0; i < 7; i++) {                      // las tablas
+      const [px, pz] = en(0, 0);
+      horno.caja(px, 0.30 + i * 0.58, pz, W, 0.54, GRUESO + (i % 3) * 0.03,
+        i % 2 ? MADERA : 0x54401f, phi);
+    }
+    for (const y of [0.75, 2.1, 3.45]) {               // las fajas de herraje
+      const [hx, hz] = en(0, -GRUESO * 0.62);
+      horno.caja(hx, y, hz, W * 0.97, 0.20, 0.05, HERRAJE, phi);
+      for (let k = 0; k < 5; k++) {                    // y los clavos
+        const [nx, nz] = en(-W / 2 + 0.35 + k * 0.55, -GRUESO * 0.72);
+        horno.caja(nx, y, nz, 0.11, 0.11, 0.06, CLAVO, phi);
+      }
+    }
+    for (const y of [0.75, 3.45]) horno.caja(gx, y, Z, 0.34, 0.16, 0.30, HERRAJE);
+  }
+
+  // LA PORTERÍA: el cuerpo que se levanta sobre el portón con la hornacina.
+  //
+  // La primera versión puso el nicho suelto a seis metros y medio de altura, y
+  // como la tapia mide 4,8 quedaba flotando contra el cielo como una chimenea.
+  // Un nicho va EN una pared: así que primero la pared. Es lo que llevaba
+  // cualquier portería de convento y es lo único que rompe los cincuenta metros
+  // de cal del frente.
+  horno.caja(0, 6.9, Z, 8.8, 3.2, 1.0, CAL);
+  horno.caja(0, 8.62, Z, 9.4, 0.34, 1.5, TEJA);                       // el remate
+  horno.caja(0, 6.9, Z - 0.30, 1.7, 2.0, 0.5, CAL_SOMBRA);            // el marco
+  horno.caja(0, 6.9, Z - 0.46, 1.15, 1.5, 0.3, 0x3a3227);             // el vano
+  horno.caja(0, 6.85, Z - 0.52, 0.14, 1.0, 0.14, PIEDRA);             // la cruz
+  horno.caja(0, 7.10, Z - 0.52, 0.56, 0.14, 0.14, PIEDRA);
 
   // la iglesia, corrida a la izquierda, de espaldas al campo
   const IX = -13, IZ = Z + 11;
@@ -183,6 +237,42 @@ function convento (horno, colisiones) {
       horno.caja(lado * 31.9, 0.42, z, 1.3, 0.84, 1.7, PIEDRA);
     }
   }
+
+  // LOS MACHONES DEL FRENTE. La tapia de la huerta ya los tiene y la del frente
+  // no: diecinueve metros de cal lisa a cada lado del portón, que es justo la
+  // pared que el jugador mira toda la batalla. Van por afuera, como los otros.
+  for (const lado of [-1, 1]) {
+    for (let i = 0; i < 4; i++) {
+      const x = lado * (7.6 + i * 4.6);
+      horno.caja(x, 2.3, Z - 0.62, 1.1, 4.6, 0.5, CAL_SOMBRA);
+      horno.caja(x, 0.42, Z - 0.66, 1.25, 0.84, 0.62, PIEDRA);
+      horno.caja(x, 4.75, Z - 0.68, 1.35, 0.28, 0.72, TEJA);
+    }
+  }
+
+  // EL PINO DEL PATIO DE ATRÁS.
+  //
+  // Va en el eje del portón —x = 0— y a veintiocho metros de él, en el hueco
+  // que queda entre la iglesia y las celdas. O sea que con las hojas abiertas
+  // se lo ve DESDE EL CAMPO, enmarcado por el vano: es lo que le da fondo al
+  // portón y lo que hace que el convento se lea como un lugar con adentro y no
+  // como un telón.
+  //
+  // No estorba a nadie: la victoria se canta a siete metros del portón, así que
+  // el jugador nunca pasa de z = 23 y el pino está en 44.
+  const PINO_X = 0, PINO_Z = 44;
+  const TRONCO = 0x4a3623, AGUJA = 0x2f4a2c, AGUJA_CLARA = 0x3d5c35;
+  horno.pieza(new THREE.CylinderGeometry(0.30, 0.46, 4.2, 8),
+    [PINO_X, 2.1, PINO_Z], null, null, TRONCO);
+  // cuatro faldones de aguja, de más ancho abajo a más angosto arriba
+  const faldas = [[3.6, 3.4, 3.0], [5.4, 2.9, 2.7], [7.0, 2.2, 2.4], [8.4, 1.4, 2.0]];
+  faldas.forEach(([y, r, h], i) => {
+    horno.pieza(new THREE.ConeGeometry(r, h, 9),
+      [PINO_X, y + h / 2, PINO_Z], [0, i * 0.4, 0], null, i % 2 ? AGUJA : AGUJA_CLARA);
+  });
+  colisiones.push(new THREE.Box3(
+    new THREE.Vector3(PINO_X - 0.5, 0, PINO_Z - 0.5),
+    new THREE.Vector3(PINO_X + 0.5, 4.2, PINO_Z + 0.5)));
 
   // colisiones: sólo las caras que importan, no las sesenta cajas
   const caja = (x0, z0, x1, z1, alto) => colisiones.push(

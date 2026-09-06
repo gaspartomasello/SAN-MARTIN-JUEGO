@@ -737,7 +737,7 @@ window.juego = {
   combate, arsenal, campo, gentio, mando, red, moral, plano, sonido,
   balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
   // el mundo
-  jugador, sable, humo, fuego, soldados, caballos, escena, camara, camaraArma, render,
+  jugador, sable, humo, fuego, soldados, caballos, escena, camara, camaraArma, render, mundo,
   lejania, pasadaVel, pinza, canones, acto, victoria, apertura, opciones, hud, simular,
   get armas () { return arsenal.armas; },
   get caballo () { return campo.caballo; },

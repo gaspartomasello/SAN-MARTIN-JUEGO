@@ -371,6 +371,52 @@ const r = await pag.evaluate(() => {
 
   j.formarPinza(4, 4);
   ok('y al rearmar el campo la placa se va', !pla.classList.contains('si'));
+
+  // ------------------------------------------------------------------------
+  // EL CAMINO AL PORTÓN
+  // ------------------------------------------------------------------------
+  // El convento es lo único que el jugador tiene entre él y la victoria, y
+  // cada cosa que se le agrega al frente —machones, la portería, las hojas del
+  // portón abiertas— es una oportunidad de tapar el corredor sin darse cuenta.
+  // Así que se prueban las dos cosas: que no haya una caja de colisión metida
+  // ahí, y que se pueda CAMINAR de verdad desde el campo hasta la flecha.
+  const PORT = { x: 0, z: 16 };
+  const tapan = [];
+  for (let z = -12; z <= 15; z += 0.5) {
+    for (const dx of [-2.2, 0, 2.2]) {
+      for (const b of j.mundo.colisiones) {
+        if (dx >= b.min.x - 0.35 && dx <= b.max.x + 0.35 &&
+            z >= b.min.z - 0.35 && z <= b.max.z + 0.35 && b.max.y > 1.0) tapan.push(`x=${dx} z=${z}`);
+      }
+    }
+  }
+  ok('ninguna colisión tapa el corredor del portón', tapan.length === 0,
+    tapan.length ? tapan.slice(0, 3).join(' · ') : `${j.mundo.colisiones.length} cajas revisadas`);
+
+  j.formarPinza(6, 6);
+  j.jugador.revivir(); j.jugador.vida = 100;
+  if (j.jugador.monta) j.jugador.desmontar();
+  j.jugador.pos.set(0, 1.68, -14); j.jugador.yaw = Math.PI; j.jugador.pitch = 0;
+  j.mando.teclas.add('KeyW');
+  let llego = false;
+  for (let i = 0; i < 60 * 22 && !llego; i++) {
+    j.simular(1 / 60);
+    llego = Math.hypot(j.jugador.pos.x - PORT.x, j.jugador.pos.z - PORT.z) <= 7;
+  }
+  j.mando.teclas.delete('KeyW');
+  ok('y se llega caminando desde el campo hasta la flecha', llego,
+    `quedó en x=${j.jugador.pos.x.toFixed(1)} z=${j.jugador.pos.z.toFixed(1)}`);
+
+  const vv = j.victoria;
+  vv.reiniciar(); vv.hubo = true; vv.fase = 'llamando';
+  for (let i = 0; i < 20; i++) vv.actualizar(1 / 60);
+  ok('y ahí se canta la victoria', vv.fase === 'llegado', `fase=${vv.fase}`);
+
+  // el pino del patio: existe, y está detrás del convento y no en el paso
+  ok('el pino del patio no está en el camino',
+    j.mundo.colisiones.some(b => b.min.z > 40 && b.max.y > 3 && Math.abs(b.min.x) < 1));
+  // y se deja la victoria como estaba: la que sigue la quiere sin cantar
+  vv.reiniciar();
   ok('al rearmar el campo vuelve a estar por ganarse', v.fase === null, `fase=${v.fase}`);
 
   // ------------------------------------------------------------------------

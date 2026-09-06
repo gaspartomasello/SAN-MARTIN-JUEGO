@@ -30092,7 +30092,45 @@ function convento(horno, colisiones) {
   }
   for (const s of [-1, 1]) horno.caja(s * 3.6, 2.6, Z, 0.9, 5.2, 1.2, PIEDRA);
   horno.caja(0, 5.1, Z, 8.2, 0.8, 1.2, PIEDRA);
-  horno.caja(0, 2.1, Z, 6.3, 4.2, 0.35, MADERA);
+  horno.caja(0, 5.65, Z, 8.8, 0.34, 1.45, PIEDRA);
+  const HERRAJE = 3025444, CLAVO = 3880236;
+  const ABRE = 1.15, W = 2.9, GRUESO = 0.2;
+  for (const s of [-1, 1]) {
+    const gx = s * 3.15, phi = s * ABRE;
+    const cx = gx - s * Math.cos(ABRE) * W / 2, cz = Z + Math.sin(ABRE) * W / 2;
+    const en = (u, w) => [
+      cx + u * Math.cos(phi) + w * Math.sin(phi),
+      cz - u * Math.sin(phi) + w * Math.cos(phi)
+    ];
+    for (let i = 0; i < 7; i++) {
+      const [px2, pz2] = en(0, 0);
+      horno.caja(
+        px2,
+        0.3 + i * 0.58,
+        pz2,
+        W,
+        0.54,
+        GRUESO + i % 3 * 0.03,
+        i % 2 ? MADERA : 5521439,
+        phi
+      );
+    }
+    for (const y of [0.75, 2.1, 3.45]) {
+      const [hx, hz] = en(0, -GRUESO * 0.62);
+      horno.caja(hx, y, hz, W * 0.97, 0.2, 0.05, HERRAJE, phi);
+      for (let k = 0; k < 5; k++) {
+        const [nx, nz] = en(-W / 2 + 0.35 + k * 0.55, -GRUESO * 0.72);
+        horno.caja(nx, y, nz, 0.11, 0.11, 0.06, CLAVO, phi);
+      }
+    }
+    for (const y of [0.75, 3.45]) horno.caja(gx, y, Z, 0.34, 0.16, 0.3, HERRAJE);
+  }
+  horno.caja(0, 6.9, Z, 8.8, 3.2, 1, CAL);
+  horno.caja(0, 8.62, Z, 9.4, 0.34, 1.5, TEJA);
+  horno.caja(0, 6.9, Z - 0.3, 1.7, 2, 0.5, CAL_SOMBRA);
+  horno.caja(0, 6.9, Z - 0.46, 1.15, 1.5, 0.3, 3813927);
+  horno.caja(0, 6.85, Z - 0.52, 0.14, 1, 0.14, PIEDRA);
+  horno.caja(0, 7.1, Z - 0.52, 0.56, 0.14, 0.14, PIEDRA);
   const IX = -13, IZ = Z + 11;
   horno.caja(IX, 4.4, IZ, 13, 8.8, 20, CAL);
   for (const s of [-1, 1]) {
@@ -30125,6 +30163,37 @@ function convento(horno, colisiones) {
       horno.caja(lado * 31.9, 0.42, z, 1.3, 0.84, 1.7, PIEDRA);
     }
   }
+  for (const lado of [-1, 1]) {
+    for (let i = 0; i < 4; i++) {
+      const x = lado * (7.6 + i * 4.6);
+      horno.caja(x, 2.3, Z - 0.62, 1.1, 4.6, 0.5, CAL_SOMBRA);
+      horno.caja(x, 0.42, Z - 0.66, 1.25, 0.84, 0.62, PIEDRA);
+      horno.caja(x, 4.75, Z - 0.68, 1.35, 0.28, 0.72, TEJA);
+    }
+  }
+  const PINO_X = 0, PINO_Z = 44;
+  const TRONCO = 4863523, AGUJA = 3099180, AGUJA_CLARA = 4021301;
+  horno.pieza(
+    new CylinderGeometry(0.3, 0.46, 4.2, 8),
+    [PINO_X, 2.1, PINO_Z],
+    null,
+    null,
+    TRONCO
+  );
+  const faldas = [[3.6, 3.4, 3], [5.4, 2.9, 2.7], [7, 2.2, 2.4], [8.4, 1.4, 2]];
+  faldas.forEach(([y, r, h], i) => {
+    horno.pieza(
+      new ConeGeometry(r, h, 9),
+      [PINO_X, y + h / 2, PINO_Z],
+      [0, i * 0.4, 0],
+      null,
+      i % 2 ? AGUJA : AGUJA_CLARA
+    );
+  });
+  colisiones.push(new Box3(
+    new Vector3(PINO_X - 0.5, 0, PINO_Z - 0.5),
+    new Vector3(PINO_X + 0.5, 4.2, PINO_Z + 0.5)
+  ));
   const caja3 = (x0, z0, x1, z1, alto) => colisiones.push(
     new Box3(
       new Vector3(Math.min(x0, x1), 0, Math.min(z0, z1)),
@@ -44454,6 +44523,7 @@ window.juego = {
   camara,
   camaraArma,
   render,
+  mundo,
   lejania,
   pasadaVel,
   pinza,
