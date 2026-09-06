@@ -235,7 +235,14 @@ const moral = armarMoral({
 // Se rearma el campo: la moral vuelve a cero, la victoria vuelve a estar por
 // ganarse, y no quedan manchas de la batalla anterior —son lo único de los
 // efectos que se queda, así que son lo único que hay que barrer—.
-campo.alFormar = () => { moral.reiniciar(); victoria.reiniciar(); apertura.reiniciar(); fuego.limpiarManchas(); };
+// Y AL REARMAR EL CAMPO, la moral vuelve a cero y se entera de quiénes son el
+// tambor y el abanderado de esta batalla. En ese orden: `reiniciar` los borra.
+campo.alFormar = () => {
+  moral.reiniciar();
+  const p = campo.papeles;
+  if (p) moral.marcarPapeles(p.tambor, p.abanderado);
+  victoria.reiniciar(); apertura.reiniciar(); fuego.limpiarManchas();
+};
 
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 // AL MORIR EN UNA PARTIDA DE A DOS SE PASA A MIRAR, no a esperar. En solitario
@@ -285,6 +292,9 @@ function frasePostrera () {
 
 jugador.alMorir = () => {
   hud.mostrarAviso('Fuera de combate', 'malo');
+  // y si te matan en los primeros segundos, la introducción se calla: nada de
+  // seguir dando la orden de cargar por encima de tu propio cadáver
+  apertura.cortar();
 
   // EN RED SE PASA A MIRAR, porque los otros siguen peleando y no se los puede
   // hacer esperar. En solitario no hay a quién esperar y lo que corresponde es
@@ -388,6 +398,14 @@ const victoria = new ActoVictoria({ escena, hud, sonido, jugador, soldados, pinz
 // escribe en el HUD, así que le alcanza con esos dos. Quien la arranca es
 // mando.js cuando entra a la batalla, y quien la corta es la T.
 const apertura = new ActoApertura({ hud, sonido });
+
+// ROBARLE LA BANDERA ES EL TERCER TERCIO DEL DESALIENTO. El arsenal sabe
+// agarrarla —es lo que el jugador lleva encima— y la moral sabe qué significa;
+// el cable entre las dos cosas va acá, que es donde se conocen.
+arsenal.alRobarBandera = () => {
+  moral.robarBandera();
+  hud.cartel('¡BANDERA TOMADA!', 2.6);
+};
 // EN RED LO CANTA EL QUE LO VE, y lo escuchan todos. El invitado no simula la
 // batalla y por eso no detecta el final: se lo dice el anfitrión. Pero la
 // llegada al portón sí la puede cantar cualquiera, y alcanza con uno.
@@ -500,6 +518,8 @@ function simular (dt) {
   }
   acto.actualizar(dt, mando.teclas);
   apertura.actualizar(dt);
+  arsenal.flamearBandera(dt);
+  arsenal.flamearBandera(dt);
 
   jugador.actualizar(dt, mando.teclas, quiereApuntar, arma ? arma.cargando : false);
 

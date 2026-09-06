@@ -17,7 +17,8 @@ import { Soldado } from './soldados.js';
 import { Caballo } from './caballo.js';
 import { Canon } from './canon.js';
 import { PLAZA_OESTE, PLAZA_ESTE } from './pinza.js';
-import { ALIADOS_MAX, ENEMIGOS_MAX, MONTADOS, OLEADA_REALISTA, OLEADA_GRANADERO } from './balance.js';
+import { ALIADOS_MAX, ENEMIGOS_MAX, MONTADOS, OLEADA_REALISTA, OLEADA_GRANADERO,
+  LINEA_MINIMA } from './balance.js';
 
 // DÓNDE ESTÁN LAS DOS PIEZAS. Sale de acá y no de un número suelto adentro de
 // ponerCanones porque el plano de la batalla las tiene que dibujar donde de
@@ -206,13 +207,34 @@ export function armarDespliegue (ctx) {
     // cuarenta. La infantería de la época se desplegaba en dos o tres filas
     // justamente por eso. En tres, ochenta y cuatro fusiles miran al campo.
     const PORFILA = Math.ceil(realistas / FILAS_REALISTAS);
+
+    // EL TAMBOR Y EL ABANDERADO VAN ADENTRO, NO ADELANTE.
+    //
+    // En la fila del medio y separados entre sí: es donde iban —la caja y el
+    // paño marchan con el centro, detrás de la primera fila— y es lo que hace
+    // que buscarlos sea una decisión. Cada uno queda con un puñado de hombres
+    // alrededor a los que sostiene, y ese puñado es un nudo que no se quiebra
+    // cuando el resto de la línea sí. El jugador lee el nudo y sabe dónde ir.
+    // Separados, además, son DOS lugares a los que ir y no uno.
+    //
+    // Sólo en una batalla de verdad. Con menos de una línea no hay línea que
+    // sostener, y en una escaramuza de cuatro hombres dos sin fusil son media
+    // fuerza desarmada: las pruebas chicas arman pinzas de cuatro.
+    const conPapeles = realistas >= LINEA_MINIMA;
+    const kTambor = conPapeles ? PORFILA + Math.floor(PORFILA * 0.34) : -1;
+    const kBandera = conPapeles ? PORFILA + Math.floor(PORFILA * 0.68) : -1;
+    campo.papeles = { tambor: null, abanderado: null };
+
     for (let k = 0; k < realistas; k++) {
       const fila = Math.floor(k / PORFILA);
+      const papel = k === kTambor ? 'tambor' : (k === kBandera ? 'abanderado' : null);
       const s = soltarSoldado('realista', {
+        papel,
         pos: new THREE.Vector3(
           -(PORFILA * PASO_FILA / 2) + (k % PORFILA) * PASO_FILA, 0,
           Z_DESEMBARCO - fila * FONDO_FILA)
       });
+      if (papel) campo.papeles[papel] = s;
       // MIRAN AL CONVENTO. Subieron de la barranca a saquearlo: el río les
       // queda atrás. Nacían mirando a −z, o sea al agua, y con la moral puesta
       // eso los dejaba flanqueados por su propio objetivo desde el cuadro uno.

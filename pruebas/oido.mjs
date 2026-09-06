@@ -295,13 +295,18 @@ const caido = await pag.evaluate(() => {
   const c = document.getElementById('caido');
   return {
     visible: !c.classList.contains('oculto') && c.classList.contains('si'),
-    frase: document.getElementById('frase').textContent.slice(0, 34),
+    frase: document.getElementById('frase').textContent,
     dice: document.getElementById('caido-otra').textContent,
     suelto: !document.pointerLockElement
   };
 });
 r.push([caido.visible ? 'OK ' : 'MAL', 'terminado el fundido, aparecen los botones', caido.dice]);
-r.push([caido.frase.length > 8 ? 'OK ' : 'MAL', 'con la frase de San Martín abajo', caido.frase + '…']);
+// CON SU FIRMA, y por eso no alcanza con que haya texto. Medir sólo el largo
+// dejó pasar un defecto entero: la introducción de la misión seguía corriendo
+// encima del muerto y lo que había abajo era la orden del clarín, no una cita.
+// Una prueba que se conforma con «hay letras» no prueba nada.
+r.push([/ — (José de San Martín|Manuel Belgrano)$/.test(caido.frase.trim()) ? 'OK ' : 'MAL',
+  'con la cita del que muere abajo, y firmada', caido.frase]);
 r.push([caido.suelto ? 'OK ' : 'MAL', 'y el mouse es tuyo, si no no se puede apretar nada']);
 
 // VOLVER A EMPEZAR es empezar de nuevo, no levantarse: la pinza tiene que

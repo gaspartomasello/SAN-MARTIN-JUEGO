@@ -702,66 +702,123 @@ function tambor (taller, h) {
 const PANO = 0xf2efe4;
 const ASPA = 0xc22b2b;
 
+// EL ASTA ES UN HUESO, y de ella cuelga todo lo demás.
+//
+// Podría ir pegada al torso como el morrión o la mochila, pero entonces no
+// habría manera de SACARLA: las piezas viven adentro de la malla del cuerpo y
+// ahí no se prende ni se apaga una por una. Colgando el asta de su propio
+// hueso, robarle la bandera al muerto es achicar ese hueso a cero y las
+// veintitantas piezas se van con él —el palo, la moharra y las tres tiras—
+// sin tocar una sola geometría.
+//
+// Y de paso todo se calcula en coordenadas del asta, donde +Y ES el palo: la
+// primera versión ubicaba el paño en coordenadas del torso y hubo que resolver
+// a mano dónde caía el palo a esa altura, con el error de sesenta centímetros
+// que eso trajo.
 function bandera (taller, h) {
-  // EL ASTA Y EL PAÑO SE CALCULAN, NO SE TANTEAN. La primera versión le puso
-  // al asta una inclinación en X que el paño no tenía y los dos quedaron a
-  // sesenta centímetros de distancia en profundidad: la bandera flotaba al
-  // lado del palo. Ahora el asta se inclina en UN solo eje y todo lo demás
-  // sale de dónde está el asta a cada altura.
   const ASTA = 2.05, INCLINA = -0.16;
-  const bx = 0.17, by = 0.26, bz = -0.02;
-  const dx = Math.sin(-INCLINA), dy = Math.cos(-INCLINA);   // el eje del asta
-  taller.add(h.torso, cil(0.021, 0.026, ASTA, 6), 0x6b4a2a,
-    { p: [bx + dx * ASTA / 2, by + dy * ASTA / 2, bz], r: [0, 0, INCLINA] });
-  taller.add(h.torso, cil(0.004, 0.030, 0.15, 6), 0xb9832f,          // la moharra
-    { p: [bx + dx * ASTA + 0.012, by + dy * ASTA + 0.06, bz], r: [0, 0, INCLINA], metal: true });
+  const asta = new THREE.Group();
+  asta.position.set(0.17, 0.26, -0.02);
+  asta.rotation.z = INCLINA;
+  h.torso.add(asta);
+  h.asta = asta;
+
+  taller.add(asta, cil(0.021, 0.026, ASTA, 6), 0x6b4a2a, { p: [0, ASTA / 2, 0] });
+  taller.add(asta, cil(0.004, 0.030, 0.15, 6), 0xb9832f, { p: [0, ASTA + 0.06, 0], metal: true });
 
   // ---- EL PAÑO, QUE FLAMEA ----
   //
   // Un paño rígido es una chapa pintada. Pero animarlo por cuadro querría
-  // decir tocar los vértices en el bucle de dibujo, que en este proyecto no se
-  // hace. La salida es el esqueleto, que ya está: el paño se parte en TRES
-  // TIRAS y cada tira cuelga de su propio hueso, encadenados uno al otro desde
-  // el asta hacia afuera. Girar esos huesos —lo hace Figura.actualizar— ondula
-  // la tela sin crear ni tocar una sola geometría, y como el Taller junta por
-  // hueso, las tres tiras siguen entrando en la misma malla del cuerpo.
+  // decir tocar los vértices adentro del bucle de dibujo, que en este proyecto
+  // no se hace. La salida es el esqueleto, que ya está: el paño se parte en
+  // TRES TIRAS y cada tira cuelga de su propio hueso, encadenados uno al otro
+  // desde el asta hacia afuera. Girarlos ondula la tela sin crear ni tocar una
+  // geometría, y como el Taller junta por hueso las tres tiras siguen entrando
+  // en la misma malla del cuerpo: cero llamadas de dibujo nuevas.
   //
   // Encadenados y no hermanos: así el giro se ACUMULA y la punta se mueve
   // mucho más que el borde pegado al asta, que es como flamea una bandera.
-  const AN = 0.86, AL = 0.62, GRUESO = 0.012, TIRAS = 3;
-  const fy = by + dy * ASTA - 0.14 - AL / 2;            // el paño cuelga de arriba
-  const px = bx + dx * (fy - by) / dy;                  // el asta, a esa altura
-  const ancho = AN / TIRAS;
+  const huesos = pano(taller, asta, ASTA - 0.14 - AL_PANO / 2);
+  h.trapo = huesos.slice(1);        // los dos que se mueven; el primero es el nudo
+}
 
-  let padre = h.torso;
+const AN_PANO = 0.86, AL_PANO = 0.62;
+
+// El paño solo, colgado de donde se le diga. Devuelve la cadena de huesos.
+// Se usa dos veces: en el abanderado y en la bandera que se lleva el jugador.
+function pano (taller, asta, alto) {
+  const GRUESO = 0.012, TIRAS = 3;
+  const ancho = AN_PANO / TIRAS;
+  let padre = asta;
   const huesos = [];
   for (let i = 0; i < TIRAS; i++) {
     const g = new THREE.Group();
-    if (i === 0) { g.position.set(px, fy, bz); g.rotation.z = INCLINA; }
-    else g.position.set(ancho, 0, 0);
+    g.position.set(i === 0 ? 0 : ancho, i === 0 ? alto : 0, 0);
     padre.add(g);
     padre = g;
     huesos.push(g);
   }
-  h.trapo = huesos.slice(1);        // los dos que se mueven; el primero es el nudo
 
-  // EL ASPA se dibuja POR TIRA. La cruz de Borgoña cruza el paño entero, así
+  // EL ASPA SE DIBUJA POR TIRA. La cruz de Borgoña cruza el paño entero, así
   // que en cada tira entra un pedazo de cada brazo: el centro de ese pedazo
   // está donde la diagonal pasa por el medio de la tira, y su largo es el
   // ancho de la tira estirado por la pendiente.
-  const giro = Math.atan2(AL, AN), largo = ancho / Math.cos(giro);
+  const giro = Math.atan2(AL_PANO, AN_PANO), largo = ancho / Math.cos(giro);
   for (let i = 0; i < TIRAS; i++) {
     const g = huesos[i];
-    const cx = ancho / 2;                       // el medio de la tira, en su hueso
-    const xEnPano = cx + i * ancho - AN / 2;    // y dónde cae eso en el paño entero
-    taller.add(g, caja(ancho, AL, GRUESO), PANO, { p: [cx, 0, 0] });
+    const cx = ancho / 2;
+    const xEnPano = cx + i * ancho - AN_PANO / 2;
+    taller.add(g, caja(ancho, AL_PANO, GRUESO), PANO, { p: [cx, 0, 0] });
     for (const s of [-1, 1]) {
       for (const cara of [-1, 1]) {
         taller.add(g, caja(largo, 0.135, GRUESO * 0.5), ASPA,
-          { p: [cx, s * xEnPano * (AL / AN), cara * GRUESO * 0.75], r: [0, 0, s * giro] });
+          { p: [cx, s * xEnPano * (AL_PANO / AN_PANO), cara * GRUESO * 0.75], r: [0, 0, s * giro] });
       }
     }
   }
+  return huesos;
+}
+
+// LA BANDERA QUE SE LLEVA EL JUGADOR, en la cámara del arma.
+//
+// Es el mismo paño y el mismo asta, con dos diferencias. Va SUELTA —cada hueso
+// se queda con su propia malla en vez de fundirse en una piel— porque acá no
+// hay esqueleto que la anime: la ondulan los grupos girando, que es más simple
+// y son cinco llamadas de dibujo en la escena del arma, que dibuja cuatro
+// cosas.
+//
+// Y VA EN LA IZQUIERDA. El corvo se lleva en la derecha y no se suelta: el
+// asta ocupa la mano que no pelea, que es exactamente cómo se llevaba una
+// bandera en una carga y por qué robarla no te cuesta el sable.
+export function banderaEnMano () {
+  const taller = new Taller();
+  const raiz = new THREE.Group();
+  const asta = new THREE.Group();
+  asta.userData.suelto = true;
+  raiz.add(asta);
+  const LARGO = 1.15;
+  taller.add(asta, cil(0.021, 0.026, LARGO, 6), 0x6b4a2a, { p: [0, LARGO / 2 - 0.45, 0] });
+  taller.add(asta, cil(0.004, 0.030, 0.12, 6), 0xb9832f, { p: [0, LARGO - 0.40, 0], metal: true });
+  const huesos = pano(taller, asta, LARGO - 0.52);
+  for (const g of huesos) g.userData.suelto = true;
+  taller.cocinar(null);
+
+  raiz.scale.setScalar(0.62);
+  raiz.position.set(-0.30, -0.46, -0.52);
+  raiz.rotation.set(0.10, 0.22, 0.30);
+  raiz.traverse(o => { o.frustumCulled = false; });
+  raiz.visible = false;
+  return { raiz, trapo: huesos.slice(1), t: 0 };
+}
+
+// y el flameo, que es el mismo de la figura pero sin esqueleto de por medio
+export function flamear (b, dt) {
+  b.t += dt;
+  const w = b.t, [a, c] = b.trapo;
+  a.rotation.y = Math.sin(w * 2.3) * 0.26 + Math.sin(w * 3.7) * 0.09;
+  a.rotation.z = Math.sin(w * 1.9) * 0.05;
+  c.rotation.y = Math.sin(w * 2.3 - 0.9) * 0.34 + Math.sin(w * 4.6 - 0.4) * 0.13;
+  c.rotation.z = Math.sin(w * 1.9 - 0.7) * 0.07;
 }
 
 const V = () => new THREE.Vector3();
@@ -992,13 +1049,8 @@ export class Figura {
     // profundidad, que es como ondula la tela. Y como los huesos están
     // encadenados, el segundo suma lo del primero: la punta hace el doble.
     if (this.h.trapo) {
-      this.tTrapo = (this.tTrapo || 0) + dt;
-      const w = this.tTrapo;
-      const [a, b] = this.h.trapo;
-      a.rotation.y = Math.sin(w * 2.3) * 0.26 + Math.sin(w * 3.7) * 0.09;
-      a.rotation.z = Math.sin(w * 1.9) * 0.05;
-      b.rotation.y = Math.sin(w * 2.3 - 0.9) * 0.34 + Math.sin(w * 4.6 - 0.4) * 0.13;
-      b.rotation.z = Math.sin(w * 1.9 - 0.7) * 0.07;
+      if (!this._trapo) this._trapo = { trapo: this.h.trapo, t: 0 };
+      flamear(this._trapo, dt);
     }
     if (this.lejos) { if (andando) this.paso += dt * 6.6 * (ritmo || 1); return; }
     const p = POSES[this.pose] || POSES.marcha;

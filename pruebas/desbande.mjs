@@ -89,13 +89,26 @@ if (process.env.DIAG) {
   process.exit(0);
 }
 
+// PAPELES=1 mata al tambor y al abanderado y roba la bandera EN EL SEGUNDO
+// CERO. No es una batalla que alguien vaya a jugar así: es la única manera de
+// medir cuánto vale la mecánica sola. El piloto de esta prueba carga de frente
+// y lo matan a los cuarenta segundos, así que en una corrida normal NUNCA
+// llega a matarlos y el factor se queda en uno toda la batalla — o sea que la
+// corrida normal no mide esto, mide todo lo demás.
 const CORRIDAS = Number(process.env.CORRIDAS || 3);
-const r = await pag.evaluate(async (CORRIDAS) => {
+const PAPELES = !!process.env.PAPELES;
+const r = await pag.evaluate(async ({ CORRIDAS, PAPELES }) => {
   const j = window.juego;
   const filas = [];
   for (let k = 0; k < CORRIDAS; k++) {
     j.campo.limpiarCampo(); j.jugador.revivir(); j.jugador.pos.set(0, 1.68, 0);
     j.formarPinza(60, 250); j.pinza.tocar();
+    if (PAPELES) {
+      const p = j.campo.papeles;
+      if (p.tambor) p.tambor.recibir(999);
+      if (p.abanderado) p.abanderado.recibir(999);
+      j.moral.robarBandera();
+    }
     // EL PILOTO SOSTIENE LAS TECLAS, como un jugador. Antes alcanzaba con escribir
     // monta.andar, pero el andar ahora sale de las teclas sostenidas y se reescribe
     // cada cuadro: sin esto el caballo del piloto queda clavado en el pasto y la
@@ -134,7 +147,7 @@ const r = await pag.evaluate(async (CORRIDAS) => {
   }
   j.campo.limpiarCampo();
   return filas;
-}, CORRIDAS);
+}, { CORRIDAS, PAPELES });
 
 const med = k => (r.reduce((a, f) => a + f[k], 0) / r.length);
 for (const f of r) {

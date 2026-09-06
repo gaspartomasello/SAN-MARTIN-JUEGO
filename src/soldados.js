@@ -594,6 +594,19 @@ export class Soldado {
     this.sonido.grito();
   }
 
+  // LE SACAN LA BANDERA. El asta es un hueso propio del que cuelga todo el
+  // estandarte —palo, moharra y las tres tiras del paño—, así que achicarlo a
+  // cero se lleva las veintitantas piezas de golpe. Achicar y no `visible=false`
+  // porque son vértices adentro de la malla del cuerpo: apagar el grupo no
+  // apagaría nada.
+  entregarBandera () {
+    const asta = this.fig && this.fig.h && this.fig.h.asta;
+    if (!asta || this.sinBandera) return false;
+    this.sinBandera = true;
+    asta.scale.setScalar(0.0001);
+    return true;
+  }
+
   entregarFusil () {
     if (!this.tieneFusil) return false;
     this.tieneFusil = false;

@@ -664,6 +664,53 @@ export const LINEA_ROTA = 0.17;
 // mismo cuadro y no había desbandada, había un apagón.
 export const DESBANDE = 14;
 
+// ---------------------------------------------------------------------------
+// LOS DOS QUE SOSTIENEN LA LÍNEA: EL TAMBOR Y LA BANDERA
+// ---------------------------------------------------------------------------
+//
+// El problema que esto viene a resolver está medido y anotado más arriba: la
+// batalla se gana matando. Con los números de hoy la línea se quiebra, sí, pero
+// tarde y con la mitad de los hombres en el pasto, y San Lorenzo no fue eso —de
+// doscientos cincuenta murieron unos cuarenta—. Faltaba una manera de romper la
+// moral que NO fuera bajas, y ésta es histórica y no inventada: el redoble es la
+// cadencia con la que una línea carga y recarga, y el paño es dónde te volvés a
+// juntar cuando ya no ves a tu sargento. Sin los dos, la tropa deja de ser una
+// tropa mucho antes de quedarse sin hombres.
+//
+// SON DOS EFECTOS OPUESTOS Y ESO ES A PROPÓSITO.
+//
+// MIENTRAS VIVEN, ALREDEDOR SE AGUANTA. Es un extra de APLOMO a los de cerca, y
+// no un término de miedo menos: lo que hace un tambor no es asustar al de
+// enfrente, es sostener al de al lado. Y tiene una consecuencia de juego que es
+// la mitad del sentido de todo esto: en medio de una línea que se está
+// quebrando queda un NUDO que no se quiebra, y ese nudo se ve. El jugador no
+// necesita ningún cartel para saber dónde ir: lo lee del campo.
+//
+// El extra es del orden del APLOMO entero —0,3— porque tiene que alcanzar para
+// que ese nudo se note contra el resto, y el radio es corto: catorce metros es
+// hasta dónde se oye un redoble por encima de una descarga, y un puñado de
+// hombres, no medio ejército.
+export const TAMBOR_APLOMO = 0.26;
+export const TAMBOR_RADIO = 14;
+
+// Y CUANDO CAEN, TODA LA LÍNEA SE GASTA MÁS RÁPIDO. Tres cosas suman, cada una
+// un tercio: matar al tambor, matar al abanderado y llevarse la bandera. Con
+// las tres, el desgaste al doble.
+//
+// ADITIVO Y NO MULTIPLICATIVO, que con 1,33 al cubo daría 2,35 y nadie puede
+// razonar de cabeza qué le va a pasar a la batalla. Uno coma treinta y tres,
+// uno coma sesenta y seis, dos: eso sí.
+//
+// Y ES UN MULTIPLICADOR SOBRE LO QUE YA ENTRA, no un término nuevo. Es la misma
+// razón por la que ANIMO_TROPA se toca acá y no repartido: un término más
+// sumando cambia las relaciones entre el flanco, la soledad y el caballo
+// encima, que están medidas una contra otra. Un factor las respeta todas.
+//
+// UN TERCIO EXACTO Y NO 0,33: con 0,33 los tres factores dan 1,99 y el comentario
+// de acá arriba —«con las tres, el doble»— sería falso por dos centésimas. Un
+// número que no dice la verdad sobre sí mismo es peor que un número feo.
+export const DESALIENTO = 1 / 3;
+
 // Y a dónde corre el que se quebró. No «lejos»: los realistas bajan por donde
 // subieron —la barranca está en z −85 y la escuadra fondeada detrás— y los
 // granaderos vuelven atrás del convento. El que llega, se fue de la batalla.

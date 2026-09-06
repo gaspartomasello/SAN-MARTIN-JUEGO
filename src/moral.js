@@ -49,6 +49,7 @@ import {
   SOLEDAD, JUNTOS_RADIO, JUNTOS_MINIMO,
   HERIDO, PIEZA_CALLADA, PIEZA_RADIO, FRENTE_GIRO,
   APLOMO, DESGASTE, CONTAGIO, CONTAGIO_RADIO,
+  TAMBOR_APLOMO, TAMBOR_RADIO, DESALIENTO,
   LINEA_ROTA, LINEA_MINIMA, DESBANDE
 } from './balance.js';
 
@@ -64,6 +65,55 @@ export function armarMoral (ctx) {
   let idos = 0;                   // cuántos bajaron la barranca y se fueron
   let tGrito = 0;
 
+  // -------------------------------------------------------------------------
+  // EL TAMBOR, EL ABANDERADO Y LA BANDERA
+  // -------------------------------------------------------------------------
+  //
+  // Se guardan las dos referencias en vez de barrer los soldados buscándolos:
+  // son dos hombres entre trescientos setenta y el barrido correría en un bucle
+  // que ya cuesta lo suyo. Los pone despliegue.js al armar la batalla.
+  //
+  // LA DIFERENCIA ENTRE MUERTO Y QUEBRADO ES DELIBERADA. El sostén se va
+  // apenas el hombre deja su puesto —el que corre a la barranca no toca ni
+  // levanta nada—, pero el castigo a la línea entera pide que esté MUERTO. Así
+  // que si se te escapa, no ganaste el tercio: hay que alcanzarlo.
+  const papeles = { tambor: null, abanderado: null, robada: false };
+
+  function marcarPapeles (tambor, abanderado) {
+    papeles.tambor = tambor || null;
+    papeles.abanderado = abanderado || null;
+    papeles.robada = false;
+  }
+
+  // en su puesto: sostiene a los de al lado
+  const enPie = s => !!s && s.vivo && !s.quebrado;
+  // caído: le suma un tercio al desgaste de toda la línea
+  const cayo = s => !!s && !s.vivo;
+
+  // CUÁNTO MÁS RÁPIDO SE GASTA LA LÍNEA REALISTA. Uno, 1,33, 1,66 o 2.
+  function desaliento () {
+    let n = 0;
+    if (cayo(papeles.tambor)) n++;
+    if (cayo(papeles.abanderado)) n++;
+    if (papeles.robada) n++;
+    return 1 + DESALIENTO * n;
+  }
+
+  // Y CUÁNTO LO SOSTIENEN, para el que está cerca de alguno de los dos. Es un
+  // extra de APLOMO y no un término de miedo menos: lo que hace un tambor no es
+  // asustar al de enfrente, es sostener al de al lado. En el medio de una línea
+  // que se quiebra queda un nudo que no se quiebra, y ese nudo se ve desde
+  // afuera: es cómo el jugador sabe dónde ir sin que nadie se lo diga.
+  function sosten (s) {
+    let mas = 0;
+    for (const o of [papeles.tambor, papeles.abanderado]) {
+      if (!enPie(o) || o === s) continue;
+      const d = Math.hypot(o.pos.x - s.pos.x, o.pos.z - s.pos.z);
+      if (d < TAMBOR_RADIO) mas += TAMBOR_APLOMO * (1 - d / TAMBOR_RADIO);
+    }
+    return mas;
+  }
+
   // Un golpe de ánimo de los que se cobran DE GOLPE —el compañero que cae, la
   // pieza que calla, la línea que se rompe—. Pasa por acá y no se resta a mano
   // en tres lugares porque también tiene que morder el techo: si no, un hombre
@@ -72,6 +122,18 @@ export function armarMoral (ctx) {
   function golpear (o, n) {
     o.animo -= n;
     o.techo = Math.max(0, o.techo - n * DESGASTE);
+  }
+
+  // EL AVISO DE QUE CAYÓ UNO DE LOS DOS. Sin esto el jugador nunca se entera
+  // de que existían: mata a un realista más entre doscientos cincuenta y la
+  // batalla se le pone más fácil sin que sepa por qué. El cartel es lo que
+  // convierte un accidente en una mecánica.
+  function cayoUnPapel (s) {
+    if (!s.papel || !hud) return;
+    if (s !== papeles.tambor && s !== papeles.abanderado) return;
+    const nombre = s.papel === 'tambor' ? 'Cayó el tambor' : 'Cayó el abanderado';
+    hud.mostrarAviso(nombre + ' · se les gasta más rápido', 'bien');
+    if (s.papel === 'abanderado') hud.cartel('[E] ROBÁ LA BANDERA', 4);
   }
 
   // -------------------------------------------------------------------------
@@ -148,7 +210,7 @@ export function armarMoral (ctx) {
     // depuración: un sistema en el que un hombre deja de pelear sin que se
     // pueda decir por qué es un sistema que no se puede ajustar. Cuesta cinco
     // escrituras cada 0,4 s por hombre.
-    const q = s.porQue || (s.porQue = { flanco: 0, jinetes: 0, solo: 0, herido: 0, rotos: 0 });
+    const q = s.porQue || (s.porQue = { flanco: 0, jinetes: 0, solo: 0, herido: 0, rotos: 0, desaliento: 1 });
     // A PIE Y A CABALLO NO SE LE TIENE MIEDO A LO MISMO.
     //
     // El flanco y la soledad son de la LÍNEA DE INFANTERÍA y se cobran sólo a
@@ -170,7 +232,14 @@ export function armarMoral (ctx) {
       : 0;
     q.herido = s.vida <= VIDA_TROPA / 2 ? HERIDO : 0;
     q.rotos = rotos ? CONTAGIO * Math.min(1, rotos / 2) : 0;
-    const baja = q.flanco + q.jinetes + q.solo + q.herido + q.rotos;
+    let baja = q.flanco + q.jinetes + q.solo + q.herido + q.rotos;
+    // EL DESALIENTO MULTIPLICA LO QUE YA ENTRA, no agrega un término. Un
+    // término más sumando cambiaría las relaciones entre el flanco, la soledad
+    // y el caballo encima, que están medidas una contra otra; un factor las
+    // respeta todas. Y es sólo de la línea realista: el tambor es de ellos.
+    if (s.esRealista) { q.desaliento = desaliento(); baja *= q.desaliento; }
+    // el sostén va del otro lado de la resta, con el aplomo
+    const aguante = APLOMO + (s.esRealista ? sosten(s) : 0);
 
     // EL DESGASTE, que es lo que hace que esto avance. Una parte de lo que le
     // entró se la lleva el techo, y el techo no vuelve a subir: el aplomo
@@ -187,7 +256,7 @@ export function armarMoral (ctx) {
     // El neto, y no una rama: si el recupero fuera un «else» habría un
     // escalón en cero —el que tiene un enemigo lejísimos no se recompone
     // nunca— y toda la tensión de la pelea está justo en esta resta.
-    s.animo = Math.max(0, Math.min(s.techo, s.animo + (APLOMO - baja * s.temple) * dt));
+    s.animo = Math.max(0, Math.min(s.techo, s.animo + (aguante - baja * s.temple) * dt));
     if (s.animo <= 0) quebrar(s);
   }
 
@@ -267,7 +336,7 @@ export function armarMoral (ctx) {
     for (const s of soldados) {
       if (s.titere) continue;
       if (!s.vivo) {
-        if (!s._llorado) { s._llorado = true; llorar(s); }
+        if (!s._llorado) { s._llorado = true; llorar(s); cayoUnPapel(s); }
         continue;
       }
       const c = cuenta[s.bando];
@@ -312,12 +381,24 @@ export function armarMoral (ctx) {
     roto.realista = false;
     roto.granadero = false;
     idos = 0;
+    papeles.tambor = null;
+    papeles.abanderado = null;
+    papeles.robada = false;
     for (const c of canones) c._callada = false;
   }
 
   return {
     actualizar,
     reiniciar,
+    marcarPapeles,
+    // la bandera la roba el jugador, y quien lo resuelve es combate.js
+    robarBandera () { papeles.robada = true; },
+    get papeles () {
+      return {
+        tambor: papeles.tambor, abanderado: papeles.abanderado, robada: papeles.robada,
+        factor: desaliento()
+      };
+    },
     get idos () { return idos; },
     get lineaRota () { return { realista: roto.realista, granadero: roto.granadero }; },
     parte: () => ({

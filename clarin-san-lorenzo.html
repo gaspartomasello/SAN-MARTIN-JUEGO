@@ -33876,55 +33876,77 @@ var PANO = 15921124;
 var ASPA = 12725035;
 function bandera(taller, h) {
   const ASTA = 2.05, INCLINA = -0.16;
-  const bx = 0.17, by = 0.26, bz = -0.02;
-  const dx = Math.sin(-INCLINA), dy = Math.cos(-INCLINA);
-  taller.add(
-    h.torso,
-    cil(0.021, 0.026, ASTA, 6),
-    7031338,
-    { p: [bx + dx * ASTA / 2, by + dy * ASTA / 2, bz], r: [0, 0, INCLINA] }
-  );
-  taller.add(
-    h.torso,
-    cil(4e-3, 0.03, 0.15, 6),
-    12157743,
-    // la moharra
-    { p: [bx + dx * ASTA + 0.012, by + dy * ASTA + 0.06, bz], r: [0, 0, INCLINA], metal: true }
-  );
-  const AN = 0.86, AL = 0.62, GRUESO = 0.012, TIRAS = 3;
-  const fy = by + dy * ASTA - 0.14 - AL / 2;
-  const px2 = bx + dx * (fy - by) / dy;
-  const ancho = AN / TIRAS;
-  let padre = h.torso;
+  const asta = new Group();
+  asta.position.set(0.17, 0.26, -0.02);
+  asta.rotation.z = INCLINA;
+  h.torso.add(asta);
+  h.asta = asta;
+  taller.add(asta, cil(0.021, 0.026, ASTA, 6), 7031338, { p: [0, ASTA / 2, 0] });
+  taller.add(asta, cil(4e-3, 0.03, 0.15, 6), 12157743, { p: [0, ASTA + 0.06, 0], metal: true });
+  const huesos = pano(taller, asta, ASTA - 0.14 - AL_PANO / 2);
+  h.trapo = huesos.slice(1);
+}
+var AN_PANO = 0.86;
+var AL_PANO = 0.62;
+function pano(taller, asta, alto) {
+  const GRUESO = 0.012, TIRAS = 3;
+  const ancho = AN_PANO / TIRAS;
+  let padre = asta;
   const huesos = [];
   for (let i = 0; i < TIRAS; i++) {
     const g = new Group();
-    if (i === 0) {
-      g.position.set(px2, fy, bz);
-      g.rotation.z = INCLINA;
-    } else g.position.set(ancho, 0, 0);
+    g.position.set(i === 0 ? 0 : ancho, i === 0 ? alto : 0, 0);
     padre.add(g);
     padre = g;
     huesos.push(g);
   }
-  h.trapo = huesos.slice(1);
-  const giro = Math.atan2(AL, AN), largo = ancho / Math.cos(giro);
+  const giro = Math.atan2(AL_PANO, AN_PANO), largo = ancho / Math.cos(giro);
   for (let i = 0; i < TIRAS; i++) {
     const g = huesos[i];
     const cx = ancho / 2;
-    const xEnPano = cx + i * ancho - AN / 2;
-    taller.add(g, caja(ancho, AL, GRUESO), PANO, { p: [cx, 0, 0] });
+    const xEnPano = cx + i * ancho - AN_PANO / 2;
+    taller.add(g, caja(ancho, AL_PANO, GRUESO), PANO, { p: [cx, 0, 0] });
     for (const s of [-1, 1]) {
       for (const cara of [-1, 1]) {
         taller.add(
           g,
           caja(largo, 0.135, GRUESO * 0.5),
           ASPA,
-          { p: [cx, s * xEnPano * (AL / AN), cara * GRUESO * 0.75], r: [0, 0, s * giro] }
+          { p: [cx, s * xEnPano * (AL_PANO / AN_PANO), cara * GRUESO * 0.75], r: [0, 0, s * giro] }
         );
       }
     }
   }
+  return huesos;
+}
+function banderaEnMano() {
+  const taller = new Taller();
+  const raiz = new Group();
+  const asta = new Group();
+  asta.userData.suelto = true;
+  raiz.add(asta);
+  const LARGO = 1.15;
+  taller.add(asta, cil(0.021, 0.026, LARGO, 6), 7031338, { p: [0, LARGO / 2 - 0.45, 0] });
+  taller.add(asta, cil(4e-3, 0.03, 0.12, 6), 12157743, { p: [0, LARGO - 0.4, 0], metal: true });
+  const huesos = pano(taller, asta, LARGO - 0.52);
+  for (const g of huesos) g.userData.suelto = true;
+  taller.cocinar(null);
+  raiz.scale.setScalar(0.62);
+  raiz.position.set(-0.3, -0.46, -0.52);
+  raiz.rotation.set(0.1, 0.22, 0.3);
+  raiz.traverse((o) => {
+    o.frustumCulled = false;
+  });
+  raiz.visible = false;
+  return { raiz, trapo: huesos.slice(1), t: 0 };
+}
+function flamear(b, dt) {
+  b.t += dt;
+  const w = b.t, [a, c] = b.trapo;
+  a.rotation.y = Math.sin(w * 2.3) * 0.26 + Math.sin(w * 3.7) * 0.09;
+  a.rotation.z = Math.sin(w * 1.9) * 0.05;
+  c.rotation.y = Math.sin(w * 2.3 - 0.9) * 0.34 + Math.sin(w * 4.6 - 0.4) * 0.13;
+  c.rotation.z = Math.sin(w * 1.9 - 0.7) * 0.07;
 }
 var V = () => new Vector3();
 var Figura = class {
@@ -34121,13 +34143,8 @@ var Figura = class {
   }
   actualizar(dt, andando, ritmo) {
     if (this.h.trapo) {
-      this.tTrapo = (this.tTrapo || 0) + dt;
-      const w = this.tTrapo;
-      const [a, b] = this.h.trapo;
-      a.rotation.y = Math.sin(w * 2.3) * 0.26 + Math.sin(w * 3.7) * 0.09;
-      a.rotation.z = Math.sin(w * 1.9) * 0.05;
-      b.rotation.y = Math.sin(w * 2.3 - 0.9) * 0.34 + Math.sin(w * 4.6 - 0.4) * 0.13;
-      b.rotation.z = Math.sin(w * 1.9 - 0.7) * 0.07;
+      if (!this._trapo) this._trapo = { trapo: this.h.trapo, t: 0 };
+      flamear(this._trapo, dt);
     }
     if (this.lejos) {
       if (andando) this.paso += dt * 6.6 * (ritmo || 1);
@@ -34336,6 +34353,9 @@ var TEMPLE = [0.72, 0.62];
 var LINEA_MINIMA = 30;
 var LINEA_ROTA = 0.17;
 var DESBANDE = 14;
+var TAMBOR_APLOMO = 0.26;
+var TAMBOR_RADIO = 14;
+var DESALIENTO = 1 / 3;
 var REFUGIO_REALISTA = -82;
 var REFUGIO_GRANADERO = 58;
 
@@ -35270,6 +35290,18 @@ var Soldado = class _Soldado {
     this._pego = true;
     this.fig.poner("aturdido");
     this.sonido.grito();
+  }
+  // LE SACAN LA BANDERA. El asta es un hueso propio del que cuelga todo el
+  // estandarte —palo, moharra y las tres tiras del paño—, así que achicarlo a
+  // cero se lleva las veintitantas piezas de golpe. Achicar y no `visible=false`
+  // porque son vértices adentro de la malla del cuerpo: apagar el grupo no
+  // apagaría nada.
+  entregarBandera() {
+    const asta = this.fig && this.fig.h && this.fig.h.asta;
+    if (!asta || this.sinBandera) return false;
+    this.sinBandera = true;
+    asta.scale.setScalar(1e-4);
+    return true;
   }
   entregarFusil() {
     if (!this.tieneFusil) return false;
@@ -36566,13 +36598,29 @@ var ActoApertura = class {
   // a quedar igual: de pie, con la columna formada y el clarín sin tocar.
   saltar() {
     if (!this.corriendo) return false;
+    this._bajar();
+    this._listo();
+    return true;
+  }
+  // Y SI TE MATAN MIENTRAS CORRE, se corta sin cartel.
+  //
+  // Es lo mismo que la T pero sin el «[T] TOCÁ EL CLARÍN» al final, que sobre
+  // un muerto no significa nada. Sin esto la introducción seguía hablando
+  // encima del cadáver: te mataban y San Martín seguía dando la orden de cargar
+  // abajo de la pantalla en negro. Lo encontró pruebas/oido.mjs, que fue a leer
+  // la cita del que muere y se encontró con la orden del clarín.
+  cortar() {
+    if (!this.corriendo) return false;
+    this._bajar();
+    return true;
+  }
+  _bajar() {
     const { hud: hud2 } = this.ctx;
     this.corriendo = false;
     hud2.placa(null);
+    hud2.callar(false);
     hud2.fundir(0, 0.25);
-    hud2.decir("", 0);
-    this._listo();
-    return true;
+    hud2.decir("");
   }
   // El cartel que queda cuando la introducción terminó, se la haya visto o no.
   // EL HUD VUELVE PRIMERO Y EL CARTEL DESPUÉS: el cartel vive adentro del HUD,
@@ -38651,6 +38699,36 @@ function armarArsenal(ctx) {
     }
     return null;
   };
+  const bandera2 = banderaEnMano();
+  camaraArma2.add(bandera2.raiz);
+  yo.tenesBandera = false;
+  yo.banderaCerca = function() {
+    for (const s of soldados2) {
+      if (s.papel !== "abanderado" || s.vivo || s.sinBandera) continue;
+      if (s.pos.distanceTo(jugador2.pos) < 3.2) return s;
+    }
+    return null;
+  };
+  yo.robarBandera = function() {
+    if (yo.tenesBandera) {
+      hud2.mostrarAviso("Ya la llev\xE1s", "malo");
+      return false;
+    }
+    const s = yo.banderaCerca();
+    if (!s) {
+      hud2.mostrarAviso("No hay ninguna bandera ac\xE1", "malo");
+      return false;
+    }
+    s.entregarBandera();
+    yo.tenesBandera = true;
+    bandera2.raiz.visible = true;
+    hud2.mostrarAviso("\xA1Les tomaste la bandera!", "bien");
+    if (yo.alRobarBandera) yo.alRobarBandera();
+    return true;
+  };
+  yo.flamearBandera = function(dt) {
+    if (yo.tenesBandera) flamear(bandera2, dt);
+  };
   yo.tomarOIntercambiar = function() {
     const caido = yo.caidoConFusil();
     if (!armas.fusil) {
@@ -38812,8 +38890,15 @@ var Canon = class {
   get cebando() {
     return this.vivo && this.estado === "cebando";
   }
+  // SERVIDA ES QUE HAYA ALGUIEN ATENDIÉNDOLA, no que quede alguien respirando.
+  //
+  // Decía `s.vivo` a secas, y un artillero QUEBRADO sigue vivo mientras corre a
+  // la barranca: la pieza lo contaba como sirviente y seguía tirando sola
+  // durante toda la desbandada, incluso mientras el jugador marchaba al portón
+  // con la batalla ya ganada. Es también lo que el propio juego cuenta que
+  // pasó: dejaron las dos piezas donde estaban.
   get servido() {
-    return this.sirvientes.some((s) => s.vivo);
+    return this.sirvientes.some((s) => s.vivo && !s.quebrado);
   }
   // La boca del cañón, de donde sale la metralla.
   boca() {
@@ -39090,15 +39175,22 @@ function armarDespliegue(ctx) {
     soltarTodo();
     pinza2.desarmar();
     const PORFILA = Math.ceil(realistas / FILAS_REALISTAS);
+    const conPapeles = realistas >= LINEA_MINIMA;
+    const kTambor = conPapeles ? PORFILA + Math.floor(PORFILA * 0.34) : -1;
+    const kBandera = conPapeles ? PORFILA + Math.floor(PORFILA * 0.68) : -1;
+    campo2.papeles = { tambor: null, abanderado: null };
     for (let k = 0; k < realistas; k++) {
       const fila = Math.floor(k / PORFILA);
+      const papel = k === kTambor ? "tambor" : k === kBandera ? "abanderado" : null;
       const s = soltarSoldado("realista", {
+        papel,
         pos: new Vector3(
           -(PORFILA * PASO_FILA / 2) + k % PORFILA * PASO_FILA,
           0,
           Z_DESEMBARCO - fila * FONDO_FILA
         )
       });
+      if (papel) campo2.papeles[papel] = s;
       s.malla.rotation.y = Math.PI;
       s.frente = Math.PI;
     }
@@ -39298,6 +39390,10 @@ function armarMando(ctx) {
         break;
       case "KeyG":
         arsenal2.tomarOIntercambiar();
+        break;
+      // LA BANDERA. Al lado del cuerpo del abanderado y con él muerto.
+      case "KeyE":
+        arsenal2.robarBandera();
         break;
       case "Digit1":
         arsenal2.cambiar("larga");
@@ -39674,9 +39770,40 @@ function armarMoral(ctx) {
   const roto = { realista: false, granadero: false };
   let idos = 0;
   let tGrito = 0;
+  const papeles = { tambor: null, abanderado: null, robada: false };
+  function marcarPapeles(tambor2, abanderado) {
+    papeles.tambor = tambor2 || null;
+    papeles.abanderado = abanderado || null;
+    papeles.robada = false;
+  }
+  const enPie = (s) => !!s && s.vivo && !s.quebrado;
+  const cayo = (s) => !!s && !s.vivo;
+  function desaliento() {
+    let n = 0;
+    if (cayo(papeles.tambor)) n++;
+    if (cayo(papeles.abanderado)) n++;
+    if (papeles.robada) n++;
+    return 1 + DESALIENTO * n;
+  }
+  function sosten(s) {
+    let mas = 0;
+    for (const o of [papeles.tambor, papeles.abanderado]) {
+      if (!enPie(o) || o === s) continue;
+      const d = Math.hypot(o.pos.x - s.pos.x, o.pos.z - s.pos.z);
+      if (d < TAMBOR_RADIO) mas += TAMBOR_APLOMO * (1 - d / TAMBOR_RADIO);
+    }
+    return mas;
+  }
   function golpear(o, n) {
     o.animo -= n;
     o.techo = Math.max(0, o.techo - n * DESGASTE);
+  }
+  function cayoUnPapel(s) {
+    if (!s.papel || !hud2) return;
+    if (s !== papeles.tambor && s !== papeles.abanderado) return;
+    const nombre = s.papel === "tambor" ? "Cay\xF3 el tambor" : "Cay\xF3 el abanderado";
+    hud2.mostrarAviso(nombre + " \xB7 se les gasta m\xE1s r\xE1pido", "bien");
+    if (s.papel === "abanderado") hud2.cartel("[E] ROB\xC1 LA BANDERA", 4);
   }
   function llorar(muerto) {
     const { x, z } = muerto.pos;
@@ -39729,16 +39856,21 @@ function armarMoral(ctx) {
         if (!aLaCara) flanco++;
       }
     }
-    const q = s.porQue || (s.porQue = { flanco: 0, jinetes: 0, solo: 0, herido: 0, rotos: 0 });
+    const q = s.porQue || (s.porQue = { flanco: 0, jinetes: 0, solo: 0, herido: 0, rotos: 0, desaliento: 1 });
     const aPie = !s.montado;
     q.flanco = aPie && flanco ? FLANCO * Math.min(1, flanco / FLANCO_LLENO) : 0;
     q.solo = aPie && amigos < JUNTOS_MINIMO ? SOLEDAD * (1 - amigos / JUNTOS_MINIMO) : 0;
     q.jinetes = jinetes ? CABALLO_ENCIMA * Math.min(1, jinetes / CABALLO_LLENO) * (1 + deCostado / jinetes * (CABALLO_FLANCO - 1)) : 0;
     q.herido = s.vida <= VIDA_TROPA / 2 ? HERIDO : 0;
     q.rotos = rotos ? CONTAGIO * Math.min(1, rotos / 2) : 0;
-    const baja = q.flanco + q.jinetes + q.solo + q.herido + q.rotos;
+    let baja = q.flanco + q.jinetes + q.solo + q.herido + q.rotos;
+    if (s.esRealista) {
+      q.desaliento = desaliento();
+      baja *= q.desaliento;
+    }
+    const aguante = APLOMO + (s.esRealista ? sosten(s) : 0);
     s.techo = Math.max(0, s.techo - baja * s.temple * DESGASTE * dt);
-    s.animo = Math.max(0, Math.min(s.techo, s.animo + (APLOMO - baja * s.temple) * dt));
+    s.animo = Math.max(0, Math.min(s.techo, s.animo + (aguante - baja * s.temple) * dt));
     if (s.animo <= 0) quebrar(s);
   }
   function quebrar(s) {
@@ -39802,6 +39934,7 @@ function armarMoral(ctx) {
         if (!s._llorado) {
           s._llorado = true;
           llorar(s);
+          cayoUnPapel(s);
         }
         continue;
       }
@@ -39844,11 +39977,27 @@ function armarMoral(ctx) {
     roto.realista = false;
     roto.granadero = false;
     idos = 0;
+    papeles.tambor = null;
+    papeles.abanderado = null;
+    papeles.robada = false;
     for (const c of canones2) c._callada = false;
   }
   return {
     actualizar,
     reiniciar,
+    marcarPapeles,
+    // la bandera la roba el jugador, y quien lo resuelve es combate.js
+    robarBandera() {
+      papeles.robada = true;
+    },
+    get papeles() {
+      return {
+        tambor: papeles.tambor,
+        abanderado: papeles.abanderado,
+        robada: papeles.robada,
+        factor: desaliento()
+      };
+    },
     get idos() {
       return idos;
     },
@@ -43762,6 +43911,8 @@ var moral = armarMoral({
 });
 campo.alFormar = () => {
   moral.reiniciar();
+  const p = campo.papeles;
+  if (p) moral.marcarPapeles(p.tambor, p.abanderado);
   victoria.reiniciar();
   apertura.reiniciar();
   fuego.limpiarManchas();
@@ -43790,6 +43941,7 @@ function frasePostrera() {
 }
 jugador.alMorir = () => {
   hud.mostrarAviso("Fuera de combate", "malo");
+  apertura.cortar();
   if (red.activo) {
     hud.cerrarLosOjos(RED_FUNDIDO, false);
     sonido.morir(RED_FUNDIDO);
@@ -43853,6 +44005,10 @@ pinza.alTocar = () => {
 };
 var victoria = new ActoVictoria({ escena, hud, sonido, jugador, soldados, pinza });
 var apertura = new ActoApertura({ hud, sonido });
+arsenal.alRobarBandera = () => {
+  moral.robarBandera();
+  hud.cartel("\xA1BANDERA TOMADA!", 2.6);
+};
 victoria.alEmpezar = () => red.contarVictoria("empieza");
 victoria.alLlegar = () => red.contarVictoria("llego");
 red.alVictoria = (fase) => {
@@ -43922,6 +44078,8 @@ function simular(dt) {
   }
   acto.actualizar(dt, mando.teclas);
   apertura.actualizar(dt);
+  arsenal.flamearBandera(dt);
+  arsenal.flamearBandera(dt);
   jugador.actualizar(dt, mando.teclas, quiereApuntar, arma ? arma.cargando : false);
   const p = jugador.cfgPostura;
   const penalMonta = montado() ? penalCargaMontado(jugador.monta.vel) : 1;

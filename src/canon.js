@@ -100,7 +100,14 @@ export class Canon {
 
   // ¿está en el aviso? Es lo que el HUD y el jugador tienen que poder mirar.
   get cebando () { return this.vivo && this.estado === 'cebando'; }
-  get servido () { return this.sirvientes.some(s => s.vivo); }
+  // SERVIDA ES QUE HAYA ALGUIEN ATENDIÉNDOLA, no que quede alguien respirando.
+  //
+  // Decía `s.vivo` a secas, y un artillero QUEBRADO sigue vivo mientras corre a
+  // la barranca: la pieza lo contaba como sirviente y seguía tirando sola
+  // durante toda la desbandada, incluso mientras el jugador marchaba al portón
+  // con la batalla ya ganada. Es también lo que el propio juego cuenta que
+  // pasó: dejaron las dos piezas donde estaban.
+  get servido () { return this.sirvientes.some(s => s.vivo && !s.quebrado); }
 
   // La boca del cañón, de donde sale la metralla.
   boca () {

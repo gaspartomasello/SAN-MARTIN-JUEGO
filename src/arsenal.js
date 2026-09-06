@@ -12,6 +12,7 @@
 // gatillar; no sabe cuánto duele una bala.
 
 import { ArmaFuego } from './armas.js';
+import { banderaEnMano, flamear } from './figura.js';
 import { GUARDIA_GASTO } from './balance.js';
 
 const CARTUCHERA = 24;
@@ -114,6 +115,46 @@ export function armarArsenal (ctx) {
     }
     return null;
   };
+
+  // -------------------------------------------------------------------------
+  // ROBAR LA BANDERA
+  // -------------------------------------------------------------------------
+  //
+  // Es una provocación y no un arma: no hace daño, no se apunta y no ocupa la
+  // mano que pelea. El corvo se sigue llevando en la derecha —el asta va en la
+  // izquierda—, que es cómo se llevaba una bandera en una carga y por qué esto
+  // no te cuesta nada en combate. Lo que cuesta es ir a buscarla: hay que
+  // meterse hasta donde cayó el abanderado, que estaba en el medio de su gente.
+  //
+  // Se la roba a un MUERTO. A un hombre de pie no se le saca el estandarte de
+  // las manos, y pedir que primero lo mates es lo que hace que los dos tercios
+  // —matar al abanderado y llevarse el paño— sean un solo viaje y no dos.
+  const bandera = banderaEnMano();
+  camaraArma.add(bandera.raiz);
+  yo.tenesBandera = false;
+
+  yo.banderaCerca = function () {
+    for (const s of soldados) {
+      if (s.papel !== 'abanderado' || s.vivo || s.sinBandera) continue;
+      if (s.pos.distanceTo(jugador.pos) < 3.2) return s;
+    }
+    return null;
+  };
+
+  yo.robarBandera = function () {
+    if (yo.tenesBandera) { hud.mostrarAviso('Ya la llevás', 'malo'); return false; }
+    const s = yo.banderaCerca();
+    if (!s) { hud.mostrarAviso('No hay ninguna bandera acá', 'malo'); return false; }
+    s.entregarBandera();
+    yo.tenesBandera = true;
+    bandera.raiz.visible = true;
+    hud.mostrarAviso('¡Les tomaste la bandera!', 'bien');
+    if (yo.alRobarBandera) yo.alRobarBandera();
+    return true;
+  };
+
+  // el paño ondula aunque estés quieto: una bandera clavada no es una bandera
+  yo.flamearBandera = function (dt) { if (yo.tenesBandera) flamear(bandera, dt); };
 
   yo.tomarOIntercambiar = function () {
     const caido = yo.caidoConFusil();

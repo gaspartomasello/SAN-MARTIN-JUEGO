@@ -63,6 +63,8 @@ export function armarMando (ctx) {
       }
       case 'KeyH': campo.montarODesmontar(); break;
       case 'KeyG': arsenal.tomarOIntercambiar(); break;
+      // LA BANDERA. Al lado del cuerpo del abanderado y con él muerto.
+      case 'KeyE': arsenal.robarBandera(); break;
       case 'Digit1': arsenal.cambiar('larga'); break;
       case 'Digit2': arsenal.cambiar('sable'); break;
       case 'Digit3': arsenal.cambiar('pistolon'); break;

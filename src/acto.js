@@ -856,13 +856,31 @@ export class ActoApertura {
   // a quedar igual: de pie, con la columna formada y el clarín sin tocar.
   saltar () {
     if (!this.corriendo) return false;
+    this._bajar();
+    this._listo();
+    return true;
+  }
+
+  // Y SI TE MATAN MIENTRAS CORRE, se corta sin cartel.
+  //
+  // Es lo mismo que la T pero sin el «[T] TOCÁ EL CLARÍN» al final, que sobre
+  // un muerto no significa nada. Sin esto la introducción seguía hablando
+  // encima del cadáver: te mataban y San Martín seguía dando la orden de cargar
+  // abajo de la pantalla en negro. Lo encontró pruebas/oido.mjs, que fue a leer
+  // la cita del que muere y se encontró con la orden del clarín.
+  cortar () {
+    if (!this.corriendo) return false;
+    this._bajar();
+    return true;
+  }
+
+  _bajar () {
     const { hud } = this.ctx;
     this.corriendo = false;
     hud.placa(null);
+    hud.callar(false);
     hud.fundir(0, 0.25);
-    hud.decir('', 0);
-    this._listo();
-    return true;
+    hud.decir('');
   }
 
   // El cartel que queda cuando la introducción terminó, se la haya visto o no.

@@ -268,6 +268,64 @@ const r = await pag.evaluate(async () => {
   const ms = (performance.now() - t0) / 120;
   out.push(['—', 'la simulación entera con moral', `${ms.toFixed(2)} ms por cuadro`]);
 
+  // -------------------------------------------------------------------------
+  // EL TAMBOR, EL ABANDERADO Y LA BANDERA ROBADA
+  // -------------------------------------------------------------------------
+  //
+  // La manera de quebrar una línea que NO es matarla. Lo que se prueba acá son
+  // las tres cosas de las que depende que funcione: que los dos hombres estén
+  // metidos adentro de la tropa y no adelante —si no, no hay nada que buscar—,
+  // que cada factor sume su tercio exacto, y que robar el paño se pueda hacer
+  // sin soltar el corvo.
+  {
+    const j = window.juego;
+    j.formarPinza(20, 120);
+    const p = j.campo.papeles;
+    ok('la batalla trae un tambor y un abanderado', !!p.tambor && !!p.abanderado,
+      `${p.tambor && p.tambor.papel} · ${p.abanderado && p.abanderado.papel}`);
+    ok('van adentro de la línea, no en la primera fila',
+      p.tambor.pos.z < -58.5 && p.abanderado.pos.z < -58.5,
+      `z ${p.tambor.pos.z.toFixed(1)} y ${p.abanderado.pos.z.toFixed(1)} contra -58 de la primera`);
+    const sep = Math.hypot(p.tambor.pos.x - p.abanderado.pos.x, p.tambor.pos.z - p.abanderado.pos.z);
+    ok('y separados: son dos lugares a los que ir, no uno', sep > 14, `${sep.toFixed(1)} m`);
+    const rodean = j.soldados.filter(s => s.esRealista && s !== p.tambor &&
+      Math.hypot(s.pos.x - p.tambor.pos.x, s.pos.z - p.tambor.pos.z) < 14).length;
+    ok('con gente alrededor a la que sostener', rodean >= 8, `${rodean} realistas a menos de 14 m`);
+
+    ok('sin nada, el desgaste de la línea es el normal',
+      j.moral.papeles.factor === 1, `×${j.moral.papeles.factor}`);
+    p.tambor.recibir(999);
+    const f1 = +j.moral.papeles.factor.toFixed(2);
+    p.abanderado.recibir(999);
+    const f2 = +j.moral.papeles.factor.toFixed(2);
+    ok('matar al tambor suma un tercio', f1 === 1.33, `×${f1}`);
+    ok('y matar al abanderado, otro', f2 === 1.67, `×${f2}`);
+
+    j.jugador.vida = 100; j.jugador.vivo = true;
+    if (j.jugador.monta) j.jugador.desmontar();
+    j.jugador.pos.set(p.abanderado.pos.x, 1.68, p.abanderado.pos.z + 1.2);
+    ok('el cuerpo todavía tiene la bandera', !p.abanderado.sinBandera);
+    ok('y se la podés robar al lado del muerto', j.arsenal.robarBandera() === true);
+    const f3 = +j.moral.papeles.factor.toFixed(2);
+    ok('con los tres, el desgaste queda EXACTAMENTE al doble', f3 === 2, `×${f3}`);
+    ok('el cuerpo se queda sin ella', p.abanderado.sinBandera === true);
+    ok('no se la puede robar dos veces', j.arsenal.robarBandera() === false);
+    j.arsenal.cambiar('sable');
+    ok('y llevarla no te cuesta el corvo',
+      j.arsenal.conSable() === true && j.arsenal.tenesBandera === true,
+      `con sable ${j.arsenal.conSable()} · con bandera ${j.arsenal.tenesBandera}`);
+
+    // LA PIEZA QUE SE QUEDA SOLA. Decía `s.vivo` a secas y un artillero que
+    // huye sigue vivo: el cañón lo contaba y tiraba solo toda la desbandada.
+    const c = j.canones[0];
+    for (const s of c.sirvientes) { s.vida = 100; s.vivo = true; s.quebrado = false; }
+    ok('con los artilleros en su puesto la pieza habla', c.servido === true);
+    for (const s of c.sirvientes) s.quebrar();
+    ok('y calla cuando se quiebran, aunque sigan vivos',
+      c.servido === false && c.sirvientes.every(s => s.vivo),
+      `${c.sirvientes.filter(s => s.vivo).length} de ${c.sirvientes.length} vivos y ninguno atendiéndola`);
+  }
+
   return out;
 });
 for (const [e, n, x] of r) console.log(e.padEnd(4), n.padEnd(46), x);
