@@ -185,7 +185,7 @@ export class Caballo {
     const crema = !!(op && op.crema);
     vestir(taller, h, crema ? CREMA : PELAJE, crema ? CREMA_CLARO : PELAJE_CLARO);
     this.crema = crema;
-    this.mallas = taller.cocinar();
+    this.mallas = taller.cocinar(raiz);
     this.raiz = raiz;
     this.h = h;
     this.escena = escena;

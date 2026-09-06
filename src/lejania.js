@@ -59,16 +59,39 @@ function hornear (raices) {
   const n0 = new THREE.Vector3();
   let crudos = 0;
 
+  // Las figuras de cerca son SkinnedMesh: los vértices están guardados en la
+  // pose de amarre y quien los mueve es el esqueleto, así que la matriz del
+  // objeto ya no alcanza —con ella sola el horneado saldría en cruz—. Para
+  // cada hueso se arma UNA matriz, que vale para todos sus vértices porque
+  // cada vértice está atado a un solo hueso con peso 1 (ver Taller.cocinar).
+  // Y se calculan UNA VEZ POR HUESO, no por triángulo: la matriz de normales
+  // sale de invertir y trasponer, y hacer eso en cada triángulo puso el
+  // horneado de rodillas —novecientos triángulos por figura, novecientas
+  // inversiones—. Por hueso son dieciséis.
+  const porHueso = [], normalDe = [];
+  const conHueso = (o) => {
+    porHueso.length = 0; normalDe.length = 0;
+    const e = o.skeleton, bm = o.bindMatrix, bmi = o.bindMatrixInverse;
+    for (let k = 0; k < e.bones.length; k++) {
+      const mk = new THREE.Matrix4()
+        .multiplyMatrices(e.bones[k].matrixWorld, e.boneInverses[k])
+        .premultiply(bmi).premultiply(o.matrixWorld).multiply(bm);
+      porHueso.push(mk);
+      normalDe.push(new THREE.Matrix3().getNormalMatrix(mk));
+    }
+  };
+
   for (const raiz of raices) {
     raiz.updateMatrixWorld(true);
     raiz.traverse(o => {
       if (!o.isMesh || !o.visible) return;
-      m.copy(o.matrixWorld);
-      nm.getNormalMatrix(m);
       const g = o.geometry;
+      const hueso = o.isSkinnedMesh ? g.attributes.skinIndex : null;
+      if (hueso) conHueso(o); else { m.copy(o.matrixWorld); nm.getNormalMatrix(m); }
       const ap = g.attributes.position, an = g.attributes.normal, ax = g.attributes.color;
       for (let i = 0; i + 2 < ap.count; i += 3) {
         crudos++;
+        if (hueso) { const k = hueso.getX(i); m.copy(porHueso[k]); nm.copy(normalDe[k]); }
         a.fromBufferAttribute(ap, i).applyMatrix4(m);
         b.fromBufferAttribute(ap, i + 1).applyMatrix4(m);
         c.fromBufferAttribute(ap, i + 2).applyMatrix4(m);

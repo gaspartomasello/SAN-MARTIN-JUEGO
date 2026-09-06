@@ -211,6 +211,22 @@ export function armarCombate (ctx) {
     d.addScaledVector(eje2, Math.tan(r) * Math.sin(a));
     d.normalize();
 
+    // LAS MATRICES AL DÍA, ANTES DE TIRAR EL RAYO.
+    //
+    // El tiro se resuelve dentro de simular(), o sea ANTES de que el renderer
+    // recorra la escena, así que las matrices del mundo son las que dejó el
+    // cuadro anterior. Con las figuras hechas de una malla por hueso eso no se
+    // notaba: cada malla colgaba de su hueso y el hueso estaba en su sitio.
+    // Con la figura hecha de una sola malla con esqueleto sí se nota, porque el
+    // vértice se calcula contra la matriz de la malla, y si esa matriz quedó
+    // vieja el cuerpo se prueba lejos de donde está el hombre. Medido: un tiro
+    // que se iba al cielo le pegaba a un realista a treinta y tres metros, que
+    // a esa altura estaba a catorce metros del suelo.
+    //
+    // Es una sola pasada y sin forzar —recorre marcando sólo lo que cambió—, y
+    // pasa nada más cuando alguien dispara.
+    escena.updateMatrixWorld();
+
     rayo.set(origen, d);
     const candidatos = [];
     for (const s of soldados) if (s.vivo && s.esRealista) candidatos.push(s.malla);

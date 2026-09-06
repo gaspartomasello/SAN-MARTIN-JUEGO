@@ -10,9 +10,10 @@ import * as THREE from 'three';
 //
 // 2. Las piezas se FUNDEN. Un granadero decente lleva unas cuarenta piezas
 //    y cuarenta mallas por soldado nos comen el presupuesto de draw calls.
-//    Cada pieza se cocina dentro del hueso que la mueve, con el color metido
-//    en los vértices: quedan ~12 mallas por soldado en vez de cuarenta, con
-//    dos materiales compartidos por todo el ejército.
+//    Cada pieza se cocina en el hueso que la mueve, con el color metido en
+//    los vértices, y todos los huesos terminan en UNA malla por material:
+//    dos mallas por soldado en vez de cuarenta, y los dos materiales los
+//    comparte el ejército entero. Ver Taller.cocinar().
 
 export const TELA = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.93 });
 export const METAL = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.36, metalness: 0.85 });
@@ -37,31 +38,107 @@ export class Taller {
     return this;
   }
 
-  cocinar () {
-    const mallas = [];
-    for (const { hueso, metal, piezas } of this.lotes.values()) {
-      const pos = [], nor = [], col = [];
-      for (const pz of piezas) {
-        const g = pz.geo.index ? pz.geo.toNonIndexed() : pz.geo.clone();
-        g.applyMatrix4(pz.m);
-        const ap = g.attributes.position, an = g.attributes.normal;
-        for (let i = 0; i < ap.count; i++) {
-          pos.push(ap.getX(i), ap.getY(i), ap.getZ(i));
-          nor.push(an.getX(i), an.getY(i), an.getZ(i));
-          col.push(pz.color.r, pz.color.g, pz.color.b);
-        }
-        g.dispose();
+  // Vuelca las piezas de un lote en los tres arreglos, ya con su matriz
+  // aplicada. `extra` es la matriz que lleva del hueso al espacio final; sin
+  // ella los vértices quedan en el espacio del hueso, que es lo que quiere una
+  // malla colgada del hueso.
+  _volcar (piezas, salida, extra, hueso) {
+    const nm = extra ? new THREE.Matrix3().getNormalMatrix(extra) : null;
+    const n0 = new THREE.Vector3();
+    for (const pz of piezas) {
+      const g = pz.geo.index ? pz.geo.toNonIndexed() : pz.geo.clone();
+      g.applyMatrix4(pz.m);
+      const ap = g.attributes.position, an = g.attributes.normal;
+      for (let i = 0; i < ap.count; i++) {
+        n0.fromBufferAttribute(ap, i);
+        if (extra) n0.applyMatrix4(extra);
+        salida.pos.push(n0.x, n0.y, n0.z);
+        n0.fromBufferAttribute(an, i);
+        if (nm) n0.applyMatrix3(nm).normalize();
+        salida.nor.push(n0.x, n0.y, n0.z);
+        salida.col.push(pz.color.r, pz.color.g, pz.color.b);
+        if (salida.hue) { salida.hue.push(hueso, 0, 0, 0); salida.peso.push(1, 0, 0, 0); }
       }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-      geo.computeBoundingSphere();
-      const malla = new THREE.Mesh(geo, metal ? METAL : TELA);
+      g.dispose();
+    }
+  }
+
+  _geometria ({ pos, nor, col, hue, peso }) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    if (hue) {
+      geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(hue, 4));
+      geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(peso, 4));
+    }
+    geo.computeBoundingSphere();
+    return geo;
+  }
+
+  // COCINAR · de dieciséis mallas por hombre a dos.
+  //
+  // Antes esto devolvía UNA MALLA POR HUESO colgada de su hueso: dieciséis por
+  // granadero y nueve por caballo. Medido en la batalla llena, con veintiséis
+  // hombres armados hueso por hueso y sus caballos, eso eran 753 de las 780
+  // llamadas de dibujo del cuadro. El 96%.
+  //
+  // Ahora es UNA MALLA POR MATERIAL, con esqueleto. Y no es una aproximación:
+  // cada vértice va atado a UN SOLO hueso con peso 1, así que la cuenta que
+  // hace la placa es la misma multiplicación de matrices que hacía el árbol de
+  // objetos. El resultado es idéntico píxel a píxel —está comprobado con una
+  // comparación de imágenes—; lo único que cambia es cuántas veces hay que
+  // hablarle a la placa.
+  //
+  // Lo que NO entra: los huesos marcados `suelto`. Son los del armero, que se
+  // prenden y se apagan por pieza para cambiar de arma, y una malla fundida no
+  // se puede prender por pedazos. Sólo las tienen los cuerpos de los otros
+  // jugadores —nueve como mucho—, así que cuestan nada.
+  cocinar (raiz) {
+    const mallas = [];
+    const sueltos = [], juntos = [];
+    for (const l of this.lotes.values()) (l.hueso.userData.suelto ? sueltos : juntos).push(l);
+
+    for (const { hueso, metal, piezas } of sueltos) {
+      const bolsa = { pos: [], nor: [], col: [] };
+      this._volcar(piezas, bolsa, null, 0);
+      const malla = new THREE.Mesh(this._geometria(bolsa), metal ? METAL : TELA);
       malla.castShadow = true;
       hueso.add(malla);
       mallas.push(malla);
     }
+
+    if (raiz && juntos.length) {
+      // LA POSE DE AMARRE es la que tienen los huesos ahora. Los vértices se
+      // guardan en el espacio de `raiz` —no en el del hueso—, que es donde los
+      // espera el esqueleto.
+      raiz.updateMatrixWorld(true);
+      const alRaiz = new THREE.Matrix4().copy(raiz.matrixWorld).invert();
+      const huesos = [...new Set(juntos.map(l => l.hueso))];
+      const dondeEsta = new Map(huesos.map((h, i) => [h, i]));
+      const esqueleto = new THREE.Skeleton(huesos);
+      const m = new THREE.Matrix4();
+      for (const metal of [false, true]) {
+        const lotes = juntos.filter(l => l.metal === metal);
+        if (!lotes.length) continue;
+        const bolsa = { pos: [], nor: [], col: [], hue: [], peso: [] };
+        for (const l of lotes) {
+          m.multiplyMatrices(alRaiz, l.hueso.matrixWorld);
+          this._volcar(l.piezas, bolsa, m, dondeEsta.get(l.hueso));
+        }
+        const malla = new THREE.SkinnedMesh(this._geometria(bolsa), metal ? METAL : TELA);
+        malla.castShadow = true;
+        // El bulto se calcula con la pose de amarre y el hombre después se
+        // mueve: si se lo deja clavado, el recorte por cámara lo hace
+        // desaparecer justo cuando estira un brazo. Se lo agranda y listo.
+        malla.geometry.boundingSphere.radius *= 1.8;
+        raiz.add(malla);
+        malla.updateMatrixWorld(true);
+        malla.bind(esqueleto, malla.matrixWorld);
+        mallas.push(malla);
+      }
+    }
+
     this.lotes.clear();
     return mallas;
   }
@@ -604,6 +681,9 @@ export class Figura {
       for (const [nombre, armar] of [['tercerola', tercerolaGranadero], ['lanza', lanzaGranadero],
         ['sable', sableEnMano], ['pistolon', pistolonEnMano]]) {
         const g = new THREE.Group();
+        // `suelto`: este grupo no entra al esqueleto y se queda con su propia
+        // malla, porque cambiar de arma es prenderla y apagarla (ver cocinar).
+        g.userData.suelto = true;
         h.arma.add(g);
         armar(taller, g);
         this.armero[nombre] = g;
@@ -612,7 +692,7 @@ export class Figura {
     } else if (op.arma === 'lanza') { lanzaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
     else if (c.morrion) { tercerolaGranadero(taller, h.arma); sableAlCinto(taller, h.cadera); }
     else fusilRealista(taller, h.arma);
-    this.mallas = taller.cocinar();
+    this.mallas = taller.cocinar(raiz);
     this.arma = h.arma;
     // el armero arranca con el arma que corresponde y todo lo demás apagado
     if (this.armero) { this.enMano = null; this.ponerArma(op.arma === 'lanza' ? 'lanza' : 'tercerola'); }

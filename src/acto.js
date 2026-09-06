@@ -339,17 +339,48 @@ export class ActoCabral {
     const mat = new THREE.MeshBasicMaterial({ color: 0x74c7ec, side: THREE.BackSide,
       transparent: true, opacity: 0.95, depthWrite: false });
     const capa = new THREE.Group();
+    // LA CAPA SE CUELGA PRIMERO. Las copias con esqueleto se atan con la matriz
+    // que tienen en ese momento, y si todavía cuelgan del aire esa matriz es la
+    // identidad y no la del animal.
+    caballo.raiz.add(capa);
     caballo.raiz.updateWorldMatrix(true, true);
     const inv = new THREE.Matrix4().copy(caballo.raiz.matrixWorld).invert();
     for (const m of caballo.mallas) {
       m.updateWorldMatrix(true, false);
+      if (m.isSkinnedMesh) {
+        // EL CABALLO ES UNA SOLA MALLA CON ESQUELETO, así que el borde ya no se
+        // puede hacer agrandando una copia: agrandar la malla entera desde la
+        // raíz le levanta las patas del piso. Se engorda la GEOMETRÍA —cada
+        // vértice empujado tres centímetros por su normal— y se deja que la
+        // mueva el mismo esqueleto, así el borde acompaña al animal.
+        //
+        // Y se CLONA la malla en vez de armar una nueva: el clon se trae el
+        // esqueleto y la matriz de amarre, que es justo lo que hay que copiar
+        // exacto para que el borde caiga encima del caballo y no a treinta
+        // metros. Armarla a mano era pedir que la cuenta diera bien; clonarla
+        // es no tener que hacer la cuenta. La capa cuelga de la misma raíz y
+        // sin mover nada, así que adentro de ella el clon queda en su sitio.
+        const gordo = m.geometry.clone();
+        const gp = gordo.attributes.position, gn = gordo.attributes.normal;
+        for (let i = 0; i < gp.count; i++) {
+          gp.setXYZ(i, gp.getX(i) + gn.getX(i) * 0.03,
+            gp.getY(i) + gn.getY(i) * 0.03, gp.getZ(i) + gn.getZ(i) * 0.03);
+        }
+        gp.needsUpdate = true;
+        gordo.computeBoundingSphere();
+        gordo.boundingSphere.radius *= 1.8;
+        const copia = m.clone();
+        copia.geometry = gordo;
+        copia.material = mat;
+        capa.add(copia);
+        continue;
+      }
       const copia = new THREE.Mesh(m.geometry, mat);
       copia.matrix.multiplyMatrices(inv, m.matrixWorld);
       copia.matrix.decompose(copia.position, copia.quaternion, copia.scale);
       copia.scale.multiplyScalar(1.11);
       capa.add(copia);
     }
-    caballo.raiz.add(capa);
     capa.userData.mat = mat;
     return capa;
   }

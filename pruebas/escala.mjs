@@ -54,5 +54,20 @@ const r = await pag.evaluate(async () => {
 const cab = ['caso', 'hombres', 'caballos', 'draws', 'kTris', 'simMs'];
 console.log(cab.map(c => c.padEnd(24 - 0)).join('').slice(0, 200));
 for (const f of r) console.log(cab.map(c => String(f[c]).padEnd(24)).join(''));
+
+// EL PRESUPUESTO DE DIBUJO.
+//
+// La lejanía se escribió contra un presupuesto de 120 llamadas y con el tiempo
+// se había ido a 800: no por los hombres lejanos —esos cuestan una llamada
+// para todos— sino por los veintiséis de cerca, que eran dieciséis mallas cada
+// uno. Desde que la figura es una sola malla con esqueleto son dos, y el número
+// volvió a entrar. Esto está acá para que no se vuelva a ir sin que se note:
+// el que suba de doscientas llamadas con 150 hombres rompió el LOD o volvió a
+// partir la figura en mallas sueltas.
+const TECHO = 200;
+const peor = Math.max(...r.map(f => f.draws));
+console.log(peor <= TECHO
+  ? `\nOK   el dibujo entra en el presupuesto        ${peor} llamadas, techo ${TECHO}`
+  : `\nMAL  el dibujo se fue del presupuesto         ${peor} llamadas, techo ${TECHO}`);
 console.log(errs.length ? '\nERRORES: ' + errs.join(' / ') : '\nsin errores de consola');
 await nav.close();
