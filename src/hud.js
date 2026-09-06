@@ -33,6 +33,10 @@ export class Hud {
     this.arcos = [...document.querySelectorAll('#dano path')];
     this.golpes = this.arcos.map(() => ({ t: 0, x: 0, z: 0 }));
     this.tFrase = 0;
+    this.sigiloEl = $('#sigilo');
+    this.sigiloBarra = $('#sigilo i');
+    this.sigiloTexto = $('#sigilo b');
+    this.sigiloV = -1;
     this.tomar = $('#tomar');
     this.aviso = $('#aviso');
     this.estado = $('#estado');
@@ -241,6 +245,23 @@ export class Hud {
   // los segundos que se le pidan y se apaga sola. Pedir el mismo texto que ya
   // está no reinicia el reloj: si no, algo que se pide por cuadro no se apaga
   // nunca.
+  // EL OJO DE LA GUARDIA. `v` va de 0 a 1 —cuánto saben que estás— y `alarma`
+  // dice que ya se acabó. Se escribe sólo cuando cambia lo suficiente como para
+  // verse: tocar el DOM sesenta veces por segundo para mover tres píxeles es
+  // trabajo que el navegador hace y nadie mira.
+  sigilo (v, alarma) {
+    if (!this.sigiloEl) return;
+    const q = Math.round(Math.max(0, Math.min(1, v)) * 40) / 40;
+    if (q === this.sigiloV && !alarma) return;
+    this.sigiloV = q;
+    this.sigiloEl.classList.toggle('si', q > 0.02 || alarma);
+    this.sigiloEl.classList.toggle('avisa', q > 0.45 || alarma);
+    this.sigiloEl.classList.toggle('visto', alarma);
+    this.sigiloBarra.style.width = Math.round(q * 100) + '%';
+    const dice = alarma ? 'los tenés encima' : 'te están viendo';
+    if (this.sigiloTexto.textContent !== dice) this.sigiloTexto.textContent = dice;
+  }
+
   cartel (texto, seg = 3) {
     if (!this.cartelEl) return;
     if (texto && texto === this.cartelTexto) return;

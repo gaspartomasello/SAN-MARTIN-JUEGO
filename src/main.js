@@ -43,6 +43,7 @@ import { armarMoral } from './moral.js';
 import { armarPlano } from './plano.js';
 import { armarRed } from './red.js';
 import { Z_BARRANCA } from './sanlorenzo.js';
+import { Sigilo } from './andes.js';
 import { VOLTEO, OFICIO, METRALLA_CABALLO, CAIDA } from './balance.js';
 
 // ---------------------------------------------------------------------------
@@ -259,11 +260,20 @@ const moral = armarMoral({
 // efectos que se queda, así que son lo único que hay que barrer—.
 // Y AL REARMAR EL CAMPO, la moral vuelve a cero y se entera de quiénes son el
 // tambor y el abanderado de esta batalla. En ese orden: `reiniciar` los borra.
+// EL SIGILO del capítulo 2. Vive acá por la misma razón que todo lo demás que
+// coordina main: necesita el jugador, la tropa y las colisiones del mundo, y
+// ninguno de los tres se conoce entre sí. En San Lorenzo no corre nunca —lo
+// gatea el capítulo, no una bandera adentro del sistema— y sin centinelas
+// puestos no hace absolutamente nada.
+const sigilo = new Sigilo();
+
 campo.alFormar = () => {
   moral.reiniciar();
   const p = campo.papeles;
   if (p) moral.marcarPapeles(p.tambor, p.abanderado);
   victoria.reiniciar(); apertura.reiniciar(); fuego.limpiarManchas();
+  sigilo.reiniciar();
+  if (campo.guardia && campo.guardia.length) sigilo.poner(campo.guardia);
 };
 
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
@@ -601,6 +611,29 @@ function simular (dt) {
   // los suyos. La simula el que lleva la batalla y viaja en el parte.
   if (!red.esInvitado) moral.actualizar(dt);
 
+  // EL SIGILO, después de mover a todos y por el mismo motivo que la moral:
+  // mira posiciones ya puestas. Corre sólo en la cordillera, y allá corre
+  // ANTES que la pinza porque la pinza no existe en ese capítulo.
+  if (mundo.capitulo === 'andes') {
+    sigilo.actualizar(dt, {
+      jugador,
+      // QUIETO ES QUIETO, no «sin apretar teclas»: lo que delata es el
+      // movimiento del bulto, y el que viene frenando todavía se mueve.
+      //
+      // Y SÓLO CUENTA LO HORIZONTAL. Con la velocidad entera, la componente
+      // vertical —la gravedad, que nunca está exactamente en cero— alcanzaba
+      // para que un hombre tirado boca abajo contara como en movimiento y lo
+      // vieran igual que parado. Agacharse no servía para nada y la prueba lo
+      // agarró: cuerpo a tierra lo descubrían en el mismo tiempo que de pie.
+      quieto: jugador.vel.x * jugador.vel.x + jugador.vel.z * jugador.vel.z < 0.35,
+      postura: jugador.cfgPostura,
+      soldados,
+      colisiones: mundo.colisiones,
+      hud,
+      sonido
+    });
+  }
+
   pinza.actualizar(dt, jugador, soldados.filter(s => s.esRealista));
 
   // EL CIERRE. El invitado no cuenta enemigos —no simula la batalla— pero sí
@@ -708,6 +741,10 @@ function cuadro () {
   };
   ultimoInfo = info;   // render.info se reinicia en cada render(); ésta es la suma real
 
+  // el ojo de la guardia, sólo donde hay guardia
+  hud.sigilo(mundo.capitulo === 'andes' ? sigilo.sospecha : 0,
+    mundo.capitulo === 'andes' && sigilo.alarma);
+
   hud.actualizar(crudo, {
     // hacia dónde mirás: el arco del daño se orienta contra esto cada cuadro,
     // que es lo que lo vuelve una brújula y no una calcomanía
@@ -766,7 +803,7 @@ window.juego = {
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, camaraArma, render, mundo,
   lejania, pasadaVel, pinza, canones, acto, victoria, apertura, opciones, hud, simular,
-  entrarCapitulo,
+  entrarCapitulo, sigilo,
   get capitulo () { return mundo.capitulo; },
   formarCordillera: campo.formarCordillera,
   get armas () { return arsenal.armas; },

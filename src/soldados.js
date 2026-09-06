@@ -226,6 +226,8 @@ export class Soldado {
     // la figura porque de él dependen la moral de los que lo rodean y lo que
     // pasa cuando cae.
     this.papel = op.papel || null;
+    // DE GUARDIA: no elige blanco ni se mueve hasta que lo despierte la alarma
+    this.centinela = false;
     // el compás del tambor arranca desfasado, que si no se acopla al cuadro
     this.tRedoble = Math.random() * 1.2;
     // CON QUÉ ROPA. El vestuario es del capítulo y no del bando, y también
@@ -653,6 +655,13 @@ export class Soldado {
   // La DISTANCIA sí se recalcula siempre —la usa la máquina de estados en cada
   // cuadro—; lo que se espacia es la decisión, que es lo que temblaba.
   _elegirObjetivo (jugador, soldados, dt) {
+    // EL CENTINELA NO ELIGE A NADIE. Es la única línea de este archivo que
+    // sabe que existe un capítulo 2, y es una línea: un hombre sin objetivo se
+    // queda donde está —lo dice el `if (!this.objetivo)` de más abajo, que ya
+    // estaba— así que montar una guardia no necesitó ni un estado nuevo ni una
+    // IA nueva. Cuando suena la alarma, `sigilo` le apaga la bandera y vuelve a
+    // ser un realista como cualquier otro. En San Lorenzo nadie la prende.
+    if (this.centinela) { this.objetivo = null; return Infinity; }
     const ac = Soldado.acoso;
     let mejor = null, mejorPuntaje = Infinity, mejorD = Infinity;
 

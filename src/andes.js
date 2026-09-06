@@ -381,6 +381,186 @@ export function columnaDelPaso (n = 14) {
   return { puestos, jugador: { x: ENTRADA.x, z: ENTRADA.z, yaw: 0, pitch: -0.02 } };
 }
 
+// ===========================================================================
+// EL SIGILO
+// ===========================================================================
+//
+// Lo que hace que el capítulo 2 no sea San Lorenzo con nieve. En la cordillera
+// no se carga: se pasa. Hay una guardia realista en el corral y el paso es
+// llegar hasta ella sin que te vean; si te ven, hay pelea y la pelea la perdés,
+// porque son ellos los que están atrincherados y vos venís de subir un cerro.
+//
+// DÓNDE VIVEN ESTOS NÚMEROS. Acá y no en `balance.js`: la regla dice que ahí
+// van los números de PELEA y que las distancias de aviso no. Cuánto lejos ve un
+// centinela de noche es exactamente una distancia de aviso, es propia de este
+// paso —en una hoyada abierta sería otra— y no toca una sola cuenta de daño ni
+// de moral. Si algún día el sigilo pasa a decidir vida y muerte de la tropa,
+// ese día se muda con su prueba.
+const VISTA = 46;            // hasta dónde alcanza un ojo con luna y nieve
+const CONO = 1.02;           // medio ángulo: unos sesenta grados a cada lado
+const BARRIDO = 0.62;        // cuánto barre la cabeza a cada lado
+const BARRIDO_T = 8.5;       // y cada cuánto completa el vaivén
+const VER = 0.9;             // sospecha por segundo, pegado y de pie
+const OLVIDO = 0.34;         // y cuánto se le baja cuando te perdió
+const QUIETO = 0.45;         // parado se te ve menos de la mitad
+const ALARMA = 1;            // acá te vieron
+
+// LA GUARDIA. Dos avanzadas sueltas en el camino y el grueso en el corral: se
+// llega a una antes que a la otra, así que la primera es la que enseña cómo
+// funciona y la segunda es la que hay que pensar.
+export function guardiaDelCorral () {
+  const { x: CX, z: CZ } = CORRAL;
+  return [
+    { x: 4.5, z: -66, rumbo: Math.PI },        // la avanzada de la garganta
+    { x: -3.0, z: -88, rumbo: Math.PI },       // la segunda, en la hoyada
+    { x: CX - 5.5, z: CZ + 7.5, rumbo: Math.PI },
+    { x: CX + 4.0, z: CZ + 7.0, rumbo: Math.PI + 0.35 },
+    { x: CX - 9.5, z: CZ - 1.0, rumbo: Math.PI - 0.9 },
+    { x: CX + 6.5, z: CZ - 2.0, rumbo: Math.PI + 0.9 }
+  ];
+}
+
+// ¿HAY PIEDRA EN EL MEDIO? Segmento contra caja, con el método de las lajas:
+// se recorta el segmento contra las tres franjas de la caja y si queda algo,
+// pasa por adentro. NO es un raycast —no hay Raycaster, no hay malla, no hay
+// BVH— y no rompe el «un solo raycast en todo el proyecto»: son diecisiete
+// cajas bajas, las de los peñones y las pircas, seis veces por segundo.
+//
+// Las cajas ALTAS se saltean: las paredes del desfiladero son cajas de setenta
+// y ocho metros que arrancan afuera del piso, y probarlas es tiempo tirado
+// porque dos hombres parados adentro del valle nunca tienen una en el medio.
+//
+// Y ESTO ES LO QUE HACE QUE AGACHARSE SIRVA. La prueba va de ojo a ojo, así
+// que atrás de un peñón de metro y medio: parado te ven la cabeza, agachado no.
+function tapado (ax, ay, az, bx, by, bz, colisiones) {
+  const dx = bx - ax, dy = by - ay, dz = bz - az;
+  for (const c of colisiones) {
+    if (c.max.y > 4) continue;
+    let t0 = 0, t1 = 1, corta = true;
+    for (const [o, d, lo, hi] of [[ax, dx, c.min.x, c.max.x],
+      [ay, dy, c.min.y, c.max.y], [az, dz, c.min.z, c.max.z]]) {
+      if (Math.abs(d) < 1e-9) { if (o < lo || o > hi) { corta = false; break; } continue; }
+      let a = (lo - o) / d, b = (hi - o) / d;
+      if (a > b) { const w = a; a = b; b = w; }
+      if (a > t0) t0 = a;
+      if (b < t1) t1 = b;
+      if (t0 > t1) { corta = false; break; }
+    }
+    if (corta) return true;
+  }
+  return false;
+}
+
+// EL OJO DE LA GUARDIA.
+//
+// Corre a SEIS VECES POR SEGUNDO y no por cuadro, por lo mismo que la moral:
+// nadie parpadea a sesenta hertz y probar seis centinelas contra quince hombres
+// sesenta veces por segundo es gastar un cuadro entero en algo que no cambia.
+const PASO_OJO = 1 / 6;
+
+export class Sigilo {
+  constructor () { this.reiniciar(); }
+
+  reiniciar () {
+    this.centinelas = [];
+    this.sospecha = 0;       // 0 a 1: cuánto saben que estás
+    this.alarma = false;
+    this.tomado = false;     // llegaste al corral sin que te vieran
+    this.t = 0;
+    this.tVista = 0;
+    this.quienTeVe = null;
+  }
+
+  // Los pone el despliegue: acá se los recibe ya soltados al campo.
+  poner (centinelas) {
+    this.centinelas = centinelas;
+    centinelas.forEach((s, i) => {
+      s.centinela = true;
+      s.rumboGuardia = s.frente;
+      s.faseGuardia = (i / centinelas.length) * Math.PI * 2;
+    });
+  }
+
+  // Cuánto se le ve a alguien desde un centinela. Devuelve 0 si no lo ve.
+  _cuanto (s, pos, alto, blanco, quieto, colisiones) {
+    const dx = pos.x - s.pos.x, dz = pos.z - s.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d > VISTA || d < 0.001) return 0;
+    const fx = -Math.sin(s.frente), fz = -Math.cos(s.frente);
+    if ((dx * fx + dz * fz) / d < Math.cos(CONO)) return 0;
+    if (tapado(s.pos.x, 1.55, s.pos.z, pos.x, alto, pos.z, colisiones)) return 0;
+    return (1 - d / VISTA) * blanco * (quieto ? QUIETO : 1);
+  }
+
+  actualizar (dt, ctx) {
+    if (!this.centinelas.length) return;
+    const { jugador, quieto, soldados, colisiones, postura, hud, sonido } = ctx;
+    this.t += dt;
+
+    // LA CABEZA VA Y VIENE. Un centinela clavado mirando a un punto fijo es un
+    // poste: con el barrido, el que se acerca tiene que elegir CUÁNDO moverse,
+    // que es de lo que se trata el sigilo.
+    for (const s of this.centinelas) {
+      if (!s.vivo || this.alarma) continue;
+      const r = s.rumboGuardia + Math.sin(this.t * (Math.PI * 2 / BARRIDO_T) + s.faseGuardia) * BARRIDO;
+      s.frente = r;
+      s.malla.rotation.y = r;
+    }
+
+    this.tVista -= dt;
+    if (this.tVista > 0) return;
+    this.tVista = PASO_OJO;
+    if (this.alarma) return;
+
+    let visto = 0, quien = null;
+    for (const s of this.centinelas) {
+      if (!s.vivo || s.quebrado) continue;
+      // vos
+      const v = this._cuanto(s, jugador.pos, jugador.pos.y, postura.blanco,
+        quieto, colisiones);
+      if (v > visto) { visto = v; quien = s; }
+      // y tu gente, que es tan visible como vos y encima va parada
+      for (const g of soldados) {
+        if (!g.vivo || g.esRealista) continue;
+        const w = this._cuanto(s, g.pos, 1.6, 1, !g.andando, colisiones);
+        if (w > visto) { visto = w; quien = s; }
+      }
+    }
+
+    this.quienTeVe = visto > 0 ? quien : null;
+    this.sospecha = Math.max(0, Math.min(ALARMA,
+      this.sospecha + (visto > 0 ? visto * VER : -OLVIDO) * PASO_OJO));
+
+    if (this.sospecha >= ALARMA) this.dar(hud, sonido);
+    else if (!this.tomado) this._mirarCorral(jugador, hud);
+  }
+
+  // LA ALARMA. Los seis dejan de ser centinelas y pasan a ser lo que son: seis
+  // fusiles que ya saben dónde estás. No hay vuelta atrás, y ésa es la idea.
+  dar (hud, sonido) {
+    if (this.alarma) return;
+    this.alarma = true;
+    this.sospecha = ALARMA;
+    for (const s of this.centinelas) s.centinela = false;
+    if (hud) {
+      hud.mostrarAviso('¡Los vieron! La guardia da la voz', 'malo');
+      hud.cartel('', 0);
+    }
+    if (sonido && sonido.grito) sonido.grito();
+  }
+
+  _mirarCorral (jugador, hud) {
+    const d = Math.hypot(jugador.pos.x - CORRAL.x, jugador.pos.z - CORRAL.z);
+    if (d > 9) return;
+    this.tomado = true;
+    if (hud) {
+      hud.cartel('', 0);
+      hud.placa(['El corral de pircas', 'Tomado sin un tiro',
+        'La partida cruza el paso'], 5);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // EL PASO ENTERO, en un grupo que se prende y se apaga
 // ---------------------------------------------------------------------------

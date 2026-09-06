@@ -174,6 +174,26 @@
     text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 10px rgba(0,0,0,.9);pointer-events:none;
     transition:opacity .12s linear;text-align:center}
   #cartel.si{opacity:1}
+  /* ---- el ojo de la guardia ----
+     Lo único que el sigilo le dice al que juega, y tiene que decirlo SIN
+     palabras y sin tapar nada: una barra corta abajo de la mira que se llena
+     mientras te están mirando y se vacía cuando los perdiste. El rótulo
+     aparece recién pasada la mitad, que es cuando ya hay que hacer algo. */
+  #sigilo{position:absolute;left:50%;top:56%;transform:translateX(-50%);
+    width:clamp(84px,9vw,132px);opacity:0;transition:opacity .25s;
+    pointer-events:none;text-align:center}
+  #sigilo.si{opacity:1}
+  #sigilo .marco{height:3px;background:rgba(10,14,18,.5);
+    box-shadow:0 0 8px rgba(0,0,0,.8);overflow:hidden}
+  #sigilo i{display:block;height:100%;width:0;background:var(--bronce);
+    transition:width .12s linear,background-color .2s}
+  #sigilo b{display:block;margin-top:7px;font-size:10.5px;letter-spacing:.24em;
+    text-transform:uppercase;font-weight:600;color:var(--bronce);opacity:0;
+    transition:opacity .2s;text-shadow:0 2px 8px rgba(0,0,0,.9)}
+  #sigilo.avisa b{opacity:1}
+  #sigilo.visto i{background:#E4797B}
+  #sigilo.visto b{color:#E4797B}
+
   #remate{position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);opacity:0;
     font:700 30px/1 var(--titulo,inherit);letter-spacing:.3em;color:#9BC48F;
     text-shadow:0 2px 18px rgba(0,0,0,.75);text-align:center;pointer-events:none;
@@ -580,6 +600,7 @@
   <div id="aliento"><i></i></div>
   <div id="cartuchera"><div class="n">0</div><div class="t">cartuchos</div></div>
   <div id="cartel"></div>
+  <div id="sigilo"><div class="marco"><i></i></div><b>te están viendo</b></div>
   <div id="remate">¡REMATE!<small>click izquierdo</small></div>
   <div id="tomar"><b>[G]</b> tomar el fusil con bayoneta</div>
   <div id="aviso"></div>
@@ -30992,6 +31013,167 @@ function columnaDelPaso(n = 14) {
   }
   return { puestos, jugador: { x: ENTRADA.x, z: ENTRADA.z, yaw: 0, pitch: -0.02 } };
 }
+var VISTA = 46;
+var CONO = 1.02;
+var BARRIDO = 0.62;
+var BARRIDO_T = 8.5;
+var VER = 0.9;
+var OLVIDO = 0.34;
+var QUIETO = 0.45;
+var ALARMA = 1;
+function guardiaDelCorral() {
+  const { x: CX, z: CZ } = CORRAL;
+  return [
+    { x: 4.5, z: -66, rumbo: Math.PI },
+    // la avanzada de la garganta
+    { x: -3, z: -88, rumbo: Math.PI },
+    // la segunda, en la hoyada
+    { x: CX - 5.5, z: CZ + 7.5, rumbo: Math.PI },
+    { x: CX + 4, z: CZ + 7, rumbo: Math.PI + 0.35 },
+    { x: CX - 9.5, z: CZ - 1, rumbo: Math.PI - 0.9 },
+    { x: CX + 6.5, z: CZ - 2, rumbo: Math.PI + 0.9 }
+  ];
+}
+function tapado(ax, ay, az, bx, by, bz, colisiones) {
+  const dx = bx - ax, dy = by - ay, dz = bz - az;
+  for (const c of colisiones) {
+    if (c.max.y > 4) continue;
+    let t0 = 0, t1 = 1, corta = true;
+    for (const [o, d, lo, hi] of [
+      [ax, dx, c.min.x, c.max.x],
+      [ay, dy, c.min.y, c.max.y],
+      [az, dz, c.min.z, c.max.z]
+    ]) {
+      if (Math.abs(d) < 1e-9) {
+        if (o < lo || o > hi) {
+          corta = false;
+          break;
+        }
+        continue;
+      }
+      let a = (lo - o) / d, b = (hi - o) / d;
+      if (a > b) {
+        const w = a;
+        a = b;
+        b = w;
+      }
+      if (a > t0) t0 = a;
+      if (b < t1) t1 = b;
+      if (t0 > t1) {
+        corta = false;
+        break;
+      }
+    }
+    if (corta) return true;
+  }
+  return false;
+}
+var PASO_OJO = 1 / 6;
+var Sigilo = class {
+  constructor() {
+    this.reiniciar();
+  }
+  reiniciar() {
+    this.centinelas = [];
+    this.sospecha = 0;
+    this.alarma = false;
+    this.tomado = false;
+    this.t = 0;
+    this.tVista = 0;
+    this.quienTeVe = null;
+  }
+  // Los pone el despliegue: acá se los recibe ya soltados al campo.
+  poner(centinelas) {
+    this.centinelas = centinelas;
+    centinelas.forEach((s, i) => {
+      s.centinela = true;
+      s.rumboGuardia = s.frente;
+      s.faseGuardia = i / centinelas.length * Math.PI * 2;
+    });
+  }
+  // Cuánto se le ve a alguien desde un centinela. Devuelve 0 si no lo ve.
+  _cuanto(s, pos, alto, blanco, quieto, colisiones) {
+    const dx = pos.x - s.pos.x, dz = pos.z - s.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d > VISTA || d < 1e-3) return 0;
+    const fx = -Math.sin(s.frente), fz = -Math.cos(s.frente);
+    if ((dx * fx + dz * fz) / d < Math.cos(CONO)) return 0;
+    if (tapado(s.pos.x, 1.55, s.pos.z, pos.x, alto, pos.z, colisiones)) return 0;
+    return (1 - d / VISTA) * blanco * (quieto ? QUIETO : 1);
+  }
+  actualizar(dt, ctx) {
+    if (!this.centinelas.length) return;
+    const { jugador: jugador2, quieto, soldados: soldados2, colisiones, postura, hud: hud2, sonido: sonido2 } = ctx;
+    this.t += dt;
+    for (const s of this.centinelas) {
+      if (!s.vivo || this.alarma) continue;
+      const r = s.rumboGuardia + Math.sin(this.t * (Math.PI * 2 / BARRIDO_T) + s.faseGuardia) * BARRIDO;
+      s.frente = r;
+      s.malla.rotation.y = r;
+    }
+    this.tVista -= dt;
+    if (this.tVista > 0) return;
+    this.tVista = PASO_OJO;
+    if (this.alarma) return;
+    let visto = 0, quien = null;
+    for (const s of this.centinelas) {
+      if (!s.vivo || s.quebrado) continue;
+      const v = this._cuanto(
+        s,
+        jugador2.pos,
+        jugador2.pos.y,
+        postura.blanco,
+        quieto,
+        colisiones
+      );
+      if (v > visto) {
+        visto = v;
+        quien = s;
+      }
+      for (const g of soldados2) {
+        if (!g.vivo || g.esRealista) continue;
+        const w = this._cuanto(s, g.pos, 1.6, 1, !g.andando, colisiones);
+        if (w > visto) {
+          visto = w;
+          quien = s;
+        }
+      }
+    }
+    this.quienTeVe = visto > 0 ? quien : null;
+    this.sospecha = Math.max(0, Math.min(
+      ALARMA,
+      this.sospecha + (visto > 0 ? visto * VER : -OLVIDO) * PASO_OJO
+    ));
+    if (this.sospecha >= ALARMA) this.dar(hud2, sonido2);
+    else if (!this.tomado) this._mirarCorral(jugador2, hud2);
+  }
+  // LA ALARMA. Los seis dejan de ser centinelas y pasan a ser lo que son: seis
+  // fusiles que ya saben dónde estás. No hay vuelta atrás, y ésa es la idea.
+  dar(hud2, sonido2) {
+    if (this.alarma) return;
+    this.alarma = true;
+    this.sospecha = ALARMA;
+    for (const s of this.centinelas) s.centinela = false;
+    if (hud2) {
+      hud2.mostrarAviso("\xA1Los vieron! La guardia da la voz", "malo");
+      hud2.cartel("", 0);
+    }
+    if (sonido2 && sonido2.grito) sonido2.grito();
+  }
+  _mirarCorral(jugador2, hud2) {
+    const d = Math.hypot(jugador2.pos.x - CORRAL.x, jugador2.pos.z - CORRAL.z);
+    if (d > 9) return;
+    this.tomado = true;
+    if (hud2) {
+      hud2.cartel("", 0);
+      hud2.placa([
+        "El corral de pircas",
+        "Tomado sin un tiro",
+        "La partida cruza el paso"
+      ], 5);
+    }
+  }
+};
 function construirAndes(escena2, colisiones) {
   const lugar = new Group();
   lugar.name = "andes";
@@ -36142,6 +36324,7 @@ var Soldado = class _Soldado {
     this.semilla = op.semilla !== void 0 ? op.semilla : Math.random();
     this.tez = op.tez || null;
     this.papel = op.papel || null;
+    this.centinela = false;
     this.tRedoble = Math.random() * 1.2;
     this.vestuario = op.vestuario || null;
     this.claveLejos = this.vestuario && this.vestuario !== this.bando ? this.vestuario : this.bando === "granadero" ? "granadero" : "realista";
@@ -36499,6 +36682,10 @@ var Soldado = class _Soldado {
   // La DISTANCIA sí se recalcula siempre —la usa la máquina de estados en cada
   // cuadro—; lo que se espacia es la decisión, que es lo que temblaba.
   _elegirObjetivo(jugador2, soldados2, dt) {
+    if (this.centinela) {
+      this.objetivo = null;
+      return Infinity;
+    }
     const ac = _Soldado.acoso;
     let mejor = null, mejorPuntaje = Infinity, mejorD = Infinity;
     const pegado = this.estado === "acero" && this.objetivo && this.objetivo.soldado && this.objetivo.soldado.vivo && this._distancia(this.objetivo.pos) < ALCANCE_ACERO + 1.4;
@@ -38616,6 +38803,10 @@ var Hud = class {
     this.arcos = [...document.querySelectorAll("#dano path")];
     this.golpes = this.arcos.map(() => ({ t: 0, x: 0, z: 0 }));
     this.tFrase = 0;
+    this.sigiloEl = $("#sigilo");
+    this.sigiloBarra = $("#sigilo i");
+    this.sigiloTexto = $("#sigilo b");
+    this.sigiloV = -1;
     this.tomar = $("#tomar");
     this.aviso = $("#aviso");
     this.estado = $("#estado");
@@ -38821,6 +39012,22 @@ var Hud = class {
   // los segundos que se le pidan y se apaga sola. Pedir el mismo texto que ya
   // está no reinicia el reloj: si no, algo que se pide por cuadro no se apaga
   // nunca.
+  // EL OJO DE LA GUARDIA. `v` va de 0 a 1 —cuánto saben que estás— y `alarma`
+  // dice que ya se acabó. Se escribe sólo cuando cambia lo suficiente como para
+  // verse: tocar el DOM sesenta veces por segundo para mover tres píxeles es
+  // trabajo que el navegador hace y nadie mira.
+  sigilo(v, alarma) {
+    if (!this.sigiloEl) return;
+    const q = Math.round(Math.max(0, Math.min(1, v)) * 40) / 40;
+    if (q === this.sigiloV && !alarma) return;
+    this.sigiloV = q;
+    this.sigiloEl.classList.toggle("si", q > 0.02 || alarma);
+    this.sigiloEl.classList.toggle("avisa", q > 0.45 || alarma);
+    this.sigiloEl.classList.toggle("visto", alarma);
+    this.sigiloBarra.style.width = Math.round(q * 100) + "%";
+    const dice = alarma ? "los ten\xE9s encima" : "te est\xE1n viendo";
+    if (this.sigiloTexto.textContent !== dice) this.sigiloTexto.textContent = dice;
+  }
   cartel(texto, seg = 3) {
     if (!this.cartelEl) return;
     if (texto && texto === this.cartelTexto) return;
@@ -40038,7 +40245,7 @@ var CURE\u00D1A = 4873274;
 var HIERRO2 = 3947062;
 var RAYO = 6244910;
 var ALCANCE3 = 78;
-var CONO = 0.36;
+var CONO2 = 0.36;
 var AVISO = 2.1;
 var APUNTAR = 1.4;
 var RECARGA2 = 16;
@@ -40177,8 +40384,8 @@ var Canon = class {
     const mio = this.rumbo + Math.PI;
     let dif = ang2 - mio;
     dif = Math.abs(Math.atan2(Math.sin(dif), Math.cos(dif)));
-    if (dif > CONO) return 0;
-    const centrado = 1 - dif / CONO * 0.5;
+    if (dif > CONO2) return 0;
+    const centrado = 1 - dif / CONO2 * 0.5;
     const cerca = 1 - Math.pow(d / ALCANCE3, 1.4);
     return centrado * cerca;
   }
@@ -40418,6 +40625,7 @@ function armarDespliegue(ctx) {
     }
   };
   function soltarTodo() {
+    campo2.guardia = [];
     for (const s of soldados2) s.quitar();
     soldados2.length = 0;
     for (const c of caballos2) if (jugador2.monta !== c) c.quitar();
@@ -40439,12 +40647,19 @@ function armarDespliegue(ctx) {
       s.malla.rotation.y = p.rumbo;
       s.frente = p.rumbo;
     }
+    const guardia = guardiaDelCorral().map((p) => {
+      const s = soltarSoldado("realista", { pos: new Vector3(p.x, 0, p.z) });
+      s.malla.rotation.y = p.rumbo;
+      s.frente = p.rumbo;
+      return s;
+    });
+    campo2.guardia = guardia;
     jugador2.pos.set(plan.jugador.x, jugador2.pos.y, plan.jugador.z);
     jugador2.yaw = plan.jugador.yaw;
     jugador2.pitch = plan.jugador.pitch;
     if (campo2.alFormar) campo2.alFormar();
-    hud2.mostrarAviso("Paso de Los Patos \xB7 la partida sube al desfiladero", "bien");
-    return { partida: plan.puestos.length };
+    hud2.mostrarAviso("Paso de Los Patos \xB7 hay guardia adelante", "bien");
+    return { partida: plan.puestos.length, guardia: guardia.length };
   };
   campo2.formarPinza = function(porColumna = 60, realistas = 250) {
     soltarTodo();
@@ -45223,6 +45438,7 @@ var moral = armarMoral({
   montado,
   red
 });
+var sigilo = new Sigilo();
 campo.alFormar = () => {
   moral.reiniciar();
   const p = campo.papeles;
@@ -45230,6 +45446,8 @@ campo.alFormar = () => {
   victoria.reiniciar();
   apertura.reiniciar();
   fuego.limpiarManchas();
+  sigilo.reiniciar();
+  if (campo.guardia && campo.guardia.length) sigilo.poner(campo.guardia);
 };
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 jugador.alGolpe = (x, z) => hud.marcarDano(x, z);
@@ -45427,6 +45645,25 @@ function simular(dt) {
     }
   }
   if (!red.esInvitado) moral.actualizar(dt);
+  if (mundo.capitulo === "andes") {
+    sigilo.actualizar(dt, {
+      jugador,
+      // QUIETO ES QUIETO, no «sin apretar teclas»: lo que delata es el
+      // movimiento del bulto, y el que viene frenando todavía se mueve.
+      //
+      // Y SÓLO CUENTA LO HORIZONTAL. Con la velocidad entera, la componente
+      // vertical —la gravedad, que nunca está exactamente en cero— alcanzaba
+      // para que un hombre tirado boca abajo contara como en movimiento y lo
+      // vieran igual que parado. Agacharse no servía para nada y la prueba lo
+      // agarró: cuerpo a tierra lo descubrían en el mismo tiempo que de pie.
+      quieto: jugador.vel.x * jugador.vel.x + jugador.vel.z * jugador.vel.z < 0.35,
+      postura: jugador.cfgPostura,
+      soldados,
+      colisiones: mundo.colisiones,
+      hud,
+      sonido
+    });
+  }
   pinza.actualizar(dt, jugador, soldados.filter((s) => s.esRealista));
   if (!red.esInvitado) victoria.contar(dt);
   victoria.actualizar(dt);
@@ -45462,7 +45699,7 @@ function simular(dt) {
   return { presion, arma, quiereApuntar };
 }
 var TAPAS = ["portada", "plano"];
-function tapado() {
+function tapado2() {
   for (const id of TAPAS) {
     const e = document.getElementById(id);
     if (e && !e.classList.contains("oculto")) return true;
@@ -45471,7 +45708,7 @@ function tapado() {
 }
 function cuadro() {
   requestAnimationFrame(cuadro);
-  if (tapado()) {
+  if (tapado2()) {
     reloj.getDelta();
     return;
   }
@@ -45491,6 +45728,10 @@ function cuadro() {
     triangles: mundoInfo.tris + pasadaArma.ultimaInfo.tris
   };
   ultimoInfo = info;
+  hud.sigilo(
+    mundo.capitulo === "andes" ? sigilo.sospecha : 0,
+    mundo.capitulo === "andes" && sigilo.alarma
+  );
   hud.actualizar(crudo, {
     // hacia dónde mirás: el arco del daño se orienta contra esto cada cuadro,
     // que es lo que lo vuelve una brújula y no una calcomanía
@@ -45573,6 +45814,7 @@ window.juego = {
   hud,
   simular,
   entrarCapitulo,
+  sigilo,
   get capitulo() {
     return mundo.capitulo;
   },

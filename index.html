@@ -174,6 +174,26 @@
     text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 10px rgba(0,0,0,.9);pointer-events:none;
     transition:opacity .12s linear;text-align:center}
   #cartel.si{opacity:1}
+  /* ---- el ojo de la guardia ----
+     Lo único que el sigilo le dice al que juega, y tiene que decirlo SIN
+     palabras y sin tapar nada: una barra corta abajo de la mira que se llena
+     mientras te están mirando y se vacía cuando los perdiste. El rótulo
+     aparece recién pasada la mitad, que es cuando ya hay que hacer algo. */
+  #sigilo{position:absolute;left:50%;top:56%;transform:translateX(-50%);
+    width:clamp(84px,9vw,132px);opacity:0;transition:opacity .25s;
+    pointer-events:none;text-align:center}
+  #sigilo.si{opacity:1}
+  #sigilo .marco{height:3px;background:rgba(10,14,18,.5);
+    box-shadow:0 0 8px rgba(0,0,0,.8);overflow:hidden}
+  #sigilo i{display:block;height:100%;width:0;background:var(--bronce);
+    transition:width .12s linear,background-color .2s}
+  #sigilo b{display:block;margin-top:7px;font-size:10.5px;letter-spacing:.24em;
+    text-transform:uppercase;font-weight:600;color:var(--bronce);opacity:0;
+    transition:opacity .2s;text-shadow:0 2px 8px rgba(0,0,0,.9)}
+  #sigilo.avisa b{opacity:1}
+  #sigilo.visto i{background:#E4797B}
+  #sigilo.visto b{color:#E4797B}
+
   #remate{position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);opacity:0;
     font:700 30px/1 var(--titulo,inherit);letter-spacing:.3em;color:#9BC48F;
     text-shadow:0 2px 18px rgba(0,0,0,.75);text-align:center;pointer-events:none;
@@ -580,6 +600,7 @@
   <div id="aliento"><i></i></div>
   <div id="cartuchera"><div class="n">0</div><div class="t">cartuchos</div></div>
   <div id="cartel"></div>
+  <div id="sigilo"><div class="marco"><i></i></div><b>te están viendo</b></div>
   <div id="remate">¡REMATE!<small>click izquierdo</small></div>
   <div id="tomar"><b>[G]</b> tomar el fusil con bayoneta</div>
   <div id="aviso"></div>

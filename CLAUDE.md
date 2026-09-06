@@ -65,9 +65,21 @@ El capítulo se elige en la portada y se entra. Lo que existe hoy:
   `figura.js` —poncho y pañuelo, con variación por hombre— y su silueta
   horneada en `lejania.js`;
 - la **hora**, en `mundo.entrarCapitulo()`: madrugada de luna, con el rebote de
-  la nieve haciendo casi toda la luz.
+  la nieve haciendo casi toda la luz;
+- el **sigilo**, también en `andes.js`: seis centinelas quietos, conos de
+  visión que barren, la piedra que tapa de verdad y la alarma. Lo coordina
+  `main.js` y sólo corre en la cordillera. Medido contra el centinela de la
+  garganta, a veintidós metros: de pie y moviéndote te ven en **2,4 s**,
+  agachado y quieto en **9 s**, cuerpo a tierra y quieto en **20 s**, y atrás
+  de un peñón no te ven —dieciocho segundos de pie y a la vista contra seis al
+  descubierto a la misma distancia—.
 
-Falta la misión: las mulas, el sigilo, los centinelas y la moral de la altura.
+**El centinela también mira a TU gente.** Un granadero asomado te delata en
+2,6 s aunque vos estés a ochenta metros, y eso no es un efecto secundario: es
+lo que convierte el paso en una misión y no en un juego de esconderse.
+
+Falta la misión completa: las mulas, la marcha de la partida y la moral de la
+altura.
 El capítulo 1 no se entera de nada de esto porque lee la pinta `granadero`, que
 quedó palabra por palabra igual.
 
@@ -124,6 +136,11 @@ Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parec
   Andes, donde el jugador se frenaba en el aire a sesenta metros de un corral
   al que no había manera de llegar. **Antes de agregar un número a un archivo
   del núcleo, preguntate de qué capítulo es.**
+- **La guardia del paso** no necesitó ni un estado nuevo ni una IA nueva: un
+  hombre sin objetivo se queda donde está —eso ya estaba en `soldados.js`— así
+  que alcanzó con una bandera, `centinela`, y una línea al principio de
+  `_elegirObjetivo`. Es lo ÚNICO de `soldados.js` que sabe que existe un
+  capítulo 2, y en San Lorenzo nadie la prende.
 - **En qué capítulo estamos** lo sabe `main.entrarCapitulo()` y NADIE más lo
   pregunta. Se lo avisa a los dos únicos que se enteran: `mundo.js` prende el
   lugar y la hora, `despliegue.js` decide con qué ropa sale un granadero. Ni
@@ -262,6 +279,20 @@ están limpios; el balance no. Casos reales, ya medidos:
   supervivencia sin pelea —110 de 120 en pie y siete realistas muertos—. Juntas
   dan quiebre a los 201 s con 92 granaderos en pie. La reunión les baja el ritmo
   de matar para que la moral llegue a tiempo; la otra los mantiene vivos.
+
+- **Un banco de pruebas que no vuelve el mundo a cero mide la corrida
+  anterior.** `sigilo.mjs` comparaba posturas una atrás de otra y daba que
+  agacharse no servía y que la piedra no tapaba. Eran las dos cosas que arrastra
+  una alarma: el centinela dejaba de serlo, elegía blanco y CAMINABA —así que en
+  la medición siguiente la piedra ya no estaba en el medio—, y los catorce
+  granaderos se ponían en marcha y entraban solos en el cono. Cada corrida salía
+  más rápida que la anterior. Para comparar A contra B hay que dejar UNA sola
+  cosa cambiando, y eso incluye deshacer lo que hizo la medición de antes.
+- **La velocidad tiene tres componentes y la vertical miente.** «Estás quieto»
+  se medía con `vel.lengthSq()`, y la gravedad nunca está exactamente en cero:
+  un hombre tirado boca abajo contaba como en movimiento y lo veían igual que
+  parado. Cuerpo a tierra no servía para nada. Con las dos componentes
+  horizontales, pasó de 4 s a 20 s.
 
 Por eso: **tocar un número de `balance.js` obliga a correr `desbande` y `moral`**,
 no alcanza con que compile.
