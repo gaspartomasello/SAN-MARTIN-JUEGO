@@ -62,9 +62,20 @@ export function armarMando (ctx) {
         break;
       }
       case 'KeyH': campo.montarODesmontar(); break;
-      case 'KeyG': arsenal.tomarOIntercambiar(); break;
-      // LA BANDERA. Al lado del cuerpo del abanderado y con él muerto.
-      case 'KeyE': arsenal.robarBandera(); break;
+      // LA G HACE DOS COSAS, Y NUNCA LAS DOS A LA VEZ: si llevás la bandera la
+      // suelta, y si no, cambia el fusil como siempre. No es un doble sentido
+      // gratuito: llevándola no hay ninguna otra tecla que la baje, y soltarla
+      // tiene que estar donde la mano ya está.
+      case 'KeyG':
+        if (arsenal.tenesBandera) arsenal.soltarBandera();
+        else arsenal.tomarOIntercambiar();
+        break;
+      // LA E LEVANTA Y BAJA. Al lado del cuerpo del abanderado, o del asta
+      // clavada en el pasto, que es donde queda cuando alguien la suelta.
+      case 'KeyE':
+        if (arsenal.tenesBandera) arsenal.soltarBandera();
+        else arsenal.robarBandera();
+        break;
       case 'Digit1': arsenal.cambiar('larga'); break;
       case 'Digit2': arsenal.cambiar('sable'); break;
       case 'Digit3': arsenal.cambiar('pistolon'); break;

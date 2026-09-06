@@ -12,13 +12,17 @@
 // gatillar; no sabe cuánto duele una bala.
 
 import { ArmaFuego } from './armas.js';
-import { banderaEnMano, flamear } from './figura.js';
+import { banderaEnMano, banderaPlantada, flamear } from './figura.js';
 import { GUARDIA_GASTO } from './balance.js';
+
+// A qué distancia se levanta la bandera. Un poco más que el fusil caído (2,6):
+// el asta es larga y agacharse a un palo de dos metros no pide estar encima.
+const ALCANCE_BANDERA = 3.2;
 
 const CARTUCHERA = 24;
 
 export function armarArsenal (ctx) {
-  const { camara, camaraArma, sonido, humo, hud, sable, jugador, soldados,
+  const { escena, camara, camaraArma, sonido, humo, hud, sable, jugador, soldados,
     resolverDisparo, resolverGolpe } = ctx;
 
   const armas = {
@@ -129,23 +133,46 @@ export function armarArsenal (ctx) {
   // Se la roba a un MUERTO. A un hombre de pie no se le saca el estandarte de
   // las manos, y pedir que primero lo mates es lo que hace que los dos tercios
   // —matar al abanderado y llevarse el paño— sean un solo viaje y no dos.
+  // HAY UN SOLO ESTANDARTE Y DOS LUGARES DONDE PUEDE ESTAR: en tu mano o
+  // clavado en el pasto. Nunca en los dos, y nunca en ninguno mientras el
+  // abanderado lo lleve encima.
   const bandera = banderaEnMano();
   camaraArma.add(bandera.raiz);
+  const plantada = banderaPlantada();
+  if (escena) escena.add(plantada.raiz);
   yo.tenesBandera = false;
+  yo.banderaEnPiso = false;
+
+  // CLAVARLA EN UN SITIO. La usa main.js cuando cae el abanderado —el cuerpo
+  // entrega el asta y el estandarte queda parado donde cayó— y la usa el propio
+  // jugador al soltarla.
+  yo.plantarBandera = function (p) {
+    plantada.raiz.position.set(p.x, 0, p.z);
+    plantada.raiz.rotation.y = Math.random() * Math.PI * 2;
+    plantada.raiz.visible = true;
+    yo.banderaEnPiso = true;
+  };
 
   yo.banderaCerca = function () {
+    if (yo.banderaEnPiso) {
+      const d = Math.hypot(plantada.raiz.position.x - jugador.pos.x,
+        plantada.raiz.position.z - jugador.pos.z);
+      if (d < ALCANCE_BANDERA) return 'piso';
+    }
+    // por si cayó y todavía nadie la sacó del cuerpo
     for (const s of soldados) {
       if (s.papel !== 'abanderado' || s.vivo || s.sinBandera) continue;
-      if (s.pos.distanceTo(jugador.pos) < 3.2) return s;
+      if (s.pos.distanceTo(jugador.pos) < ALCANCE_BANDERA) return s;
     }
     return null;
   };
 
   yo.robarBandera = function () {
     if (yo.tenesBandera) { hud.mostrarAviso('Ya la llevás', 'malo'); return false; }
-    const s = yo.banderaCerca();
-    if (!s) { hud.mostrarAviso('No hay ninguna bandera acá', 'malo'); return false; }
-    s.entregarBandera();
+    const donde = yo.banderaCerca();
+    if (!donde) { hud.mostrarAviso('No hay ninguna bandera acá', 'malo'); return false; }
+    if (donde === 'piso') { plantada.raiz.visible = false; yo.banderaEnPiso = false; }
+    else donde.entregarBandera();
     yo.tenesBandera = true;
     bandera.raiz.visible = true;
     hud.mostrarAviso('¡Les tomaste la bandera!', 'bien');
@@ -153,8 +180,25 @@ export function armarArsenal (ctx) {
     return true;
   };
 
-  // el paño ondula aunque estés quieto: una bandera clavada no es una bandera
-  yo.flamearBandera = function (dt) { if (yo.tenesBandera) flamear(bandera, dt); };
+  // Y SOLTARLA. Queda clavada donde estabas, a la vista y al alcance de
+  // cualquiera: en una partida de a dos el otro la puede levantar. Lo que ya
+  // ganaste no se devuelve —la línea realista los vio perder el paño y eso no
+  // se deshace—, así que el desaliento no vuelve para atrás.
+  yo.soltarBandera = function () {
+    if (!yo.tenesBandera) return false;
+    yo.tenesBandera = false;
+    bandera.raiz.visible = false;
+    yo.plantarBandera(jugador.pos);
+    hud.mostrarAviso('Soltaste la bandera', 'bien');
+    return true;
+  };
+
+  // el paño ondula aunque estés quieto, la lleves vos o esté clavada: una
+  // bandera quieta es una chapa pintada
+  yo.flamearBandera = function (dt) {
+    if (yo.tenesBandera) flamear(bandera, dt);
+    if (yo.banderaEnPiso) flamear(plantada, dt);
+  };
 
   yo.tomarOIntercambiar = function () {
     const caido = yo.caidoConFusil();

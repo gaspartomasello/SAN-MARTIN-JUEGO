@@ -129,8 +129,11 @@ export function armarMoral (ctx) {
   // batalla se le pone más fácil sin que sepa por qué. El cartel es lo que
   // convierte un accidente en una mecánica.
   function cayoUnPapel (s) {
-    if (!s.papel || !hud) return;
+    if (!s.papel) return;
     if (s !== papeles.tambor && s !== papeles.abanderado) return;
+    // main.js le saca el estandarte al abanderado y lo clava en el pasto
+    if (yo.alCaerPapel) yo.alCaerPapel(s);
+    if (!hud) return;
     const nombre = s.papel === 'tambor' ? 'Cayó el tambor' : 'Cayó el abanderado';
     hud.mostrarAviso(nombre + ' · se les gasta más rápido', 'bien');
     if (s.papel === 'abanderado') hud.cartel('[E] ROBÁ LA BANDERA', 4);
@@ -387,10 +390,11 @@ export function armarMoral (ctx) {
     for (const c of canones) c._callada = false;
   }
 
-  return {
+  const yo = {
     actualizar,
     reiniciar,
     marcarPapeles,
+    alCaerPapel: null,
     // la bandera la roba el jugador, y quien lo resuelve es combate.js
     robarBandera () { papeles.robada = true; },
     get papeles () {
@@ -408,4 +412,5 @@ export function armarMoral (ctx) {
       roto: { ...roto }
     })
   };
+  return yo;
 }

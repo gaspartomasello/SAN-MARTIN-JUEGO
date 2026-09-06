@@ -157,7 +157,7 @@ const combate = armarCombate({
 // como siempre, contra los títeres, que ya saben cómo pedir permiso—.
 let red = null;
 arsenal = armarArsenal({
-  camara, camaraArma, sonido, humo, hud, sable, jugador, soldados,
+  escena, camara, camaraArma, sonido, humo, hud, sable, jugador, soldados,
   resolverDisparo: (o, d, disp) => {
     if (red) red.avisarTiro(o, d);
     combate.resolverDisparo(o, d, disp);
@@ -405,6 +405,19 @@ const apertura = new ActoApertura({ hud, sonido });
 arsenal.alRobarBandera = () => {
   moral.robarBandera();
   hud.cartel('¡BANDERA TOMADA!', 2.6);
+};
+
+// Y CUANDO CAE EL ABANDERADO, EL ESTANDARTE DEJA EL CUERPO.
+//
+// No es una florcita: es el arreglo del defecto que se veía jugando. El asta
+// colgaba del torso, así que con el hombre en el pasto quedaba tirada
+// horizontal y el paño se metía un metro y cuarto bajo tierra — la bandera
+// desaparecía justo en el momento en que había que ir a buscarla. Ahora se le
+// saca del cuerpo y queda clavada donde cayó, parada y a la vista.
+moral.alCaerPapel = (s) => {
+  if (s.papel !== 'abanderado' || s.sinBandera) return;
+  s.entregarBandera();
+  arsenal.plantarBandera(s.pos);
 };
 // EN RED LO CANTA EL QUE LO VE, y lo escuchan todos. El invitado no simula la
 // batalla y por eso no detecta el final: se lo dice el anfitrión. Pero la
@@ -724,7 +737,7 @@ window.juego = {
   combate, arsenal, campo, gentio, mando, red, moral, plano, sonido,
   balance: { VOLTEO, OFICIO, METRALLA_CABALLO },
   // el mundo
-  jugador, sable, humo, fuego, soldados, caballos, escena, camara, render,
+  jugador, sable, humo, fuego, soldados, caballos, escena, camara, camaraArma, render,
   lejania, pasadaVel, pinza, canones, acto, victoria, apertura, opciones, hud, simular,
   get armas () { return arsenal.armas; },
   get caballo () { return campo.caballo; },

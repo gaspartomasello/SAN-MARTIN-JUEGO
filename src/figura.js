@@ -722,6 +722,7 @@ function bandera (taller, h) {
   asta.rotation.z = INCLINA;
   h.torso.add(asta);
   h.asta = asta;
+  asta.userData.noApoya = true;      // el asta no apoya el cuerpo en el pasto
 
   taller.add(asta, cil(0.021, 0.026, ASTA, 6), 0x6b4a2a, { p: [0, ASTA / 2, 0] });
   taller.add(asta, cil(0.004, 0.030, 0.15, 6), 0xb9832f, { p: [0, ASTA + 0.06, 0], metal: true });
@@ -739,6 +740,7 @@ function bandera (taller, h) {
   // Encadenados y no hermanos: así el giro se ACUMULA y la punta se mueve
   // mucho más que el borde pegado al asta, que es como flamea una bandera.
   const huesos = pano(taller, asta, ASTA - 0.14 - AL_PANO / 2);
+  for (const g of huesos) g.userData.noApoya = true;
   h.trapo = huesos.slice(1);        // los dos que se mueven; el primero es el nudo
 }
 
@@ -790,25 +792,57 @@ function pano (taller, asta, alto) {
 // Y VA EN LA IZQUIERDA. El corvo se lleva en la derecha y no se suelta: el
 // asta ocupa la mano que no pelea, que es exactamente cómo se llevaba una
 // bandera en una carga y por qué robarla no te cuesta el sable.
-export function banderaEnMano () {
+// EL ESTANDARTE SUELTO, sin hombre debajo. Sirve para las dos cosas: la que
+// llevás en la mano y la que queda clavada en el pasto. Va con cada hueso en su
+// propia malla —`suelto`— porque acá no hay esqueleto que la anime: la ondulan
+// los grupos girando, que es más simple y son cinco mallas.
+function estandarte (largo, base) {
   const taller = new Taller();
   const raiz = new THREE.Group();
   const asta = new THREE.Group();
   asta.userData.suelto = true;
   raiz.add(asta);
-  const LARGO = 1.15;
-  taller.add(asta, cil(0.021, 0.026, LARGO, 6), 0x6b4a2a, { p: [0, LARGO / 2 - 0.45, 0] });
-  taller.add(asta, cil(0.004, 0.030, 0.12, 6), 0xb9832f, { p: [0, LARGO - 0.40, 0], metal: true });
-  const huesos = pano(taller, asta, LARGO - 0.52);
+  taller.add(asta, cil(0.021, 0.026, largo, 6), 0x6b4a2a, { p: [0, largo / 2 - base, 0] });
+  taller.add(asta, cil(0.004, 0.030, 0.13, 6), 0xb9832f, { p: [0, largo - base + 0.06, 0], metal: true });
+  const huesos = pano(taller, asta, largo - base - 0.20 - AL_PANO / 2);
   for (const g of huesos) g.userData.suelto = true;
   taller.cocinar(null);
-
-  raiz.scale.setScalar(0.62);
-  raiz.position.set(-0.30, -0.46, -0.52);
-  raiz.rotation.set(0.10, 0.22, 0.30);
   raiz.traverse(o => { o.frustumCulled = false; });
-  raiz.visible = false;
   return { raiz, trapo: huesos.slice(1), t: 0 };
+}
+
+// LA QUE LLEVA EL JUGADOR, en la cámara del arma. VA EN LA IZQUIERDA y bien
+// corrida al costado: el corvo se lleva en la derecha y el medio de la pantalla
+// es por donde se mira y se apunta. Un paño de un metro en el centro es una
+// venda, no una bandera.
+export function banderaEnMano () {
+  const b = estandarte(1.15, 0.45);
+  b.raiz.name = 'bandera-en-mano';   // para que las pruebas la encuentren
+  // BIEN CONTRA EL BORDE IZQUIERDO Y MÁS CHICA. Medido proyectando la caja
+  // sobre la pantalla: donde estaba ocupaba el 34% de la vista y se metía un
+  // 33% en la caja del centro —por donde se mira y se apunta—, o sea que la
+  // bandera era una venda. Así ocupa el 15% y sólo un 4% del centro, y el
+  // borde derecho del paño queda en x = −0,36 de pantalla: bien afuera.
+  b.raiz.scale.setScalar(0.46);
+  b.raiz.position.set(-0.78, -0.46, -0.92);
+  b.raiz.rotation.set(0.05, 0.38, 0.52);
+  b.raiz.visible = false;
+  return b;
+}
+
+// LA QUE QUEDA CLAVADA EN EL PASTO cuando cae el abanderado o cuando la soltás.
+//
+// Y no es un adorno: es el arreglo de un defecto que se veía jugando. El asta
+// colgaba del torso, así que al caer el hombre quedaba tirada horizontal a diez
+// centímetros del suelo y el paño —que cuelga perpendicular— se metía UN METRO
+// Y CUARTO bajo tierra. La bandera desaparecía justo cuando había que ir a
+// buscarla. Sacándola del cuerpo y plantándola derecha, se ve desde lejos y hay
+// adónde ir.
+export function banderaPlantada () {
+  const b = estandarte(2.05, 0.0);
+  b.raiz.rotation.set(0.10, 0, -0.26);      // clavada, apenas inclinada
+  b.raiz.visible = false;
+  return b;
 }
 
 // y el flameo, que es el mismo de la figura pero sin esqueleto de por medio
@@ -1132,6 +1166,67 @@ export class Figura {
   }
 
   // se desploma de costado, no de cara: queda mejor sobre el pasto
+  // CUÁNTO SE HUNDE ESTE CUERPO AL VOLCARSE, en metros.
+  //
+  // La raíz de la figura gira sobre los PIES —ahí está su cero—, así que al
+  // voltearse, el hombro y la cadera del lado bajo pasan por debajo del suelo.
+  // Medido antes de arreglarlo: medio metro. Un cadáver metido hasta la
+  // cintura en el pasto, y el asta del abanderado entrando en diagonal a la
+  // tierra con la bandera adentro.
+  //
+  // Se calcula girando la CAJA DE AMARRE con la rotación de la raíz, que es
+  // donde está el vuelco: las rotaciones de los huesos mueven codos, rodillas
+  // y cabeza, no el volumen del hombre. Una vez por muerto y se guarda; son
+  // ocho puntos y una matriz, contra doscientos cincuenta muertos por batalla.
+  hundimiento () {
+    if (this._hund !== undefined) return this._hund;
+    const malla = this.mallas && this.mallas[0];
+    const g = malla && malla.geometry;
+    if (!g) return (this._hund = 0);
+
+    const c = this._caer;
+    const zA = this.raiz.rotation.z, xA = this.raiz.rotation.x;
+    this.raiz.rotation.z = c.vuelco * c.lado;
+    this.raiz.rotation.x = c.pique;
+    this.raiz.updateMatrix();
+
+    const v = new THREE.Vector3();
+    let min = Infinity;
+    const mirar = (x, y, z) => {
+      v.set(x, y, z).applyMatrix4(this.raiz.matrix);
+      if (v.y < min) min = v.y;
+    };
+
+    // EL ESTANDARTE NO CUENTA PARA APOYAR EL CUERPO, y ésta fue la primera
+    // versión rota de esto: la caja de amarre del abanderado incluye un asta de
+    // dos metros con su paño, así que al girarla salía un levante enorme y el
+    // muerto quedaba flotando un metro sobre el pasto. Lo que apoya es el
+    // hombre. Para él se recorren los vértices de a uno salteando los del asta
+    // —es UN hombre en toda la batalla y son dos mil vértices, una vez—; para
+    // los otros doscientos cuarenta y nueve alcanza con los ocho vértices de la
+    // caja, que es lo mismo y sale gratis.
+    const pos = g.attributes.position, hue = g.attributes.skinIndex;
+    const esqueleto = malla.skeleton;
+    if (this.h.asta && pos && hue && esqueleto) {
+      const fuera = new Set();
+      esqueleto.bones.forEach((b, i) => { if (b.userData.noApoya) fuera.add(i); });
+      for (let i = 0; i < pos.count; i++) {
+        if (fuera.has(hue.getX(i))) continue;
+        mirar(pos.getX(i), pos.getY(i), pos.getZ(i));
+      }
+    } else {
+      if (!g.boundingBox) g.computeBoundingBox();
+      const b = g.boundingBox;
+      for (const i of [0, 1]) for (const j of [0, 1]) for (const k of [0, 1]) {
+        mirar(i ? b.max.x : b.min.x, j ? b.max.y : b.min.y, k ? b.max.z : b.min.z);
+      }
+    }
+
+    this.raiz.rotation.z = zA; this.raiz.rotation.x = xA;
+    this.raiz.updateMatrix();
+    return (this._hund = Math.max(0, isFinite(min) ? -min : 0));
+  }
+
   desplomar (e) {
     const c = this._caer;
     this.raiz.rotation.z = e * c.vuelco * c.lado;

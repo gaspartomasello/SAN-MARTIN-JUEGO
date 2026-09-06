@@ -14,6 +14,11 @@ import { CAMPO_X, CAMPO_Z0, CAMPO_Z1 } from './jugador.js';
 // que NO PUEDE FRENAR NI DOBLAR EN SECO. Al galope el radio de giro se abre y
 // el acero cobra el triple. Toda la carga del acto 3 sale de esa tensión.
 
+// Lo que un cuerpo se asienta en el pasto, a propósito: apoyado exactamente
+// sobre el plano se lee como una calcomanía. Un caballo pesa y se hunde más
+// que un hombre.
+const ASENTADO_CABALLO = 0.12;
+
 const PELAJE = 0x54392a;
 const PELAJE_CLARO = 0x6b4a34;
 // EL CABALLO DE SAN MARTÍN. Entre ciento veinte animales todos del mismo
@@ -304,6 +309,41 @@ export class Caballo {
   // caballo puede volver a estar en pie sin haberse muerto nunca —el que se
   // desmontó y vuelve a montar— y sin esto seguía acostado con el jinete
   // flotando encima.
+  // CUÁNTO SE HUNDE EL CABALLO AL VOLCARSE, en metros.
+  //
+  // Media tonelada de bicho girando 1,5 radianes sobre las patas: la raíz está
+  // a la altura de los cascos, así que el lomo y la panza pasan al otro lado
+  // del piso. Y encima el desplome le restaba 42 cm fijos. Medido antes de
+  // arreglarlo: un metro bajo tierra. Un caballo muerto es lo más grande que
+  // hay tirado en este campo y era lo que peor se enterraba.
+  //
+  // Misma cuenta que la del hombre: la caja de amarre girada con las rotaciones
+  // del desplome. Una vez por animal y se guarda.
+  hundimiento () {
+    if (this._hund !== undefined) return this._hund;
+    const zA = this.raiz.rotation.z, xA = this.raiz.rotation.x, yA = this.raiz.position.y;
+    this.raiz.rotation.z = 1.5 * this.lado;
+    this.raiz.rotation.x = 0.18;
+    this.raiz.position.y = 0;
+    this.raiz.updateMatrix();
+    const v = new THREE.Vector3();
+    let min = Infinity;
+    for (const m of (this.mallas || [])) {
+      const g = m.geometry;
+      if (!g) continue;
+      if (!g.boundingBox) g.computeBoundingBox();
+      const b = g.boundingBox;
+      for (const i of [0, 1]) for (const j of [0, 1]) for (const k of [0, 1]) {
+        v.set(i ? b.max.x : b.min.x, j ? b.max.y : b.min.y, k ? b.max.z : b.min.z)
+          .applyMatrix4(this.raiz.matrix);
+        if (v.y < min) min = v.y;
+      }
+    }
+    this.raiz.rotation.z = zA; this.raiz.rotation.x = xA; this.raiz.position.y = yA;
+    this.raiz.updateMatrix();
+    return (this._hund = Math.max(0, isFinite(min) ? -min : 0));
+  }
+
   enderezar () {
     this.caida = 0;
     if (this.poseFija) return;
@@ -319,7 +359,9 @@ export class Caballo {
       if (!this.poseFija) {
         this.raiz.rotation.z = e * 1.5 * this.lado;
         this.raiz.rotation.x = e * 0.18;
-        this.raiz.position.y = this.alto - e * 0.42;
+        // SE APOYA DE COSTADO, NO SE ENTIERRA. Antes eran 42 cm fijos hacia
+        // abajo, que sumados al vuelco dejaban al animal un metro bajo el pasto.
+        this.raiz.position.y = this.alto + e * (this.hundimiento() - ASENTADO_CABALLO);
       }
       this._avanzar(dt);
       return;
@@ -344,7 +386,9 @@ export class Caballo {
       if (!this.poseFija) {
         this.raiz.rotation.z = e * 1.5 * this.lado;
         this.raiz.rotation.x = e * 0.18;
-        this.raiz.position.y = this.alto - e * 0.42;
+        // SE APOYA DE COSTADO, NO SE ENTIERRA. Antes eran 42 cm fijos hacia
+        // abajo, que sumados al vuelco dejaban al animal un metro bajo el pasto.
+        this.raiz.position.y = this.alto + e * (this.hundimiento() - ASENTADO_CABALLO);
       }
       if (this.caida >= 1) this.tMuerto += dt;
       this._avanzar(dt);

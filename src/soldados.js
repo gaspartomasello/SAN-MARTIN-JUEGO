@@ -44,6 +44,10 @@ import {
 // combate: es un tiempo de animación, así que vive acá y no en balance.js.
 const REDOBLE_CADA = 1.24;
 
+// Lo que un cuerpo se asienta en el pasto, a propósito: un cadáver apoyado
+// exactamente sobre el plano se lee como una calcomanía. Seis centímetros.
+const ASENTADO = 0.06;
+
 const VEL = 1.85;
 const VEL_CARRERA = 4.3;        // a la carrera, con el fusil corto y bajo
 const ALCANCE_TIRO = 62;
@@ -705,7 +709,7 @@ export class Soldado {
       this.caida = Math.min(1, this.caida + dt * 2.6);
       const e = 1 - Math.pow(1 - this.caida, 3);
       this.fig.desplomar(e);
-      this.malla.position.y = -e * 0.10;
+      this.malla.position.y = e * (this.fig.hundimiento() - ASENTADO);
       return;
     }
     if (this.montado) { this._sentar(); this.fig.actualizar(dt, false); return; }
@@ -740,7 +744,12 @@ export class Soldado {
       this.caida = Math.min(1, this.caida + dt * 2.6);
       const e = 1 - Math.pow(1 - this.caida, 3);
       this.fig.desplomar(e);
-      this.malla.position.y = -e * 0.10;
+      // EL CUERPO SE APOYA EN EL PASTO, NO SE ENTIERRA. Sin el levante que le
+      // pide a la figura, volcarse lo metía medio metro bajo el piso: la raíz
+      // gira sobre los pies y el hombro de abajo se va para adentro de la
+      // tierra. Con el abanderado era peor todavía, porque el asta se hundía
+      // con él y la bandera desaparecía.
+      this.malla.position.y = e * (this.fig.hundimiento() - ASENTADO);
       return;
     }
 

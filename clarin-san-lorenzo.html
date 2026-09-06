@@ -33892,9 +33892,11 @@ function bandera(taller, h) {
   asta.rotation.z = INCLINA;
   h.torso.add(asta);
   h.asta = asta;
+  asta.userData.noApoya = true;
   taller.add(asta, cil(0.021, 0.026, ASTA, 6), 7031338, { p: [0, ASTA / 2, 0] });
   taller.add(asta, cil(4e-3, 0.03, 0.15, 6), 12157743, { p: [0, ASTA + 0.06, 0], metal: true });
   const huesos = pano(taller, asta, ASTA - 0.14 - AL_PANO / 2);
+  for (const g of huesos) g.userData.noApoya = true;
   h.trapo = huesos.slice(1);
 }
 var AN_PANO = 0.86;
@@ -33930,26 +33932,36 @@ function pano(taller, asta, alto) {
   }
   return huesos;
 }
-function banderaEnMano() {
+function estandarte(largo, base) {
   const taller = new Taller();
   const raiz = new Group();
   const asta = new Group();
   asta.userData.suelto = true;
   raiz.add(asta);
-  const LARGO = 1.15;
-  taller.add(asta, cil(0.021, 0.026, LARGO, 6), 7031338, { p: [0, LARGO / 2 - 0.45, 0] });
-  taller.add(asta, cil(4e-3, 0.03, 0.12, 6), 12157743, { p: [0, LARGO - 0.4, 0], metal: true });
-  const huesos = pano(taller, asta, LARGO - 0.52);
+  taller.add(asta, cil(0.021, 0.026, largo, 6), 7031338, { p: [0, largo / 2 - base, 0] });
+  taller.add(asta, cil(4e-3, 0.03, 0.13, 6), 12157743, { p: [0, largo - base + 0.06, 0], metal: true });
+  const huesos = pano(taller, asta, largo - base - 0.2 - AL_PANO / 2);
   for (const g of huesos) g.userData.suelto = true;
   taller.cocinar(null);
-  raiz.scale.setScalar(0.62);
-  raiz.position.set(-0.3, -0.46, -0.52);
-  raiz.rotation.set(0.1, 0.22, 0.3);
   raiz.traverse((o) => {
     o.frustumCulled = false;
   });
-  raiz.visible = false;
   return { raiz, trapo: huesos.slice(1), t: 0 };
+}
+function banderaEnMano() {
+  const b = estandarte(1.15, 0.45);
+  b.raiz.name = "bandera-en-mano";
+  b.raiz.scale.setScalar(0.46);
+  b.raiz.position.set(-0.78, -0.46, -0.92);
+  b.raiz.rotation.set(0.05, 0.38, 0.52);
+  b.raiz.visible = false;
+  return b;
+}
+function banderaPlantada() {
+  const b = estandarte(2.05, 0);
+  b.raiz.rotation.set(0.1, 0, -0.26);
+  b.raiz.visible = false;
+  return b;
 }
 function flamear(b, dt) {
   b.t += dt;
@@ -34228,6 +34240,57 @@ var Figura = class {
     this._armar();
   }
   // se desploma de costado, no de cara: queda mejor sobre el pasto
+  // CUÁNTO SE HUNDE ESTE CUERPO AL VOLCARSE, en metros.
+  //
+  // La raíz de la figura gira sobre los PIES —ahí está su cero—, así que al
+  // voltearse, el hombro y la cadera del lado bajo pasan por debajo del suelo.
+  // Medido antes de arreglarlo: medio metro. Un cadáver metido hasta la
+  // cintura en el pasto, y el asta del abanderado entrando en diagonal a la
+  // tierra con la bandera adentro.
+  //
+  // Se calcula girando la CAJA DE AMARRE con la rotación de la raíz, que es
+  // donde está el vuelco: las rotaciones de los huesos mueven codos, rodillas
+  // y cabeza, no el volumen del hombre. Una vez por muerto y se guarda; son
+  // ocho puntos y una matriz, contra doscientos cincuenta muertos por batalla.
+  hundimiento() {
+    if (this._hund !== void 0) return this._hund;
+    const malla = this.mallas && this.mallas[0];
+    const g = malla && malla.geometry;
+    if (!g) return this._hund = 0;
+    const c = this._caer;
+    const zA = this.raiz.rotation.z, xA = this.raiz.rotation.x;
+    this.raiz.rotation.z = c.vuelco * c.lado;
+    this.raiz.rotation.x = c.pique;
+    this.raiz.updateMatrix();
+    const v = new Vector3();
+    let min = Infinity;
+    const mirar = (x, y, z) => {
+      v.set(x, y, z).applyMatrix4(this.raiz.matrix);
+      if (v.y < min) min = v.y;
+    };
+    const pos = g.attributes.position, hue = g.attributes.skinIndex;
+    const esqueleto3 = malla.skeleton;
+    if (this.h.asta && pos && hue && esqueleto3) {
+      const fuera = /* @__PURE__ */ new Set();
+      esqueleto3.bones.forEach((b, i) => {
+        if (b.userData.noApoya) fuera.add(i);
+      });
+      for (let i = 0; i < pos.count; i++) {
+        if (fuera.has(hue.getX(i))) continue;
+        mirar(pos.getX(i), pos.getY(i), pos.getZ(i));
+      }
+    } else {
+      if (!g.boundingBox) g.computeBoundingBox();
+      const b = g.boundingBox;
+      for (const i of [0, 1]) for (const j of [0, 1]) for (const k of [0, 1]) {
+        mirar(i ? b.max.x : b.min.x, j ? b.max.y : b.min.y, k ? b.max.z : b.min.z);
+      }
+    }
+    this.raiz.rotation.z = zA;
+    this.raiz.rotation.x = xA;
+    this.raiz.updateMatrix();
+    return this._hund = Math.max(0, isFinite(min) ? -min : 0);
+  }
   desplomar(e) {
     const c = this._caer;
     this.raiz.rotation.z = e * c.vuelco * c.lado;
@@ -34371,6 +34434,7 @@ var REFUGIO_REALISTA = -82;
 var REFUGIO_GRANADERO = 58;
 
 // src/caballo.js
+var ASENTADO_CABALLO = 0.12;
 var PELAJE = 5519658;
 var PELAJE_CLARO = 7031348;
 var CREMA = 13350025;
@@ -34597,6 +34661,41 @@ var Caballo = class {
   // caballo puede volver a estar en pie sin haberse muerto nunca —el que se
   // desmontó y vuelve a montar— y sin esto seguía acostado con el jinete
   // flotando encima.
+  // CUÁNTO SE HUNDE EL CABALLO AL VOLCARSE, en metros.
+  //
+  // Media tonelada de bicho girando 1,5 radianes sobre las patas: la raíz está
+  // a la altura de los cascos, así que el lomo y la panza pasan al otro lado
+  // del piso. Y encima el desplome le restaba 42 cm fijos. Medido antes de
+  // arreglarlo: un metro bajo tierra. Un caballo muerto es lo más grande que
+  // hay tirado en este campo y era lo que peor se enterraba.
+  //
+  // Misma cuenta que la del hombre: la caja de amarre girada con las rotaciones
+  // del desplome. Una vez por animal y se guarda.
+  hundimiento() {
+    if (this._hund !== void 0) return this._hund;
+    const zA = this.raiz.rotation.z, xA = this.raiz.rotation.x, yA = this.raiz.position.y;
+    this.raiz.rotation.z = 1.5 * this.lado;
+    this.raiz.rotation.x = 0.18;
+    this.raiz.position.y = 0;
+    this.raiz.updateMatrix();
+    const v = new Vector3();
+    let min = Infinity;
+    for (const m of this.mallas || []) {
+      const g = m.geometry;
+      if (!g) continue;
+      if (!g.boundingBox) g.computeBoundingBox();
+      const b = g.boundingBox;
+      for (const i of [0, 1]) for (const j of [0, 1]) for (const k of [0, 1]) {
+        v.set(i ? b.max.x : b.min.x, j ? b.max.y : b.min.y, k ? b.max.z : b.min.z).applyMatrix4(this.raiz.matrix);
+        if (v.y < min) min = v.y;
+      }
+    }
+    this.raiz.rotation.z = zA;
+    this.raiz.rotation.x = xA;
+    this.raiz.position.y = yA;
+    this.raiz.updateMatrix();
+    return this._hund = Math.max(0, isFinite(min) ? -min : 0);
+  }
   enderezar() {
     this.caida = 0;
     if (this.poseFija) return;
@@ -34611,7 +34710,7 @@ var Caballo = class {
       if (!this.poseFija) {
         this.raiz.rotation.z = e * 1.5 * this.lado;
         this.raiz.rotation.x = e * 0.18;
-        this.raiz.position.y = this.alto - e * 0.42;
+        this.raiz.position.y = this.alto + e * (this.hundimiento() - ASENTADO_CABALLO);
       }
       this._avanzar(dt);
       return;
@@ -34631,7 +34730,7 @@ var Caballo = class {
       if (!this.poseFija) {
         this.raiz.rotation.z = e * 1.5 * this.lado;
         this.raiz.rotation.x = e * 0.18;
-        this.raiz.position.y = this.alto - e * 0.42;
+        this.raiz.position.y = this.alto + e * (this.hundimiento() - ASENTADO_CABALLO);
       }
       if (this.caida >= 1) this.tMuerto += dt;
       this._avanzar(dt);
@@ -34948,6 +35047,7 @@ function separar(soldados2, rejilla, radio = RADIO_HOMBRE) {
 
 // src/soldados.js
 var REDOBLE_CADA = 1.24;
+var ASENTADO = 0.06;
 var VEL = 1.85;
 var VEL_CARRERA = 4.3;
 var ALCANCE_TIRO = 62;
@@ -35398,7 +35498,7 @@ var Soldado = class _Soldado {
       this.caida = Math.min(1, this.caida + dt * 2.6);
       const e = 1 - Math.pow(1 - this.caida, 3);
       this.fig.desplomar(e);
-      this.malla.position.y = -e * 0.1;
+      this.malla.position.y = e * (this.fig.hundimiento() - ASENTADO);
       return;
     }
     if (this.montado) {
@@ -35427,7 +35527,7 @@ var Soldado = class _Soldado {
       this.caida = Math.min(1, this.caida + dt * 2.6);
       const e = 1 - Math.pow(1 - this.caida, 3);
       this.fig.desplomar(e);
-      this.malla.position.y = -e * 0.1;
+      this.malla.position.y = e * (this.fig.hundimiento() - ASENTADO);
       return;
     }
     if (this.monta && !this.monta.vivo) this.desmontar(true);
@@ -38612,9 +38712,11 @@ var ArmaFuego = class {
 };
 
 // src/arsenal.js
+var ALCANCE_BANDERA = 3.2;
 var CARTUCHERA = 24;
 function armarArsenal(ctx) {
   const {
+    escena: escena2,
     camara: camara2,
     camaraArma: camaraArma2,
     sonido: sonido2,
@@ -38712,11 +38814,27 @@ function armarArsenal(ctx) {
   };
   const bandera2 = banderaEnMano();
   camaraArma2.add(bandera2.raiz);
+  const plantada = banderaPlantada();
+  if (escena2) escena2.add(plantada.raiz);
   yo.tenesBandera = false;
+  yo.banderaEnPiso = false;
+  yo.plantarBandera = function(p) {
+    plantada.raiz.position.set(p.x, 0, p.z);
+    plantada.raiz.rotation.y = Math.random() * Math.PI * 2;
+    plantada.raiz.visible = true;
+    yo.banderaEnPiso = true;
+  };
   yo.banderaCerca = function() {
+    if (yo.banderaEnPiso) {
+      const d = Math.hypot(
+        plantada.raiz.position.x - jugador2.pos.x,
+        plantada.raiz.position.z - jugador2.pos.z
+      );
+      if (d < ALCANCE_BANDERA) return "piso";
+    }
     for (const s of soldados2) {
       if (s.papel !== "abanderado" || s.vivo || s.sinBandera) continue;
-      if (s.pos.distanceTo(jugador2.pos) < 3.2) return s;
+      if (s.pos.distanceTo(jugador2.pos) < ALCANCE_BANDERA) return s;
     }
     return null;
   };
@@ -38725,20 +38843,32 @@ function armarArsenal(ctx) {
       hud2.mostrarAviso("Ya la llev\xE1s", "malo");
       return false;
     }
-    const s = yo.banderaCerca();
-    if (!s) {
+    const donde = yo.banderaCerca();
+    if (!donde) {
       hud2.mostrarAviso("No hay ninguna bandera ac\xE1", "malo");
       return false;
     }
-    s.entregarBandera();
+    if (donde === "piso") {
+      plantada.raiz.visible = false;
+      yo.banderaEnPiso = false;
+    } else donde.entregarBandera();
     yo.tenesBandera = true;
     bandera2.raiz.visible = true;
     hud2.mostrarAviso("\xA1Les tomaste la bandera!", "bien");
     if (yo.alRobarBandera) yo.alRobarBandera();
     return true;
   };
+  yo.soltarBandera = function() {
+    if (!yo.tenesBandera) return false;
+    yo.tenesBandera = false;
+    bandera2.raiz.visible = false;
+    yo.plantarBandera(jugador2.pos);
+    hud2.mostrarAviso("Soltaste la bandera", "bien");
+    return true;
+  };
   yo.flamearBandera = function(dt) {
     if (yo.tenesBandera) flamear(bandera2, dt);
+    if (yo.banderaEnPiso) flamear(plantada, dt);
   };
   yo.tomarOIntercambiar = function() {
     const caido = yo.caidoConFusil();
@@ -39399,12 +39529,19 @@ function armarMando(ctx) {
       case "KeyH":
         campo2.montarODesmontar();
         break;
+      // LA G HACE DOS COSAS, Y NUNCA LAS DOS A LA VEZ: si llevás la bandera la
+      // suelta, y si no, cambia el fusil como siempre. No es un doble sentido
+      // gratuito: llevándola no hay ninguna otra tecla que la baje, y soltarla
+      // tiene que estar donde la mano ya está.
       case "KeyG":
-        arsenal2.tomarOIntercambiar();
+        if (arsenal2.tenesBandera) arsenal2.soltarBandera();
+        else arsenal2.tomarOIntercambiar();
         break;
-      // LA BANDERA. Al lado del cuerpo del abanderado y con él muerto.
+      // LA E LEVANTA Y BAJA. Al lado del cuerpo del abanderado, o del asta
+      // clavada en el pasto, que es donde queda cuando alguien la suelta.
       case "KeyE":
-        arsenal2.robarBandera();
+        if (arsenal2.tenesBandera) arsenal2.soltarBandera();
+        else arsenal2.robarBandera();
         break;
       case "Digit1":
         arsenal2.cambiar("larga");
@@ -39810,8 +39947,10 @@ function armarMoral(ctx) {
     o.techo = Math.max(0, o.techo - n * DESGASTE);
   }
   function cayoUnPapel(s) {
-    if (!s.papel || !hud2) return;
+    if (!s.papel) return;
     if (s !== papeles.tambor && s !== papeles.abanderado) return;
+    if (yo.alCaerPapel) yo.alCaerPapel(s);
+    if (!hud2) return;
     const nombre = s.papel === "tambor" ? "Cay\xF3 el tambor" : "Cay\xF3 el abanderado";
     hud2.mostrarAviso(nombre + " \xB7 se les gasta m\xE1s r\xE1pido", "bien");
     if (s.papel === "abanderado") hud2.cartel("[E] ROB\xC1 LA BANDERA", 4);
@@ -39993,10 +40132,11 @@ function armarMoral(ctx) {
     papeles.robada = false;
     for (const c of canones2) c._callada = false;
   }
-  return {
+  const yo = {
     actualizar,
     reiniciar,
     marcarPapeles,
+    alCaerPapel: null,
     // la bandera la roba el jugador, y quien lo resuelve es combate.js
     robarBandera() {
       papeles.robada = true;
@@ -40022,6 +40162,7 @@ function armarMoral(ctx) {
       roto: { ...roto }
     })
   };
+  return yo;
 }
 
 // src/plano.js
@@ -43837,6 +43978,7 @@ var combate = armarCombate({
 });
 var red = null;
 arsenal = armarArsenal({
+  escena,
   camara,
   camaraArma,
   sonido,
@@ -44019,6 +44161,11 @@ var apertura = new ActoApertura({ hud, sonido });
 arsenal.alRobarBandera = () => {
   moral.robarBandera();
   hud.cartel("\xA1BANDERA TOMADA!", 2.6);
+};
+moral.alCaerPapel = (s) => {
+  if (s.papel !== "abanderado" || s.sinBandera) return;
+  s.entregarBandera();
+  arsenal.plantarBandera(s.pos);
 };
 victoria.alEmpezar = () => red.contarVictoria("empieza");
 victoria.alLlegar = () => red.contarVictoria("llego");
@@ -44247,6 +44394,7 @@ window.juego = {
   caballos,
   escena,
   camara,
+  camaraArma,
   render,
   lejania,
   pasadaVel,
