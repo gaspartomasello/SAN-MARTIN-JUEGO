@@ -453,9 +453,18 @@ function barrancaYRio (escena, colisiones) {
     new THREE.Vector3(-ANCHO / 2, 0, Z0 - 1.2), new THREE.Vector3(ANCHO / 2, 2.4, Z0 - 0.2)));
 }
 
+// TODO EL LUGAR EN UN GRUPO, Y EL GRUPO SE DEVUELVE. No es prolijidad: es lo
+// que le deja al armazón de capítulos apagar San Lorenzo entero —el convento,
+// la barranca, el Paraná y la escuadra— con una línea, el día que el que juega
+// elige la cordillera. Un grupo invisible no gasta una sola llamada de dibujo,
+// igual que un lote vacío de la lejanía.
 export function construirSanLorenzo (escena, colisiones) {
+  const lugar = new THREE.Group();
+  lugar.name = 'sanlorenzo';
   const horno = new Horno();
   convento(horno, colisiones);
-  escena.add(horno.cocinar(MAT()));
-  barrancaYRio(escena, colisiones);
+  lugar.add(horno.cocinar(MAT()));
+  barrancaYRio(lugar, colisiones);
+  escena.add(lugar);
+  return lugar;
 }

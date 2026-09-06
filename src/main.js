@@ -183,6 +183,28 @@ const campo = armarDespliegue({
   }
 });
 
+// ---------------------------------------------------------------------------
+// EL CAPÍTULO
+// ---------------------------------------------------------------------------
+//
+// main.js coordina y esto es coordinar: acá se decide en cuál estamos y se les
+// avisa a los DOS que se enteran —el mundo, que prende el lugar y la hora, y el
+// despliegue, que viste al granadero según dónde esté—. Ningún otro archivo
+// pregunta en qué capítulo está, y por eso el capítulo 2 no puede ensuciar una
+// regla de San Lorenzo aunque quiera: no hay dónde.
+//
+// El mapeo de tonos se cambia acá y no en mundo.js porque el que tiene el
+// render es este archivo. Una madrugada de luna llena necesita más exposición
+// que un amanecer de febrero: con la del amanecer, la cordillera es una
+// pantalla negra.
+function entrarCapitulo (cual) {
+  const cap = mundo.entrarCapitulo(cual);
+  campo.capitulo = cap;
+  render.toneMappingExposure = mundo.exposicionDe(cap);
+  return cap;
+}
+entrarCapitulo('sanlorenzo');
+
 const gentio = armarGentio({ jugador, soldados, caballos, lejania });
 // el caballo lanzado no aparta: arrolla. gentio.js encuentra el choque, combate.js
 // le pone el precio.
@@ -432,7 +454,7 @@ red.alVictoria = (fase) => {
 };
 
 const plano = armarPlano({ hud });
-const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones });
+const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones, entrarCapitulo });
 
 addEventListener('resize', () => {
   camara.aspect = innerWidth / innerHeight;
@@ -744,6 +766,9 @@ window.juego = {
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, camaraArma, render, mundo,
   lejania, pasadaVel, pinza, canones, acto, victoria, apertura, opciones, hud, simular,
+  entrarCapitulo,
+  get capitulo () { return mundo.capitulo; },
+  formarCordillera: campo.formarCordillera,
   get armas () { return arsenal.armas; },
   get caballo () { return campo.caballo; },
   get arma () { return arsenal.actual(); },

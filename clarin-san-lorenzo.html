@@ -271,17 +271,34 @@
   /* El nombre, con la letra grabada del afiche: una romana de capitales, la
      misma familia de titular que el jpg. Si no baja la fuente de la red queda
      Georgia, que es lo más parecido que hay puesto en cualquier máquina. */
+  /* EL ALTO TAMBIÉN MANDA, no sólo el ancho. Con el menú partido en capítulos
+     el bloque creció dos renglones, y en una pantalla baja —1280x560, que es
+     una notebook con la barra del navegador— el título se salía por arriba y
+     Créditos quedaba abajo del borde. Midiendo contra `vh` además de `vw`, el
+     mismo menú se acomoda sin cambiar nada en una pantalla normal. */
   #portada h1{font-family:"Cinzel","Libre Caslon Display",Georgia,serif;font-weight:700;
-    font-size:clamp(42px,6.2vw,82px);letter-spacing:.055em;line-height:1;
-    margin:0 0 10px;text-transform:uppercase;white-space:nowrap}
+    font-size:clamp(38px,min(6.2vw,12vh),82px);letter-spacing:.055em;line-height:1;
+    margin:0 0 clamp(4px,1.4vh,10px);text-transform:uppercase;white-space:nowrap}
   #portada .campana{font-family:"Cinzel","Libre Caslon Display",Georgia,serif;font-weight:400;
-    font-size:clamp(13px,1.35vw,18px);letter-spacing:.3em;text-transform:uppercase;
-    margin:0 0 40px}
+    font-size:clamp(11px,min(1.35vw,2.4vh),18px);letter-spacing:.3em;text-transform:uppercase;
+    margin:0 0 clamp(14px,5vh,40px)}
 
   /* ---- el menú ----
      Cinco renglones y nada más. El botón no tiene caja: la caja la hace el oro
      al encenderse, y la vara que entra por la izquierda cuando pasás por arriba. */
   .menu{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+  /* EL RENGLÓN DEL CAPÍTULO. No es un botón y no tiene que parecerlo: es el
+     rótulo que dice a qué campaña pertenecen los renglones de abajo. Chico,
+     espaciado y en bronce, con una rayita que lo separa del bloque anterior.
+     El primero no lleva margen arriba, que si no el menú arranca hundido. */
+  .menu .capitulo{display:block;margin:clamp(7px,2.4vh,16px) 0 4px;padding-left:30px;
+    font-family:var(--ui);font-size:9.5px;letter-spacing:.26em;text-transform:uppercase;
+    color:#8a7448;text-shadow:0 1px 6px rgba(0,0,0,.9)}
+  .menu .capitulo:first-child{margin-top:0}
+  .menu .capitulo b{font-weight:600;color:#c39a5c}
+  .menu .capitulo em{font-style:normal;color:#6d6656}
+  /* lo que no es de ningún capítulo se despega del último bloque */
+  .menu .aparte{margin-top:clamp(8px,2.6vh,18px)}
   /* background-COLOR y no el atajo `background`: el atajo también borra el
      background-image, que es justo el degradado de oro con el que .oro pinta
      la letra — y el renglón entero salía transparente sobre transparente.
@@ -290,10 +307,11 @@
      menú en CADA cuadro de la animación, y encendía además un filter sobre la
      letra: por eso se trababa. Un transform lo resuelve el compositor, sin
      tocar el layout y sin volver a pintar. */
-  .entrada{position:relative;background-color:transparent;border:0;padding:7px 0 7px 30px;cursor:pointer;
+  .entrada{position:relative;background-color:transparent;border:0;
+    padding:clamp(2px,1vh,7px) 0 clamp(2px,1vh,7px) 30px;cursor:pointer;
     text-align:left;text-transform:none;letter-spacing:.055em;
     font-family:"Cinzel","Libre Caslon Display",Georgia,"Times New Roman",serif;font-weight:400;
-    font-size:clamp(21px,2.2vw,27px);line-height:1.15;
+    font-size:clamp(18px,min(2.2vw,4.2vh),27px);line-height:1.15;
     transition:transform .16s ease}
   .entrada::before{content:'';position:absolute;left:0;top:50%;width:18px;height:1px;
     background:linear-gradient(90deg,rgba(159,26,30,0),#e8484a);
@@ -596,11 +614,18 @@
     <h1 class="oro">San<br>Martín</h1>
     <p class="campana oro">La campaña a la revolución</p>
 
+    <!-- EL MENÚ VA POR CAPÍTULOS, que es como está partido el juego por
+         dentro: San Lorenzo es la primera batalla, no el juego. El rótulo no
+         es decoración, es lo que hace que «Práctica» se entienda como
+         práctica DE ESO y no como un modo suelto. -->
     <nav class="menu">
+      <span class="capitulo"><b>Capítulo I</b> · San Lorenzo · 3 de febrero de 1813</span>
       <button class="entrada oro" id="modo-batalla">Un jugador<i>La carga de los ciento veinte</i></button>
       <button class="entrada oro" id="modo-red">Cooperativo<i>Las dos columnas, una en cada máquina</i></button>
       <button class="entrada oro" id="modo-campo">Práctica<i>El cuartel del Retiro</i></button>
-      <button class="entrada oro" id="ver-opciones">Opciones<i>Controles y sangre</i></button>
+      <span class="capitulo"><b>Capítulo II</b> · Cruce de los Andes · 1817 · <em>en obra</em></span>
+      <button class="entrada oro" id="modo-andes">Reconocimiento<i>La cordillera de madrugada</i></button>
+      <button class="entrada oro aparte" id="ver-opciones">Opciones<i>Controles y sangre</i></button>
       <button class="entrada oro" id="ver-creditos">Créditos</button>
     </nav>
   </div>
@@ -30325,10 +30350,14 @@ function barrancaYRio(escena2, colisiones) {
   ));
 }
 function construirSanLorenzo(escena2, colisiones) {
+  const lugar = new Group();
+  lugar.name = "sanlorenzo";
   const horno = new Horno();
   convento(horno, colisiones);
-  escena2.add(horno.cocinar(MAT()));
-  barrancaYRio(escena2, colisiones);
+  lugar.add(horno.cocinar(MAT()));
+  barrancaYRio(lugar, colisiones);
+  escena2.add(lugar);
+  return lugar;
 }
 
 // src/mundo.js
@@ -30488,9 +30517,20 @@ function cieloDomo() {
   });
   const m = new Mesh(geo, mat2);
   m.frustumCulled = false;
-  return { malla: m, actualizar: (dt) => {
-    mat2.uniforms.uTiempo.value += dt;
-  } };
+  return {
+    malla: m,
+    actualizar: (dt) => {
+      mat2.uniforms.uTiempo.value += dt;
+    },
+    // La hora del día del capítulo. Los tres colores y el rumbo del sol son
+    // uniformes, así que cambiar de amanecer a madrugada no rearma nada.
+    pintar([alto, medio, bajo], [sx, sy, sz]) {
+      mat2.uniforms.uAlto.value.setHex(alto);
+      mat2.uniforms.uMedio.value.setHex(medio);
+      mat2.uniforms.uBajo.value.setHex(bajo);
+      mat2.uniforms.uSol.value.set(sx, sy, sz).normalize();
+    }
+  };
 }
 function siluetaBlanco() {
   const g = new Group();
@@ -30585,9 +30625,10 @@ function capasDeNiebla(escena2) {
     m.position.set(0, y, -40);
     m.renderOrder = 1;
     escena2.add(m);
-    capas.push({ malla: m, vel });
+    capas.push({ malla: m, vel, op: op * 0.22 });
   }
   return {
+    capas,
     actualizar(dt) {
       for (const c2 of capas) {
         const mapa = c2.malla.material.map;
@@ -30613,7 +30654,8 @@ function construirMundo(escena2) {
   sol.shadow.camera.far = 160;
   sol.shadow.bias = -9e-4;
   escena2.add(sol);
-  escena2.add(new HemisphereLight(12374760, 9075282, 0.55));
+  const rebote = new HemisphereLight(12374760, 9075282, 0.55);
+  escena2.add(rebote);
   const suelo = new Mesh(
     tierraConManchas(400, 290, 64, 48),
     new MeshStandardMaterial({ map: tierraTextura(), roughness: 1, vertexColors: true })
@@ -30625,7 +30667,7 @@ function construirMundo(escena2) {
   const colisiones = [];
   const blancos = [];
   const cal = new MeshStandardMaterial({ color: PALETA.cal, roughness: 0.92 });
-  construirSanLorenzo(escena2, colisiones);
+  const lugar = construirSanLorenzo(escena2, colisiones);
   const parque = new Horno();
   const SACO = 9405791;
   const MADERA_C = 7033914, MADERA_O = 4864552, CAL_C = 15262418;
@@ -30709,7 +30751,10 @@ function construirMundo(escena2) {
     const ez2 = Math.abs(ancho / 2 * Math.sin(giro)) + Math.abs(0.275 * Math.cos(giro));
     meterCaja(px2 - ex2, pz2 - ez2, px2 + ex2, pz2 + ez2, 1.25);
   }
-  escena2.add(parque.cocinar(MAT()));
+  const parqueMalla = parque.cocinar(MAT());
+  escena2.add(parqueMalla);
+  const poligono = new Group();
+  escena2.add(poligono);
   for (const [x, z] of [
     [-6, -20],
     [-2, -20],
@@ -30724,7 +30769,7 @@ function construirMundo(escena2) {
     const b = siluetaBlanco();
     b.position.set(x, 0, z);
     b.rotation.y = Math.PI;
-    escena2.add(b);
+    poligono.add(b);
     blancos.push(b);
   }
   const marcas = [[-20, "XX"], [-40, "XL"], [-60, "LX"], [-80, "LXXX"]];
@@ -30736,13 +30781,13 @@ function construirMundo(escena2) {
       );
       p2.position.set(s * 17, 0.75, z);
       p2.castShadow = true;
-      escena2.add(p2);
+      poligono.add(p2);
       const t = new Mesh(
         new BoxGeometry(0.7, 0.4, 0.06),
         new MeshStandardMaterial({ color: PALETA.cal, roughness: 0.9 })
       );
       t.position.set(s * 17, 1.6, z);
-      escena2.add(t);
+      poligono.add(t);
     }
   }
   const PASTO = 8600;
@@ -30863,7 +30908,87 @@ function construirMundo(escena2) {
   escena2.add(troncos);
   escena2.add(copas);
   const niebla = capasDeNiebla(escena2);
-  return { colisiones, blancos, sol, niebla, cielo, botes: BOTES };
+  const colSanLorenzo = colisiones.slice();
+  const HORAS = {
+    sanlorenzo: {
+      cielo: [7180989, 11058383, 15255443],
+      sol: [48, 15, -26],
+      luz: 16767392,
+      fuerza: 2.5,
+      rebote: [12374760, 9075282, 0.55],
+      niebla: 13816002,
+      cerca: 20,
+      lejos: 175,
+      suelo: 16777215,
+      exposicion: 1.05
+    },
+    andes: {
+      cielo: [1055796, 1911880, 3884384],
+      sol: [-34, 26, 42],
+      // la luna no es un sol chiquito: es fría, y de tan poca fuerza que lo que
+      // termina de dibujar el terreno es el rebote de la nieve
+      luz: 12176360,
+      fuerza: 0.72,
+      rebote: [4216444, 6976132, 0.42],
+      // El suelo NO es la nieve: es el campo de San Lorenzo apagado. La textura
+      // de la tierra tira a verde y ningún color multiplicado le saca el
+      // verde a un mapa verde, así que lo que se hace acá es lo honesto —bajar
+      // la luz hasta que el terreno sea un piso oscuro y frío— y no fingir un
+      // manto que todavía no está modelado. La nieve llega con el desfiladero.
+      niebla: 1581103,
+      cerca: 12,
+      lejos: 120,
+      suelo: 9082029,
+      exposicion: 1
+    }
+  };
+  let capitulo = null;
+  function entrarCapitulo2(cual) {
+    const h = HORAS[cual] || HORAS.sanlorenzo;
+    if (capitulo === cual) return capitulo;
+    capitulo = HORAS[cual] ? cual : "sanlorenzo";
+    const enAndes = capitulo === "andes";
+    lugar.visible = !enAndes;
+    parqueMalla.visible = !enAndes;
+    poligono.visible = !enAndes;
+    matas.visible = !enAndes;
+    troncos.visible = copas.visible = !enAndes;
+    for (const c of niebla.capas) {
+      c.malla.material.color.setHex(enAndes ? 7175574 : 15001310);
+      c.malla.material.opacity = c.op * (enAndes ? 0.55 : 1);
+    }
+    cielo.pintar(h.cielo, h.sol);
+    sol.color.setHex(h.luz);
+    sol.intensity = h.fuerza;
+    sol.position.set(h.sol[0], h.sol[1], h.sol[2]);
+    rebote.color.setHex(h.rebote[0]);
+    rebote.groundColor.setHex(h.rebote[1]);
+    rebote.intensity = h.rebote[2];
+    escena2.fog.color.setHex(h.niebla);
+    escena2.fog.near = h.cerca;
+    escena2.fog.far = h.lejos;
+    suelo.material.color.setHex(h.suelo);
+    if (suelo.material.vertexColors === enAndes) {
+      suelo.material.vertexColors = !enAndes;
+      suelo.material.needsUpdate = true;
+    }
+    colisiones.length = 0;
+    if (!enAndes) for (const c of colSanLorenzo) colisiones.push(c);
+    return capitulo;
+  }
+  return {
+    colisiones,
+    blancos,
+    sol,
+    niebla,
+    cielo,
+    botes: BOTES,
+    entrarCapitulo: entrarCapitulo2,
+    get capitulo() {
+      return capitulo;
+    },
+    exposicionDe: (cual) => (HORAS[cual] || HORAS.sanlorenzo).exposicion
+  };
 }
 
 // src/humo.js
@@ -39517,6 +39642,10 @@ function armarDespliegue(ctx) {
   } = ctx;
   const campo2 = {
     canones: canones2,
+    // EN QUÉ CAPÍTULO ESTAMOS. Lo escribe main.js cuando el que juega elige en
+    // la portada, y acá adentro sirve para una sola cosa: con qué ropa sale un
+    // granadero. Ni una regla de pelea depende de esto.
+    capitulo: "sanlorenzo",
     alFormar: null,
     // se avisa cuando el campo se rearma: la moral vuelve a cero
     caballo: null,
@@ -39593,7 +39722,8 @@ function armarDespliegue(ctx) {
     }
     if (op.tez) sop.tez = op.tez;
     if (op.sombrero) sop.sombrero = op.sombrero;
-    if (op.vestuario) sop.vestuario = op.vestuario;
+    const ropaDelCapitulo = campo2.capitulo === "andes" && bando === "granadero" ? "granaderoAndes" : null;
+    if (op.vestuario || ropaDelCapitulo) sop.vestuario = op.vestuario || ropaDelCapitulo;
     if (op.semilla !== void 0) sop.semilla = op.semilla;
     if (op.papel) {
       sop.papel = op.papel;
@@ -39640,6 +39770,30 @@ function armarDespliegue(ctx) {
     caballos2.length = 0;
     if (jugador2.monta) caballos2.push(jugador2.monta);
   }
+  campo2.formarCordillera = function(partida = 14) {
+    soltarTodo();
+    pinza2.desarmar();
+    pinza2.viva = false;
+    campo2.oleadas = false;
+    campo2.papeles = { tambor: null, abanderado: null };
+    for (const c of canones2) c.quitar();
+    canones2.length = 0;
+    if (jugador2.monta && jugador2.monta.vivo) jugador2.desmontar();
+    for (let k = 0; k < partida; k++) {
+      const fila = Math.floor(k / 2), lado = k % 2 ? 1 : -1;
+      const s = soltarSoldado("granadero", {
+        pos: new Vector3(lado * 1.5 + (Math.random() - 0.5) * 0.8, 0, 24 - fila * 2.6)
+      });
+      s.malla.rotation.y = 0;
+      s.frente = 0;
+    }
+    jugador2.pos.set(0, jugador2.pos.y, 31);
+    jugador2.yaw = 0;
+    jugador2.pitch = -0.02;
+    if (campo2.alFormar) campo2.alFormar();
+    hud2.mostrarAviso("Cruce de los Andes \xB7 el paso todav\xEDa est\xE1 en obra", "bien");
+    return { partida };
+  };
   campo2.formarPinza = function(porColumna = 60, realistas = 250) {
     soltarTodo();
     pinza2.desarmar();
@@ -39802,7 +39956,23 @@ function armarGentio({ jugador: jugador2, soldados: soldados2, caballos: caballo
 
 // src/mando.js
 function armarMando(ctx) {
-  const { lienzo: lienzo2, jugador: jugador2, sable: sable2, arsenal: arsenal2, campo: campo2, combate: combate2, pinza: pinza2, hud: hud2, sonido: sonido2, red: red2, plano: plano2, acto: acto2, apertura: apertura2, opciones: opciones2 } = ctx;
+  const {
+    lienzo: lienzo2,
+    jugador: jugador2,
+    sable: sable2,
+    arsenal: arsenal2,
+    campo: campo2,
+    combate: combate2,
+    pinza: pinza2,
+    hud: hud2,
+    sonido: sonido2,
+    red: red2,
+    plano: plano2,
+    acto: acto2,
+    apertura: apertura2,
+    opciones: opciones2,
+    entrarCapitulo: entrarCapitulo2
+  } = ctx;
   const teclas = /* @__PURE__ */ new Set();
   const sensibilidad = 21e-4;
   let bloqueado = false;
@@ -40055,8 +40225,10 @@ function armarMando(ctx) {
     sonido2.iniciar();
     empezado = true;
     tSoltado = 0;
+    if (entrarCapitulo2) entrarCapitulo2(modo === "andes" ? "andes" : "sanlorenzo");
     if (acto2) acto2.enBatalla = modo === "batalla";
     if (modo === "batalla") campo2.formarPinza();
+    if (modo === "andes") campo2.formarCordillera();
     if (modo === "batalla" && apertura2) apertura2.arrancar();
     lienzo2.requestPointerLock();
   }
@@ -40106,6 +40278,8 @@ function armarMando(ctx) {
   });
   document.getElementById("modo-batalla").addEventListener("click", () => arrancar("batalla"));
   document.getElementById("modo-campo").addEventListener("click", () => arrancar("campo"));
+  const botonAndes = document.getElementById("modo-andes");
+  if (botonAndes) botonAndes.addEventListener("click", () => arrancar("andes"));
   const pantallaSala = document.getElementById("sala");
   const luz = document.getElementById("sala-luz");
   const titulo = document.getElementById("sala-titulo");
@@ -44345,6 +44519,13 @@ var campo = armarDespliegue({
     combate.resolverMetralla(c);
   }
 });
+function entrarCapitulo(cual) {
+  const cap = mundo.entrarCapitulo(cual);
+  campo.capitulo = cap;
+  render.toneMappingExposure = mundo.exposicionDe(cap);
+  return cap;
+}
+entrarCapitulo("sanlorenzo");
 var gentio = armarGentio({ jugador, soldados, caballos, lejania });
 gentio.alArrollar = combate.arrollar;
 function poseDelJugador() {
@@ -44503,7 +44684,7 @@ red.alVictoria = (fase) => {
   if (fase === "llego") victoria.llegar(false);
 };
 var plano = armarPlano({ hud });
-var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones });
+var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones, entrarCapitulo });
 addEventListener("resize", () => {
   camara.aspect = innerWidth / innerHeight;
   camara.updateProjectionMatrix();
@@ -44739,6 +44920,11 @@ window.juego = {
   opciones,
   hud,
   simular,
+  entrarCapitulo,
+  get capitulo() {
+    return mundo.capitulo;
+  },
+  formarCordillera: campo.formarCordillera,
   get armas() {
     return arsenal.armas;
   },

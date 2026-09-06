@@ -38,6 +38,10 @@ export function armarDespliegue (ctx) {
 
   const campo = {
     canones,
+    // EN QUÉ CAPÍTULO ESTAMOS. Lo escribe main.js cuando el que juega elige en
+    // la portada, y acá adentro sirve para una sola cosa: con qué ropa sale un
+    // granadero. Ni una regla de pelea depende de esto.
+    capitulo: 'sanlorenzo',
     alFormar: null,       // se avisa cuando el campo se rearma: la moral vuelve a cero
     caballo: null,        // el del jugador; sobrevive a que se baje
     oleadas: false,       // el modo suelto: van llegando de a poco
@@ -136,7 +140,9 @@ export function armarDespliegue (ctx) {
     if (op.sombrero) sop.sombrero = op.sombrero;
     // el vestuario es del CAPÍTULO, no del bando: el mismo granadero va de
     // casaca en San Lorenzo y de poncho arriba de la cordillera
-    if (op.vestuario) sop.vestuario = op.vestuario;
+    const ropaDelCapitulo = campo.capitulo === 'andes' && bando === 'granadero'
+      ? 'granaderoAndes' : null;
+    if (op.vestuario || ropaDelCapitulo) sop.vestuario = op.vestuario || ropaDelCapitulo;
     if (op.semilla !== undefined) sop.semilla = op.semilla;
     if (op.papel) { sop.papel = op.papel; sop.pos = pos; }
     const s = new Soldado(escena, humo, sonido, pos, bando, sop);
@@ -194,6 +200,51 @@ export function armarDespliegue (ctx) {
     caballos.length = 0;
     if (jugador.monta) caballos.push(jugador.monta);
   }
+
+  // ----------------------- LA CORDILLERA, POR AHORA -----------------------
+  //
+  // El reconocimiento del capítulo 2: vos a pie y una partida de granaderos en
+  // poncho subiendo adelante tuyo. NO es la misión del Cruce ni pretende
+  // serlo —el desfiladero, la nieve, las mulas y el sigilo son lo que viene—:
+  // es lo mínimo para que el capítulo se pueda ELEGIR y VER, que es de lo que
+  // se trata un armazón. Sin esto, elegir el capítulo 2 en la portada te deja
+  // parado en un campo vacío y parece roto.
+  //
+  // Vive acá y no en un archivo de capítulo porque TODAVÍA NO HAY archivo de
+  // capítulo, y crear uno para quince renglones es al revés de lo que pide el
+  // proyecto. El día que exista `andes.js`, esto se muda entero y no queda
+  // rastro en despliegue.js.
+  campo.formarCordillera = function (partida = 14) {
+    soltarTodo();
+    pinza.desarmar();
+    pinza.viva = false;
+    campo.oleadas = false;
+    campo.papeles = { tambor: null, abanderado: null };
+    for (const c of canones) c.quitar();
+    canones.length = 0;
+    if (jugador.monta && jugador.monta.vivo) jugador.desmontar();
+
+    // VAN ADELANTE Y NO ATRÁS. Los ves de espaldas, subiendo, que es la imagen
+    // del Cruce: una fila de ponchos que se pierde en la bruma. Detrás tuyo no
+    // se ven, y lo único que hay para mirar en este capítulo todavía son ellos.
+    for (let k = 0; k < partida; k++) {
+      const fila = Math.floor(k / 2), lado = (k % 2) ? 1 : -1;
+      const s = soltarSoldado('granadero', {
+        pos: new THREE.Vector3(lado * 1.5 + (Math.random() - 0.5) * 0.8, 0, 24 - fila * 2.6)
+      });
+      // MIRANDO PARA ARRIBA, o sea a −z, que es el rumbo de fábrica de una
+      // figura: los ves de espaldas, subiendo. Vueltos hacia vos parecían una
+      // formación esperando órdenes, que es justo lo contrario de una marcha.
+      s.malla.rotation.y = 0;
+      s.frente = 0;
+    }
+    jugador.pos.set(0, jugador.pos.y, 31);
+    jugador.yaw = 0;
+    jugador.pitch = -0.02;
+    if (campo.alFormar) campo.alFormar();
+    hud.mostrarAviso('Cruce de los Andes · el paso todavía está en obra', 'bien');
+    return { partida };
+  };
 
   // ------------------------------ LA PINZA ------------------------------
   //

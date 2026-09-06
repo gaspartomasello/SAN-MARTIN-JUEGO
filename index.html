@@ -271,17 +271,34 @@
   /* El nombre, con la letra grabada del afiche: una romana de capitales, la
      misma familia de titular que el jpg. Si no baja la fuente de la red queda
      Georgia, que es lo más parecido que hay puesto en cualquier máquina. */
+  /* EL ALTO TAMBIÉN MANDA, no sólo el ancho. Con el menú partido en capítulos
+     el bloque creció dos renglones, y en una pantalla baja —1280x560, que es
+     una notebook con la barra del navegador— el título se salía por arriba y
+     Créditos quedaba abajo del borde. Midiendo contra `vh` además de `vw`, el
+     mismo menú se acomoda sin cambiar nada en una pantalla normal. */
   #portada h1{font-family:"Cinzel","Libre Caslon Display",Georgia,serif;font-weight:700;
-    font-size:clamp(42px,6.2vw,82px);letter-spacing:.055em;line-height:1;
-    margin:0 0 10px;text-transform:uppercase;white-space:nowrap}
+    font-size:clamp(38px,min(6.2vw,12vh),82px);letter-spacing:.055em;line-height:1;
+    margin:0 0 clamp(4px,1.4vh,10px);text-transform:uppercase;white-space:nowrap}
   #portada .campana{font-family:"Cinzel","Libre Caslon Display",Georgia,serif;font-weight:400;
-    font-size:clamp(13px,1.35vw,18px);letter-spacing:.3em;text-transform:uppercase;
-    margin:0 0 40px}
+    font-size:clamp(11px,min(1.35vw,2.4vh),18px);letter-spacing:.3em;text-transform:uppercase;
+    margin:0 0 clamp(14px,5vh,40px)}
 
   /* ---- el menú ----
      Cinco renglones y nada más. El botón no tiene caja: la caja la hace el oro
      al encenderse, y la vara que entra por la izquierda cuando pasás por arriba. */
   .menu{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+  /* EL RENGLÓN DEL CAPÍTULO. No es un botón y no tiene que parecerlo: es el
+     rótulo que dice a qué campaña pertenecen los renglones de abajo. Chico,
+     espaciado y en bronce, con una rayita que lo separa del bloque anterior.
+     El primero no lleva margen arriba, que si no el menú arranca hundido. */
+  .menu .capitulo{display:block;margin:clamp(7px,2.4vh,16px) 0 4px;padding-left:30px;
+    font-family:var(--ui);font-size:9.5px;letter-spacing:.26em;text-transform:uppercase;
+    color:#8a7448;text-shadow:0 1px 6px rgba(0,0,0,.9)}
+  .menu .capitulo:first-child{margin-top:0}
+  .menu .capitulo b{font-weight:600;color:#c39a5c}
+  .menu .capitulo em{font-style:normal;color:#6d6656}
+  /* lo que no es de ningún capítulo se despega del último bloque */
+  .menu .aparte{margin-top:clamp(8px,2.6vh,18px)}
   /* background-COLOR y no el atajo `background`: el atajo también borra el
      background-image, que es justo el degradado de oro con el que .oro pinta
      la letra — y el renglón entero salía transparente sobre transparente.
@@ -290,10 +307,11 @@
      menú en CADA cuadro de la animación, y encendía además un filter sobre la
      letra: por eso se trababa. Un transform lo resuelve el compositor, sin
      tocar el layout y sin volver a pintar. */
-  .entrada{position:relative;background-color:transparent;border:0;padding:7px 0 7px 30px;cursor:pointer;
+  .entrada{position:relative;background-color:transparent;border:0;
+    padding:clamp(2px,1vh,7px) 0 clamp(2px,1vh,7px) 30px;cursor:pointer;
     text-align:left;text-transform:none;letter-spacing:.055em;
     font-family:"Cinzel","Libre Caslon Display",Georgia,"Times New Roman",serif;font-weight:400;
-    font-size:clamp(21px,2.2vw,27px);line-height:1.15;
+    font-size:clamp(18px,min(2.2vw,4.2vh),27px);line-height:1.15;
     transition:transform .16s ease}
   .entrada::before{content:'';position:absolute;left:0;top:50%;width:18px;height:1px;
     background:linear-gradient(90deg,rgba(159,26,30,0),#e8484a);
@@ -596,11 +614,18 @@
     <h1 class="oro">San<br>Martín</h1>
     <p class="campana oro">La campaña a la revolución</p>
 
+    <!-- EL MENÚ VA POR CAPÍTULOS, que es como está partido el juego por
+         dentro: San Lorenzo es la primera batalla, no el juego. El rótulo no
+         es decoración, es lo que hace que «Práctica» se entienda como
+         práctica DE ESO y no como un modo suelto. -->
     <nav class="menu">
+      <span class="capitulo"><b>Capítulo I</b> · San Lorenzo · 3 de febrero de 1813</span>
       <button class="entrada oro" id="modo-batalla">Un jugador<i>La carga de los ciento veinte</i></button>
       <button class="entrada oro" id="modo-red">Cooperativo<i>Las dos columnas, una en cada máquina</i></button>
       <button class="entrada oro" id="modo-campo">Práctica<i>El cuartel del Retiro</i></button>
-      <button class="entrada oro" id="ver-opciones">Opciones<i>Controles y sangre</i></button>
+      <span class="capitulo"><b>Capítulo II</b> · Cruce de los Andes · 1817 · <em>en obra</em></span>
+      <button class="entrada oro" id="modo-andes">Reconocimiento<i>La cordillera de madrugada</i></button>
+      <button class="entrada oro aparte" id="ver-opciones">Opciones<i>Controles y sangre</i></button>
       <button class="entrada oro" id="ver-creditos">Créditos</button>
     </nav>
   </div>

@@ -19,7 +19,7 @@ await pag.screenshot({ path: 'tropa/q-0-portada.png' });
 // código, así que la prueba pregunta las dos cosas juntas.
 const tapa = await pag.evaluate(() => {
   const r = { faltan: [], sinOro: [], chicos: [] };
-  for (const id of ['modo-batalla', 'modo-red', 'modo-campo', 'ver-opciones', 'ver-creditos']) {
+  for (const id of ['modo-batalla', 'modo-red', 'modo-campo', 'modo-andes', 'ver-opciones', 'ver-creditos']) {
     const b = document.getElementById(id);
     if (!b) { r.faltan.push(id); continue; }
     const e = getComputedStyle(b);
@@ -107,6 +107,74 @@ const cerradas = await pag.evaluate(() => ['portada-opciones', 'portada-creditos
   .every(id => document.getElementById(id).classList.contains('oculto')));
 console.log('las hojas cierran:', cerradas);
 
+// ---------------------------------------------------------------------------
+// EL MENÚ EN UNA PANTALLA BAJA
+// ---------------------------------------------------------------------------
+// Partir el menú por capítulos le agregó dos renglones y un rótulo, y en una
+// notebook de 560 de alto —con la barra del navegador puesta— el título se
+// salía por arriba y Créditos quedaba abajo del borde: el juego tenía un
+// botón que no se podía apretar. No se ve en una pantalla grande, así que se
+// mide en la chica.
+const bajas = [];
+for (const [an, al] of [[1280, 560], [1024, 520], [1440, 900]]) {
+  await pag.setViewportSize({ width: an, height: al });
+  await pag.waitForTimeout(220);
+  const m = await pag.evaluate(() => {
+    const t = document.getElementById('portada-menu').getBoundingClientRect();
+    const c = document.getElementById('ver-creditos').getBoundingClientRect();
+    return { arriba: Math.round(t.top), abajo: Math.round(c.bottom), alto: innerHeight };
+  });
+  bajas.push([an + 'x' + al, m]);
+}
+await pag.setViewportSize({ width: 1100, height: 720 });
+await pag.waitForTimeout(250);
+const seSale = bajas.filter(([, m]) => m.arriba < -2 || m.abajo > m.alto + 2);
+console.log('el menú en pantalla baja:', JSON.stringify(bajas));
+if (seSale.length) console.log('MAL · el menú se sale de la pantalla en', seSale.map(b => b[0]).join(' '));
+
+// ---------------------------------------------------------------------------
+// EL CAPÍTULO 2, DESDE EL BOTÓN
+// ---------------------------------------------------------------------------
+// El armazón de capítulos entero, por donde lo toca el que juega: apretar
+// «Reconocimiento» tiene que apagar San Lorenzo —el convento, la barranca, el
+// río y sus colisiones—, prender la madrugada y sacar a los granaderos CON
+// PONCHO. Lo último es lo que más fácil se rompe: la ropa viaja por tres
+// saltos y ya se perdió una vez en el camino.
+await pag.click('#modo-andes');
+await pag.waitForTimeout(2600);
+await pag.screenshot({ path: 'tropa/q-3-andes.png' });
+const cordillera = await pag.evaluate(() => {
+  const j = window.juego;
+  const g = j.escena.getObjectByName('sanlorenzo');
+  return {
+    capitulo: j.capitulo,
+    sanLorenzoPrendido: !!(g && g.visible),
+    colisiones: j.mundo.colisiones.length,
+    hombres: j.soldados.length,
+    conPoncho: j.soldados.filter(s => s.fig.conPoncho).length,
+    claves: [...new Set(j.soldados.map(s => s.claveLejos))].join(' '),
+    niebla: '#' + j.escena.fog.color.getHexString(),
+    draws: j.info.calls
+  };
+});
+console.log('la cordillera:', JSON.stringify(cordillera));
+const malAndes = [];
+if (cordillera.capitulo !== 'andes') malAndes.push('no entró al capítulo 2');
+if (cordillera.sanLorenzoPrendido) malAndes.push('San Lorenzo sigue dibujándose');
+if (cordillera.colisiones !== 0) malAndes.push('quedaron colisiones del convento');
+if (cordillera.hombres < 10) malAndes.push('no salió la partida');
+if (cordillera.conPoncho < 5) malAndes.push('los granaderos salieron sin poncho');
+if (cordillera.claves !== 'granaderoAndes') malAndes.push('de lejos se cambian de ropa: ' + cordillera.claves);
+if (cordillera.niebla === '#d2d0c2') malAndes.push('sigue la niebla del Paraná');
+for (const m of malAndes) console.log('MAL ·', m);
+if (malAndes.length) errs.push('el capítulo 2 no entra bien');
+
+// y de vuelta a San Lorenzo: el mundo tiene que volver entero, que es la mitad
+// que nadie prueba nunca
+await pag.reload({ waitUntil: 'load' });
+await pag.waitForFunction(() => !!window.juego, null, { timeout: 60000 });
+await pag.waitForTimeout(1200);
+
 // el botón de la batalla, como lo aprieta cualquiera
 await pag.click('#modo-batalla');
 // entre elegir la batalla y salir al campo está el plano de la maniobra
@@ -115,6 +183,9 @@ await pag.click('#plano-entrar');
 await pag.waitForTimeout(2600);
 await pag.screenshot({ path: 'tropa/q-1-formada.png' });
 const antes = await pag.evaluate(() => ({
+  capitulo: window.juego.capitulo,
+  colisiones: window.juego.mundo.colisiones.length,
+  sanLorenzoPrendido: !!window.juego.escena.getObjectByName('sanlorenzo').visible,
   columna: window.juego.pinza.oeste.montados,
   otra: window.juego.pinza.este.montados,
   realistas: window.juego.soldados.filter(s => s.esRealista && s.vivo).length,
@@ -130,6 +201,9 @@ const dice = [];
 const dilo = (n, cond, extra) => dice.push([cond ? 'OK ' : 'MAL', n, extra === undefined ? '' : extra]);
 
 dilo('al entrar corre la introducción', await pag.evaluate(() => window.juego.apertura.activo));
+dilo('y San Lorenzo volvió entero', antes.capitulo === 'sanlorenzo' &&
+  antes.sanLorenzoPrendido && antes.colisiones > 40,
+  `${antes.colisiones} colisiones`);
 
 await pag.keyboard.press('KeyT');
 await pag.waitForTimeout(900);

@@ -54,11 +54,29 @@ Todo lo que sirve igual en San Lorenzo, en el Cruce y en Chacabuco:
 
 ### Capítulo 2 · Cruce de los Andes
 
-Todavía no hay ningún archivo propio. Lo único que ya existe del Cruce es el
-**vestuario**, y vive en el núcleo a propósito: la pinta `granaderoAndes` de
-`figura.js` —poncho y pañuelo, con variación por hombre— y su silueta horneada
-en `lejania.js`. El capítulo 1 no se entera porque lee la pinta `granadero`,
-que quedó palabra por palabra igual.
+Todavía no hay ningún archivo propio, y hay **armazón**: el capítulo se elige en
+la portada y el juego entra. Lo que existe hoy:
+
+- el **vestuario**, en el núcleo a propósito: la pinta `granaderoAndes` de
+  `figura.js` —poncho y pañuelo, con variación por hombre— y su silueta
+  horneada en `lejania.js`;
+- la **hora y el lugar**, en `mundo.entrarCapitulo()`: madrugada de luna, sin
+  pasto ni arboleda, con San Lorenzo apagado;
+- una **partida de reconocimiento**, `campo.formarCordillera()`, provisional y
+  anotada como tal en `despliegue.js`: se muda entera el día que exista
+  `andes.js`.
+
+Falta todo lo demás: el desfiladero, la nieve, las mulas, el sigilo y la moral
+de la altura. El capítulo 1 no se entera de nada de esto porque lee la pinta
+`granadero`, que quedó palabra por palabra igual.
+
+**Un capítulo no se carga: se prende.** Todo se arma una vez al arrancar y
+cambiar de capítulo es apagar un grupo y cambiar la luz —un grupo invisible no
+gasta una llamada de dibujo—. Rearmar el mundo obligaría a diferir la
+construcción entera hasta que el que juega elige, y eso es reescribir `main.js`:
+el jugador y los trescientos setenta hombres tienen agarrado lo que devuelve
+`construirMundo` desde el primer renglón. Por lo mismo, **las colisiones se
+vacían y se rellenan en el MISMO array**.
 
 ### Aislado
 
@@ -89,6 +107,11 @@ Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parec
   `Soldado` → `Figura`. Los tres saltos hay que hacerlos: el primer poncho no
   se le veía a nadie porque `soltarSoldado` armaba su propio paquete de
   opciones y se comía la palabra en el camino.
+- **En qué capítulo estamos** lo sabe `main.entrarCapitulo()` y NADIE más lo
+  pregunta. Se lo avisa a los dos únicos que se enteran: `mundo.js` prende el
+  lugar y la hora, `despliegue.js` decide con qué ropa sale un granadero. Ni
+  una regla de pelea depende del capítulo, y por eso el 2 no puede ensuciar el
+  1 aunque quiera: no hay dónde.
 
 ### Tres archivos de frontera, anotados antes de que muerdan
 

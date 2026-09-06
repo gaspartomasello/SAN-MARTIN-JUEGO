@@ -10,7 +10,8 @@
 // juego, está en el archivo equivocado.
 
 export function armarMando (ctx) {
-  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones } = ctx;
+  const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura,
+    opciones, entrarCapitulo } = ctx;
 
   const teclas = new Set();
   const sensibilidad = 0.0021;
@@ -290,10 +291,16 @@ export function armarMando (ctx) {
     sonido.iniciar();
     empezado = true;
     tSoltado = 0;
+    // PRIMERO EL CAPÍTULO Y DESPUÉS LA TROPA. Cambiar de capítulo prende el
+    // lugar y la hora y —esto es lo que importa— es lo que decide con qué ropa
+    // sale un granadero: si se hiciera después de formar, la partida de la
+    // cordillera saldría de casaca azul.
+    if (entrarCapitulo) entrarCapitulo(modo === 'andes' ? 'andes' : 'sanlorenzo');
     // El acto Cabral es del 3 de febrero, no del campo de práctica: sólo se le
     // pone el reloj cuando se entra por la batalla.
     if (acto) acto.enBatalla = modo === 'batalla';
     if (modo === 'batalla') campo.formarPinza();
+    if (modo === 'andes') campo.formarCordillera();
     // Y RECIÉN ACÁ LA INTRODUCCIÓN, después de que el campo está armado: la
     // placa se lee sobre el negro, pero cuando el negro se abre lo que tiene
     // que haber atrás es la columna formada y no un campo a medio poner. En
@@ -359,6 +366,10 @@ export function armarMando (ctx) {
 
   document.getElementById('modo-batalla').addEventListener('click', () => arrancar('batalla'));
   document.getElementById('modo-campo').addEventListener('click', () => arrancar('campo'));
+  // El capítulo 2 entra derecho al campo: no hay plano de la maniobra porque
+  // todavía no hay maniobra, y meterle el de San Lorenzo sería mentir.
+  const botonAndes = document.getElementById('modo-andes');
+  if (botonAndes) botonAndes.addEventListener('click', () => arrancar('andes'));
 
   // ------------------------------ la sala de dos ------------------------------
   //

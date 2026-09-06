@@ -184,7 +184,18 @@ function cieloDomo () {
   });
   const m = new THREE.Mesh(geo, mat);
   m.frustumCulled = false;
-  return { malla: m, actualizar: dt => { mat.uniforms.uTiempo.value += dt; } };
+  return {
+    malla: m,
+    actualizar: dt => { mat.uniforms.uTiempo.value += dt; },
+    // La hora del día del capítulo. Los tres colores y el rumbo del sol son
+    // uniformes, así que cambiar de amanecer a madrugada no rearma nada.
+    pintar ([alto, medio, bajo], [sx, sy, sz]) {
+      mat.uniforms.uAlto.value.setHex(alto);
+      mat.uniforms.uMedio.value.setHex(medio);
+      mat.uniforms.uBajo.value.setHex(bajo);
+      mat.uniforms.uSol.value.set(sx, sy, sz).normalize();
+    }
+  };
 }
 
 function siluetaBlanco () {
@@ -275,9 +286,10 @@ function capasDeNiebla (escena) {
     m.position.set(0, y, -40);
     m.renderOrder = 1;
     escena.add(m);
-    capas.push({ malla: m, vel });
+    capas.push({ malla: m, vel, op: op * 0.22 });
   }
   return {
+    capas,
     actualizar (dt) {
       for (const c2 of capas) {
         const mapa = c2.malla.material.map;
@@ -307,7 +319,8 @@ export function construirMundo (escena) {
   sol.shadow.camera.far = 160;
   sol.shadow.bias = -0.0009;
   escena.add(sol);
-  escena.add(new THREE.HemisphereLight(0xbcd2e8, 0x8a7a52, 0.55));
+  const rebote = new THREE.HemisphereLight(0xbcd2e8, 0x8a7a52, 0.55);
+  escena.add(rebote);
 
   // --- suelo ---
   // El suelo llega hasta el borde de la barranca y no más: de ahí para allá
@@ -342,7 +355,7 @@ export function construirMundo (escena) {
   // porque desembarcaron en la barranca, y vos salís desde +Z porque los
   // granaderos esperaron escondidos detrás del convento de San Carlos.
   const cal = new THREE.MeshStandardMaterial({ color: PALETA.cal, roughness: 0.92 });
-  construirSanLorenzo(escena, colisiones);
+  const lugar = construirSanLorenzo(escena, colisiones);
 
   // --- cobertura: sacos, carretas, barriles, tapiales ---
   //
@@ -417,15 +430,20 @@ export function construirMundo (escena) {
     meterCaja(px - ex2, pz - ez2, px + ex2, pz + ez2, 1.25);
   }
 
-  escena.add(parque.cocinar(MAT()));
+  const parqueMalla = parque.cocinar(MAT());
+  escena.add(parqueMalla);
 
   // --- blancos a distancias reales de fusil de chispa ---
+  // Van en su propio grupo: el polígono de tiro es del cuartel del Retiro y
+  // arriba de la cordillera no pinta nada.
+  const poligono = new THREE.Group();
+  escena.add(poligono);
   for (const [x, z] of [[-6, -20], [-2, -20], [2, -20], [6, -20],
     [-4, -40], [4, -40], [0, -60], [-9, -60], [9, -80]]) {
     const b = siluetaBlanco();
     b.position.set(x, 0, z);
     b.rotation.y = Math.PI;
-    escena.add(b);
+    poligono.add(b);
     blancos.push(b);
   }
 
@@ -437,11 +455,11 @@ export function construirMundo (escena) {
         new THREE.MeshStandardMaterial({ color: PALETA.maderaOsc, roughness: 0.95 }));
       p.position.set(s * 17, 0.75, z);
       p.castShadow = true;
-      escena.add(p);
+      poligono.add(p);
       const t = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.06),
         new THREE.MeshStandardMaterial({ color: PALETA.cal, roughness: 0.9 }));
       t.position.set(s * 17, 1.6, z);
-      escena.add(t);
+      poligono.add(t);
     }
   }
 
@@ -581,5 +599,107 @@ export function construirMundo (escena) {
 
   const niebla = capasDeNiebla(escena);
 
-  return { colisiones, blancos, sol, niebla, cielo, botes: BOTES };
+  // -------------------------------------------------------------------------
+  // EL CAMBIO DE CAPÍTULO
+  // -------------------------------------------------------------------------
+  //
+  // Un capítulo NO se carga: se prende. Todo lo que hay se arma una sola vez
+  // al arrancar y entrar a la cordillera es apagar San Lorenzo y cambiar la
+  // luz. Suena a truco y es la decisión: rearmar el mundo obligaba a diferir
+  // la construcción entera hasta que el que juega elige, y eso es reescribir
+  // main.js —el jugador, los soldados y el gentío tienen agarrado lo que
+  // devuelve esta función desde el primer renglón—.
+  //
+  // Y no cuesta nada: un grupo invisible no gasta una llamada de dibujo. El
+  // día que la cordillera tenga su propio terreno se arma igual que éste, en
+  // su grupo, y este mismo interruptor lo prende.
+  //
+  // LAS COLISIONES SE VACÍAN Y SE RELLENAN EN EL MISMO ARRAY. Cambiarlo por
+  // otro no serviría: el jugador y los trescientos setenta hombres se quedaron
+  // con el de antes, y estarían chocando contra un convento que ya no se ve.
+  const colSanLorenzo = colisiones.slice();
+
+  // Las dos horas del día que hay. San Lorenzo es el amanecer del 3 de febrero
+  // —naranja rasante— y el Cruce es de madrugada, que es cuando se marchaba
+  // para que la nieve estuviera dura y las mulas no se hundieran.
+  const HORAS = {
+    sanlorenzo: {
+      cielo: [0x6d92bd, 0xa8bccf, 0xe8c793], sol: [48, 15, -26],
+      luz: 0xffd9a0, fuerza: 2.5, rebote: [0xbcd2e8, 0x8a7a52, 0.55],
+      niebla: 0xd2d0c2, cerca: 20, lejos: 175, suelo: 0xffffff, exposicion: 1.05
+    },
+    andes: {
+      cielo: [0x101c34, 0x1d2c48, 0x3b4560], sol: [-34, 26, 42],
+      // la luna no es un sol chiquito: es fría, y de tan poca fuerza que lo que
+      // termina de dibujar el terreno es el rebote de la nieve
+      luz: 0xb9cbe8, fuerza: 0.72, rebote: [0x40567c, 0x6a7284, 0.42],
+      // El suelo NO es la nieve: es el campo de San Lorenzo apagado. La textura
+      // de la tierra tira a verde y ningún color multiplicado le saca el
+      // verde a un mapa verde, así que lo que se hace acá es lo honesto —bajar
+      // la luz hasta que el terreno sea un piso oscuro y frío— y no fingir un
+      // manto que todavía no está modelado. La nieve llega con el desfiladero.
+      niebla: 0x18202f, cerca: 12, lejos: 120, suelo: 0x8a94ad, exposicion: 1.0
+    }
+  };
+
+  let capitulo = null;
+  function entrarCapitulo (cual) {
+    const h = HORAS[cual] || HORAS.sanlorenzo;
+    if (capitulo === cual) return capitulo;
+    capitulo = HORAS[cual] ? cual : 'sanlorenzo';
+    const enAndes = capitulo === 'andes';
+
+    // el lugar de la batalla del capítulo 1, y lo que lo acompaña
+    lugar.visible = !enAndes;
+    parqueMalla.visible = !enAndes;
+    poligono.visible = !enAndes;
+    // arriba de los tres mil metros no hay pasto ni arboleda
+    matas.visible = !enAndes;
+    troncos.visible = copas.visible = !enAndes;
+    // La niebla no se apaga: en la cordillera de noche también hay bruma,
+    // pero es más oscura y más rala que la del Paraná al amanecer.
+    for (const c of niebla.capas) {
+      c.malla.material.color.setHex(enAndes ? 0x6d7d96 : 0xe4e6de);
+      c.malla.material.opacity = c.op * (enAndes ? 0.55 : 1);
+    }
+
+    // la hora
+    cielo.pintar(h.cielo, h.sol);
+    sol.color.setHex(h.luz);
+    sol.intensity = h.fuerza;
+    sol.position.set(h.sol[0], h.sol[1], h.sol[2]);
+    rebote.color.setHex(h.rebote[0]);
+    rebote.groundColor.setHex(h.rebote[1]);
+    rebote.intensity = h.rebote[2];
+    escena.fog.color.setHex(h.niebla);
+    escena.fog.near = h.cerca;
+    escena.fog.far = h.lejos;
+    suelo.material.color.setHex(h.suelo);
+    // LOS MANCHONES DEL SUELO SE APAGAN EN LA CORDILLERA. El color por vértice
+    // pinta lo pisado y lo que todavía tiene verde, que es un campo de febrero
+    // sobre el Paraná: multiplicado por cualquier tono frío sigue dando pasto
+    // de noche, no nieve. Apagarlo deja el grano de la textura y nada más, que
+    // es lo que hay que ver arriba de los tres mil metros. Recompila el
+    // material una vez, y pasa al apretar un botón del menú y no por cuadro.
+    if (suelo.material.vertexColors === enAndes) {
+      suelo.material.vertexColors = !enAndes;
+      suelo.material.needsUpdate = true;
+    }
+
+    colisiones.length = 0;
+    if (!enAndes) for (const c of colSanLorenzo) colisiones.push(c);
+    return capitulo;
+  }
+
+  return {
+    colisiones,
+    blancos,
+    sol,
+    niebla,
+    cielo,
+    botes: BOTES,
+    entrarCapitulo,
+    get capitulo () { return capitulo; },
+    exposicionDe: cual => (HORAS[cual] || HORAS.sanlorenzo).exposicion
+  };
 }
