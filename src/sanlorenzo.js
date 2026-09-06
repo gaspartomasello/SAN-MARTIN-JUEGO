@@ -229,25 +229,76 @@ function barrancaYRio (escena, colisiones) {
   const Z0 = Z_BARRANCA, Z1 = Z_RIO, HONDO = -9;
   const ANCHO = 260;
 
+  // LA CUESTA, SUBDIVIDIDA EN LOS DOS EJES.
+  //
+  // EL PERFIL ERA UNA S Y POR ESO NO SE VEÍA NINGUNA BARRANCA. El viejo
+  // `1 - cos(t·π/2)^1.6` arranca con PENDIENTE CERO: en el labio el terreno
+  // seguía horizontal y recién se curvaba más adelante, así que no había
+  // ninguna línea donde se viera que el campo se cae. Las barrancas del Paraná
+  // no son una loma, son un tajo: `t^0.55` deja el corte casi a pico arriba y
+  // lo afloja hasta la playa, que es el talud de abajo.
+  //
+  // Se puede cambiar sin miedo porque NADIE CAMINA ACÁ: el que se quiebra
+  // corre hasta z = -82 y el labio está en -84, así que se lo levanta del campo
+  // dos metros antes de llegar.
+  //
+  // Y ERA UNA TIRA DE QUADS DE 260 METROS DE ANCHO: una pared de un solo tono
+  // con el labio perfectamente recto de punta a punta, que es lo que menos se
+  // parece a una barranca de río. Con columnas se le mete erosión —cada
+  // vértice de adentro se corre un poco y el color varía a lo ancho— y queda
+  // tierra comida en vez de una torta cortada con cuchillo.
+  //
+  // EL LABIO NO SE MUEVE, a propósito: el suelo del campo termina en un plano
+  // recto justo en Z0, y cualquier ondulación en la fila de arriba abriría un
+  // hueco entre los dos. La erosión empieza en la segunda fila para abajo.
+  //
+  // Y LAS NORMALES SALEN DE LA GEOMETRÍA, no escritas a mano. Las de antes
+  // tenían el signo de Z al revés —para una cuesta que baja al río la normal
+  // de arriba es (0, -Δz, Δy) con Δy NEGATIVO, y el código ponía -(yb - ya),
+  // o sea positivo—: la cuesta se iluminaba como si mirara al campo en vez de
+  // al agua. Con el perfil casi horizontal la componente era 0,06 y nadie lo
+  // veía; con el tajo se vería entera. Sacándolas del producto vectorial de
+  // cada triángulo, ese error no se puede volver a cometer.
+  const CORTES = 22, COLS = 24;
+  const perfil = t => Math.pow(t, 0.55);
+  // el ruido de la erosión, sin Math.random: el mismo terreno en las dos
+  // máquinas de una partida de a dos y entre corridas de las pruebas
+  const ruido = (a, b) => {
+    const s = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
+    return (s - Math.floor(s)) - 0.5;
+  };
+  const alto = new THREE.Color(BARRANCA), bajo = new THREE.Color(BARRANCA_BAJA);
+  const punto = (i, k) => {
+    const tt = i / CORTES;
+    const x = -ANCHO / 2 + (ANCHO * k) / COLS;
+    const z = Z0 + (Z1 - Z0) * tt;
+    const erosion = i === 0 ? 0
+      : (ruido(i * 1.7, k * 2.3) * 0.55 + ruido(i * 0.4, k * 0.9) * 1.15) * Math.min(1, i / 3);
+    return [x, HONDO * perfil(tt) + erosion, z, tt];
+  };
+
   const geo = new THREE.BufferGeometry();
   const v = [], n = [], c = [];
-  const alto = new THREE.Color(BARRANCA), bajo = new THREE.Color(BARRANCA_BAJA);
-  const cortes = 14;
-  for (let i = 0; i < cortes; i++) {
-    const t0 = i / cortes, t1 = (i + 1) / cortes;
-    // un perfil en S: arranca suave, se desbarranca y vuelve a aplanar
-    const p = t => 1 - Math.pow(Math.cos(t * Math.PI / 2), 1.6);
-    const za = Z0 + (Z1 - Z0) * t0, zb = Z0 + (Z1 - Z0) * t1;
-    const ya = HONDO * p(t0), yb = HONDO * p(t1);
-    const x0 = -ANCHO / 2, x1 = ANCHO / 2;
-    const quad = [[x0, ya, za], [x1, ya, za], [x1, yb, zb], [x0, ya, za], [x1, yb, zb], [x0, yb, zb]];
-    const nx = 0, ny = Math.abs(zb - za), nz = -(yb - ya);
-    const len = Math.hypot(ny, nz) || 1;
-    for (const [px, py, pz] of quad) {
-      v.push(px, py, pz);
-      n.push(nx, ny / len, nz / len);
-      const col = alto.clone().lerp(bajo, (t0 + t1) / 2);
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), N = new THREE.Vector3();
+  const cara = (p, q, r) => {
+    A.set(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+    B.set(r[0] - p[0], r[1] - p[1], r[2] - p[2]);
+    N.crossVectors(A, B).normalize();
+    if (N.y < 0) N.negate();                 // la de arriba, siempre
+    for (const w of [p, q, r]) {
+      v.push(w[0], w[1], w[2]);
+      n.push(N.x, N.y, N.z);
+      const mancha = 0.5 + ruido(w[0] * 0.06, w[2] * 0.05) * 0.9;
+      const col = alto.clone().lerp(bajo, Math.min(1, w[3] * 0.7 + mancha * 0.34));
       c.push(col.r, col.g, col.b);
+    }
+  };
+  for (let i = 0; i < CORTES; i++) {
+    for (let k = 0; k < COLS; k++) {
+      const p00 = punto(i, k), p10 = punto(i, k + 1);
+      const p01 = punto(i + 1, k), p11 = punto(i + 1, k + 1);
+      cara(p00, p10, p11);
+      cara(p00, p11, p01);
     }
   }
   geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));

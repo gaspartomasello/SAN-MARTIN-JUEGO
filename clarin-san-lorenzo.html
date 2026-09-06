@@ -30158,24 +30158,42 @@ function botes(h, HONDO) {
 function barrancaYRio(escena2, colisiones) {
   const Z02 = Z_BARRANCA, Z12 = Z_RIO, HONDO = -9;
   const ANCHO3 = 260;
+  const CORTES = 22, COLS = 24;
+  const perfil = (t) => Math.pow(t, 0.55);
+  const ruido = (a, b) => {
+    const s = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
+    return s - Math.floor(s) - 0.5;
+  };
+  const alto = new Color(BARRANCA), bajo = new Color(BARRANCA_BAJA);
+  const punto = (i, k) => {
+    const tt = i / CORTES;
+    const x = -ANCHO3 / 2 + ANCHO3 * k / COLS;
+    const z = Z02 + (Z12 - Z02) * tt;
+    const erosion = i === 0 ? 0 : (ruido(i * 1.7, k * 2.3) * 0.55 + ruido(i * 0.4, k * 0.9) * 1.15) * Math.min(1, i / 3);
+    return [x, HONDO * perfil(tt) + erosion, z, tt];
+  };
   const geo = new BufferGeometry();
   const v = [], n = [], c = [];
-  const alto = new Color(BARRANCA), bajo = new Color(BARRANCA_BAJA);
-  const cortes = 14;
-  for (let i = 0; i < cortes; i++) {
-    const t0 = i / cortes, t1 = (i + 1) / cortes;
-    const p = (t) => 1 - Math.pow(Math.cos(t * Math.PI / 2), 1.6);
-    const za = Z02 + (Z12 - Z02) * t0, zb = Z02 + (Z12 - Z02) * t1;
-    const ya = HONDO * p(t0), yb = HONDO * p(t1);
-    const x0 = -ANCHO3 / 2, x1 = ANCHO3 / 2;
-    const quad = [[x0, ya, za], [x1, ya, za], [x1, yb, zb], [x0, ya, za], [x1, yb, zb], [x0, yb, zb]];
-    const nx = 0, ny = Math.abs(zb - za), nz = -(yb - ya);
-    const len = Math.hypot(ny, nz) || 1;
-    for (const [px2, py2, pz2] of quad) {
-      v.push(px2, py2, pz2);
-      n.push(nx, ny / len, nz / len);
-      const col = alto.clone().lerp(bajo, (t0 + t1) / 2);
+  const A = new Vector3(), B = new Vector3(), N = new Vector3();
+  const cara = (p, q, r) => {
+    A.set(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+    B.set(r[0] - p[0], r[1] - p[1], r[2] - p[2]);
+    N.crossVectors(A, B).normalize();
+    if (N.y < 0) N.negate();
+    for (const w of [p, q, r]) {
+      v.push(w[0], w[1], w[2]);
+      n.push(N.x, N.y, N.z);
+      const mancha = 0.5 + ruido(w[0] * 0.06, w[2] * 0.05) * 0.9;
+      const col = alto.clone().lerp(bajo, Math.min(1, w[3] * 0.7 + mancha * 0.34));
       c.push(col.r, col.g, col.b);
+    }
+  };
+  for (let i = 0; i < CORTES; i++) {
+    for (let k = 0; k < COLS; k++) {
+      const p00 = punto(i, k), p10 = punto(i, k + 1);
+      const p01 = punto(i + 1, k), p11 = punto(i + 1, k + 1);
+      cara(p00, p10, p11);
+      cara(p00, p11, p01);
     }
   }
   geo.setAttribute("position", new Float32BufferAttribute(v, 3));
