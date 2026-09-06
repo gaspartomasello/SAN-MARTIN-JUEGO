@@ -423,6 +423,36 @@ const r = await pag.evaluate(() => {
   ok('a los diecisiete y medio se termina', !ap.activo, `t=${ap.t.toFixed(1)}`);
   ok('y vuelve el HUD', !elHud.classList.contains('callado'));
   ok('con el cartel del clarín puesto', /CLARÍN/.test(cartel()), cartel());
+
+  // EL CARTEL NO PUEDE CRECER HASTA LOS BORDES.
+  //
+  // Es la tipografía del viejo «¡AHORA!» del minijuego de recarga y se queda
+  // igual —el bronce, el peso, el interletrado—, pero aquello eran SIETE letras
+  // y ocupaba el 25% del ancho: una estampilla en el medio de la pelea. Los
+  // carteles de ahora tienen entre dieciséis y veinte, y al mismo cuerpo se
+  // iban al 67% —al 94% en una ventana de 820— y dejaban de ser un grito para
+  // ser un titular de diario. Lo que se prueba es la PROPORCIÓN, que es lo que
+  // se ve, y no el cuerpo en píxeles, que depende de la ventana.
+  const anchoCartel = (txt) => {
+    const e = document.getElementById('cartel');
+    const antes = e.textContent;
+    e.textContent = txt; e.classList.add('si');
+    const w = e.getBoundingClientRect().width / window.innerWidth;
+    e.textContent = antes;
+    return w;
+  };
+  const largos = ['[T] TOCÁ EL CLARÍN', '[E] ROBÁ LA BANDERA', '¡SALVÁ A SAN MARTÍN!'];
+  const anchos = largos.map(anchoCartel);
+  ok('y sin comerse la pantalla de borde a borde', Math.max(...anchos) < 0.5,
+    anchos.map((w, i) => `${Math.round(w * 100)}%`).join(' · ') + ' del ancho');
+  const est = getComputedStyle(document.getElementById('cartel'));
+  // el interletrado se pregunta como PROPORCIÓN del cuerpo: el navegador ya lo
+  // resolvió a píxeles y 0,1em son 2,97px o 4,2px según la ventana
+  const suelto = parseFloat(est.letterSpacing) / parseFloat(est.fontSize);
+  ok('con la misma tipografía que tenía el ¡AHORA!',
+    est.fontWeight === '600' && Math.abs(suelto - 0.1) < 0.005 &&
+    est.color === 'rgb(198, 155, 84)',
+    `peso ${est.fontWeight} · suelto ${suelto.toFixed(3)}em · ${est.color}`);
   ok('y sin subtítulo abajo pisándolo', !dicho());
 
   // LA T CORTA LA INTRODUCCIÓN Y NO TOCA EL CLARÍN. Son dos apretones y a

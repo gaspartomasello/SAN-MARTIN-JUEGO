@@ -145,12 +145,23 @@
   #cartuchera .t{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
 
   /* EL CARTEL GRANDE. Era el ¡AHORA! del minijuego de recarga, que se sacó; la
-     tipografía se queda porque es la voz con la que el juego grita una sola
-     cosa en medio de la pelea. Ahora el texto lo escribe hud.cartel(). */
+     tipografía es LA MISMA —el bronce, el cuerpo pesado, el interletrado
+     abierto y las dos sombras— porque es la voz con la que el juego grita una
+     sola cosa en medio de la pelea.
+     Lo que cambió es el LARGO de lo que grita. «¡AHORA!» eran siete letras y
+     ocupaba el 25% del ancho de la pantalla: una estampilla en el medio.
+     «[E] ROBÁ LA BANDERA» son diecinueve, y al mismo cuerpo —más un
+     white-space:nowrap que le impedía cortar— medían el 67%, y el 94% en una
+     ventana de 820 px: de borde a borde.
+     Así que el cuerpo se ata al ancho de la ventana en vez de al capricho, y
+     se le permite cortar. Medido abajo de 45% en todas las ventanas probadas,
+     que es la proporción con la que aquello se leía como un grito y no como
+     un titular de diario. */
   #cartel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:0;
-    font-size:clamp(38px,7vw,64px);letter-spacing:.1em;font-weight:600;color:var(--bronce);
+    font-size:clamp(28px,3.3vw,42px);letter-spacing:.1em;font-weight:600;color:var(--bronce);
+    line-height:1.1;max-width:min(56vw,640px);
     text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 10px rgba(0,0,0,.9);pointer-events:none;
-    transition:opacity .12s linear;text-align:center;white-space:nowrap}
+    transition:opacity .12s linear;text-align:center}
   #cartel.si{opacity:1}
   #remate{position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);opacity:0;
     font:700 30px/1 var(--titulo,inherit);letter-spacing:.3em;color:#9BC48F;
