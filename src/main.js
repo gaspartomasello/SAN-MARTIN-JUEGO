@@ -12,7 +12,7 @@
 //   gentio.js     quién se dibuja entero y quién ocupa lugar
 //   mando.js      el teclado, el mouse y los tres modos
 //   moral.js      cuándo un bando deja de pelear y se va
-//   plano.js      el mapa de la maniobra, dibujado con las medidas del nivel
+//   plano.js      el mapa de la maniobra, y la orden del día encima
 //   red.js        el otro costado de la pinza, en la otra máquina
 //   protocolo.js  qué se manda por el cable, byte por byte
 //
@@ -478,7 +478,7 @@ red.alVictoria = (fase) => {
   if (fase === 'llego') victoria.llegar(false);
 };
 
-const plano = armarPlano({ hud });
+const plano = armarPlano();
 const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones, entrarCapitulo, llamarPartida });
 
 addEventListener('resize', () => {

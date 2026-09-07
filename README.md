@@ -115,7 +115,7 @@ batalla.**
 | `despliegue.js` · `pinza.js` | Quién sale al campo, dónde, y las dos columnas de sesenta. |
 | `canon.js` | Las dos piezas ligeras que trajeron los realistas. |
 | `acto.js` | El acto del sargento Cabral, que arranca la primera vez que te matan el caballo estando montado. |
-| `plano.js` | El plano de la maniobra, dibujado con las medidas de verdad del nivel. |
+| `plano.js` | El plano de la maniobra: la lámina `plano.webp` y, encima, la orden del día. |
 | `mundo.js` | El amanecer del 3 de febrero. |
 
 Una batalla nueva de la campaña necesita su propio *lugar*, su propio *despliegue* y sus

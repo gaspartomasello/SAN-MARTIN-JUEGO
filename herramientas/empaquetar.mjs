@@ -22,21 +22,23 @@ html = html
   .replace('<script type="module" src="./src/main.js"></script>',
     '<script type="module">\n' + paquete + '\n</script>');
 
-// LA FOTO DE LA PORTADA VIAJA ADENTRO.
-// Es la única imagen del juego, y si quedara afuera el .html dejaría de ser un
-// solo archivo: a doble clic mostraría un cuadro roto, y en GitHub Pages
-// directamente no estaría, porque el workflow sube _sitio/index.html y nada
-// más. Si el archivo no está en la carpeta no pasa nada malo: debajo de la
-// foto la portada tiene un amanecer hecho con degradados, y eso es lo que se ve.
-if (existsSync('portada.jpg')) {
-  const foto = readFileSync('portada.jpg').toString('base64');
-  html = html.replace('url(portada.jpg)', `url(data:image/jpeg;base64,${foto})`);
-  console.log(`portada.jpg · ${(foto.length / 1024 / 1.37).toFixed(0)} KB adentro`);
-} else {
-  // Y si no está, se borra la referencia en vez de dejarla colgando: el archivo
-  // único se abre desde file:// y pediría un archivo hermano que no existe.
-  // Se vería igual —abajo está el amanecer— pero con un error en la consola.
-  html = html.replace('url(portada.jpg)', 'none');
+// LAS DOS IMÁGENES VIAJAN ADENTRO.
+// La foto de la portada y la lámina del plano. Si quedaran afuera, el .html
+// dejaría de ser un solo archivo: a doble clic mostraría dos cuadros rotos, y
+// en GitHub Pages directamente no estarían, porque el workflow sube
+// _sitio/index.html y nada más. Si alguna no está en la carpeta no pasa nada
+// grave: se le borra la referencia en vez de dejarla colgando —el archivo
+// único se abre desde file:// y pediría un hermano que no existe—. Sin la
+// portada se ve el amanecer de degradados que tiene abajo; sin la lámina, el
+// plano queda oscuro y con la orden del día encima, que se sigue leyendo.
+for (const [archivo, tipo] of [['portada.jpg', 'jpeg'], ['plano.webp', 'webp']]) {
+  if (existsSync(archivo)) {
+    const foto = readFileSync(archivo).toString('base64');
+    html = html.replace(`url(${archivo})`, `url(data:image/${tipo};base64,${foto})`);
+    console.log(`${archivo} · ${(foto.length / 1024 / 1.37).toFixed(0)} KB adentro`);
+  } else {
+    html = html.replace(`url(${archivo})`, 'none');
+  }
 }
 
 mkdirSync(dirname(salida), { recursive: true });

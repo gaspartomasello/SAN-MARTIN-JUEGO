@@ -144,6 +144,23 @@ Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parec
   `Soldado` → `Figura`. Los tres saltos hay que hacerlos: el primer poncho no
   se le veía a nadie porque `soltarSoldado` armaba su propio paquete de
   opciones y se comía la palabra en el camino.
+- **El plano de la batalla es un DIBUJO**, `plano.webp`, y no un diagrama que
+  sale de las medidas. Hasta 73cb4b7 `plano.js` generaba un SVG con el convento
+  de `sanlorenzo.js`, las rutas de `pinza.js` y las piezas de `despliegue.js`:
+  si el nivel se movía, el plano se movía solo. Ahora no se entera, y eso se
+  cambió a sabiendas. Lo que sigue vivo es lo que cambia —la orden del día y la
+  marca sobre TU columna—, escrito en HTML encima de la lámina.
+- **La 4 es la del OESTE, la de San Martín; la 5 es la del ESTE, la de
+  Bermúdez.** Lo dicen `pinza.js`, `red.js`, el README y el GDD. La lámina vino
+  con los dos números cambiados y se le corrigió la REFERENCIA a ella, no los
+  seis archivos: un dibujo se retoca una vez, un nombre está en todos lados.
+- **Las dos imágenes viajan empotradas en el archivo único** —`portada.jpg` 186
+  KB y `plano.webp` 125 KB— porque el workflow de Pages sube `_sitio/index.html`
+  y NADA más. Una imagen suelta en la carpeta no llega a la web y a doble clic
+  es un cuadro roto. Por eso el peso importa y por eso la lámina es webp: la
+  misma imagen en jpeg pesaba 196 KB, y en base64 todo eso se paga con un
+  tercio más.
+
 - **Hasta dónde llega el mundo** es del capítulo: cada uno exporta sus
   `LIMITES` y `jugador.js` guarda nada más el objeto `CAMPO`. Estaban escritos
   en `jugador.js` con los valores de San Lorenzo —el río a −105, el convento a

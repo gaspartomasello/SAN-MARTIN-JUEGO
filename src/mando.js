@@ -327,7 +327,7 @@ export function armarMando (ctx) {
   function arrancar (modo) {
     if (modo !== 'batalla') { alCampo(modo); return; }
     document.getElementById('portada').classList.add('oculto');
-    plano.mostrar('oeste', 250, () => alCampo('batalla'));
+    plano.mostrar('oeste', () => alCampo('batalla'));
   }
   // ---- el panel de opciones de la portada ----
   //
@@ -539,7 +539,7 @@ export function armarMando (ctx) {
   entrar.addEventListener('click', () => {
     pantallaSala.classList.add('oculto');
     // el mismo plano, con la columna del otro marcada según a quién le tocó
-    plano.mostrar(red.columna, 250, () => {
+    plano.mostrar(red.columna, () => {
       sonido.iniciar();
       empezado = true;
       tSoltado = 0;

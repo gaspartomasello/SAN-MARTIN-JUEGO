@@ -64,6 +64,7 @@ SAN-MARTIN-JUEGO/
 ├── index.html            el juego desde el fuente (HTML + TODO el CSS + el HUD)
 ├── clarin-san-lorenzo.html   GENERADO · el juego en un solo archivo
 ├── portada.jpg           la foto del menú
+├── plano.webp            la lámina del plano de la batalla
 ├── CLAUDE.md             ← LAS REGLAS. Leer antes de tocar nada
 ├── README.md             para el que llega al repo
 ├── docs/GDD.md           el diseño del juego
@@ -123,7 +124,8 @@ se descarta y se rearma: no tiene información propia.
 herramientas `Horno`/`MAT`) · `despliegue.js` (quién sale al campo y dónde) ·
 `pinza.js` (la maniobra de las dos columnas) · `canon.js` (las dos piezas de la
 playa) · `acto.js` (apertura, muerte de Cabral, victoria) · `plano.js` (el mapa
-de la maniobra antes de salir).
+de la maniobra antes de salir: la lámina `plano.webp` con la orden del día
+escrita encima).
 
 **Flujo completo:** portada → plano de la maniobra → cinemática de apertura
 (3 s de negro + placa + parte del granadero + orden de San Martín, y la `T`

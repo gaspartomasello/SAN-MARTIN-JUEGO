@@ -168,7 +168,12 @@ if (cordillera.colisiones < 60) malAndes.push('el paso se quedó sin sus colisio
 if (cordillera.limite > -200) malAndes.push('el mundo sigue terminando en el río: ' + cordillera.limite);
 if (cordillera.hombres < 10) malAndes.push('no salió la partida');
 if (cordillera.conPoncho < 5) malAndes.push('los granaderos salieron sin poncho');
-if (cordillera.claves !== 'granaderoAndes') malAndes.push('de lejos se cambian de ropa: ' + cordillera.claves);
+// TU gente va de poncho. La guardia del paso son realistas y de lejos van de
+// realista, que es lo correcto: lo que NO puede aparecer en la cordillera es la
+// pinta `granadero` del capítulo 1.
+const pintas = cordillera.claves.split(' ');
+if (!pintas.includes('granaderoAndes') || pintas.some(p => p !== 'granaderoAndes' && p !== 'realista'))
+  malAndes.push('de lejos se cambian de ropa: ' + cordillera.claves);
 if (cordillera.niebla === '#d2d0c2') malAndes.push('sigue la niebla del Paraná');
 for (const m of malAndes) console.log('MAL ·', m);
 if (malAndes.length) errs.push('el capítulo 2 no entra bien');
