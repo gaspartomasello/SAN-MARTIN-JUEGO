@@ -128,6 +128,16 @@ playa) · `acto.js` (apertura, muerte de Cabral, victoria) · `plano.js` (el map
 de la maniobra antes de salir: la lámina `plano.webp` con la orden del día
 escrita encima).
 
+### Capítulo 2 · Cruce de los Andes — el paso, jugable de punta a punta
+
+`andes.js` lleva el desfiladero, el sigilo, la marcha de la partida y ahora la
+**misión** (`class Mision`): la casucha del Rey con la patrulla de vanguardia,
+el puesto realista de catorce hombres con su pieza —que arranca `dormido`— y la
+fogata de señales. Dada la alarma, un realista corre a prenderla y hay **cinco
+segundos** para bajarlo; si la prende, la pieza despierta. Limpiar el puesto
+termina el nivel. Falta: las mulas, la moral de la altura y que el derrumbe
+caiga de verdad.
+
 **Flujo completo:** portada → plano de la maniobra → cinemática de apertura
 (3 s de negro + placa + parte del granadero + orden de San Martín, y la `T`
 temprana la corta) → batalla → el cierre cuando llegás al portón.

@@ -174,6 +174,16 @@
     text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 10px rgba(0,0,0,.9);pointer-events:none;
     transition:opacity .12s linear;text-align:center}
   #cartel.si{opacity:1}
+  /* ---- la orden del día ----
+     Qué hay que hacer, ahí puesto y sin reloj. Arriba a la izquierda, chico y
+     al borde: no compite con nada porque no es una novedad, es el rótulo de lo
+     que estás haciendo. */
+  #orden{position:absolute;left:22px;top:20px;max-width:34ch;opacity:0;
+    font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--bronce);
+    line-height:1.5;text-shadow:0 2px 10px rgba(0,0,0,.9);pointer-events:none;
+    border-left:2px solid var(--bronce);padding-left:10px;
+    transition:opacity .5s ease}
+  #orden.si{opacity:.92}
   /* ---- el ojo de la guardia ----
      Lo único que el sigilo le dice al que juega, y tiene que decirlo SIN
      palabras y sin tapar nada: una barra corta abajo de la mira que se llena
@@ -584,6 +594,7 @@
   <div id="aliento"><i></i></div>
   <div id="cartuchera"><div class="n">0</div><div class="t">cartuchos</div></div>
   <div id="cartel"></div>
+  <div id="orden"></div>
   <div id="sigilo"><div class="marco"><i></i></div><b>te están viendo</b></div>
   <div id="remate">¡REMATE!<small>click izquierdo</small></div>
   <div id="tomar"><b>[G]</b> tomar el fusil con bayoneta</div>
@@ -30738,6 +30749,7 @@ var ROCA_CLARA = 7631484;
 var PIEDRA_PIRCA = 7236195;
 var PIEDRA_PIRCA_OSC = 5328457;
 var HIELO = 10466504;
+var MADERA2 = 4535849;
 var PLANTA = [
   //  z   eje  medio
   [90, 0, 42],
@@ -30779,6 +30791,10 @@ function medio(z) {
 }
 var CORRAL = { x: eje(-120) - 4, z: -120 };
 var ENTRADA = { x: eje(46), z: 46 };
+var CASUCHA = { x: eje(8) - 16, z: 8 };
+var FOGON = { x: CASUCHA.x + 5.4, z: CASUCHA.z + 3.6 };
+var PIEZA = { x: eje(-113) + 3.2, z: -113, rumbo: mirandoElPaso(-113) };
+var FOGATA = { x: eje(-136) - 9, z: -136 };
 var ruido = (a, b) => {
   const s = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
   return s - Math.floor(s) - 0.5;
@@ -30889,52 +30905,99 @@ function murallas(colisiones) {
     new Vector3(ANCHO / 2, TOPE, Z_FONDO)
   ));
 }
+var semillaPirca = 0;
+function pirca(horno, colisiones, x0, z0, x1, z1, hiladas = 3) {
+  const largo = Math.hypot(x1 - x0, z1 - z0);
+  if (largo < 0.05) return;
+  const ux = (x1 - x0) / largo, uz = (z1 - z0) / largo;
+  for (let h = 0; h < hiladas; h++) {
+    const y = 0.22 + h * 0.44;
+    const paso = 0.62;
+    for (let t = h * paso * 0.5; t < largo; t += paso) {
+      semillaPirca++;
+      const r = ruido(semillaPirca * 1.7, h * 3.1);
+      const ancho = 0.52 + r * 0.22;
+      horno.caja(
+        x0 + ux * t + uz * r * 0.14,
+        y + r * 0.06,
+        z0 + uz * t - ux * r * 0.14,
+        Math.abs(ux) > 0.5 ? ancho : 0.44 + r * 0.14,
+        0.4 + r * 0.1,
+        Math.abs(uz) > 0.5 ? ancho : 0.44 + r * 0.14,
+        r > 0 ? PIEDRA_PIRCA : PIEDRA_PIRCA_OSC,
+        r * 0.5
+      );
+    }
+  }
+  if (!colisiones) return;
+  const ex = Math.abs(x1 - x0) < 0.1 ? 0.34 : 0;
+  const ez = Math.abs(z1 - z0) < 0.1 ? 0.34 : 0;
+  colisiones.push(new Box3(
+    new Vector3(Math.min(x0, x1) - ex, 0, Math.min(z0, z1) - ez),
+    new Vector3(Math.max(x0, x1) + ex, 0.22 + hiladas * 0.44, Math.max(z0, z1) + ez)
+  ));
+}
 function pircas(horno, colisiones) {
   const { x: CX, z: CZ } = CORRAL;
-  const AN = 15, LA = 11, ALTO = 1.35;
+  const AN = 15, LA = 11;
   const PORTILLO = 3.2;
-  const tramos = [
-    // [x0, z0, x1, z1]
-    [CX - AN / 2, CZ - LA / 2, CX + AN / 2, CZ - LA / 2],
-    // el fondo
-    [CX - AN / 2, CZ - LA / 2, CX - AN / 2, CZ + LA / 2],
-    // los costados
-    [CX + AN / 2, CZ - LA / 2, CX + AN / 2, CZ + LA / 2],
-    [CX - AN / 2, CZ + LA / 2, CX - PORTILLO / 2, CZ + LA / 2],
-    // el frente, partido
-    [CX + PORTILLO / 2, CZ + LA / 2, CX + AN / 2, CZ + LA / 2]
-  ];
-  let semilla = 0;
-  for (const [x0, z0, x1, z1] of tramos) {
-    const largo = Math.hypot(x1 - x0, z1 - z0);
-    const ux = (x1 - x0) / largo, uz = (z1 - z0) / largo;
-    for (let h = 0; h < 3; h++) {
-      const y = 0.22 + h * 0.44;
-      const paso = 0.62;
-      for (let t = h * paso * 0.5; t < largo; t += paso) {
-        semilla++;
-        const r = ruido(semilla * 1.7, h * 3.1);
-        const ancho = 0.52 + r * 0.22;
-        horno.caja(
-          x0 + ux * t + uz * r * 0.14,
-          y + r * 0.06,
-          z0 + uz * t - ux * r * 0.14,
-          Math.abs(ux) > 0.5 ? ancho : 0.44 + r * 0.14,
-          0.4 + r * 0.1,
-          Math.abs(uz) > 0.5 ? ancho : 0.44 + r * 0.14,
-          r > 0 ? PIEDRA_PIRCA : PIEDRA_PIRCA_OSC,
-          r * 0.5
-        );
-      }
-    }
-    const ex = Math.abs(x1 - x0) < 0.1 ? 0.34 : 0;
-    const ez = Math.abs(z1 - z0) < 0.1 ? 0.34 : 0;
-    colisiones.push(new Box3(
-      new Vector3(Math.min(x0, x1) - ex, 0, Math.min(z0, z1) - ez),
-      new Vector3(Math.max(x0, x1) + ex, ALTO, Math.max(z0, z1) + ez)
-    ));
+  pirca(horno, colisiones, CX - AN / 2, CZ - LA / 2, CX + AN / 2, CZ - LA / 2);
+  pirca(horno, colisiones, CX - AN / 2, CZ - LA / 2, CX - AN / 2, CZ + LA / 2);
+  pirca(horno, colisiones, CX + AN / 2, CZ - LA / 2, CX + AN / 2, CZ + LA / 2);
+  pirca(horno, colisiones, CX - AN / 2, CZ + LA / 2, CX - PORTILLO / 2, CZ + LA / 2);
+  pirca(horno, colisiones, CX + PORTILLO / 2, CZ + LA / 2, CX + AN / 2, CZ + LA / 2);
+}
+function casucha(horno, colisiones) {
+  const { x: CX, z: CZ } = CASUCHA;
+  const AN = 5.6, LA = 4.6, HIL = 5, VANO = 1.6;
+  const x0 = CX - AN / 2, x1 = CX + AN / 2, z0 = CZ - LA / 2, z1 = CZ + LA / 2;
+  pirca(horno, colisiones, x0, z0, x1, z0, HIL);
+  pirca(horno, colisiones, x0, z0, x0, z1, HIL);
+  pirca(horno, colisiones, x1, z0, x1, z1, HIL);
+  pirca(horno, colisiones, x0, z1, CX - VANO / 2, z1, HIL);
+  pirca(horno, colisiones, CX + VANO / 2, z1, x1, z1, HIL);
+  const ALTO = 0.22 + HIL * 0.44;
+  for (let i = 0; i < 5; i++) {
+    horno.caja(
+      CX,
+      ALTO + 0.1,
+      z0 + 0.55 + i * ((LA - 1.1) / 4),
+      AN + 0.55,
+      0.17,
+      0.22,
+      MADERA2,
+      0.05
+    );
+  }
+  horno.caja(CX, ALTO + 0.3, CZ, AN + 0.75, 0.24, LA + 0.75, NIEVE_SUCIA, 0);
+  lena(horno, FOGON.x, FOGON.z, 1);
+}
+function lena(horno, x, z, escala = 1) {
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * Math.PI;
+    horno.pieza(
+      new CylinderGeometry(0.075 * escala, 0.09 * escala, 1.25 * escala, 5),
+      [x + Math.cos(a) * 0.1 * escala, 0.16 * escala, z + Math.sin(a) * 0.1 * escala],
+      [Math.PI / 2 - 0.35, a, 0],
+      null,
+      MADERA2
+    );
   }
 }
+var LLAMA_GEO = new ConeGeometry(0.36, 1, 6);
+function llama(x, z, escala = 1) {
+  const g = new Group();
+  g.position.set(x, 0, z);
+  const fuera = new Mesh(LLAMA_GEO, new MeshBasicMaterial({ color: 16747038, fog: false }));
+  fuera.position.y = 0.54 * escala;
+  const nucleo = new Mesh(LLAMA_GEO, new MeshBasicMaterial({ color: 16771488, fog: false }));
+  nucleo.position.y = 0.4 * escala;
+  g.add(fuera);
+  g.add(nucleo);
+  g.userData = { fuera, nucleo, escala };
+  return g;
+}
+var fuegos = { casucha: null, fogata: null };
 var ROCA_GEO = new DodecahedronGeometry(1, 0);
 function penon(horno, colisiones, x, z, tam, semilla) {
   const r = ruido(semilla * 2.3, 7.1), r2 = ruido(semilla * 5.1, 2.7);
@@ -31109,18 +31172,49 @@ var VER = 0.9;
 var OLVIDO = 0.34;
 var QUIETO = 0.45;
 var ALARMA = 1;
-function guardiaDelCorral() {
-  const { x: CX, z: CZ } = CORRAL;
-  const mirando = (z) => Math.PI + Math.atan2(eje(z + 14) - eje(z - 14), 28);
+function mirandoElPaso(z) {
+  return Math.PI + Math.atan2(eje(z + 14) - eje(z - 14), 28);
+}
+var mirandoA = (x, z, px2, pz2) => Math.atan2(x - px2, z - pz2);
+function patrullaDeLaCasucha() {
+  const { x: CX, z: CZ } = CASUCHA;
+  const enElFogon = (dx, dz) => ({
+    x: FOGON.x + dx,
+    z: FOGON.z + dz,
+    rumbo: mirandoA(FOGON.x + dx, FOGON.z + dz, FOGON.x, FOGON.z)
+  });
   return [
-    { x: eje(-66) + 4.5, z: -66, rumbo: mirando(-66) },
+    // el teniente, en el vano y mirando a la boca del valle: te ve venir
+    { x: CX, z: CZ + 2.9, rumbo: mirandoElPaso(CZ) + Math.PI, teniente: true },
+    { x: CX - 1.4, z: CZ - 0.9, rumbo: mirandoElPaso(CZ) + Math.PI + 0.4 },
+    { x: CX + 1.3, z: CZ - 1.1, rumbo: mirandoElPaso(CZ) + Math.PI - 0.5 },
+    enElFogon(-2, 0.5),
+    enElFogon(1.9, 1.1),
+    enElFogon(0.4, 2.2),
+    enElFogon(-1.2, -1.9)
+  ];
+}
+function guardiaDelPuesto() {
+  const { x: CX, z: CZ } = CORRAL;
+  return [
+    { x: eje(-66) + 4.5, z: -66, rumbo: mirandoElPaso(-66) },
     // la avanzada de la garganta
-    { x: eje(-88) - 3, z: -88, rumbo: mirando(-88) },
+    { x: eje(-88) - 3, z: -88, rumbo: mirandoElPaso(-88) },
     // la segunda, en la hoyada
-    { x: CX - 5.5, z: CZ + 7.5, rumbo: mirando(CZ + 7.5) },
-    { x: CX + 4, z: CZ + 7, rumbo: mirando(CZ + 7) + 0.35 },
-    { x: CX - 9.5, z: CZ - 1, rumbo: mirando(CZ) - 0.9 },
-    { x: CX + 6.5, z: CZ - 2, rumbo: mirando(CZ) + 0.9 }
+    { x: eje(-101) + 6, z: -101, rumbo: mirandoElPaso(-101) + 0.5 },
+    { x: CX - 5.5, z: CZ + 7.5, rumbo: mirandoElPaso(CZ + 7.5) },
+    { x: CX + 4, z: CZ + 7, rumbo: mirandoElPaso(CZ + 7) + 0.35 },
+    { x: CX - 9.5, z: CZ - 1, rumbo: mirandoElPaso(CZ) - 0.9 },
+    { x: CX + 6.5, z: CZ - 2, rumbo: mirandoElPaso(CZ) + 0.9 },
+    { x: CX - 2.2, z: CZ - 3.2, rumbo: mirandoElPaso(CZ) + 2.6 },
+    // adentro del corral
+    { x: CX + 1.8, z: CZ - 4, rumbo: mirandoElPaso(CZ) + 2.2 },
+    { x: eje(-127) - 7, z: -127, rumbo: mirandoElPaso(-127) - 0.4 },
+    { x: eje(-129) + 4.5, z: -129, rumbo: mirandoElPaso(-129) + 0.5 },
+    { x: eje(-140) - 2, z: -140, rumbo: mirandoElPaso(-140) + Math.PI },
+    // la retaguardia
+    { x: PIEZA.x - 1.8, z: PIEZA.z + 1.6, rumbo: mirandoElPaso(PIEZA.z), artillero: true },
+    { x: PIEZA.x + 1.8, z: PIEZA.z + 1.6, rumbo: mirandoElPaso(PIEZA.z), artillero: true }
   ];
 }
 function tapado(ax, ay, az, bx, by, bz, colisiones) {
@@ -31263,12 +31357,140 @@ var Sigilo = class {
     this.tomado = true;
     if (hud2) {
       hud2.cartel("", 0);
-      hud2.placa([
-        "El corral de pircas",
-        "Tomado sin un tiro",
-        "La partida cruza el paso"
-      ], 5);
+      hud2.placa({
+        titulo: "Encima del puesto",
+        sub: "y ninguno te vio venir",
+        cuerpo: "Catorce hombres a nueve metros y la fogata de se\xF1ales apagada. De ac\xE1 en adelante es a la bayoneta."
+      }, 5);
     }
+  }
+};
+var CERCA_CASUCHA = 12;
+var PRENDE = 2.2;
+var RELEVO = 3.5;
+var DECIDIRSE = 2.5;
+var Mision = class {
+  constructor() {
+    this.reiniciar();
+  }
+  reiniciar() {
+    this.fase = "marcha";
+    this.patrulla = [];
+    this.guardia = [];
+    this.canon = null;
+    this.encendida = false;
+    this.corredor = null;
+    this.sueltos = false;
+    this.tRelevo = DECIDIRSE;
+    this.tFuego = 0;
+    this.orden = "";
+    if (fuegos.fogata) fuegos.fogata.visible = false;
+    if (fuegos.casucha) fuegos.casucha.visible = true;
+  }
+  // Los pone el despliegue, ya soltados al campo.
+  poner({ patrulla, guardia, canon }) {
+    this.patrulla = patrulla || [];
+    this.guardia = guardia || [];
+    this.canon = canon || null;
+    if (this.canon) this.canon.dormido = true;
+    this.orden = "";
+  }
+  get puestoLimpio() {
+    return this.guardia.length > 0 && !this.guardia.some((s) => s.vivo && !s.quebrado);
+  }
+  actualizar(dt, ctx) {
+    const { jugador: jugador2, sigilo: sigilo2, hud: hud2, sonido: sonido2 } = ctx;
+    this._avivar(dt);
+    if (this.fase === "hecho") return;
+    if (sigilo2 && sigilo2.alarma && !this.sueltos) {
+      this.sueltos = true;
+      for (const s of this.patrulla) s.centinela = false;
+    }
+    if (this.fase === "marcha") {
+      const d = Math.hypot(jugador2.pos.x - CASUCHA.x, jugador2.pos.z - CASUCHA.z);
+      if (d < CERCA_CASUCHA) this._llegar(hud2);
+      return;
+    }
+    if (sigilo2 && sigilo2.alarma && !this.encendida) this._correr(dt, hud2, sonido2);
+    if (this.puestoLimpio) this._ganar(hud2);
+  }
+  // el fuego se mueve: quieto se lee como una calcomanía naranja
+  _avivar(dt) {
+    this.tFuego += dt;
+    for (const f of [fuegos.casucha, fuegos.fogata]) {
+      if (!f || !f.visible) continue;
+      const u = f.userData;
+      const p = 0.88 + 0.12 * Math.sin(this.tFuego * 9.3 + f.position.x) + 0.06 * Math.sin(this.tFuego * 21.1);
+      u.fuera.scale.set(u.escala * p, u.escala * (2 - p), u.escala * p);
+      u.nucleo.scale.setScalar(u.escala * 0.55 * p);
+    }
+  }
+  _llegar(hud2) {
+    this.fase = "puesto";
+    if (!hud2) return;
+    hud2.mostrarAviso("Patrulla de vanguardia \xB7 la casucha del Rey", "bien");
+    hud2.decir(
+      "Mi General: los realistas tienen un puesto adelante, sobre el paso, con una pieza enfilada. Si nos ven, prenden la fogata y nos barren la columna.",
+      9,
+      "Teniente de vanguardia"
+    );
+    this._orden(hud2, "Limpi\xE1 el puesto. Que no prendan la fogata.");
+  }
+  _correr(dt, hud2, sonido2) {
+    const c = this.corredor;
+    if (c && c.vivo && !c.quebrado) {
+      if (Math.hypot(c.pos.x - FOGATA.x, c.pos.z - FOGATA.z) < PRENDE) this._encender(hud2, sonido2);
+      return;
+    }
+    if (c) {
+      this.corredor = null;
+      this.tRelevo = RELEVO;
+      return;
+    }
+    this.tRelevo -= dt;
+    if (this.tRelevo > 0) return;
+    let elegido = null, mejor = Infinity;
+    for (const s of this.guardia) {
+      if (!s.vivo || s.quebrado) continue;
+      const d = Math.hypot(s.pos.x - FOGATA.x, s.pos.z - FOGATA.z);
+      if (d < mejor) {
+        mejor = d;
+        elegido = s;
+      }
+    }
+    if (!elegido) return;
+    this.corredor = elegido;
+    elegido.centinela = false;
+    elegido.plaza = { x: FOGATA.x, z: FOGATA.z };
+    if (hud2) hud2.mostrarAviso("\xA1Uno corre a la fogata de se\xF1ales!", "malo");
+  }
+  _encender(hud2, sonido2) {
+    this.encendida = true;
+    if (this.corredor) {
+      this.corredor.plaza = null;
+      this.corredor = null;
+    }
+    if (fuegos.fogata) fuegos.fogata.visible = true;
+    if (this.canon) this.canon.dormido = false;
+    if (hud2) {
+      hud2.mostrarAviso("\xA1Prendieron la fogata! La pieza enfila el paso", "malo");
+      this._orden(hud2, "Call\xE1 la pieza: son dos artilleros.");
+    }
+    if (sonido2 && sonido2.rastrillo) sonido2.rastrillo();
+  }
+  _ganar(hud2) {
+    this.fase = "hecho";
+    if (!hud2) return;
+    this._orden(hud2, "");
+    hud2.placa({
+      titulo: "El paso queda abierto",
+      sub: this.encendida ? "Alcanzaron a dar la voz" : "Y nunca dieron la voz",
+      cuerpo: this.encendida ? "La fogata ardi\xF3 y la pieza lleg\xF3 a hablar. La columna cruza igual, pero abajo ya saben que el Ej\xE9rcito de los Andes est\xE1 en la cordillera." : "Ni un tiro de alarma, ni una fogata prendida. Abajo siguen creyendo que la monta\xF1a alcanza para defenderlos."
+    }, 6);
+  }
+  _orden(hud2, texto) {
+    this.orden = texto;
+    if (hud2 && hud2.orden) hud2.orden(texto);
   }
 };
 var SEPARACION = 2.6;
@@ -31368,6 +31590,8 @@ function construirAndes(escena2, colisiones) {
   lugar.add(hielo);
   const horno = new Horno();
   pircas(horno, colisiones);
+  casucha(horno, colisiones);
+  lena(horno, FOGATA.x, FOGATA.z, 1.5);
   penones(horno, colisiones);
   derrumbe(horno, colisiones);
   pircasCaidas(horno, colisiones);
@@ -31376,6 +31600,13 @@ function construirAndes(escena2, colisiones) {
   piedras.name = "paso-piedras";
   lugar.add(piedras);
   murallas(colisiones);
+  fuegos.casucha = llama(FOGON.x, FOGON.z, 1.15);
+  fuegos.casucha.name = "paso-fogon";
+  fuegos.fogata = llama(FOGATA.x, FOGATA.z, 3);
+  fuegos.fogata.name = "paso-fogata";
+  fuegos.fogata.visible = false;
+  lugar.add(fuegos.casucha);
+  lugar.add(fuegos.fogata);
   escena2.add(lugar);
   return lugar;
 }
@@ -35461,7 +35692,7 @@ var PELOS = [2760472, 4008990, 1840402, 4863524];
 var NEGRO = 1513499;
 var LATON = 13015892;
 var HIERRO = 5593697;
-var MADERA2 = 5259307;
+var MADERA3 = 5259307;
 var CUERO = 3812640;
 var LIENZO = 10129526;
 var MANTA = 8156518;
@@ -35638,8 +35869,8 @@ function vestir(taller, h, c, piel, pelo, sombrero) {
 }
 function fusilRealista(taller, mano) {
   taller.add(mano, cil(0.017, 0.017, 1.14, 7), HIERRO, { p: [0, 0, -0.4], r: [Math.PI / 2, 0, 0], metal: true });
-  taller.add(mano, caja(0.048, 0.062, 1.02), MADERA2, { p: [0, -0.022, -0.16] });
-  taller.add(mano, caja(0.058, 0.11, 0.24), MADERA2, { p: [0, -0.045, 0.28], r: [-0.16, 0, 0] });
+  taller.add(mano, caja(0.048, 0.062, 1.02), MADERA3, { p: [0, -0.022, -0.16] });
+  taller.add(mano, caja(0.058, 0.11, 0.24), MADERA3, { p: [0, -0.045, 0.28], r: [-0.16, 0, 0] });
   taller.add(mano, caja(0.05, 0.075, 0.07), HIERRO, { p: [0.02, 0.012, 0.06], metal: true });
   for (const z of [-0.3, -0.62]) {
     taller.add(mano, caja(0.055, 0.028, 0.03), LATON, { p: [0, -0.032, z], metal: true });
@@ -35649,8 +35880,8 @@ function fusilRealista(taller, mano) {
 }
 function tercerolaGranadero(taller, mano) {
   taller.add(mano, cil(0.016, 0.016, 0.78, 7), HIERRO, { p: [0, 0, -0.26], r: [Math.PI / 2, 0, 0], metal: true });
-  taller.add(mano, caja(0.046, 0.058, 0.7), MADERA2, { p: [0, -0.02, -0.06] });
-  taller.add(mano, caja(0.055, 0.1, 0.22), MADERA2, { p: [0, -0.042, 0.26], r: [-0.16, 0, 0] });
+  taller.add(mano, caja(0.046, 0.058, 0.7), MADERA3, { p: [0, -0.02, -0.06] });
+  taller.add(mano, caja(0.055, 0.1, 0.22), MADERA3, { p: [0, -0.042, 0.26], r: [-0.16, 0, 0] });
   taller.add(mano, caja(0.048, 0.072, 0.065), HIERRO, { p: [0.02, 0.012, 0.08], metal: true });
 }
 function lanzaGranadero(taller, mano) {
@@ -35687,10 +35918,10 @@ function sableEnMano(taller, mano) {
 }
 function pistolonEnMano(taller, mano) {
   taller.add(mano, cil(0.014, 0.015, 0.3, 7), HIERRO, { p: [0, 8e-3, -0.13], r: [Math.PI / 2, 0, 0], metal: true });
-  taller.add(mano, caja(0.034, 0.04, 0.26), MADERA2, { p: [0, -0.014, -0.1] });
+  taller.add(mano, caja(0.034, 0.04, 0.26), MADERA3, { p: [0, -0.014, -0.1] });
   taller.add(mano, caja(0.04, 0.058, 0.055), HIERRO, { p: [0.016, 0.01, 0.015], metal: true });
   taller.add(mano, cil(0.019, 0.019, 0.014, 6), HIERRO, { p: [0.03, 0.028, 5e-3], r: [0, 0, Math.PI / 2], metal: true });
-  taller.add(mano, caja(0.036, 0.1, 0.075), MADERA2, { p: [0, -0.056, 0.075], r: [-0.42, 0, 0] });
+  taller.add(mano, caja(0.036, 0.1, 0.075), MADERA3, { p: [0, -0.056, 0.075], r: [-0.42, 0, 0] });
   taller.add(mano, cil(0.024, 0.024, 0.026, 7), LATON, { p: [0, -0.1, 0.105], r: [Math.PI / 2 - 0.42, 0, 0], metal: true });
 }
 function sableAlCinto(taller, cadera) {
@@ -39719,6 +39950,8 @@ var Hud = class {
     this.arcos = [...document.querySelectorAll("#dano path")];
     this.golpes = this.arcos.map(() => ({ t: 0, x: 0, z: 0 }));
     this.tFrase = 0;
+    this.ordenEl = $("#orden");
+    this.ordenTexto = null;
     this.sigiloEl = $("#sigilo");
     this.sigiloBarra = $("#sigilo i");
     this.sigiloTexto = $("#sigilo b");
@@ -39943,6 +40176,16 @@ var Hud = class {
     this.sigiloBarra.style.width = Math.round(q * 100) + "%";
     const dice = alarma ? "los ten\xE9s encima" : "te est\xE1n viendo";
     if (this.sigiloTexto.textContent !== dice) this.sigiloTexto.textContent = dice;
+  }
+  // LA ORDEN DEL DÍA: qué hay que hacer, ahí puesto y sin reloj. Es distinto
+  // del cartel —que va y viene— y del aviso —que es una cosa que acaba de
+  // pasar—: esto se queda hasta que cambie la orden. Hoy lo usa la misión del
+  // paso y nadie más.
+  orden(texto) {
+    if (!this.ordenEl || texto === this.ordenTexto) return;
+    this.ordenTexto = texto || "";
+    this.ordenEl.textContent = this.ordenTexto;
+    this.ordenEl.classList.toggle("si", !!this.ordenTexto);
   }
   cartel(texto, seg = 3) {
     if (!this.cartelEl) return;
@@ -41250,6 +41493,7 @@ var Canon = class {
     this.alDisparar = null;
     this.sirvientes = [];
     this.titere = false;
+    this.dormido = false;
     this.alCastigo = null;
     this._v = new Vector3();
     this._humoPos = new Vector3();
@@ -41307,6 +41551,7 @@ var Canon = class {
   }
   actualizar(dt, candidatos) {
     if (this.titere) return;
+    if (this.dormido) return;
     if (!this.vivo) return;
     this.t += dt;
     this.recarga = Math.max(0, this.recarga - dt);
@@ -41542,6 +41787,8 @@ function armarDespliegue(ctx) {
   };
   function soltarTodo() {
     campo2.guardia = [];
+    campo2.patrulla = [];
+    campo2.pieza = null;
     campo2.partida = [];
     for (const s of soldados2) s.quitar();
     soldados2.length = 0;
@@ -41565,19 +41812,40 @@ function armarDespliegue(ctx) {
       s.frente = p.rumbo;
       return s;
     });
-    const guardia = guardiaDelCorral().map((p) => {
+    campo2.patrulla = patrullaDeLaCasucha().map((p) => {
+      const s = soltarSoldado("granadero", { pos: new Vector3(p.x, 0, p.z) });
+      s.malla.rotation.y = p.rumbo;
+      s.frente = p.rumbo;
+      s.centinela = true;
+      s.teniente = !!p.teniente;
+      return s;
+    });
+    const artilleros = [];
+    const guardia = guardiaDelPuesto().map((p) => {
       const s = soltarSoldado("realista", { pos: new Vector3(p.x, 0, p.z) });
       s.malla.rotation.y = p.rumbo;
       s.frente = p.rumbo;
+      if (p.artillero) artilleros.push(s);
       return s;
     });
     campo2.guardia = guardia;
+    const pieza = new Canon(escena2, humo2, sonido2, new Vector3(PIEZA.x, 0, PIEZA.z), PIEZA.rumbo);
+    pieza.alDisparar = (quien) => resolverMetralla(quien);
+    pieza.dormido = true;
+    pieza.sirvientes = artilleros;
+    for (const a of artilleros) a.puesto = { x: a.pos.x, z: a.pos.z };
+    canones2.push(pieza);
+    campo2.pieza = pieza;
     jugador2.pos.set(plan.jugador.x, jugador2.pos.y, plan.jugador.z);
     jugador2.yaw = plan.jugador.yaw;
     jugador2.pitch = plan.jugador.pitch;
     if (campo2.alFormar) campo2.alFormar();
-    hud2.mostrarAviso("Paso de Los Patos \xB7 hay guardia adelante", "bien");
-    return { partida: campo2.partida.length, guardia: guardia.length };
+    hud2.mostrarAviso("Paso de Los Patos \xB7 la vanguardia espera adelante", "bien");
+    return {
+      partida: campo2.partida.length,
+      guardia: guardia.length,
+      patrulla: campo2.patrulla.length
+    };
   };
   campo2.formarPinza = function(porColumna = 60, realistas = 250) {
     soltarTodo();
@@ -46284,6 +46552,7 @@ var moral = armarMoral({
 });
 var sigilo = new Sigilo();
 var marcha = new Marcha();
+var mision = new Mision();
 campo.alFormar = () => {
   moral.reiniciar();
   const p = campo.papeles;
@@ -46295,6 +46564,12 @@ campo.alFormar = () => {
   if (campo.guardia && campo.guardia.length) sigilo.poner(campo.guardia);
   marcha.reiniciar();
   if (campo.partida && campo.partida.length) marcha.poner(campo.partida);
+  mision.reiniciar();
+  hud.orden("");
+  if (campo.guardia && campo.guardia.length) {
+    mision.poner({ patrulla: campo.patrulla, guardia: campo.guardia, canon: campo.pieza });
+    hud.orden("Cruz\xE1 el paso con la partida. Adelante hay una casucha.");
+  }
 };
 function llamarPartida() {
   if (mundo.capitulo !== "andes" || !marcha.hombres.length) return null;
@@ -46498,6 +46773,7 @@ function simular(dt) {
   if (!red.esInvitado) moral.actualizar(dt);
   if (mundo.capitulo === "andes") {
     marcha.actualizar(dt, { jugador, agachado: jugador.postura !== "pie" });
+    mision.actualizar(dt, { jugador, sigilo, hud, sonido });
     sigilo.actualizar(dt, {
       jugador,
       // QUIETO ES QUIETO, no «sin apretar teclas»: lo que delata es el
@@ -46668,9 +46944,17 @@ window.juego = {
   entrarCapitulo,
   sigilo,
   marcha,
+  mision,
   // la planta del paso, para las pruebas y para el que quiera mirar dónde está
   // el eje del valle sin tener que leerse andes.js
-  paso: { eje, medio, zDerrumbe: Z_DERRUMBE, corral: CORRAL },
+  paso: {
+    eje,
+    medio,
+    zDerrumbe: Z_DERRUMBE,
+    corral: CORRAL,
+    casucha: CASUCHA,
+    fogata: FOGATA
+  },
   get capitulo() {
     return mundo.capitulo;
   },

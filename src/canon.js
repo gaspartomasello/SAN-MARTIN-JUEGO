@@ -92,6 +92,7 @@ export class Canon {
     this.sirvientes = [];          // los artilleros: si caen todos, la pieza calla
     // en red: la pieza de la otra máquina no piensa ni se hiere de este lado
     this.titere = false;
+    this.dormido = false;
     this.alCastigo = null;
     this._v = new THREE.Vector3();
     this._humoPos = new THREE.Vector3();
@@ -152,6 +153,12 @@ export class Canon {
     // en red la pieza de la otra máquina no busca blanco ni ceba: hace lo que
     // dice el parte. Ver soldados.js, «EL TÍTERE».
     if (this.titere) return;
+    // LA PIEZA DORMIDA. Una pieza a la orden no atiende a nadie hasta que la
+    // despiertan, y es lo único que este archivo sabe del capítulo 2: sin esto
+    // el cañón del paso te busca desde setenta y ocho metros y no hay sigilo
+    // posible. Es la misma idea que `centinela` en soldados.js —una bandera y
+    // una línea— y en San Lorenzo no la prende nadie.
+    if (this.dormido) return;
     if (!this.vivo) return;
     this.t += dt;
     this.recarga = Math.max(0, this.recarga - dt);

@@ -174,6 +174,16 @@
     text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 10px rgba(0,0,0,.9);pointer-events:none;
     transition:opacity .12s linear;text-align:center}
   #cartel.si{opacity:1}
+  /* ---- la orden del día ----
+     Qué hay que hacer, ahí puesto y sin reloj. Arriba a la izquierda, chico y
+     al borde: no compite con nada porque no es una novedad, es el rótulo de lo
+     que estás haciendo. */
+  #orden{position:absolute;left:22px;top:20px;max-width:34ch;opacity:0;
+    font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--bronce);
+    line-height:1.5;text-shadow:0 2px 10px rgba(0,0,0,.9);pointer-events:none;
+    border-left:2px solid var(--bronce);padding-left:10px;
+    transition:opacity .5s ease}
+  #orden.si{opacity:.92}
   /* ---- el ojo de la guardia ----
      Lo único que el sigilo le dice al que juega, y tiene que decirlo SIN
      palabras y sin tapar nada: una barra corta abajo de la mira que se llena
@@ -584,6 +594,7 @@
   <div id="aliento"><i></i></div>
   <div id="cartuchera"><div class="n">0</div><div class="t">cartuchos</div></div>
   <div id="cartel"></div>
+  <div id="orden"></div>
   <div id="sigilo"><div class="marco"><i></i></div><b>te están viendo</b></div>
   <div id="remate">¡REMATE!<small>click izquierdo</small></div>
   <div id="tomar"><b>[G]</b> tomar el fusil con bayoneta</div>

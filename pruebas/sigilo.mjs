@@ -126,15 +126,23 @@ const arranque = await ev(() => {
   const j = window.juego;
   return {
     guardia: j.sigilo.centinelas.length,
+    // QUIETOS son los dos: la guardia realista y tu patrulla de la casucha. La
+    // bandera de `centinela` quiere decir «quedate donde estás» y no tiene
+    // bando: si acá contáramos sólo a los realistas, no nos enteraríamos el día
+    // que la patrulla salga sola a caminar por el desfiladero.
     quietos: j.soldados.filter(s => s.centinela).length,
+    patrulla: j.soldados.filter(s => !s.esRealista && s.centinela).length,
     sinBlanco: j.soldados.filter(s => s.centinela && !s.objetivo).length,
-    partida: j.soldados.filter(s => !s.esRealista).length
+    partida: j.soldados.filter(s => !s.esRealista && !s.centinela).length
   };
 });
-dilo('la guardia sale montada y quieta',
-  arranque.guardia === 6 && arranque.quietos === 6, JSON.stringify(arranque));
+dilo('la guardia sale quieta, y la patrulla de la casucha también',
+  arranque.guardia === 14 && arranque.patrulla === 7 && arranque.quietos === 21,
+  JSON.stringify(arranque));
 dilo('y ninguno elige blanco hasta que lo despierten',
-  arranque.sinBlanco === arranque.guardia, `${arranque.sinBlanco}/${arranque.guardia}`);
+  arranque.sinBlanco === arranque.quietos, `${arranque.sinBlanco}/${arranque.quietos}`);
+dilo('la partida que te sigue son catorce y NO están clavados',
+  arranque.partida === 14, `${arranque.partida}`);
 
 // EL CENTINELA DE LA GARGANTA está en (4,5 · −66) mirando valle abajo. Todo lo
 // que sigue se mide contra él.
@@ -414,6 +422,101 @@ const esconderse = await ev(() => {
 dilo('un granadero agachado tarda más en delatarte',
   esconderse.agachado > esconderse.parado * 1.5,
   `${esconderse.agachado} s agachado contra ${esconderse.parado} s parado`);
+
+// ===========================================================================
+// LA MISIÓN DEL PASO
+// ===========================================================================
+//
+// El sigilo dice si te ven; esto dice para qué estás ahí. Se prueba en el bucle
+// de verdad y en orden, porque es una cadena: llegás a la casucha → te ven →
+// uno sale a la fogata → si llega, la pieza se despierta.
+//
+// Y SE MIDE LA VENTANA. Lo único que hace que la fogata sea una mecánica y no
+// un castigo es cuánto tiempo hay para bajar al que corre: si es un segundo,
+// no hay decisión que tomar. Acá tiene que dar entre tres y ocho segundos, y si
+// alguien mueve la fogata de sitio o le cambia la velocidad a la tropa, esta
+// prueba se entera.
+const mision = await ev(() => {
+  const j = window.juego, out = {};
+  const paso = seg => { for (let i = 0; i < seg * 60; i++) j.simular(1 / 60); };
+
+  // EL MUNDO A CERO ANTES DE MEDIR. Todo lo de arriba anduvo paseando al
+  // jugador por el paso —incluso por la casucha— así que a esta altura la
+  // misión ya avanzó de fase y la guardia está desparramada. Sin esto, lo que
+  // se mide es la corrida anterior.
+  j.formarCordillera();
+  paso(0.2);
+
+  out.faseAlEmpezar = j.mision.fase;
+  out.patrulla = j.mision.patrulla.length;
+  out.guardia = j.mision.guardia.length;
+  out.piezaDormida = !!(j.mision.canon && j.mision.canon.dormido);
+  out.artilleros = j.mision.canon ? j.mision.canon.sirvientes.length : 0;
+  out.fogataApagada = !j.escena.getObjectByName('paso-fogata').visible;
+  out.ordenAlEmpezar = document.getElementById('orden').textContent;
+
+  // 1 · la casucha
+  j.jugador.pos.set(j.paso.casucha.x + 6, j.jugador.pos.y, j.paso.casucha.z + 6);
+  paso(0.4);
+  out.faseEnLaCasucha = j.mision.fase;
+  out.ordenEnLaCasucha = document.getElementById('orden').textContent;
+
+  // 2 · la alarma manda a uno a la fogata, y NO en el mismo cuadro
+  j.sigilo.dar(j.hud, j.sonido);
+  paso(0.5);
+  out.nadieSaleAlToque = !j.mision.corredor;
+  // y a los tres segundos ya salió: el que agarra la antorcha tarda en
+  // decidirse, no es inmediato ni es eterno
+  paso(2.6);
+  const c = j.mision.corredor;
+  out.corredorConPlaza = !!(c && c.plaza);
+  out.corredorSeMueve = !!(c && c.andando);
+
+  // 3 · cuánto tiempo hay para bajarlo
+  let t = 3.1;
+  while (!j.mision.encendida && t < 25) { paso(0.25); t += 0.25; }
+  out.ventana = +t.toFixed(2);
+  out.encendida = j.mision.encendida;
+  out.fogataPrendida = j.escena.getObjectByName('paso-fogata').visible;
+  out.piezaDespierta = !!(j.mision.canon && !j.mision.canon.dormido);
+  out.patrullaSuelta = j.mision.patrulla.filter(s => !s.centinela).length;
+
+  // 4 · matarle los artilleros la calla, aunque esté despierta
+  out.servidaAntes = j.mision.canon.servido;
+  for (const a of j.mision.canon.sirvientes) a.recibir(99);
+  paso(0.3);
+  out.servidaDespues = j.mision.canon.servido;
+
+  // 5 · y con el puesto limpio se termina
+  for (const s of j.mision.guardia) if (s.vivo) s.recibir(99);
+  paso(0.4);
+  out.fase = j.mision.fase;
+  out.orden = document.getElementById('orden').textContent;
+  out.placa = (document.querySelector('#placa .t') || {}).textContent || '';
+  return out;
+});
+dilo('el paso arranca con una orden y no en blanco',
+  mision.faseAlEmpezar === 'marcha' && /casucha/i.test(mision.ordenAlEmpezar), mision.ordenAlEmpezar);
+dilo('hay una patrulla tuya en la casucha y catorce realistas en el puesto',
+  mision.patrulla === 7 && mision.guardia === 14, `${mision.patrulla} y ${mision.guardia}`);
+dilo('la pieza del puesto arranca DORMIDA, con sus dos artilleros',
+  mision.piezaDormida && mision.artilleros === 2, `dormida ${mision.piezaDormida}`);
+dilo('y la fogata de señales, apagada', mision.fogataApagada);
+dilo('llegando a la casucha, el teniente te da la misión',
+  mision.faseEnLaCasucha === 'puesto' && /fogata/i.test(mision.ordenEnLaCasucha),
+  mision.ordenEnLaCasucha);
+dilo('con la alarma dada, no salen todos disparando al toque', mision.nadieSaleAlToque);
+dilo('pero uno agarra la antorcha y va, con la plaza de la marcha a pie',
+  mision.corredorConPlaza && mision.corredorSeMueve);
+dilo('y hay tiempo de bajarlo: no es un castigo, es un tiro',
+  mision.ventana >= 3 && mision.ventana <= 9, `${mision.ventana} s desde la alarma`);
+dilo('si nadie lo para, la fogata arde y la pieza se despierta',
+  mision.encendida && mision.fogataPrendida && mision.piezaDespierta);
+dilo('y la patrulla de la casucha deja de esperar', mision.patrullaSuelta === 7);
+dilo('matarle los dos artilleros la calla igual',
+  mision.servidaAntes && !mision.servidaDespues);
+dilo('limpiando el puesto se termina el paso, y con placa',
+  mision.fase === 'hecho' && mision.orden === '' && /paso/i.test(mision.placa), mision.placa);
 
 for (const [e, n, x] of T) console.log(e.padEnd(4), n.padEnd(52), x);
 const mal = T.filter(t => t[0] === 'MAL').length;

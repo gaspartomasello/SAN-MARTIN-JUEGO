@@ -43,6 +43,7 @@ const PIEDRA_PIRCA_OSC = 0x514e49;
 // el hielo del arroyo: más oscuro y más frío que la nieve, que si no se funde
 // con el piso y no se ve la línea
 const HIELO = 0x9fb4c8;
+const MADERA = 0x453629;      // las vigas del techo y la leña
 
 // LA PLANTA DEL PASO, metro a metro de Z: dónde está el EJE del valle y cuánta
 // media anchura de piso hay a cada lado. El que necesite plantar algo —la
@@ -101,6 +102,26 @@ export function medio (z) { return planta(z, 2); }
 // corral se mueve con él en vez de quedar metido adentro de la pared.
 export const CORRAL = { x: eje(-120) - 4, z: -120 };
 export const ENTRADA = { x: eje(46), z: 46 };
+
+// LA CASUCHA DEL REY, contra la pared de la izquierda y a treinta y ocho metros
+// de la boca: un refugio se pega al cerro, que es de donde viene el reparo.
+// Adentro espera la patrulla de vanguardia, y es lo que convierte el paso en una
+// misión y no en una caminata. Va LEJOS de la guardia a propósito: el centinela
+// más adelantado está en z = −66 y ve cuarenta y seis metros, así que a un
+// granadero parado en la casucha no lo alcanza ni parado en el techo.
+export const CASUCHA = { x: eje(8) - 16, z: 8 };
+export const FOGON = { x: CASUCHA.x + 5.4, z: CASUCHA.z + 3.6 };
+
+// EL PUESTO REALISTA vive en el corral, que ya estaba. La pieza enfila el paso
+// —mira para donde venís vos— y la fogata de señales está a un costado, sobre
+// la loma, que es donde se pone una fogata que tiene que verse desde abajo.
+export const PIEZA = { x: eje(-113) + 3.2, z: -113, rumbo: mirandoElPaso(-113) };
+// LA FOGATA DE SEÑALES VA AL FONDO DEL PUESTO Y NO AL LADO DEL CORRAL, y esto
+// no es decoración: es el nivel entero. Pegada al corral, el primero que se da
+// vuelta la prende en un segundo y no hay nada que puedas hacer; a dieciséis
+// metros, entre que uno se decide y llega hay unos cinco segundos, que es
+// exactamente lo que tarda un tiro bien puesto.
+export const FOGATA = { x: eje(-136) - 9, z: -136 };
 
 // El ruido, sin Math.random: la misma montaña en las dos máquinas de una
 // partida de a dos y entre una corrida de las pruebas y la siguiente.
@@ -307,48 +328,121 @@ function murallas (colisiones) {
 // entiende sin que nadie lo explique y se pelea adentro.
 //
 // Va fundido en la malla del escenario: trescientas piedras a una llamada.
+// UNA PARED DE PIRCA. La usan el corral y la casucha: es la misma mano y la
+// misma cantera, y lo único que cambia es cuántas hiladas lleva —tres para
+// encerrar animales, cinco para aguantar un techo—.
+let semillaPirca = 0;
+function pirca (horno, colisiones, x0, z0, x1, z1, hiladas = 3) {
+  const largo = Math.hypot(x1 - x0, z1 - z0);
+  if (largo < 0.05) return;
+  const ux = (x1 - x0) / largo, uz = (z1 - z0) / largo;
+  // cada hilada corrida media piedra: una pirca de piedras alineadas parece un
+  // muro de ladrillo, y no hay ladrillo en la cordillera
+  for (let h = 0; h < hiladas; h++) {
+    const y = 0.22 + h * 0.44;
+    const paso = 0.62;
+    for (let t = h * paso * 0.5; t < largo; t += paso) {
+      semillaPirca++;
+      const r = ruido(semillaPirca * 1.7, h * 3.1);
+      const ancho = 0.52 + r * 0.22;
+      horno.caja(
+        x0 + ux * t + uz * r * 0.14, y + r * 0.06, z0 + uz * t - ux * r * 0.14,
+        Math.abs(ux) > 0.5 ? ancho : 0.44 + r * 0.14,
+        0.40 + r * 0.10,
+        Math.abs(uz) > 0.5 ? ancho : 0.44 + r * 0.14,
+        r > 0 ? PIEDRA_PIRCA : PIEDRA_PIRCA_OSC,
+        r * 0.5);
+    }
+  }
+  if (!colisiones) return;
+  const ex = Math.abs(x1 - x0) < 0.1 ? 0.34 : 0;
+  const ez = Math.abs(z1 - z0) < 0.1 ? 0.34 : 0;
+  colisiones.push(new THREE.Box3(
+    new THREE.Vector3(Math.min(x0, x1) - ex, 0, Math.min(z0, z1) - ez),
+    new THREE.Vector3(Math.max(x0, x1) + ex, 0.22 + hiladas * 0.44, Math.max(z0, z1) + ez)));
+}
+
 function pircas (horno, colisiones) {
   const { x: CX, z: CZ } = CORRAL;
-  const AN = 15, LA = 11, ALTO = 1.35;
-  // el portillo, en la cara que mira a la boca del valle
-  const PORTILLO = 3.2;
-  const tramos = [
-    // [x0, z0, x1, z1]
-    [CX - AN / 2, CZ - LA / 2, CX + AN / 2, CZ - LA / 2],          // el fondo
-    [CX - AN / 2, CZ - LA / 2, CX - AN / 2, CZ + LA / 2],          // los costados
-    [CX + AN / 2, CZ - LA / 2, CX + AN / 2, CZ + LA / 2],
-    [CX - AN / 2, CZ + LA / 2, CX - PORTILLO / 2, CZ + LA / 2],    // el frente, partido
-    [CX + PORTILLO / 2, CZ + LA / 2, CX + AN / 2, CZ + LA / 2]
-  ];
-  let semilla = 0;
-  for (const [x0, z0, x1, z1] of tramos) {
-    const largo = Math.hypot(x1 - x0, z1 - z0);
-    const ux = (x1 - x0) / largo, uz = (z1 - z0) / largo;
-    // tres hiladas, y cada hilada corrida media piedra: una pirca de piedras
-    // alineadas parece un muro de ladrillo, y no hay ladrillo en la cordillera
-    for (let h = 0; h < 3; h++) {
-      const y = 0.22 + h * 0.44;
-      const paso = 0.62;
-      for (let t = h * paso * 0.5; t < largo; t += paso) {
-        semilla++;
-        const r = ruido(semilla * 1.7, h * 3.1);
-        const ancho = 0.52 + r * 0.22;
-        horno.caja(
-          x0 + ux * t + uz * r * 0.14, y + r * 0.06, z0 + uz * t - ux * r * 0.14,
-          Math.abs(ux) > 0.5 ? ancho : 0.44 + r * 0.14,
-          0.40 + r * 0.10,
-          Math.abs(uz) > 0.5 ? ancho : 0.44 + r * 0.14,
-          r > 0 ? PIEDRA_PIRCA : PIEDRA_PIRCA_OSC,
-          r * 0.5);
-      }
-    }
-    const ex = Math.abs(x1 - x0) < 0.1 ? 0.34 : 0;
-    const ez = Math.abs(z1 - z0) < 0.1 ? 0.34 : 0;
-    colisiones.push(new THREE.Box3(
-      new THREE.Vector3(Math.min(x0, x1) - ex, 0, Math.min(z0, z1) - ez),
-      new THREE.Vector3(Math.max(x0, x1) + ex, ALTO, Math.max(z0, z1) + ez)));
+  const AN = 15, LA = 11;
+  const PORTILLO = 3.2;   // en la cara que mira a la boca del valle
+  pirca(horno, colisiones, CX - AN / 2, CZ - LA / 2, CX + AN / 2, CZ - LA / 2);   // el fondo
+  pirca(horno, colisiones, CX - AN / 2, CZ - LA / 2, CX - AN / 2, CZ + LA / 2);   // los costados
+  pirca(horno, colisiones, CX + AN / 2, CZ - LA / 2, CX + AN / 2, CZ + LA / 2);
+  pirca(horno, colisiones, CX - AN / 2, CZ + LA / 2, CX - PORTILLO / 2, CZ + LA / 2);
+  pirca(horno, colisiones, CX + PORTILLO / 2, CZ + LA / 2, CX + AN / 2, CZ + LA / 2);
+}
+
+// ------------------------------------------------------ la casucha del Rey
+//
+// Un refugio de piedra de los que la corona mandó levantar en los pasos para
+// que el que cruzaba no se muriera de frío. Es lo primero que te encontrás
+// entrando al paso y no está de adorno: adentro te espera la patrulla de
+// vanguardia, y su teniente es el que te dice para qué estás acá.
+//
+// EL TECHO NO VA A LAS COLISIONES. Las cajas frenan por su caja entera, así que
+// un techo a dos metros y medio es una pared invisible que te tapa el vano.
+// Adentro se entra: por eso el frente está partido.
+function casucha (horno, colisiones) {
+  const { x: CX, z: CZ } = CASUCHA;
+  const AN = 5.6, LA = 4.6, HIL = 5, VANO = 1.6;
+  const x0 = CX - AN / 2, x1 = CX + AN / 2, z0 = CZ - LA / 2, z1 = CZ + LA / 2;
+  pirca(horno, colisiones, x0, z0, x1, z0, HIL);
+  pirca(horno, colisiones, x0, z0, x0, z1, HIL);
+  pirca(horno, colisiones, x1, z0, x1, z1, HIL);
+  pirca(horno, colisiones, x0, z1, CX - VANO / 2, z1, HIL);
+  pirca(horno, colisiones, CX + VANO / 2, z1, x1, z1, HIL);
+
+  const ALTO = 0.22 + HIL * 0.44;
+  for (let i = 0; i < 5; i++) {                       // las vigas
+    horno.caja(CX, ALTO + 0.10, z0 + 0.55 + i * ((LA - 1.1) / 4),
+      AN + 0.55, 0.17, 0.22, MADERA, 0.05);
+  }
+  horno.caja(CX, ALTO + 0.30, CZ, AN + 0.75, 0.24, LA + 0.75, NIEVE_SUCIA, 0);
+  lena(horno, FOGON.x, FOGON.z, 1);                   // el fogón de la patrulla
+}
+
+// UN MONTÓN DE LEÑA: cuatro palos cruzados. Es el fogón de la casucha y es
+// también la fogata de señales del puesto, que es la misma leña sin prender.
+function lena (horno, x, z, escala = 1) {
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI;
+    horno.pieza(new THREE.CylinderGeometry(0.075 * escala, 0.09 * escala, 1.25 * escala, 5),
+      [x + Math.cos(a) * 0.1 * escala, 0.16 * escala, z + Math.sin(a) * 0.1 * escala],
+      [Math.PI / 2 - 0.35, a, 0], null, MADERA);
   }
 }
+
+// ------------------------------------------------------------- el fuego
+//
+// UN FUEGO SIN UNA LUZ DE VERDAD. Una luz puntual se paga en cada píxel de cada
+// material que alcanza, y acá el escenario es una sola malla de doscientos
+// metros: la luz costaría el paso entero para iluminar dos metros de nieve.
+//
+// La primera versión le ponía abajo un disco naranja SUMADO, para que se leyera
+// que eso da luz. Sobre la nieve no da luz: da un óvalo blanco. Sumar sobre un
+// piso que ya está casi en blanco no aclara, satura, y lo que quedaba era una
+// mancha gris de siete metros con los hombres parados encima. Queda la llama
+// sola —dos conos, uno adentro del otro— que es lo único que de verdad se ve de
+// un fuego a cien metros en una noche de luna.
+const LLAMA_GEO = new THREE.ConeGeometry(0.36, 1.0, 6);
+function llama (x, z, escala = 1) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  const fuera = new THREE.Mesh(LLAMA_GEO, new THREE.MeshBasicMaterial({ color: 0xff8a1e, fog: false }));
+  fuera.position.y = 0.54 * escala;
+  const nucleo = new THREE.Mesh(LLAMA_GEO, new THREE.MeshBasicMaterial({ color: 0xffe9a0, fog: false }));
+  nucleo.position.y = 0.40 * escala;
+  g.add(fuera); g.add(nucleo);
+  g.userData = { fuera, nucleo, escala };
+  return g;
+}
+
+// Los dos fuegos del paso, que la misión prende y apaga. Viven acá y no en un
+// paquete que se pasa de mano en mano porque la misión también vive acá: son la
+// misma cosa —el capítulo 2— y hacerlos viajar por tres archivos para volver al
+// mismo sitio no compra nada.
+const fuegos = { casucha: null, fogata: null };
 
 // ------------------------------------------------------------ los peñones
 //
@@ -595,20 +689,60 @@ const ALARMA = 1;            // acá te vieron
 // LA GUARDIA. Dos avanzadas sueltas en el camino y el grueso en el corral: se
 // llega a una antes que a la otra, así que la primera es la que enseña cómo
 // funciona y la segunda es la que hay que pensar.
-export function guardiaDelCorral () {
-  const { x: CX, z: CZ } = CORRAL;
-  // Las dos avanzadas cuelgan del eje —si el valle dobla, se mueven con él— y
-  // MIRAN POR EL EJE y no a −Z a secas: un centinela plantado en un codo
-  // mirando a la nada es un poste. `rumbo` es hacia dónde da la cara, y en este
-  // modelo el frente es −Z, así que se le suma lo que el valle se tuerce.
-  const mirando = z => Math.PI + Math.atan2(eje(z + 14) - eje(z - 14), 28);
+// HACIA DÓNDE DA LA CARA. En este modelo el frente de un hombre es −Z, así que
+// para mirar por el eje del valle hay que sumarle lo que el valle se tuerce: un
+// centinela plantado en un codo mirando a −Z a secas es un poste mirando la
+// pared.
+function mirandoElPaso (z) { return Math.PI + Math.atan2(eje(z + 14) - eje(z - 14), 28); }
+
+// Y para mirar a un punto: el frente es −Z, así que el rumbo que apunta de
+// (x,z) a (px,pz) es el ángulo del vector al revés.
+const mirandoA = (x, z, px, pz) => Math.atan2(x - px, z - pz);
+
+// LA PATRULLA DE LA CASUCHA. Siete hombres tuyos: el teniente en el vano —es el
+// que habla— dos adentro y cuatro alrededor del fogón. Salen QUIETOS, con la
+// misma bandera de `centinela` que usa la guardia realista, porque un hombre
+// sin objetivo se queda donde está y eso ya estaba en soldados.js. Se sueltan
+// solos si suena la alarma: entonces ya no hay nada que esperar.
+export function patrullaDeLaCasucha () {
+  const { x: CX, z: CZ } = CASUCHA;
+  const enElFogon = (dx, dz) => ({
+    x: FOGON.x + dx, z: FOGON.z + dz, rumbo: mirandoA(FOGON.x + dx, FOGON.z + dz, FOGON.x, FOGON.z)
+  });
   return [
-    { x: eje(-66) + 4.5, z: -66, rumbo: mirando(-66) },   // la avanzada de la garganta
-    { x: eje(-88) - 3.0, z: -88, rumbo: mirando(-88) },   // la segunda, en la hoyada
-    { x: CX - 5.5, z: CZ + 7.5, rumbo: mirando(CZ + 7.5) },
-    { x: CX + 4.0, z: CZ + 7.0, rumbo: mirando(CZ + 7) + 0.35 },
-    { x: CX - 9.5, z: CZ - 1.0, rumbo: mirando(CZ) - 0.9 },
-    { x: CX + 6.5, z: CZ - 2.0, rumbo: mirando(CZ) + 0.9 }
+    // el teniente, en el vano y mirando a la boca del valle: te ve venir
+    { x: CX, z: CZ + 2.9, rumbo: mirandoElPaso(CZ) + Math.PI, teniente: true },
+    { x: CX - 1.4, z: CZ - 0.9, rumbo: mirandoElPaso(CZ) + Math.PI + 0.4 },
+    { x: CX + 1.3, z: CZ - 1.1, rumbo: mirandoElPaso(CZ) + Math.PI - 0.5 },
+    enElFogon(-2.0, 0.5), enElFogon(1.9, 1.1), enElFogon(0.4, 2.2), enElFogon(-1.2, -1.9)
+  ];
+}
+
+// EL PUESTO REALISTA. Catorce, y no seis: seis hombres en cuatro hectáreas de
+// piedra no son un puesto, son cuatro postes que se esquivan de a uno. Están
+// escalonados —dos avanzadas sueltas antes de llegar, el grueso en el corral,
+// dos en la fogata y dos en la pieza— así que el paso se abre de a tramos y
+// cada tramo tiene su solución.
+//
+// Los dos ARTILLEROS salen marcados: despliegue.js se los pasa a la pieza como
+// sirvientes, y por eso matarlos la calla.
+export function guardiaDelPuesto () {
+  const { x: CX, z: CZ } = CORRAL;
+  return [
+    { x: eje(-66) + 4.5, z: -66, rumbo: mirandoElPaso(-66) },      // la avanzada de la garganta
+    { x: eje(-88) - 3.0, z: -88, rumbo: mirandoElPaso(-88) },      // la segunda, en la hoyada
+    { x: eje(-101) + 6.0, z: -101, rumbo: mirandoElPaso(-101) + 0.5 },
+    { x: CX - 5.5, z: CZ + 7.5, rumbo: mirandoElPaso(CZ + 7.5) },
+    { x: CX + 4.0, z: CZ + 7.0, rumbo: mirandoElPaso(CZ + 7) + 0.35 },
+    { x: CX - 9.5, z: CZ - 1.0, rumbo: mirandoElPaso(CZ) - 0.9 },
+    { x: CX + 6.5, z: CZ - 2.0, rumbo: mirandoElPaso(CZ) + 0.9 },
+    { x: CX - 2.2, z: CZ - 3.2, rumbo: mirandoElPaso(CZ) + 2.6 },  // adentro del corral
+    { x: CX + 1.8, z: CZ - 4.0, rumbo: mirandoElPaso(CZ) + 2.2 },
+    { x: eje(-127) - 7.0, z: -127, rumbo: mirandoElPaso(-127) - 0.4 },
+    { x: eje(-129) + 4.5, z: -129, rumbo: mirandoElPaso(-129) + 0.5 },
+    { x: eje(-140) - 2.0, z: -140, rumbo: mirandoElPaso(-140) + Math.PI },  // la retaguardia
+    { x: PIEZA.x - 1.8, z: PIEZA.z + 1.6, rumbo: mirandoElPaso(PIEZA.z), artillero: true },
+    { x: PIEZA.x + 1.8, z: PIEZA.z + 1.6, rumbo: mirandoElPaso(PIEZA.z), artillero: true }
   ];
 }
 
@@ -755,9 +889,183 @@ export class Sigilo {
     this.tomado = true;
     if (hud) {
       hud.cartel('', 0);
-      hud.placa(['El corral de pircas', 'Tomado sin un tiro',
-        'La partida cruza el paso'], 5);
+      // OJO CON LA FORMA: `placa` quiere un objeto con titulo/sub/cuerpo. Acá
+      // había una lista de tres frases, así que desde que existe el sigilo la
+      // placa salía en blanco —los tres renglones quedaban vacíos— y nadie se
+      // enteró porque nadie la miró.
+      hud.placa({
+        titulo: 'Encima del puesto',
+        sub: 'y ninguno te vio venir',
+        cuerpo: 'Catorce hombres a nueve metros y la fogata de señales apagada. ' +
+          'De acá en adelante es a la bayoneta.'
+      }, 5);
     }
+  }
+}
+
+// ===========================================================================
+// LA MISIÓN DEL PASO
+// ===========================================================================
+//
+// El sigilo dice si te ven. Esto dice PARA QUÉ estás acá, y es lo que faltaba:
+// el paso tenía guardia y no tenía misión, así que entrar era caminar
+// doscientos metros y salir por el otro lado sin que pasara nada.
+//
+// Son tres tiempos:
+//
+//   1 · MARCHA    de la boca a la casucha del Rey. Ahí espera la patrulla de
+//                 vanguardia y el teniente te dice lo que hay adelante.
+//   2 · PUESTO    limpiar el puesto realista. Si te ven, uno sale corriendo a
+//                 prender la fogata de señales, y si la prende, la pieza deja
+//                 de estar dormida y empieza a barrer el paso. Bajarlo antes
+//                 de que llegue es la diferencia entre una pelea y una
+//                 masacre.
+//   3 · HECHO     no queda nadie en pie en el puesto.
+//
+// NO HAY PANTALLA DE DERROTA, y es a propósito. Que prendan la fogata no te
+// mata: te despierta un cañón encima, que es peor y se entiende sin leer nada.
+// Y callarlo se puede, porque los artilleros son dos y una pieza sin
+// sirvientes no vuelve a hablar: eso ya estaba en canon.js desde San Lorenzo.
+const CERCA_CASUCHA = 12;      // a esta distancia el teniente te habla
+const PRENDE = 2.2;            // y a ésta, el que corre llega a la leña
+const RELEVO = 3.5;            // lo que tarda otro en agarrar la antorcha
+const DECIDIRSE = 2.5;         // y lo que tarda el primero en darse cuenta
+
+export class Mision {
+  constructor () { this.reiniciar(); }
+
+  reiniciar () {
+    this.fase = 'marcha';
+    this.patrulla = [];
+    this.guardia = [];
+    this.canon = null;
+    this.encendida = false;
+    this.corredor = null;
+    this.sueltos = false;
+    this.tRelevo = DECIDIRSE;
+    this.tFuego = 0;
+    this.orden = '';
+    if (fuegos.fogata) fuegos.fogata.visible = false;
+    if (fuegos.casucha) fuegos.casucha.visible = true;
+  }
+
+  // Los pone el despliegue, ya soltados al campo.
+  poner ({ patrulla, guardia, canon }) {
+    this.patrulla = patrulla || [];
+    this.guardia = guardia || [];
+    this.canon = canon || null;
+    // LA PIEZA ARRANCA DORMIDA. Sin esto no hay sigilo posible: el cañón busca
+    // blanco a setenta y ocho metros y te encuentra desde la garganta, así que
+    // el paso se decidiría solo antes de que puedas hacer nada.
+    if (this.canon) this.canon.dormido = true;
+    this.orden = '';
+  }
+
+  get puestoLimpio () {
+    return this.guardia.length > 0 && !this.guardia.some(s => s.vivo && !s.quebrado);
+  }
+
+  actualizar (dt, ctx) {
+    const { jugador, sigilo, hud, sonido } = ctx;
+    this._avivar(dt);
+    if (this.fase === 'hecho') return;
+
+    // la patrulla espera quieta, pero no es sorda: dada la alarma ya no hay
+    // nada que esperar y salen
+    if (sigilo && sigilo.alarma && !this.sueltos) {
+      this.sueltos = true;
+      for (const s of this.patrulla) s.centinela = false;
+    }
+
+    if (this.fase === 'marcha') {
+      const d = Math.hypot(jugador.pos.x - CASUCHA.x, jugador.pos.z - CASUCHA.z);
+      if (d < CERCA_CASUCHA) this._llegar(hud);
+      return;
+    }
+
+    if (sigilo && sigilo.alarma && !this.encendida) this._correr(dt, hud, sonido);
+    if (this.puestoLimpio) this._ganar(hud);
+  }
+
+  // el fuego se mueve: quieto se lee como una calcomanía naranja
+  _avivar (dt) {
+    this.tFuego += dt;
+    for (const f of [fuegos.casucha, fuegos.fogata]) {
+      if (!f || !f.visible) continue;
+      const u = f.userData;
+      const p = 0.88 + 0.12 * Math.sin(this.tFuego * 9.3 + f.position.x)
+        + 0.06 * Math.sin(this.tFuego * 21.1);
+      u.fuera.scale.set(u.escala * p, u.escala * (2 - p), u.escala * p);
+      u.nucleo.scale.setScalar(u.escala * 0.55 * p);
+    }
+  }
+
+  _llegar (hud) {
+    this.fase = 'puesto';
+    if (!hud) return;
+    hud.mostrarAviso('Patrulla de vanguardia · la casucha del Rey', 'bien');
+    hud.decir('Mi General: los realistas tienen un puesto adelante, sobre el paso, ' +
+      'con una pieza enfilada. Si nos ven, prenden la fogata y nos barren la columna.', 9,
+      'Teniente de vanguardia');
+    this._orden(hud, 'Limpiá el puesto. Que no prendan la fogata.');
+  }
+
+  _correr (dt, hud, sonido) {
+    const c = this.corredor;
+    if (c && c.vivo && !c.quebrado) {
+      if (Math.hypot(c.pos.x - FOGATA.x, c.pos.z - FOGATA.z) < PRENDE) this._encender(hud, sonido);
+      return;
+    }
+    // se lo bajaron, o se quebró: otro va a agarrar la antorcha, pero tarda
+    if (c) { this.corredor = null; this.tRelevo = RELEVO; return; }
+    this.tRelevo -= dt;
+    if (this.tRelevo > 0) return;
+
+    let elegido = null, mejor = Infinity;
+    for (const s of this.guardia) {
+      if (!s.vivo || s.quebrado) continue;
+      const d = Math.hypot(s.pos.x - FOGATA.x, s.pos.z - FOGATA.z);
+      if (d < mejor) { mejor = d; elegido = s; }
+    }
+    if (!elegido) return;                     // no queda quien la prenda
+    this.corredor = elegido;
+    elegido.centinela = false;
+    // LA PLAZA es el mismo mecanismo con el que marcha la columna a pie: no hay
+    // un estado nuevo ni una IA nueva, hay un hombre con un sitio a dónde ir.
+    elegido.plaza = { x: FOGATA.x, z: FOGATA.z };
+    if (hud) hud.mostrarAviso('¡Uno corre a la fogata de señales!', 'malo');
+  }
+
+  _encender (hud, sonido) {
+    this.encendida = true;
+    if (this.corredor) { this.corredor.plaza = null; this.corredor = null; }
+    if (fuegos.fogata) fuegos.fogata.visible = true;
+    if (this.canon) this.canon.dormido = false;
+    if (hud) {
+      hud.mostrarAviso('¡Prendieron la fogata! La pieza enfila el paso', 'malo');
+      this._orden(hud, 'Callá la pieza: son dos artilleros.');
+    }
+    if (sonido && sonido.rastrillo) sonido.rastrillo();
+  }
+
+  _ganar (hud) {
+    this.fase = 'hecho';
+    if (!hud) return;
+    this._orden(hud, '');
+    hud.placa({
+      titulo: 'El paso queda abierto',
+      sub: this.encendida ? 'Alcanzaron a dar la voz' : 'Y nunca dieron la voz',
+      cuerpo: this.encendida
+        ? 'La fogata ardió y la pieza llegó a hablar. La columna cruza igual, ' +
+          'pero abajo ya saben que el Ejército de los Andes está en la cordillera.'
+        : 'Ni un tiro de alarma, ni una fogata prendida. Abajo siguen creyendo ' +
+          'que la montaña alcanza para defenderlos.'
+    }, 6);
+  }
+
+  _orden (hud, texto) {
+    this.orden = texto;
+    if (hud && hud.orden) hud.orden(texto);
   }
 }
 
@@ -897,6 +1205,8 @@ export function construirAndes (escena, colisiones) {
   lugar.add(hielo);
   const horno = new Horno();
   pircas(horno, colisiones);
+  casucha(horno, colisiones);
+  lena(horno, FOGATA.x, FOGATA.z, 1.5);      // la de señales: más grande, para que se vea de abajo
   penones(horno, colisiones);
   derrumbe(horno, colisiones);
   pircasCaidas(horno, colisiones);
@@ -906,6 +1216,18 @@ export function construirAndes (escena, colisiones) {
   piedras.name = 'paso-piedras';
   lugar.add(piedras);
   murallas(colisiones);
+
+  // EL FUEGO DE LA CASUCHA arde desde el principio —hay gente ahí— y la FOGATA
+  // DE SEÑALES nace apagada: prenderla es lo que el puesto va a intentar hacer
+  // cuando te vea, y evitarlo es la misión.
+  fuegos.casucha = llama(FOGON.x, FOGON.z, 1.15);
+  fuegos.casucha.name = 'paso-fogon';
+  fuegos.fogata = llama(FOGATA.x, FOGATA.z, 3.0);
+  fuegos.fogata.name = 'paso-fogata';
+  fuegos.fogata.visible = false;
+  lugar.add(fuegos.casucha);
+  lugar.add(fuegos.fogata);
+
   escena.add(lugar);
   return lugar;
 }

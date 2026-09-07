@@ -43,7 +43,8 @@ import { armarMoral } from './moral.js';
 import { armarPlano } from './plano.js';
 import { armarRed } from './red.js';
 import { Z_BARRANCA } from './sanlorenzo.js';
-import { Sigilo, Marcha, eje as ejeDelPaso, medio as medioDelPaso, Z_DERRUMBE, CORRAL } from './andes.js';
+import { Sigilo, Marcha, Mision, eje as ejeDelPaso, medio as medioDelPaso, Z_DERRUMBE, CORRAL,
+  CASUCHA, FOGATA } from './andes.js';
 import { VOLTEO, OFICIO, METRALLA_CABALLO, CAIDA } from './balance.js';
 
 // ---------------------------------------------------------------------------
@@ -270,6 +271,10 @@ const sigilo = new Sigilo();
 // que la guardia ve y otra lo que hace tu gente, y mezclarlas era hacer un
 // sistema que sabe demasiado.
 const marcha = new Marcha();
+// Y LA MISIÓN, que es para qué estás ahí. El sigilo dice si te ven, la marcha
+// lleva a tu gente y esto dice qué hay que hacer: son tres cosas distintas y
+// juntarlas era hacer un objeto que sabe demasiado.
+const mision = new Mision();
 
 campo.alFormar = () => {
   moral.reiniciar();
@@ -280,6 +285,12 @@ campo.alFormar = () => {
   if (campo.guardia && campo.guardia.length) sigilo.poner(campo.guardia);
   marcha.reiniciar();
   if (campo.partida && campo.partida.length) marcha.poner(campo.partida);
+  mision.reiniciar();
+  hud.orden('');
+  if (campo.guardia && campo.guardia.length) {
+    mision.poner({ patrulla: campo.patrulla, guardia: campo.guardia, canon: campo.pieza });
+    hud.orden('Cruzá el paso con la partida. Adelante hay una casucha.');
+  }
 };
 
 // LA Q, TAMBIÉN A PIE. Devuelve null si en este capítulo no hay partida a la
@@ -633,6 +644,7 @@ function simular (dt) {
     // LA MARCHA VA ANTES QUE LOS HOMBRES, que si no les escribe la plaza
     // después de que la leyeron y la fila va siempre un cuadro atrasada.
     marcha.actualizar(dt, { jugador, agachado: jugador.postura !== 'pie' });
+    mision.actualizar(dt, { jugador, sigilo, hud, sonido });
     sigilo.actualizar(dt, {
       jugador,
       // QUIETO ES QUIETO, no «sin apretar teclas»: lo que delata es el
@@ -821,10 +833,11 @@ window.juego = {
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, camaraArma, render, mundo,
   lejania, pasadaVel, pinza, canones, acto, victoria, apertura, opciones, hud, simular,
-  entrarCapitulo, sigilo, marcha,
+  entrarCapitulo, sigilo, marcha, mision,
   // la planta del paso, para las pruebas y para el que quiera mirar dónde está
   // el eje del valle sin tener que leerse andes.js
-  paso: { eje: ejeDelPaso, medio: medioDelPaso, zDerrumbe: Z_DERRUMBE, corral: CORRAL },
+  paso: { eje: ejeDelPaso, medio: medioDelPaso, zDerrumbe: Z_DERRUMBE, corral: CORRAL,
+    casucha: CASUCHA, fogata: FOGATA },
   get capitulo () { return mundo.capitulo; },
   formarCordillera: campo.formarCordillera,
   get armas () { return arsenal.armas; },

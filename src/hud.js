@@ -33,6 +33,8 @@ export class Hud {
     this.arcos = [...document.querySelectorAll('#dano path')];
     this.golpes = this.arcos.map(() => ({ t: 0, x: 0, z: 0 }));
     this.tFrase = 0;
+    this.ordenEl = $('#orden');
+    this.ordenTexto = null;
     this.sigiloEl = $('#sigilo');
     this.sigiloBarra = $('#sigilo i');
     this.sigiloTexto = $('#sigilo b');
@@ -260,6 +262,17 @@ export class Hud {
     this.sigiloBarra.style.width = Math.round(q * 100) + '%';
     const dice = alarma ? 'los tenés encima' : 'te están viendo';
     if (this.sigiloTexto.textContent !== dice) this.sigiloTexto.textContent = dice;
+  }
+
+  // LA ORDEN DEL DÍA: qué hay que hacer, ahí puesto y sin reloj. Es distinto
+  // del cartel —que va y viene— y del aviso —que es una cosa que acaba de
+  // pasar—: esto se queda hasta que cambie la orden. Hoy lo usa la misión del
+  // paso y nadie más.
+  orden (texto) {
+    if (!this.ordenEl || texto === this.ordenTexto) return;
+    this.ordenTexto = texto || '';
+    this.ordenEl.textContent = this.ordenTexto;
+    this.ordenEl.classList.toggle('si', !!this.ordenTexto);
   }
 
   cartel (texto, seg = 3) {

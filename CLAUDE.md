@@ -95,7 +95,17 @@ lo que convierte el paso en una misión y no en un juego de esconderse. Por eso
 la postura de la fila cuenta: un granadero con la rodilla en tierra tarda 4 s
 en delatarte contra 2,4 s parado.
 
-Falta la misión completa: las mulas y la moral de la altura.
+- la **misión**, `class Mision` en `andes.js`: la casucha del Rey con la
+  patrulla de vanguardia adentro —el teniente te dice para qué estás ahí—, el
+  puesto realista de catorce hombres con su pieza enfilando el paso, y la
+  **fogata de señales**. Si te ven, uno sale a prenderla; si la prende, la pieza
+  deja de estar dormida y empieza a barrer el paso. **Hay cinco segundos desde
+  la alarma hasta que la prende** —está medido en `sigilo.mjs`— y ésa es toda la
+  mecánica: es el tiempo de un tiro. No hay pantalla de derrota a propósito: que
+  prendan la fogata no te mata, te despierta un cañón encima.
+
+Falta: las mulas, la moral de la altura y el derrumbe que caiga de verdad
+—hoy `derrumbe()` son veintiséis piedras quietas puestas al armar el nivel—.
 El capítulo 1 no se entera de nada de esto porque lee la pinta `granadero`, que
 quedó palabra por palabra igual.
 
@@ -193,6 +203,14 @@ Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parec
   nadie: se descuelga y sólo alcanza corriendo, o sea que la partida hacía todo
   el capítulo esprintando. `VEL_COLUMNA` son 3,1 y con eso corre sólo cuando
   vos corrés.
+- **Tres cosas del capítulo 2 salieron de UNA bandera cada una, y ninguna
+  agregó un sistema.** `centinela` en `soldados.js` deja a un hombre donde
+  está —la usan la guardia realista Y tu patrulla de la casucha: no tiene
+  bando, quiere decir «quedate acá»—; `dormido` en `canon.js` hace que la pieza
+  no atienda a nadie hasta que la despierten —sin eso el cañón te encuentra a
+  setenta y ocho metros y no hay sigilo posible—; y `plaza`, que ya movía la
+  columna a pie, es lo que hace que el realista corra a la fogata. Antes de
+  agregar un estado a `soldados.js`, fijate si lo que hace falta es una bandera.
 - **La guardia del paso** no necesitó ni un estado nuevo ni una IA nueva: un
   hombre sin objetivo se queda donde está —eso ya estaba en `soldados.js`— así
   que alcanzó con una bandera, `centinela`, y una línea al principio de
@@ -206,9 +224,10 @@ Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parec
 
 ### Tres archivos de frontera, anotados antes de que muerdan
 
-- **`canon.js`** está en Capítulo 1 porque hoy sirve las dos piezas de la playa,
-  pero la pieza en sí es genérica y en el Cruce hay que subir cañones a la
-  cumbre. Cuando llegue ese día, se muda al núcleo.
+- **`canon.js`** ya sirve a los dos capítulos: las dos piezas de la playa de San
+  Lorenzo y la del puesto del paso. Sigue anotado en Capítulo 1 porque no se
+  movió de sitio, pero es NÚCLEO de hecho desde que existe la pieza del Cruce, y
+  lo único que le hizo falta para servir a los dos fue la bandera `dormido`.
 - **`pinza.js`** es la maniobra del 3 de febrero, pero la máquina de «una
   columna que te sigue, se te descuelga y se vuelve a formar» es exactamente lo
   que necesita el Cruce. Se va a partir en dos: el motor de columnas al núcleo,

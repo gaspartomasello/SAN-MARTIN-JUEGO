@@ -17,7 +17,7 @@ import { Soldado } from './soldados.js';
 import { Caballo } from './caballo.js';
 import { Canon } from './canon.js';
 import { PLAZA_OESTE, PLAZA_ESTE } from './pinza.js';
-import { columnaDelPaso, guardiaDelCorral } from './andes.js';
+import { columnaDelPaso, guardiaDelPuesto, patrullaDeLaCasucha, PIEZA } from './andes.js';
 import { ALIADOS_MAX, ENEMIGOS_MAX, MONTADOS, OLEADA_REALISTA, OLEADA_GRANADERO,
   LINEA_MINIMA } from './balance.js';
 
@@ -198,6 +198,8 @@ export function armarDespliegue (ctx) {
     // la guardia del paso se va con todo lo demás: si quedara colgada, entrar
     // a San Lorenzo después de la cordillera dejaría al sigilo mirando muertos
     campo.guardia = [];
+    campo.patrulla = [];
+    campo.pieza = null;
     campo.partida = [];
     for (const s of soldados) s.quitar();
     soldados.length = 0;
@@ -234,23 +236,50 @@ export function armarDespliegue (ctx) {
       s.frente = p.rumbo;
       return s;
     });
+    // LA PATRULLA DE LA CASUCHA, que es tuya y te está esperando. La bandera de
+    // `centinela` no es de los realistas: quiere decir «quedate donde estás» y
+    // vale para los dos lados. La misión los suelta si suena la alarma.
+    campo.patrulla = patrullaDeLaCasucha().map(p => {
+      const s = soltarSoldado('granadero', { pos: new THREE.Vector3(p.x, 0, p.z) });
+      s.malla.rotation.y = p.rumbo;
+      s.frente = p.rumbo;
+      s.centinela = true;
+      s.teniente = !!p.teniente;
+      return s;
+    });
+
     // LA GUARDIA REALISTA, que es contra lo que se juega el capítulo. Salen
     // como realistas comunes y lo único distinto se lo pone el sigilo: la
     // bandera de centinela, que los deja quietos hasta que los despierten.
-    const guardia = guardiaDelCorral().map(p => {
+    const artilleros = [];
+    const guardia = guardiaDelPuesto().map(p => {
       const s = soltarSoldado('realista', { pos: new THREE.Vector3(p.x, 0, p.z) });
       s.malla.rotation.y = p.rumbo;
       s.frente = p.rumbo;
+      if (p.artillero) artilleros.push(s);
       return s;
     });
     campo.guardia = guardia;
+
+    // LA PIEZA DEL PUESTO. Es el mismo cañón de la playa de San Lorenzo —la
+    // pieza es genérica y siempre lo fue— con dos diferencias: enfila el paso
+    // en vez de buscar el campo, y sale DORMIDA. La despierta la fogata de
+    // señales, y matarle los dos artilleros la calla para siempre.
+    const pieza = new Canon(escena, humo, sonido, new THREE.Vector3(PIEZA.x, 0, PIEZA.z), PIEZA.rumbo);
+    pieza.alDisparar = quien => resolverMetralla(quien);
+    pieza.dormido = true;
+    pieza.sirvientes = artilleros;
+    for (const a of artilleros) a.puesto = { x: a.pos.x, z: a.pos.z };
+    canones.push(pieza);
+    campo.pieza = pieza;
 
     jugador.pos.set(plan.jugador.x, jugador.pos.y, plan.jugador.z);
     jugador.yaw = plan.jugador.yaw;
     jugador.pitch = plan.jugador.pitch;
     if (campo.alFormar) campo.alFormar();
-    hud.mostrarAviso('Paso de Los Patos · hay guardia adelante', 'bien');
-    return { partida: campo.partida.length, guardia: guardia.length };
+    hud.mostrarAviso('Paso de Los Patos · la vanguardia espera adelante', 'bien');
+    return { partida: campo.partida.length, guardia: guardia.length,
+      patrulla: campo.patrulla.length };
   };
 
   // ------------------------------ LA PINZA ------------------------------
