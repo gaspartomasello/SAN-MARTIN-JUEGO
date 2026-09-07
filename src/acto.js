@@ -301,6 +301,10 @@ export class ActoCabral {
     this.fase = 'cabral';
     this.t = 0;
     sonido.grito();
+    // Y ARRANCA LA MARCHA. Es lo único del juego que tiene música, y tiene que
+    // ser lo único: si sonara toda la batalla, acá no significaría nada. Entra
+    // cuando dejás de ser San Martín y se va con Cabral.
+    sonido.marcha();
     hud.fundir(0, 1.1);
     hud.decir('Ahora sos el sargento Juan Bautista Cabral. El Coronel está abajo del caballo. Sacalo.', 5.4);
   }
@@ -327,6 +331,7 @@ export class ActoCabral {
     // los ojos que se cerraron eran los de Cabral; los que se abren son los
     // tuyos, y el sonido vuelve con ellos
     hud.abrirLosOjos();
+    sonido.pararMarcha(0.4);      // por si se llegó acá por un camino que no la apagó
     sonido.revivir();
     hud.decir('Juan Bautista Cabral · sargento de Granaderos · hijo de esclavos', 6);
   }
@@ -426,7 +431,8 @@ export class ActoCabral {
   // fundido, la frase, los botones—; acá sólo hay que dejar de correr una
   // cinemática encima de un muerto.
   _fracaso () {
-    const { hud } = this.ctx;
+    const { hud, sonido } = this.ctx;
+    sonido.pararMarcha(1.6);
     this._apagarMarcas();
     this.forcejeo = 0;
     this.barraLlena = 0;
@@ -568,6 +574,11 @@ export class ActoCabral {
       this._paso = 4;
       hud.cerrarLosOjos(C_OJOS, false);
       sonido.morir(C_OJOS);
+      // la marcha se apaga con él. Cuelga del mismo apagón que el resto, así
+      // que `morir` ya se la lleva; se la corta igual y por su lado porque si
+      // no seguiría PROGRAMADA, y `revivir` —que viene tres segundos después,
+      // cuando volvés a ser San Martín— la traería de vuelta a todo volumen.
+      sonido.pararMarcha(C_OJOS * 0.8);
     }
 
     // se para, pero no se mueve del sitio: el acto todavía no terminó

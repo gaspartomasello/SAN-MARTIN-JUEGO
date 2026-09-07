@@ -25,6 +25,8 @@
 // Ese contraste es el efecto: no es que se oiga menos, es que de golpe lo
 // único que se oye sos vos.
 
+import { Banda, MARCHA_SAN_LORENZO } from './musica.js';
+
 // El aire se come los agudos y el sonido tarda en llegar. Las dos cosas juntas
 // son lo que distingue un tiro a diez metros de uno a ochenta, y sin ellas
 // doscientos cincuenta fusiles suenan todos adentro de tu oreja.
@@ -41,6 +43,14 @@ const COMPASES = {
   trote: [0, 0.50],
   galope: [0, 0.13, 0.29, 0.42]
 };
+// CUÁNTO SUENA LA BANDA, y por qué es más de uno. Los pesos de la partitura
+// están escritos bajos: el minuto entero renderizado aparte, con la banda en 1,
+// da un pico de 0,148 y −32,5 dB de valor eficaz, o sea unos quince decibeles
+// abajo de un fusilazo al lado —que pica cerca del tope— y debajo del fragor de
+// doscientos cincuenta hombres no se oiría. A 1,9 el pico es 0,285 y el eficaz
+// −26,9 dB, sin una sola muestra recortada. Medido, no elegido a ojo.
+const NIVEL_MARCHA = 1.9;
+
 const VIDA_CORAZON = 55;         // de acá para abajo se empieza a oír el pulso
 
 export class Sonido {
@@ -93,6 +103,14 @@ export class Sonido {
     this.ruido = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
     const d = this.ruido.getChannelData(0);
     for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+
+    // LA BANDA CUELGA DEL APAGÓN, no de la mezcla del campo, y es a propósito.
+    // Por la mezcla pasan la sordina y el filtro: un cañonazo al lado agacharía
+    // la música y el aturdimiento le comería los agudos, y la música no es un
+    // sonido del campo —no está pasando adentro de la batalla—. Pero SÍ se
+    // muere con vos, porque el apagón sí la toca: la marcha de Cabral se apaga
+    // sola cuando se le cierran los ojos, sin que nadie la apague.
+    this.banda = new Banda(this.ctx, this.apagon, this.ruido);
 
     this._armarEco();
     this._armarAmbiente();
@@ -595,7 +613,12 @@ export class Sonido {
   // vez por cuadro. No se crea un nodo por cuadro: se crean por latido y por
   // casco, que a galope tendido son ocho por segundo.
   actualizar (dt, e) {
-    if (!this.ctx || !e || !(dt > 0)) return;
+    if (!this.ctx) return;
+    // La música va primero y va aparte: no usa `dt` —corre con el reloj del
+    // audio— y se atiende aunque el juego esté en pausa o en cámara lenta. Si
+    // se atendiera después de la guarda, una pausa le abriría un hueco.
+    if (this.banda) this.banda.atender();
+    if (!e || !(dt > 0)) return;
     if (e.oyente) this.oir(e.oyente, e.mirada);
     this._corazon(dt, e);
     this._cascos(dt, e);
@@ -762,6 +785,25 @@ export class Sonido {
     this.filtro.frequency.setValueAtTime(1800, t);
     this.filtro.frequency.exponentialRampToValueAtTime(20000, t + 0.5);
   }
+
+  // -------------------------------------------------------------------------
+  // LA MÚSICA
+  // -------------------------------------------------------------------------
+  //
+  // Una sola obra por vez y la enciende quien la necesita: hoy el acto de
+  // Cabral y nadie más. El volumen es bajo a propósito —la marcha entra ABAJO
+  // de la batalla, no encima— y aun así se oye, porque es lo único con altura
+  // definida en un campo de golpes y siseos.
+  marcha (volumen = NIVEL_MARCHA) {
+    if (!this.ctx || !this.banda) return;
+    this.banda.tocar(MARCHA_SAN_LORENZO, volumen);
+  }
+
+  pararMarcha (seg = 1.2) {
+    if (this.banda) this.banda.parar(seg);
+  }
+
+  get marchaSonando () { return !!(this.banda && this.banda.sonando); }
 
   // sordera momentánea: filtro pasabajos que se abre de a poco
   aturdir (fuerza) {

@@ -103,6 +103,7 @@ batalla.**
 | `sable.js` · `caballo.js` | El duelo de acero y los cuatro andares. |
 | `figura.js` · `lejania.js` | El cuerpo humano por huesos y el truco para dibujar 370 a la vez. |
 | `humo.js` · `fuego.js` · `audio.js` · `hud.js` | Humo con densidad, trazas, sonido, pantalla. |
+| `musica.js` | La Marcha de San Lorenzo en notas, y la banda que la toca. Suena en el acto de Cabral y en ningún otro lado. |
 | `jugador.js` · `mando.js` | Vos, y el teclado. |
 | `gentio.js` · `estorbos.js` | Que no se apilen y que no atraviesen paredes. |
 | `red.js` · `protocolo.js` · `herramientas/servidor.mjs` | Jugar de a dos en red local. |

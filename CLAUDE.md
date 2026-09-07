@@ -43,7 +43,7 @@ Todo lo que sirve igual en San Lorenzo, en el Cruce y en Chacabuco:
 `balance` · `combate` · `moral` · `soldados` · `figura` · `caballo` · `armas` ·
 `armas-modelos` · `arsenal` · `sable` · `jugador` · `mando` · `hud` · `audio` ·
 `humo` · `fuego` · `lejania` · `gentio` · `estorbos` · `mundo` ·
-`pasadaArma` · `pasadaVelocidad` · `main`
+`pasadaArma` · `pasadaVelocidad` · `musica` · `main`
 
 `main.js` **coordina**: no lleva reglas de combate, moral, IA ni daño.
 
@@ -160,6 +160,18 @@ Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parec
   es un cuadro roto. Por eso el peso importa y por eso la lámina es webp: la
   misma imagen en jpeg pesaba 196 KB, y en base64 todo eso se paga con un
   tercio más.
+
+- **La música está en `musica.js` y suena UNA vez en todo el juego**: la Marcha
+  de San Lorenzo, desde que pasás a ser el sargento Cabral hasta que se le
+  cierran los ojos. Es lo único con altura definida en un juego de golpes y
+  siseos, y por eso funciona: si sonara toda la batalla, ahí no significaría
+  nada. La partitura es una lista de notas MIDI —no hay un solo archivo de
+  audio en el proyecto y no lo va a haber: esto se empaqueta en UN html— y la
+  toca la `Banda`, que cuelga del APAGÓN y no de la mezcla del campo. Eso es
+  todo el enganche: un cañonazo no le agacha el volumen, pero se muere con vos.
+  Y la atiende `sonido.actualizar()` ANTES de la guarda del `dt`, porque la
+  música corre con el reloj del audio: el acto va a 0,42 de velocidad y una
+  marcha al 42% es un lamento.
 
 - **Hasta dónde llega el mundo** es del capítulo: cada uno exporta sus
   `LIMITES` y `jugador.js` guarda nada más el objeto `CAMPO`. Estaban escritos

@@ -109,6 +109,7 @@ se descarta y se rearma: no tiene información propia.
 | `mando.js` | Teclado, mouse, pausa, y los botones de la portada |
 | `hud.js` | Todo lo que se dibuja encima: avisos, placas, subtítulos, barra de recarga, brújula de daño, ojo de la guardia |
 | `audio.js` | WebAudio sintetizado, con posición y mirada del oyente |
+| `musica.js` | La partitura de la Marcha de San Lorenzo y la banda que la toca |
 | `humo.js` | Grilla de humo. `humo.oclusion(a,b)` es lo que decide si un tirador te ve |
 | `fuego.js` | Partículas, fogonazos, manchas |
 | `lejania.js` | **LOD**: los hombres a más de 30 m se dibujan con posturas horneadas en `InstancedMesh` |
@@ -337,7 +338,7 @@ capítulos, `#sigilo`, tipografía que mide contra el alto), `CLAUDE.md`,
 | **Armas** | Tercerola (`1`), sable corvo (`2`), pistolón (`3`) y un Remington 1860 (`4`) que el propio código rotula «fuera de época» —carga de un tiempo, es el arma de fantasía—. Minijuego de recarga por tiempos. Zonas de impacto (cabeza / pecho / miembro) sólo para el jugador | `armas.js`, `arsenal.js`, `sable.js` |
 | **HUD** | Completo: avisos, placas de misión, subtítulos con orador, barra de recarga, cartuchera, vida, vendas, aliento, forcejeo, **brújula de daño** (cuatro arcos SVG que apuntan al que te pegó) y el **ojo de la guardia** del sigilo | `hud.js` + todo el CSS en `index.html` |
 | **Animaciones** | Esqueleto propio con skinning rígido (`skinIndex`/`skinWeight` = 1), poses interpoladas, desplome al morir, flameo de la bandera en tres huesos. **No hay animaciones importadas** ni glTF: todo es código | `figura.js`, `caballo.js` |
-| **Audio** | WebAudio **sintetizado**, cero archivos. Oyente con posición y mirada, sordina, filtro de aturdimiento tras el disparo, latido y pitido internos, apagón al morir | `audio.js` |
+| **Audio** | WebAudio **sintetizado**, cero archivos. Oyente con posición y mirada, sordina, filtro de aturdimiento tras el disparo, latido y pitido internos, apagón al morir. **Música**: una sola obra, la Marcha de San Lorenzo, y suena nada más que mientras jugás como Cabral | `audio.js` · `musica.js` |
 | **Misiones** | Capítulo 1: apertura cinemática, muerte de Cabral, y cierre al llegar al portón. Capítulo 2: llegar al corral sin que te vean lo da por tomado. **No hay sistema de misiones genérico**: cada capítulo tiene el suyo escrito a mano | `acto.js`, `andes.js` |
 | **Guardado** | **Prácticamente no existe.** Lo único que se persiste es `localStorage['clarin.opciones']` con `{ sangre: boolean }`. No hay partida guardada, ni progreso, ni capítulos desbloqueados | `main.js` (objeto `opciones`) |
 

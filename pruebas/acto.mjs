@@ -42,6 +42,9 @@ const r = await pag.evaluate(() => {
 
   paso(0.2);
   ok('el acto arranca al caer el caballo', acto.activo);
+  // LA MÚSICA ES DE CABRAL Y DE NADIE MÁS. Siendo San Martín —incluso ya
+  // atrapado abajo del caballo— no suena nada.
+  ok('siendo San Martín no hay música', !j.sonido.marchaSonando);
   ok('quedás atrapado', j.jugador.atrapado > 0);
   ok('la cámara baja al pasto', j.jugador.pos.y < 0.8, `y=${j.jugador.pos.y.toFixed(2)}`);
   const caiste = { x: j.jugador.pos.x, z: j.jugador.pos.z };
@@ -58,6 +61,9 @@ const r = await pag.evaluate(() => {
   // ---- el cambio de cuerpo ----
   paso(2.4);
   ok('pasás a ser Cabral', acto.fase === 'cabral', `fase ${acto.fase}`);
+  ok('y con Cabral entra la marcha', j.sonido.marchaSonando);
+  ok('y no es una bandera nada más: programó notas',
+    !!j.sonido.banda && j.sonido.banda.i > 0, `${j.sonido.banda ? j.sonido.banda.i : 0} eventos`);
   // A CABRAL LO PUEDEN MATAR. Tenía piso de vida en 60 «porque la historia dice
   // que llegó», y con eso no había forma de fallar: se podía terminar la
   // batalla entera sin haber salvado a San Martín.
@@ -254,6 +260,7 @@ const r = await pag.evaluate(() => {
   ok('a Cabral se le cierran los ojos, como a San Martín',
     lienzo.classList.contains('ojos'), lienzo.className);
   ok('y el sonido se va con ellos', j.sonido.muriendo === true);
+  ok('y la marcha se va con él', !j.sonido.marchaSonando);
   // pero SIN los botones: el que se muere es él y la partida sigue
   ok('y sin botones, porque no hay nada que elegir',
     document.getElementById('caido').classList.contains('oculto'));
@@ -263,6 +270,9 @@ const r = await pag.evaluate(() => {
   ok('y al volver a ser vos, los ojos se abren',
     !lienzo.classList.contains('ojos') && j.sonido.muriendo === false);
   ok('y el tiempo vuelve a correr normal', acto.lento === 1);
+  // y volviendo a ser San Martín no vuelve la música, aunque `revivir` levante
+  // el apagón del que cuelga
+  ok('y de vuelta con San Martín no suena nada', !j.sonido.marchaSonando);
   ok('volvés a ser San Martín, en su lugar',
     Math.hypot(j.jugador.pos.x - caiste.x, j.jugador.pos.z - caiste.z) < 1.5,
     `a ${Math.hypot(j.jugador.pos.x - caiste.x, j.jugador.pos.z - caiste.z).toFixed(1)} m`);
