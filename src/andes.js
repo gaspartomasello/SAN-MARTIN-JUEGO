@@ -519,10 +519,18 @@ export class Sigilo {
       const v = this._cuanto(s, jugador.pos, jugador.pos.y, postura.blanco,
         quieto, colisiones);
       if (v > visto) { visto = v; quien = s; }
-      // y tu gente, que es tan visible como vos y encima va parada
+      // Y TU GENTE, que es tan visible como vos.
+      //
+      // Y con las MISMAS REGLAS que vos: el granadero que va con la rodilla en
+      // tierra —porque le diste la orden de agacharse— es un bulto más chico y
+      // más bajo, igual que vos agachado. Sin esto, agachar la fila era una
+      // pose: la partida seguía delatándote con el mismo valor de siempre y la
+      // orden no compraba nada.
       for (const g of soldados) {
         if (!g.vivo || g.esRealista) continue;
-        const w = this._cuanto(s, g.pos, 1.6, 1, !g.andando, colisiones);
+        const bajo = !!g.rodilla;
+        const w = this._cuanto(s, g.pos, bajo ? 1.22 : 1.6, bajo ? 0.62 : 1,
+          !g.andando, colisiones);
         if (w > visto) { visto = w; quien = s; }
       }
     }
@@ -558,6 +566,130 @@ export class Sigilo {
       hud.placa(['El corral de pircas', 'Tomado sin un tiro',
         'La partida cruza el paso'], 5);
     }
+  }
+}
+
+// ===========================================================================
+// LA MARCHA DE LA PARTIDA
+// ===========================================================================
+//
+// Los catorce granaderos te siguen en fila india, y con la Q los parás y los
+// volvés a poner en marcha. Sin esto el sigilo era un solitario: la gracia del
+// Cruce no es pasar vos, es pasar CON ELLOS, y el centinela los mira a ellos
+// igual que a vos.
+//
+// SIGUEN TU RASTRO, NO TU POSICIÓN. Cada uno apunta a un punto del camino que
+// vos ya hiciste, a tantos metros para atrás como lugar ocupe en la fila. Es
+// la diferencia entre una fila y una bandada: apuntando todos al jefe, en la
+// garganta de ocho metros se amontonan contra la pared y en la primera curva
+// cortan camino por arriba de la piedra. Siguiendo el rastro, pasan por donde
+// pasaste, en el orden en que estaban, y la fila se estira y se junta sola.
+//
+// El rastro se guarda cada 60 cm y se corta a los 160 metros: catorce hombres
+// a 2,60 son 36 metros de fila, así que sobra de largo y no crece sin fin.
+const SEPARACION = 2.6;
+const MIGA = 0.6;
+const RASTRO_MAX = 270;
+// Cuánto se le deja al primero antes de empezar a contar la fila. Con 2,60 te
+// respiraba en la nuca: a esa distancia, y con el gran angular de la cámara,
+// un hombre te tapa media pantalla cada vez que frenás.
+const PRIMERO = 4.2;
+// Y EL BANDEO. En fila perfecta, mirándolos de atrás, los catorce se tapan
+// entre ellos y se leen como UN hombre: la columna desaparece justo desde
+// donde se la mira siempre. Corriendo a cada uno medio metro para un lado y
+// para el otro se ve la fila entera, y de paso queda como camina la gente por
+// una senda de mulas, que no es en línea recta.
+const BANDEO = 0.62;
+
+export class Marcha {
+  constructor () { this.reiniciar(); }
+
+  reiniciar () {
+    this.hombres = [];
+    this.siguiendo = false;
+    this.rastro = [];
+    this.agachados = false;
+  }
+
+  poner (hombres) {
+    this.hombres = hombres;
+    this.rastro.length = 0;
+    this.siguiendo = false;
+    for (const s of hombres) {
+      s.plaza = null;
+      s.agachadoOrden = false;
+      s.andarColumna = 0;
+    }
+  }
+
+  get vivos () { return this.hombres.filter(s => s.vivo && !s.quebrado); }
+
+  // LA Q. Una tecla, dos órdenes, y el que juega no tiene que acordarse de
+  // cuál: si venían atrás se plantan, y si estaban plantados arrancan.
+  alternar () {
+    if (!this.hombres.length) return null;
+    this.siguiendo = !this.siguiendo;
+    if (!this.siguiendo) {
+      // ALTO. Se les clava la plaza donde están parados: soltársela los
+      // devolvería a la IA de siempre y se irían a buscar al enemigo, que es
+      // exactamente lo contrario de lo que pide la orden.
+      for (const s of this.vivos) {
+        if (!s.plaza) s.plaza = new THREE.Vector3();
+        s.plaza.set(s.pos.x, 0, s.pos.z);
+      }
+    }
+    return this.siguiendo ? 'siguiendo' : 'alto';
+  }
+
+  // El punto del rastro que está a `atras` metros para atrás del jugador,
+  // caminando la miga hacia el pasado. Devuelve también hacia dónde va el
+  // camino ahí, que es lo que da el costado para el bandeo.
+  _puntoAtras (atras, jugador) {
+    const r = this.rastro;
+    let px = jugador.pos.x, pz = jugador.pos.z, resta = atras;
+    let ux = 0, uz = 1;
+    for (let i = r.length - 1; i >= 0; i--) {
+      const dx = r[i].x - px, dz = r[i].z - pz;
+      const d = Math.hypot(dx, dz);
+      if (d > 0.0001) { ux = -dx / d; uz = -dz / d; }
+      if (d >= resta) {
+        const t = d > 0.0001 ? resta / d : 0;
+        return { x: px + dx * t, z: pz + dz * t, ux, uz };
+      }
+      resta -= d;
+      px = r[i].x; pz = r[i].z;
+    }
+    // el rastro todavía es más corto que la fila: el último se planta en la punta
+    return { x: px, z: pz, ux, uz };
+  }
+
+  actualizar (dt, ctx) {
+    if (!this.hombres.length) return;
+    const { jugador, agachado } = ctx;
+
+    // la miga: se deja una cada 60 cm de camino hecho
+    const r = this.rastro;
+    const ultimo = r[r.length - 1];
+    if (!ultimo || Math.hypot(jugador.pos.x - ultimo.x, jugador.pos.z - ultimo.z) > MIGA) {
+      r.push({ x: jugador.pos.x, z: jugador.pos.z });
+      if (r.length > RASTRO_MAX) r.shift();
+    }
+
+    // LA POSTURA VA SIEMPRE, sigan o estén plantados: agacharse es una orden
+    // que vale igual parado en un sitio que en marcha, y es lo que hace que
+    // valga la pena agacharse cuando ya los frenaste atrás de un peñón.
+    this.agachados = !!agachado;
+    const vivos = this.vivos;
+    for (const s of vivos) s.agachadoOrden = this.agachados;
+
+    if (!this.siguiendo) return;
+    vivos.forEach((s, k) => {
+      const p = this._puntoAtras(PRIMERO + k * SEPARACION, jugador);
+      // el costado del camino, para correrlo media fila a un lado o al otro
+      const lado = (k % 2 ? 1 : -1) * BANDEO;
+      if (!s.plaza) s.plaza = new THREE.Vector3();
+      s.plaza.set(p.x - p.uz * lado, 0, p.z + p.ux * lado);
+    });
   }
 }
 

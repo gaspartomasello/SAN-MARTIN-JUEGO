@@ -52,6 +52,22 @@ const VEL = 1.85;
 const VEL_CARRERA = 4.3;        // a la carrera, con el fusil corto y bajo
 const ALCANCE_TIRO = 62;
 const ALCANCE_ACERO = 1.9;
+// ---- la marcha a pie ----
+// A qué distancia de su plaza un hombre da por llegado el asunto, y a partir
+// de cuánto se apura para no descolgarse. No son números de pelea —no tocan
+// daño ni moral— así que viven acá y no en balance.js.
+const LLEGADA_PLAZA = 0.9;
+const REZAGADO_PIE = 4.5;
+// EL PASO DE LA COLUMNA, y por qué no es VEL.
+//
+// VEL son 1,85 m/s: el paso de una línea de infantería avanzando en batalla, y
+// para eso está bien. Pero el que juega camina a 3,4, así que una fila a 1,85
+// no lo sigue: se descuelga y sólo alcanza corriendo, o sea que la partida
+// entera hacía todo el capítulo esprintando. Una columna en marcha no avanza
+// al paso de combate ni al galope: va a su tranco, y acá el tranco tiene que
+// ser el del que la lleva. Medido: con 1,85 la fila iba en 'correr' el 100%
+// del tiempo; con 3,1 corre sólo cuando vos corrés.
+const VEL_COLUMNA = 3.1;
 const RECARGA = 12.5;
 
 // ---- carrera, parapeto y rodilla ----
@@ -335,6 +351,10 @@ export class Soldado {
     // no elige blanco ni carga: marcha. Lo escribe la Pinza cada cuadro.
     this.plaza = null;
     this.andarColumna = 0;
+    // AGACHADO POR ORDEN, no por decisión propia: lo escribe el que manda la
+    // columna. Es distinto de `rodilla`, que es la postura de tiro que el
+    // hombre elige solo cuando va a disparar.
+    this.agachadoOrden = false;
 
     this.monta = null;
     this.tPasada = 0;
@@ -823,6 +843,11 @@ export class Soldado {
       return;
     }
 
+    // LA MARCHA A PIE MANDA SOBRE TODO LO DEMÁS, igual que la formación de la
+    // columna montada de más arriba y por el mismo motivo: una partida en la
+    // que cada uno se va detrás del enemigo que vio no es una partida.
+    if (this.plaza) { this._marcharAPie(dt); return; }
+
     if (!this.objetivo) { this.estado = 'avanzar'; this.fig.actualizar(dt, false); return; }
 
     const objetivo = new THREE.Vector3(this.objetivo.pos.x, 0, this.objetivo.pos.z);
@@ -1194,6 +1219,71 @@ export class Soldado {
   // galopan, aunque estén en su sitio— y el que se quedó atrás aprieta un
   // escalón hasta alcanzar. Con eso la columna se estira y se junta como se
   // estira y se junta una de verdad, sin que nadie tenga que coreografiarla.
+  // LA MARCHA A PIE.
+  //
+  // Existía la de a caballo —`_marchar`, la que usa la Pinza— y no existía
+  // ésta: a un hombre a pie no había manera de decirle «andá hasta acá». Lo
+  // único que sabía hacer era ir hacia un ENEMIGO, y por eso la partida del
+  // Cruce se quedaba plantada en la boca del valle mirando la nada: no había
+  // orden que darle.
+  //
+  // Se cuelga del MISMO mecanismo que la columna montada —una `plaza` escrita
+  // desde afuera— así que no hay dos sistemas de formación conviviendo. En San
+  // Lorenzo esto no corre para nadie: `pinza.js` y `acto.js` filtran los dos
+  // por `montado` antes de escribir una plaza, así que un hombre a pie de la
+  // batalla nunca tiene una.
+  _marcharAPie (dt) {
+    this.estado = 'formado';
+    this.avisando = false;
+    this.cubierta = null;
+    this.motivo = null;
+
+    // La postura es del que manda: si el jefe se agacha, se agacha la fila.
+    const agachado = !!this.agachadoOrden;
+    if (this.rodilla !== agachado) { this.rodilla = agachado; this.fig.rodilla = agachado; }
+
+    let dx = this.plaza.x - this.pos.x, dz = this.plaza.z - this.pos.z;
+    const d = Math.hypot(dx, dz);
+
+    if (d <= LLEGADA_PLAZA) {
+      // llegó: se planta donde le dijeron y deja de sonar
+      this.andando = false;
+      this.ritmo = 1;
+      this.aliento = Math.min(ALIENTO_TROPA, this.aliento + RECUPERO * dt);
+      this.fig.poner('marcha');
+      this.fig.actualizar(dt, false);
+      this.malla.position.y = 0;
+      return;
+    }
+
+    dx /= d; dz /= d;
+
+    // AGACHADO NO SE CORRE NUNCA. Un hombre en cuclillas se arrastra, y una
+    // fila que se agacha y sigue esprintando no engaña a nadie.
+    //
+    // Pero AGACHADO TAMPOCO SE QUEDA. La primera versión lo mandaba a media
+    // velocidad —0,93 m/s— contra un jugador agachado que va a 1,87: la fila
+    // perdía casi un metro por segundo y en medio minuto quedaba treinta
+    // metros atrás, o sea desparramada por todo el desfiladero y regalada. El
+    // costo de agacharse lo paga el que juega, que ya anda a la mitad; la fila
+    // no tiene que pagarlo dos veces. Va al paso del que la lleva y no puede
+    // apurarse: eso es lo que se pierde.
+    const apurado = !agachado && d > REZAGADO_PIE && this.aliento > 6;
+    if (apurado) this.aliento = Math.max(0, this.aliento - GASTO_CARRERA * 0.55 * dt);
+    else this.aliento = Math.min(ALIENTO_TROPA, this.aliento + RECUPERO * dt);
+
+    this._girarHacia(Math.atan2(dx, dz) + Math.PI, dt, apurado);
+    const v = apurado ? VEL_CARRERA : VEL_COLUMNA;
+    this.ritmo = apurado ? 2.3 : (agachado ? 0.75 : 1);
+    this.fig.poner(apurado ? 'correr' : 'marcha');
+    this.pos.x += dx * v * dt;
+    this.pos.z += dz * v * dt;
+    this._chocar();
+    this.malla.position.y = 0;
+    this.andando = true;
+    this.fig.actualizar(dt, true, this.ritmo);
+  }
+
   _marchar (dt, destino, andarBase) {
     const c = this.monta;
     const dx = destino.x - c.pos.x, dz = destino.z - c.pos.z;

@@ -74,12 +74,21 @@ El capítulo se elige en la portada y se entra. Lo que existe hoy:
   de un peñón no te ven —dieciocho segundos de pie y a la vista contra seis al
   descubierto a la misma distancia—.
 
+- la **marcha de la partida**, `class Marcha` en `andes.js`: los catorce
+  granaderos te siguen en fila india con la `Q`, se paran con otra `Q` y
+  copian tu postura. **Siguen tu RASTRO y no tu posición** —cada uno apunta a
+  un punto del camino que ya hiciste, a tantos metros atrás como lugar ocupe
+  en la fila—: apuntando todos al jefe, en la garganta de ocho metros se
+  amontonan contra la pared y en la primera curva cortan camino por arriba de
+  la piedra.
+
 **El centinela también mira a TU gente.** Un granadero asomado te delata en
 2,6 s aunque vos estés a ochenta metros, y eso no es un efecto secundario: es
-lo que convierte el paso en una misión y no en un juego de esconderse.
+lo que convierte el paso en una misión y no en un juego de esconderse. Por eso
+la postura de la fila cuenta: un granadero con la rodilla en tierra tarda 4 s
+en delatarte contra 2,4 s parado.
 
-Falta la misión completa: las mulas, la marcha de la partida y la moral de la
-altura.
+Falta la misión completa: las mulas y la moral de la altura.
 El capítulo 1 no se entera de nada de esto porque lee la pinta `granadero`, que
 quedó palabra por palabra igual.
 
@@ -136,6 +145,18 @@ Lo que más cuesta es acertarle al archivo, y varias cosas NO están donde parec
   Andes, donde el jugador se frenaba en el aire a sesenta metros de un corral
   al que no había manera de llegar. **Antes de agregar un número a un archivo
   del núcleo, preguntate de qué capítulo es.**
+- **La marcha a pie es nueva y es del NÚCLEO.** `soldados.js` sabía llevar una
+  columna montada —`_marchar`, la que usa la Pinza— y no sabía decirle a un
+  hombre a pie «andá hasta acá»: lo único que sabía era ir hacia un ENEMIGO.
+  Ahora está `_marcharAPie`, colgada del MISMO mecanismo —una `plaza` escrita
+  desde afuera— así que no hay dos sistemas de formación. En San Lorenzo no
+  corre para nadie: `pinza.js` y `acto.js` filtran los dos por `montado` antes
+  de escribir una plaza.
+- **La columna no marcha a `VEL`.** `VEL` son 1,85 m/s, el paso de una línea de
+  infantería en batalla; el que juega camina a 3,4. Una fila a 1,85 no sigue a
+  nadie: se descuelga y sólo alcanza corriendo, o sea que la partida hacía todo
+  el capítulo esprintando. `VEL_COLUMNA` son 3,1 y con eso corre sólo cuando
+  vos corrés.
 - **La guardia del paso** no necesitó ni un estado nuevo ni una IA nueva: un
   hombre sin objetivo se queda donde está —eso ya estaba en `soldados.js`— así
   que alcanzó con una bandera, `centinela`, y una línea al principio de
@@ -288,6 +309,16 @@ están limpios; el balance no. Casos reales, ya medidos:
   granaderos se ponían en marcha y entraban solos en el cono. Cada corrida salía
   más rápida que la anterior. Para comparar A contra B hay que dejar UNA sola
   cosa cambiando, y eso incluye deshacer lo que hizo la medición de antes.
+- **Agacharse no puede costar dos veces.** La fila agachada iba a media
+  velocidad —0,93 m/s— contra un jugador agachado que va a 1,87: perdía casi un
+  metro por segundo y en medio minuto quedaba treinta metros atrás, o sea
+  desparramada por todo el desfiladero y regalada. El costo de agacharse lo
+  paga el que juega, que ya anda a la mitad; la fila va a su tranco y lo único
+  que pierde es la posibilidad de correr.
+- **Una fila perfecta se lee como UN hombre.** Mirándolos de atrás —que es
+  desde donde se los mira siempre— los catorce se tapaban entre ellos. Con
+  medio metro de bandeo alternado se ve la columna entera, y de paso queda como
+  camina la gente por una senda de mulas.
 - **La velocidad tiene tres componentes y la vertical miente.** «Estás quieto»
   se medía con `vel.lengthSq()`, y la gravedad nunca está exactamente en cero:
   un hombre tirado boca abajo contaba como en movimiento y lo veían igual que

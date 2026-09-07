@@ -1,4 +1,8 @@
-// EL SIGILO DEL PASO. Lo que hace que el capítulo 2 no sea San Lorenzo con
+// EL SIGILO Y LA MARCHA DEL PASO — las dos mecánicas del capítulo 2, y van
+// juntas en un archivo porque son la misma decisión: la guardia mira a tu
+// gente igual que a vos, así que cómo llevás la fila ES el sigilo.
+//
+// Lo que hace que el capítulo 2 no sea San Lorenzo con
 // nieve: una guardia realista quieta en el corral y un camino para llegar sin
 // que te vean. Se prueba el sistema entero por donde lo toca el que juega —el
 // bucle de verdad, `simular`, y las teclas de postura que ya existían— y no la
@@ -229,6 +233,137 @@ await ev(() => {
 });
 await pag.waitForTimeout(900);
 await pag.screenshot({ path: 'tropa/s-1-ojo.png' });
+
+// ---------------------------------------------------------------------------
+// LA MARCHA DE LA PARTIDA
+// ---------------------------------------------------------------------------
+// La Q se aprieta DE VERDAD, desde el teclado, porque el defecto que esto
+// arregla era justamente que la tecla no hacía nada a pie: el camino entero
+// —mando.js → main.llamarPartida → Marcha → la plaza de cada hombre— es lo que
+// hay que probar, no la clase suelta.
+const partida = async (segundos, teclas = ['KeyW']) => {
+  for (const t of teclas) await pag.keyboard.down(t);
+  const r = await ev(seg => {
+    const j = window.juego, p = j.jugador;
+    for (let i = 0; i < seg * 30; i++) j.simular(1 / 30);
+    const ps = j.campo.partida.filter(s => s.vivo);
+    const xs = ps.map(s => s.pos.x), zs = ps.map(s => s.pos.z);
+    return {
+      siguiendo: j.marcha.siguiendo,
+      vos: [+p.pos.x.toFixed(1), +p.pos.z.toFixed(1)],
+      ancho: +(Math.max(...xs) - Math.min(...xs)).toFixed(1),
+      largo: +(Math.max(...zs) - Math.min(...zs)).toFixed(1),
+      masCerca: +Math.min(...ps.map(s => Math.hypot(s.pos.x - p.pos.x, s.pos.z - p.pos.z))).toFixed(1),
+      deRodillas: ps.filter(s => s.rodilla).length,
+      corriendo: ps.filter(s => s.fig.pose === 'correr').length,
+      conPlaza: ps.filter(s => !!s.plaza).length,
+      cuantos: ps.length
+    };
+  }, segundos);
+  for (const t of teclas) await pag.keyboard.up(t);
+  return r;
+};
+
+// vuelta al arranque limpio del capítulo
+await ev(() => {
+  const j = window.juego;
+  j.campo.formarCordillera();
+  j.jugador.postura = 'pie';
+});
+await pag.waitForTimeout(300);
+
+const quietos = await ev(() => ({
+  siguiendo: window.juego.marcha.siguiendo,
+  conPlaza: window.juego.campo.partida.filter(s => !!s.plaza).length
+}));
+dilo('la partida arranca sin orden y sin plaza',
+  !quietos.siguiendo && quietos.conPlaza === 0, JSON.stringify(quietos));
+
+await pag.keyboard.press('KeyQ');
+const marchando = await partida(14);
+dilo('la Q los pone en marcha, a pie y desde el teclado',
+  marchando.siguiendo && marchando.conPlaza === marchando.cuantos,
+  `${marchando.conPlaza}/${marchando.cuantos} con plaza escrita`);
+dilo('van en FILA y no en bandada', marchando.ancho < 3.5 && marchando.largo > 18,
+  `${marchando.ancho} m de ancho por ${marchando.largo} m de largo`);
+dilo('y el primero te pisa los talones', marchando.masCerca < 9,
+  `${marchando.masCerca} m atrás tuyo`);
+
+// LA SEGUNDA Q: alto. Y quedarse quieto es quedarse quieto, no volver a la IA
+// de siempre y salir a buscar realistas por su cuenta.
+await pag.keyboard.press('KeyQ');
+const parados = await ev(() => ({ siguiendo: window.juego.marcha.siguiendo,
+  donde: window.juego.campo.partida.filter(s => s.vivo).map(s => [+s.pos.x.toFixed(1), +s.pos.z.toFixed(1)]) }));
+const lejos = await partida(10);
+const movido = await ev(donde => {
+  const ps = window.juego.campo.partida.filter(s => s.vivo);
+  return +Math.max(...ps.map((s, i) => Math.hypot(s.pos.x - donde[i][0], s.pos.z - donde[i][1]))).toFixed(1);
+}, parados.donde);
+dilo('la segunda Q los para', !parados.siguiendo && !lejos.siguiendo);
+dilo('y parados se quedan aunque vos te vayas', movido < 2.5,
+  `el que más se movió, ${movido} m, con vos a ${lejos.masCerca} m`);
+
+// AL REANUDAR, CIERRAN EL HUECO. Se los deja alcanzar con el jugador quieto:
+// venían de quedarse plantados mientras vos te ibas cuarenta metros.
+await pag.keyboard.press('KeyQ');                 // otra vez en marcha
+const alcanzando = await partida(16, []);
+dilo('al reanudar, cierran el hueco que dejaron', alcanzando.masCerca < 9,
+  `de ${lejos.masCerca} m a ${alcanzando.masCerca} m`);
+
+// LA POSTURA: si el jefe se agacha, se agacha la fila.
+//
+// Y ANTES, EL CAPÍTULO SE REARMA. Sin esto la prueba caminaba noventa metros
+// valle abajo encadenando bloques, se metía dentro de la guardia, te mataban,
+// y al morir la postura del jugador vuelve a 'pie': la prueba anotaba «no se
+// agachan» cuando lo que pasaba era que el que daba la orden estaba muerto.
+await ev(() => { window.juego.campo.formarCordillera(); window.juego.jugador.postura = 'pie'; });
+await pag.waitForTimeout(300);
+await pag.keyboard.press('KeyQ');
+await partida(8);
+
+await pag.keyboard.press('KeyC');                 // y vos, agachado
+const agachados = await partida(6);
+dilo('si te agachás, se agacha la fila',
+  agachados.deRodillas === agachados.cuantos,
+  `${agachados.deRodillas}/${agachados.cuantos} con la rodilla en tierra`);
+dilo('y agachados te siguen igual, sin descolgarse',
+  agachados.masCerca < 12, `el primero a ${agachados.masCerca} m`);
+dilo('y agachados NO corren, que sería hacerse el sigiloso a los gritos',
+  agachados.corriendo === 0, `${agachados.corriendo} en carrera`);
+await pag.keyboard.press('KeyC');                 // de pie otra vez
+const dePieOtraVez = await partida(4);
+dilo('y al pararte vos, se paran ellos', dePieOtraVez.deRodillas === 0,
+  `${dePieOtraVez.deRodillas} quedaron de rodillas`);
+
+// Y LO QUE CIERRA EL CÍRCULO: agachar la fila la esconde de verdad. El mismo
+// granadero, en el mismo lugar, delante del mismo centinela.
+const esconderse = await ev(() => {
+  const j = window.juego, p = j.jugador;
+  const uno = j.campo.guardia[0], q = window.__puesto;
+  const mio = j.campo.partida.find(s => s.vivo);
+  const mide = (rodilla) => {
+    uno.pos.set(q[0], 0, q[1]); uno.malla.position.set(q[0], 0, q[1]);
+    uno.objetivo = null; uno.frente = q[2]; uno.malla.rotation.y = q[2];
+    j.sigilo.reiniciar(); j.sigilo.poner([uno]);
+    p.pos.set(0, 1.68, 80);                      // vos, lejísimos
+    for (const g of j.campo.partida) { g.plaza = null; g.pos.set(g.pos.x, 0, 60); g.malla.position.set(g.pos.x, 0, 60); }
+    mio.pos.set(4.5, 0, -44); mio.malla.position.set(4.5, 0, -44);
+    mio.rodilla = rodilla; mio.fig.rodilla = rodilla;
+    let t = 0;
+    while (!j.sigilo.alarma && t < 30) {
+      j.sigilo.actualizar(1 / 30, { jugador: p, quieto: true, postura: p.cfgPostura,
+        soldados: [mio], colisiones: j.mundo.colisiones });
+      mio.pos.set(4.5, 0, -44); mio.malla.position.set(4.5, 0, -44);
+      mio.rodilla = rodilla;
+      t += 1 / 30;
+    }
+    return +t.toFixed(1);
+  };
+  return { parado: mide(false), agachado: mide(true) };
+});
+dilo('un granadero agachado tarda más en delatarte',
+  esconderse.agachado > esconderse.parado * 1.5,
+  `${esconderse.agachado} s agachado contra ${esconderse.parado} s parado`);
 
 for (const [e, n, x] of T) console.log(e.padEnd(4), n.padEnd(52), x);
 const mal = T.filter(t => t[0] === 'MAL').length;

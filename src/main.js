@@ -43,7 +43,7 @@ import { armarMoral } from './moral.js';
 import { armarPlano } from './plano.js';
 import { armarRed } from './red.js';
 import { Z_BARRANCA } from './sanlorenzo.js';
-import { Sigilo } from './andes.js';
+import { Sigilo, Marcha } from './andes.js';
 import { VOLTEO, OFICIO, METRALLA_CABALLO, CAIDA } from './balance.js';
 
 // ---------------------------------------------------------------------------
@@ -266,6 +266,10 @@ const moral = armarMoral({
 // gatea el capítulo, no una bandera adentro del sistema— y sin centinelas
 // puestos no hace absolutamente nada.
 const sigilo = new Sigilo();
+// Y LA PARTIDA que te sigue. Va aparte del sigilo a propósito: una cosa es lo
+// que la guardia ve y otra lo que hace tu gente, y mezclarlas era hacer un
+// sistema que sabe demasiado.
+const marcha = new Marcha();
 
 campo.alFormar = () => {
   moral.reiniciar();
@@ -274,7 +278,18 @@ campo.alFormar = () => {
   victoria.reiniciar(); apertura.reiniciar(); fuego.limpiarManchas();
   sigilo.reiniciar();
   if (campo.guardia && campo.guardia.length) sigilo.poner(campo.guardia);
+  marcha.reiniciar();
+  if (campo.partida && campo.partida.length) marcha.poner(campo.partida);
 };
+
+// LA Q, TAMBIÉN A PIE. Devuelve null si en este capítulo no hay partida a la
+// que darle órdenes, y ahí mando.js sigue con la columna montada de siempre.
+// Así la tecla hace lo mismo en los dos capítulos —«a mí» o «alto»— sin que
+// mando.js tenga que saber en cuál está.
+function llamarPartida () {
+  if (mundo.capitulo !== 'andes' || !marcha.hombres.length) return null;
+  return marcha.alternar();
+}
 
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 // y de dónde vino el golpe, para el arco de la brújula
@@ -464,7 +479,7 @@ red.alVictoria = (fase) => {
 };
 
 const plano = armarPlano({ hud });
-const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones, entrarCapitulo });
+const mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones, entrarCapitulo, llamarPartida });
 
 addEventListener('resize', () => {
   camara.aspect = innerWidth / innerHeight;
@@ -615,6 +630,9 @@ function simular (dt) {
   // mira posiciones ya puestas. Corre sólo en la cordillera, y allá corre
   // ANTES que la pinza porque la pinza no existe en ese capítulo.
   if (mundo.capitulo === 'andes') {
+    // LA MARCHA VA ANTES QUE LOS HOMBRES, que si no les escribe la plaza
+    // después de que la leyeron y la fila va siempre un cuadro atrasada.
+    marcha.actualizar(dt, { jugador, agachado: jugador.postura !== 'pie' });
     sigilo.actualizar(dt, {
       jugador,
       // QUIETO ES QUIETO, no «sin apretar teclas»: lo que delata es el
@@ -803,7 +821,7 @@ window.juego = {
   // el mundo
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, camaraArma, render, mundo,
   lejania, pasadaVel, pinza, canones, acto, victoria, apertura, opciones, hud, simular,
-  entrarCapitulo, sigilo,
+  entrarCapitulo, sigilo, marcha,
   get capitulo () { return mundo.capitulo; },
   formarCordillera: campo.formarCordillera,
   get armas () { return arsenal.armas; },

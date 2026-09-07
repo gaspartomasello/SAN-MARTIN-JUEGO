@@ -11,7 +11,7 @@
 
 export function armarMando (ctx) {
   const { lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura,
-    opciones, entrarCapitulo } = ctx;
+    opciones, entrarCapitulo, llamarPartida } = ctx;
 
   const teclas = new Set();
   const sensibilidad = 0.0021;
@@ -106,6 +106,17 @@ export function armarMando (ctx) {
       // ¡A MÍ! La columna corta la pelea y se vuelve a formar atrás tuyo. Se
       // suelta sola cuando la volvés a llevar al choque.
       case 'KeyQ': {
+        // PRIMERO LA PARTIDA A PIE, si el capítulo tiene una. La Q es la misma
+        // tecla y la misma idea —«a mí» o «alto»— y acá no hace falta estar
+        // montado: en la cordillera se sube a pie y no hay un solo caballo.
+        // Devuelve null donde no hay partida, y ahí sigue la columna de
+        // siempre sin enterarse de nada.
+        const orden = llamarPartida ? llamarPartida() : null;
+        if (orden) {
+          sonido.grito();
+          hud.mostrarAviso(orden === 'siguiendo' ? '¡A mí, granaderos!' : '¡Alto!', 'bien');
+          break;
+        }
         if (!montado()) { hud.mostrarAviso('A pie no te siguen: montá', 'malo'); break; }
         // CADA UNO LLAMA A LA SUYA, Y NO SIEMPRE LA TIENE ACÁ. Del lado de un
         // invitado `pinza.viva` es false —los sesenta le llegan como títeres

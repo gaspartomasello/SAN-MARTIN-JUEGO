@@ -31132,7 +31132,15 @@ var Sigilo = class {
       }
       for (const g of soldados2) {
         if (!g.vivo || g.esRealista) continue;
-        const w = this._cuanto(s, g.pos, 1.6, 1, !g.andando, colisiones);
+        const bajo = !!g.rodilla;
+        const w = this._cuanto(
+          s,
+          g.pos,
+          bajo ? 1.22 : 1.6,
+          bajo ? 0.62 : 1,
+          !g.andando,
+          colisiones
+        );
         if (w > visto) {
           visto = w;
           quien = s;
@@ -31172,6 +31180,92 @@ var Sigilo = class {
         "La partida cruza el paso"
       ], 5);
     }
+  }
+};
+var SEPARACION = 2.6;
+var MIGA = 0.6;
+var RASTRO_MAX = 270;
+var PRIMERO = 4.2;
+var BANDEO = 0.62;
+var Marcha = class {
+  constructor() {
+    this.reiniciar();
+  }
+  reiniciar() {
+    this.hombres = [];
+    this.siguiendo = false;
+    this.rastro = [];
+    this.agachados = false;
+  }
+  poner(hombres) {
+    this.hombres = hombres;
+    this.rastro.length = 0;
+    this.siguiendo = false;
+    for (const s of hombres) {
+      s.plaza = null;
+      s.agachadoOrden = false;
+      s.andarColumna = 0;
+    }
+  }
+  get vivos() {
+    return this.hombres.filter((s) => s.vivo && !s.quebrado);
+  }
+  // LA Q. Una tecla, dos órdenes, y el que juega no tiene que acordarse de
+  // cuál: si venían atrás se plantan, y si estaban plantados arrancan.
+  alternar() {
+    if (!this.hombres.length) return null;
+    this.siguiendo = !this.siguiendo;
+    if (!this.siguiendo) {
+      for (const s of this.vivos) {
+        if (!s.plaza) s.plaza = new Vector3();
+        s.plaza.set(s.pos.x, 0, s.pos.z);
+      }
+    }
+    return this.siguiendo ? "siguiendo" : "alto";
+  }
+  // El punto del rastro que está a `atras` metros para atrás del jugador,
+  // caminando la miga hacia el pasado. Devuelve también hacia dónde va el
+  // camino ahí, que es lo que da el costado para el bandeo.
+  _puntoAtras(atras, jugador2) {
+    const r = this.rastro;
+    let px2 = jugador2.pos.x, pz2 = jugador2.pos.z, resta = atras;
+    let ux = 0, uz = 1;
+    for (let i = r.length - 1; i >= 0; i--) {
+      const dx = r[i].x - px2, dz = r[i].z - pz2;
+      const d = Math.hypot(dx, dz);
+      if (d > 1e-4) {
+        ux = -dx / d;
+        uz = -dz / d;
+      }
+      if (d >= resta) {
+        const t = d > 1e-4 ? resta / d : 0;
+        return { x: px2 + dx * t, z: pz2 + dz * t, ux, uz };
+      }
+      resta -= d;
+      px2 = r[i].x;
+      pz2 = r[i].z;
+    }
+    return { x: px2, z: pz2, ux, uz };
+  }
+  actualizar(dt, ctx) {
+    if (!this.hombres.length) return;
+    const { jugador: jugador2, agachado } = ctx;
+    const r = this.rastro;
+    const ultimo = r[r.length - 1];
+    if (!ultimo || Math.hypot(jugador2.pos.x - ultimo.x, jugador2.pos.z - ultimo.z) > MIGA) {
+      r.push({ x: jugador2.pos.x, z: jugador2.pos.z });
+      if (r.length > RASTRO_MAX) r.shift();
+    }
+    this.agachados = !!agachado;
+    const vivos = this.vivos;
+    for (const s of vivos) s.agachadoOrden = this.agachados;
+    if (!this.siguiendo) return;
+    vivos.forEach((s, k) => {
+      const p = this._puntoAtras(PRIMERO + k * SEPARACION, jugador2);
+      const lado = (k % 2 ? 1 : -1) * BANDEO;
+      if (!s.plaza) s.plaza = new Vector3();
+      s.plaza.set(p.x - p.uz * lado, 0, p.z + p.ux * lado);
+    });
   }
 };
 function construirAndes(escena2, colisiones) {
@@ -36283,6 +36377,9 @@ var VEL = 1.85;
 var VEL_CARRERA = 4.3;
 var ALCANCE_TIRO = 62;
 var ALCANCE_ACERO = 1.9;
+var LLEGADA_PLAZA = 0.9;
+var REZAGADO_PIE = 4.5;
+var VEL_COLUMNA = 3.1;
 var RECARGA = 12.5;
 var GIRO_TROPA = 2.4;
 var CONO_TIRO = 0.62;
@@ -36395,6 +36492,7 @@ var Soldado = class _Soldado {
     this.andando = false;
     this.plaza = null;
     this.andarColumna = 0;
+    this.agachadoOrden = false;
     this.monta = null;
     this.tPasada = 0;
     this.pasadas = 0;
@@ -36791,6 +36889,10 @@ var Soldado = class _Soldado {
       this.fig.actualizar(dt, false);
       return;
     }
+    if (this.plaza) {
+      this._marcharAPie(dt);
+      return;
+    }
     if (!this.objetivo) {
       this.estado = "avanzar";
       this.fig.actualizar(dt, false);
@@ -37059,6 +37161,56 @@ var Soldado = class _Soldado {
   // galopan, aunque estén en su sitio— y el que se quedó atrás aprieta un
   // escalón hasta alcanzar. Con eso la columna se estira y se junta como se
   // estira y se junta una de verdad, sin que nadie tenga que coreografiarla.
+  // LA MARCHA A PIE.
+  //
+  // Existía la de a caballo —`_marchar`, la que usa la Pinza— y no existía
+  // ésta: a un hombre a pie no había manera de decirle «andá hasta acá». Lo
+  // único que sabía hacer era ir hacia un ENEMIGO, y por eso la partida del
+  // Cruce se quedaba plantada en la boca del valle mirando la nada: no había
+  // orden que darle.
+  //
+  // Se cuelga del MISMO mecanismo que la columna montada —una `plaza` escrita
+  // desde afuera— así que no hay dos sistemas de formación conviviendo. En San
+  // Lorenzo esto no corre para nadie: `pinza.js` y `acto.js` filtran los dos
+  // por `montado` antes de escribir una plaza, así que un hombre a pie de la
+  // batalla nunca tiene una.
+  _marcharAPie(dt) {
+    this.estado = "formado";
+    this.avisando = false;
+    this.cubierta = null;
+    this.motivo = null;
+    const agachado = !!this.agachadoOrden;
+    if (this.rodilla !== agachado) {
+      this.rodilla = agachado;
+      this.fig.rodilla = agachado;
+    }
+    let dx = this.plaza.x - this.pos.x, dz = this.plaza.z - this.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d <= LLEGADA_PLAZA) {
+      this.andando = false;
+      this.ritmo = 1;
+      this.aliento = Math.min(ALIENTO_TROPA, this.aliento + RECUPERO * dt);
+      this.fig.poner("marcha");
+      this.fig.actualizar(dt, false);
+      this.malla.position.y = 0;
+      return;
+    }
+    dx /= d;
+    dz /= d;
+    const apurado = !agachado && d > REZAGADO_PIE && this.aliento > 6;
+    if (apurado) this.aliento = Math.max(0, this.aliento - GASTO_CARRERA * 0.55 * dt);
+    else this.aliento = Math.min(ALIENTO_TROPA, this.aliento + RECUPERO * dt);
+    this._girarHacia(Math.atan2(dx, dz) + Math.PI, dt, apurado);
+    const v = apurado ? VEL_CARRERA : VEL_COLUMNA;
+    this.ritmo = apurado ? 2.3 : agachado ? 0.75 : 1;
+    this.fig.poner(apurado ? "correr" : "marcha");
+    this.pos.x += dx * v * dt;
+    this.pos.z += dz * v * dt;
+    this._chocar();
+    this.malla.position.y = 0;
+    this.andando = true;
+    this.fig.actualizar(dt, true, this.ritmo);
+  }
   _marchar(dt, destino, andarBase) {
     const c = this.monta;
     const dx = destino.x - c.pos.x, dz = destino.z - c.pos.z;
@@ -40626,6 +40778,7 @@ function armarDespliegue(ctx) {
   };
   function soltarTodo() {
     campo2.guardia = [];
+    campo2.partida = [];
     for (const s of soldados2) s.quitar();
     soldados2.length = 0;
     for (const c of caballos2) if (jugador2.monta !== c) c.quitar();
@@ -40642,11 +40795,12 @@ function armarDespliegue(ctx) {
     canones2.length = 0;
     if (jugador2.monta && jugador2.monta.vivo) jugador2.desmontar();
     const plan = columnaDelPaso(partida);
-    for (const p of plan.puestos) {
+    campo2.partida = plan.puestos.map((p) => {
       const s = soltarSoldado("granadero", { pos: new Vector3(p.x, 0, p.z) });
       s.malla.rotation.y = p.rumbo;
       s.frente = p.rumbo;
-    }
+      return s;
+    });
     const guardia = guardiaDelCorral().map((p) => {
       const s = soltarSoldado("realista", { pos: new Vector3(p.x, 0, p.z) });
       s.malla.rotation.y = p.rumbo;
@@ -40659,7 +40813,7 @@ function armarDespliegue(ctx) {
     jugador2.pitch = plan.jugador.pitch;
     if (campo2.alFormar) campo2.alFormar();
     hud2.mostrarAviso("Paso de Los Patos \xB7 hay guardia adelante", "bien");
-    return { partida: plan.puestos.length, guardia: guardia.length };
+    return { partida: campo2.partida.length, guardia: guardia.length };
   };
   campo2.formarPinza = function(porColumna = 60, realistas = 250) {
     soltarTodo();
@@ -40838,7 +40992,8 @@ function armarMando(ctx) {
     acto: acto2,
     apertura: apertura2,
     opciones: opciones2,
-    entrarCapitulo: entrarCapitulo2
+    entrarCapitulo: entrarCapitulo2,
+    llamarPartida: llamarPartida2
   } = ctx;
   const teclas = /* @__PURE__ */ new Set();
   const sensibilidad = 21e-4;
@@ -40941,6 +41096,12 @@ function armarMando(ctx) {
       // ¡A MÍ! La columna corta la pelea y se vuelve a formar atrás tuyo. Se
       // suelta sola cuando la volvés a llevar al choque.
       case "KeyQ": {
+        const orden = llamarPartida2 ? llamarPartida2() : null;
+        if (orden) {
+          sonido2.grito();
+          hud2.mostrarAviso(orden === "siguiendo" ? "\xA1A m\xED, granaderos!" : "\xA1Alto!", "bien");
+          break;
+        }
         if (!montado2()) {
           hud2.mostrarAviso("A pie no te siguen: mont\xE1", "malo");
           break;
@@ -45439,6 +45600,7 @@ var moral = armarMoral({
   red
 });
 var sigilo = new Sigilo();
+var marcha = new Marcha();
 campo.alFormar = () => {
   moral.reiniciar();
   const p = campo.papeles;
@@ -45448,7 +45610,13 @@ campo.alFormar = () => {
   fuego.limpiarManchas();
   sigilo.reiniciar();
   if (campo.guardia && campo.guardia.length) sigilo.poner(campo.guardia);
+  marcha.reiniciar();
+  if (campo.partida && campo.partida.length) marcha.poner(campo.partida);
 };
+function llamarPartida() {
+  if (mundo.capitulo !== "andes" || !marcha.hombres.length) return null;
+  return marcha.alternar();
+}
 jugador.alAviso = (t, tipo) => hud.mostrarAviso(t, tipo);
 jugador.alGolpe = (x, z) => hud.marcarDano(x, z);
 var ULTIMAS = [
@@ -45554,7 +45722,7 @@ red.alVictoria = (fase) => {
   if (fase === "llego") victoria.llegar(false);
 };
 var plano = armarPlano({ hud });
-var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones, entrarCapitulo });
+var mando = armarMando({ lienzo, jugador, sable, arsenal, campo, combate, pinza, hud, sonido, red, plano, acto, apertura, opciones, entrarCapitulo, llamarPartida });
 addEventListener("resize", () => {
   camara.aspect = innerWidth / innerHeight;
   camara.updateProjectionMatrix();
@@ -45646,6 +45814,7 @@ function simular(dt) {
   }
   if (!red.esInvitado) moral.actualizar(dt);
   if (mundo.capitulo === "andes") {
+    marcha.actualizar(dt, { jugador, agachado: jugador.postura !== "pie" });
     sigilo.actualizar(dt, {
       jugador,
       // QUIETO ES QUIETO, no «sin apretar teclas»: lo que delata es el
@@ -45815,6 +45984,7 @@ window.juego = {
   simular,
   entrarCapitulo,
   sigilo,
+  marcha,
   get capitulo() {
     return mundo.capitulo;
   },

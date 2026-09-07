@@ -198,6 +198,7 @@ export function armarDespliegue (ctx) {
     // la guardia del paso se va con todo lo demás: si quedara colgada, entrar
     // a San Lorenzo después de la cordillera dejaría al sigilo mirando muertos
     campo.guardia = [];
+    campo.partida = [];
     for (const s of soldados) s.quitar();
     soldados.length = 0;
     for (const c of caballos) if (jugador.monta !== c) c.quitar();
@@ -226,11 +227,13 @@ export function armarDespliegue (ctx) {
     if (jugador.monta && jugador.monta.vivo) jugador.desmontar();
 
     const plan = columnaDelPaso(partida);
-    for (const p of plan.puestos) {
+    // LA PARTIDA SE GUARDA, que es lo que después sigue tu rastro con la Q.
+    campo.partida = plan.puestos.map(p => {
       const s = soltarSoldado('granadero', { pos: new THREE.Vector3(p.x, 0, p.z) });
       s.malla.rotation.y = p.rumbo;
       s.frente = p.rumbo;
-    }
+      return s;
+    });
     // LA GUARDIA REALISTA, que es contra lo que se juega el capítulo. Salen
     // como realistas comunes y lo único distinto se lo pone el sigilo: la
     // bandera de centinela, que los deja quietos hasta que los despierten.
@@ -247,7 +250,7 @@ export function armarDespliegue (ctx) {
     jugador.pitch = plan.jugador.pitch;
     if (campo.alFormar) campo.alFormar();
     hud.mostrarAviso('Paso de Los Patos · hay guardia adelante', 'bien');
-    return { partida: plan.puestos.length, guardia: guardia.length };
+    return { partida: campo.partida.length, guardia: guardia.length };
   };
 
   // ------------------------------ LA PINZA ------------------------------
