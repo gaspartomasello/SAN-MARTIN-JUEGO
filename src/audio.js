@@ -422,6 +422,33 @@ export class Sonido {
   }
 
   // la metralla pasando cerca: perdigones cortando el aire
+  // EL DERRUMBE. No es una explosión: una explosión arranca fuerte y se apaga,
+  // un derrumbe arranca sordo, crece y se te viene encima. Son tres capas —el
+  // retumbo grave que sube, el roce de la ladera y el golpeteo suelto de la
+  // piedra— y ninguna es un archivo.
+  derrumbe () {
+    if (!this.ctx) return;
+    this._ruido(2.8, 0.5, 'lowpass', 240, 0.9, { ataque: 0.55 });
+    this._ruido(2.3, 0.2, 'bandpass', 820, 0.8, { ataque: 0.8, cuando: 0.2 });
+    this._tono(68, 32, 2.5, 0.26, 'sine');
+    for (let i = 0; i < 8; i++) {
+      this._ruido(0.14, 0.13, 'bandpass', 620 + Math.random() * 1700, 2.4,
+        { cuando: 0.35 + Math.random() * 2, ataque: 0.002 });
+    }
+  }
+
+  // una piedra sola que pega en el piso
+  piedra (origen) {
+    if (!this.ctx) return;
+    const l = this._lejania(origen);
+    if (!l) return;
+    const a = this._salida(l);
+    this._ruido(0.13, 0.30 * l.gan, 'bandpass', 520 + Math.random() * 900, 2.6,
+      { cuando: l.retardo, ataque: 0.002, a });
+    this._tono(96 + Math.random() * 50, 44, 0.16, 0.20 * l.gan, 'square',
+      { cuando: l.retardo, a });
+  }
+
   metralla () { if (this.ctx) { this._ruido(0.45, 0.34, 'highpass', 2100, 1.6); this._tono(900, 260, 0.3, 0.14, 'sawtooth'); } }
 
   // TE DIERON. El golpe sordo del plomo contra el cuerpo, y el oído que se te

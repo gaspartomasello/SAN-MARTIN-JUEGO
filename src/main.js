@@ -644,7 +644,7 @@ function simular (dt) {
     // LA MARCHA VA ANTES QUE LOS HOMBRES, que si no les escribe la plaza
     // después de que la leyeron y la fila va siempre un cuadro atrasada.
     marcha.actualizar(dt, { jugador, agachado: jugador.postura !== 'pie' });
-    mision.actualizar(dt, { jugador, sigilo, hud, sonido });
+    mision.actualizar(dt, { jugador, sigilo, hud, sonido, colisiones: mundo.colisiones });
     sigilo.actualizar(dt, {
       jugador,
       // QUIETO ES QUIETO, no «sin apretar teclas»: lo que delata es el

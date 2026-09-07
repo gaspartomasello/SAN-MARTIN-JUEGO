@@ -518,6 +518,80 @@ dilo('matarle los dos artilleros la calla igual',
 dilo('limpiando el puesto se termina el paso, y con placa',
   mision.fase === 'hecho' && mision.orden === '' && /paso/i.test(mision.placa), mision.placa);
 
+// ===========================================================================
+// EL DESPRENDIMIENTO
+// ===========================================================================
+//
+// La ladera que se viene abajo al pasar. Lo que se prueba es que sea un
+// OBSTÁCULO y no una escena: que avise antes, que duela si te quedás debajo,
+// que termine —doce piedras que rebotan para siempre son doce piedras que
+// nunca dejan pasar— y que no tape el paso entero cuando para.
+const alud = await ev(() => {
+  const j = window.juego, out = {};
+  const paso = seg => { for (let i = 0; i < seg * 60; i++) j.simular(1 / 60); };
+  j.formarCordillera();
+  paso(0.2);
+  const a = j.mision.alud;
+
+  out.quietoAlEmpezar = a.estado === 'quieto' && !a.malla.visible;
+  out.cajasAntes = j.mundo.colisiones.length;
+
+  // de lejos no se dispara: si saltara al entrar al capítulo, sería una
+  // cinemática y no un obstáculo
+  j.jugador.pos.set(j.paso.eje(30) + 8, j.jugador.pos.y, 30);
+  paso(0.3);
+  out.deLejosNada = a.estado === 'quieto';
+
+  // acercándose, sí
+  j.jugador.pos.set(j.paso.eje(0) + 12, j.jugador.pos.y, 0);
+  paso(0.3);
+  out.alAcercarse = a.estado;
+  out.seVe = a.malla.visible;
+  out.arriba = +Math.max(...a.piedras.map(p => p.y)).toFixed(1);
+
+  let t = 0;
+  while (a.estado === 'cayendo' && t < 20) { paso(0.5); t += 0.5; }
+  out.tarda = t;
+  out.todasQuietas = a.piedras.every(p => p.quieta);
+  out.masAlta = +Math.max(...a.piedras.map(p => p.y)).toFixed(2);
+  out.cajasDespues = j.mundo.colisiones.length;
+  out.vidaAlCostado = j.jugador.vida;
+
+  // la caja que dejó: baja, o sea cobertura, y no una pared
+  const caja = j.mundo.colisiones[j.mundo.colisiones.length - 1];
+  out.cajaAlto = +(caja.max.y - caja.min.y).toFixed(2);
+  out.cajaAncho = +(caja.max.x - caja.min.x).toFixed(1);
+  out.pisoAncho = +(j.paso.medio(-17) * 2).toFixed(1);
+
+  // y quedarse abajo cuesta caro
+  j.formarCordillera();
+  paso(0.2);
+  const b = j.mision.alud;
+  const cx = b.piedras.reduce((s, p) => s + p.x, 0) / b.piedras.length;
+  j.jugador.vida = 100;
+  j.jugador.pos.set(cx + 5, j.jugador.pos.y, -17);
+  paso(8);
+  out.vidaAbajo = Math.round(j.jugador.vida);
+  out.piedrasQueTeDieron = b.piedras.filter(p => p.cobro).length;
+  return out;
+});
+dilo('el desprendimiento espera quieto y no se ve',
+  alud.quietoAlEmpezar && alud.deLejosNada);
+dilo('y se viene abajo cuando llegás, no antes',
+  alud.alAcercarse === 'cayendo' && alud.seVe && alud.arriba > 8, `desde ${alud.arriba} m`);
+dilo('las doce piedras caen y PARAN, no rebotan para siempre',
+  alud.todasQuietas && alud.tarda < 12 && alud.masAlta < 2.5,
+  `${alud.tarda} s, la más alta a ${alud.masAlta} m`);
+dilo('y dejan un montón que tapa: cobertura, no una pared',
+  alud.cajasDespues === alud.cajasAntes + 1 && alud.cajaAlto <= 2.6,
+  `caja de ${alud.cajaAncho} m de ancho y ${alud.cajaAlto} de alto`);
+dilo('el montón no tapa el paso: queda por dónde pasar',
+  alud.cajaAncho < alud.pisoAncho * 0.6, `${alud.cajaAncho} m de ${alud.pisoAncho}`);
+dilo('a un costado no te toca una piedra', alud.vidaAlCostado === 100, `vida ${alud.vidaAlCostado}`);
+dilo('y quedándote abajo te lleva media vida',
+  alud.vidaAbajo < 70 && alud.vidaAbajo > 5,
+  `vida ${alud.vidaAbajo} con ${alud.piedrasQueTeDieron} piedras encima`);
+
 for (const [e, n, x] of T) console.log(e.padEnd(4), n.padEnd(52), x);
 const mal = T.filter(t => t[0] === 'MAL').length;
 console.log(`\n${T.length - mal} bien, ${mal} mal`);

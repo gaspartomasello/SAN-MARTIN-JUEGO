@@ -135,8 +135,9 @@ escrita encima).
 el puesto realista de catorce hombres con su pieza —que arranca `dormido`— y la
 fogata de señales. Dada la alarma, un realista corre a prenderla y hay **cinco
 segundos** para bajarlo; si la prende, la pieza despierta. Limpiar el puesto
-termina el nivel. Falta: las mulas, la moral de la altura y que el derrumbe
-caiga de verdad.
+termina el nivel. Y `class Alud`: la ladera que se viene abajo al pasar, doce
+piedras en una malla instanciada, que duelen y que al parar dejan cobertura.
+Falta: las mulas, la moral de la altura y el Combate de Achupallas.
 
 **Flujo completo:** portada → plano de la maniobra → cinemática de apertura
 (3 s de negro + placa + parte del granadero + orden de San Martín, y la `T`

@@ -30741,6 +30741,135 @@ function construirSanLorenzo(escena2, colisiones) {
   return lugar;
 }
 
+// src/balance.js
+var VIDA_TROPA = 8;
+var VIDA_CABALLO = 18;
+var DANO_BALA = 26;
+var DANO_BAYONETA = 14;
+var DANO_METRALLA = 58;
+var CAIDA = 12;
+var PIEDRA_ALUD = 22;
+var BAYONETA_PARADA = 0.18;
+var BALA_CERCA = 12;
+var BALA_LEJOS = 55;
+var BALA_RESTA = 0.46;
+function caidaBala(dist) {
+  const t = Math.max(0, Math.min(1, (dist - BALA_CERCA) / (BALA_LEJOS - BALA_CERCA)));
+  return 1 - BALA_RESTA * t;
+}
+function danoBalaEnemiga(dist) {
+  return DANO_BALA * caidaBala(dist);
+}
+function balaContraTropa(dist) {
+  return BALA_TROPA * caidaBala(dist);
+}
+var ZONA_CABEZA = 0.93;
+var ZONA_PECHO = 0.55;
+var BALA_JUGADOR = 8;
+var BALA_MIEMBRO = 4;
+var DANO_SABLE = 8;
+var DANO_REMATE = 10;
+var CULATAZO = 4;
+var BAYONETAZO = 6;
+var BALA_TROPA = 0.9;
+var BAYONETA_TROPA = 1.5;
+var LANZA_TROPA = 1;
+var METRALLA_TROPA = 6;
+var CABALLO_COME = 0.6;
+var BALA_AL_CABALLO = 2;
+var METRALLA_CABALLO = 20;
+var METRALLA_PLENA = 0.55;
+var METRALLA_JINETE = 0.28;
+function metrallaAlCaballo(g) {
+  if (g < METRALLA_JINETE) return 0;
+  return Math.round(METRALLA_CABALLO * (METRALLA_PLENA + (1 - METRALLA_PLENA) * g));
+}
+var CONO_FUSIL = 0.105;
+var CONO_HINCADO = 0.62;
+var CONO_HUMO = 1.6;
+var TEMBLOR = 0.52;
+var BLANCO_HOMBRE = 0.34;
+var BLANCO_MONTADO = 0.62;
+var ZUMBIDO = 1.6;
+function desvio(cono) {
+  return (Math.random() + Math.random() - 1) * cono;
+}
+function tirar(dist, oclusion = 0, ancho = BLANCO_HOMBRE, hincado = false) {
+  let cono = CONO_FUSIL * (1 + oclusion * CONO_HUMO);
+  let temblor = TEMBLOR;
+  if (hincado) {
+    cono *= CONO_HINCADO;
+    temblor *= CONO_HINCADO;
+  }
+  const dx = desvio(cono) * dist + desvio(temblor);
+  const dy = desvio(cono) * dist + desvio(temblor);
+  const fuera = Math.hypot(dx, dy);
+  return { acierto: fuera < ancho, fuera, dx, dy };
+}
+var VOLTEO = {
+  bala: 0.2,
+  bayoneta: 0.34,
+  lanza: 0.58,
+  metralla: 1
+};
+var OFICIO = 0.62;
+var OFICIO_TROPA = 0.75;
+var AGARRE_AFLOJA = 0.26;
+var ALIENTO_TROPA = 100;
+var GASTO_CARRERA = 26;
+var RECUPERO = 13;
+var CARRERA_MINIMA = 35;
+var GUARDIA_GASTO = 11;
+var BLOQUEO_GASTO = 26;
+var PECHADA_GASTO = 18;
+var SATURACION = 7;
+var TERQUEDAD = 11;
+var ALIADOS_MAX = 20;
+var ENEMIGOS_MAX = 34;
+var MONTADOS = 0.66;
+var OLEADA_REALISTA = [3, 3];
+var OLEADA_GRANADERO = [4, 4];
+var ATROPELLO = 4;
+var ATROPELLO_VEL = 7;
+var ATROPELLO_ESPERA = 1.2;
+var ATROPELLO_EMPUJE = 1.5;
+var ATROPELLO_TIRADO = 1.4;
+var PECHADA_ALCANCE = 2.2;
+var SABLE_ALCANCE = 2.4;
+var ALCANCE_MONTADO = 3.3;
+var ANIMO_TROPA = 72;
+var CAIDO_CERCA = 6;
+var CAIDO_RADIO = 6.5;
+var FLANCO = 0.22;
+var FLANCO_RADIO = 22;
+var FLANCO_CONO = 1;
+var FLANCO_LLENO = 3;
+var FRENTE_GIRO = 0.08;
+var CABALLO_ENCIMA = 0.23;
+var CABALLO_RADIO = 38;
+var CABALLO_LLENO = 2;
+var CABALLO_FLANCO = 2.4;
+var SOLEDAD = 0.12;
+var JUNTOS_RADIO = 9;
+var JUNTOS_MINIMO = 3;
+var HERIDO = 0.1;
+var PIEZA_CALLADA = 4;
+var PIEZA_RADIO = 30;
+var APLOMO = 0.3;
+var DESGASTE = 0.5;
+var PERSEGUIR = 22;
+var CONTAGIO = 0.42;
+var CONTAGIO_RADIO = 20;
+var TEMPLE = [0.72, 0.62];
+var LINEA_MINIMA = 30;
+var LINEA_ROTA = 0.17;
+var DESBANDE = 14;
+var TAMBOR_APLOMO = 0.26;
+var TAMBOR_RADIO = 14;
+var DESALIENTO = 1 / 3;
+var REFUGIO_REALISTA = -82;
+var REFUGIO_GRANADERO = 58;
+
 // src/andes.js
 var NIEVE = 15922940;
 var NIEVE_SUCIA = 13423840;
@@ -30998,6 +31127,7 @@ function llama(x, z, escala = 1) {
   return g;
 }
 var fuegos = { casucha: null, fogata: null };
+var alud = null;
 var ROCA_GEO = new DodecahedronGeometry(1, 0);
 function penon(horno, colisiones, x, z, tam, semilla) {
   const r = ruido(semilla * 2.3, 7.1), r2 = ruido(semilla * 5.1, 2.7);
@@ -31365,6 +31495,178 @@ var Sigilo = class {
     }
   }
 };
+var Z_ALUD = -17;
+var ALUD_N = 12;
+var ALUD_GRAVEDAD = 19;
+var ALUD_REBOTE = 0.34;
+var ALUD_ROCE = 0.72;
+var ALUD_AVISO = 18;
+var ALUD_CERCA = 1.7;
+var Alud = class {
+  constructor() {
+    this.malla = null;
+    this.piedras = [];
+    this.caja = null;
+    this.donde = null;
+    this.estado = "quieto";
+    this.t = 0;
+    this._m = new Matrix4();
+    this._q = new Quaternion();
+    this._e = new Euler();
+    this._v = new Vector3();
+    this._uno = new Vector3(1, 1, 1);
+  }
+  // Se arma UNA VEZ con el escenario, invisible. Igual que todo lo demás del
+  // capítulo: no se carga nada cuando pasa, se prende.
+  armar(lugar) {
+    const mat2 = new MeshStandardMaterial({ color: ROCA_CLARA, roughness: 0.95, flatShading: true });
+    this.malla = new InstancedMesh(ROCA_GEO, mat2, ALUD_N);
+    this.malla.name = "paso-alud";
+    this.malla.instanceMatrix.setUsage(DynamicDrawUsage);
+    this.malla.visible = false;
+    this.malla.frustumCulled = false;
+    lugar.add(this.malla);
+    this.reiniciar();
+  }
+  reiniciar() {
+    this.estado = "quieto";
+    this.t = 0;
+    this.piedras = [];
+    if (this.caja && this.donde) {
+      const i = this.donde.indexOf(this.caja);
+      if (i >= 0) this.donde.splice(i, 1);
+    }
+    this.caja = null;
+    if (this.malla) this.malla.visible = false;
+    const e = eje(Z_ALUD), m = medio(Z_ALUD);
+    for (let i = 0; i < ALUD_N; i++) {
+      const r = ruido(i * 3.7, 9.1), r2 = ruido(i * 5.3, 2.7);
+      this.piedras.push({
+        // salen del labio de la pared izquierda, escalonadas en alto y en fondo
+        x: e - m + 0.5 + r * 1.6,
+        y: 13 + i * 1.35 + r2 * 2,
+        z: Z_ALUD + i % 4 * 2.6 - 3.6 + r * 1.4,
+        // TIRADAS HACIA EL MEDIO, pero no en abanico: con la velocidad muy
+        // repartida las doce caían desparramadas en catorce metros y eso no es
+        // un derrumbe, es un reguero. Un derrumbe deja un MONTÓN.
+        vx: 3.2 + Math.abs(r2) * 2.6,
+        vy: 0,
+        vz: r * 1.8,
+        tam: 0.7 + Math.abs(r) * 1.3,
+        gx: r * 5,
+        gy: r2 * 6,
+        gz: (r + r2) * 4,
+        // giro
+        ax: r * 3,
+        ay: r2 * 3,
+        az: r * 2,
+        quieta: false,
+        pego: false
+      });
+    }
+    this._pintar();
+  }
+  // ¿ya se vino abajo? Lo pregunta la misión y lo preguntan las pruebas.
+  get cayo() {
+    return this.estado === "caido";
+  }
+  actualizar(dt, ctx) {
+    const { jugador: jugador2, sonido: sonido2, hud: hud2, colisiones } = ctx;
+    if (this.estado === "quieto") {
+      const d = jugador2.pos.z - Z_ALUD;
+      if (d > ALUD_AVISO || d < -6) return;
+      this.estado = "cayendo";
+      this.t = 0;
+      this.malla.visible = true;
+      if (sonido2) sonido2.derrumbe();
+      if (hud2) hud2.mostrarAviso("\xA1Se viene la ladera abajo!", "malo");
+      if (jugador2.sacudir) jugador2.sacudir(0.5);
+      return;
+    }
+    if (this.estado !== "cayendo") return;
+    this.t += dt;
+    let enElAire = 0;
+    for (const p of this.piedras) {
+      if (p.quieta) continue;
+      p.vy -= ALUD_GRAVEDAD * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.z += p.vz * dt;
+      p.ax += p.gx * dt;
+      p.ay += p.gy * dt;
+      p.az += p.gz * dt;
+      if (p.y <= p.tam * 0.6) {
+        p.y = p.tam * 0.6;
+        if (!p.pego) {
+          p.pego = true;
+          if (sonido2 && sonido2.piedra) sonido2.piedra({ x: p.x, y: p.y, z: p.z });
+        }
+        if (p.vy < -1.2) {
+          p.vy = -p.vy * ALUD_REBOTE;
+        } else {
+          p.vy = 0;
+        }
+        p.vx *= ALUD_ROCE;
+        p.vz *= ALUD_ROCE;
+        p.gx *= 0.7;
+        p.gy *= 0.7;
+        p.gz *= 0.7;
+        if (Math.hypot(p.vx, p.vz) < 0.5 && Math.abs(p.vy) < 0.6) p.quieta = true;
+      }
+      const dEje = Math.abs(p.x - eje(p.z));
+      if (dEje > medio(p.z) - 0.4) {
+        p.vx = -p.vx * 0.3;
+        p.x += p.vx * dt;
+      }
+      if (!p.quieta) enElAire++;
+      if (!p.cobro && jugador2.vivo && p.y < 2.6 && Math.abs(p.vy) > 2) {
+        const dx = jugador2.pos.x - p.x, dz = jugador2.pos.z - p.z;
+        if (Math.hypot(dx, dz) < ALUD_CERCA + p.tam) {
+          p.cobro = true;
+          const d = Math.hypot(dx, dz) || 1;
+          jugador2.recibir(PIEDRA_ALUD, this._v.set(dx / d, 0, dz / d));
+          if (jugador2.sacudir) jugador2.sacudir(1.1);
+          if (hud2) hud2.mostrarAviso("\xA1Te agarr\xF3 la piedra!", "malo");
+        }
+      }
+    }
+    this._pintar();
+    if (enElAire === 0 || this.t > 14) {
+      this.estado = "caido";
+      this._asentar(colisiones);
+    }
+  }
+  // las piedras quietas pasan a ser una caja baja: cobertura de verdad, la
+  // misma que mira el sigilo
+  _asentar(colisiones) {
+    if (!colisiones) return;
+    const xs = this.piedras.map((p) => p.x).sort((a, b) => a - b);
+    const zs = this.piedras.map((p) => p.z).sort((a, b) => a - b);
+    const desde = Math.floor(this.piedras.length * 0.2);
+    const hasta = Math.ceil(this.piedras.length * 0.8) - 1;
+    let x0 = xs[desde] - 0.8, x1 = xs[hasta] + 0.8;
+    let z0 = zs[desde] - 0.8, z1 = zs[hasta] + 0.8;
+    let alto = 0;
+    for (const p of this.piedras) alto = Math.max(alto, p.y + p.tam * 0.5);
+    this.caja = new Box3(
+      new Vector3(x0, 0, z0),
+      new Vector3(x1, Math.max(1, alto), z1)
+    );
+    this.donde = colisiones;
+    colisiones.push(this.caja);
+  }
+  _pintar() {
+    if (!this.malla) return;
+    for (let i = 0; i < this.piedras.length; i++) {
+      const p = this.piedras[i];
+      this._e.set(p.ax, p.ay, p.az);
+      this._q.setFromEuler(this._e);
+      this._m.compose(this._v.set(p.x, p.y, p.z), this._q, this._uno.set(p.tam, p.tam, p.tam));
+      this.malla.setMatrixAt(i, this._m);
+    }
+    this.malla.instanceMatrix.needsUpdate = true;
+  }
+};
 var CERCA_CASUCHA = 12;
 var PRENDE = 2.2;
 var RELEVO = 3.5;
@@ -31386,6 +31688,11 @@ var Mision = class {
     this.orden = "";
     if (fuegos.fogata) fuegos.fogata.visible = false;
     if (fuegos.casucha) fuegos.casucha.visible = true;
+    if (alud) alud.reiniciar();
+  }
+  // el desprendimiento, para el que quiera mirarlo desde afuera
+  get alud() {
+    return alud;
   }
   // Los pone el despliegue, ya soltados al campo.
   poner({ patrulla, guardia, canon }) {
@@ -31399,8 +31706,9 @@ var Mision = class {
     return this.guardia.length > 0 && !this.guardia.some((s) => s.vivo && !s.quebrado);
   }
   actualizar(dt, ctx) {
-    const { jugador: jugador2, sigilo: sigilo2, hud: hud2, sonido: sonido2 } = ctx;
+    const { jugador: jugador2, sigilo: sigilo2, hud: hud2, sonido: sonido2, colisiones } = ctx;
     this._avivar(dt);
+    if (alud) alud.actualizar(dt, { jugador: jugador2, sonido: sonido2, hud: hud2, colisiones });
     if (this.fase === "hecho") return;
     if (sigilo2 && sigilo2.alarma && !this.sueltos) {
       this.sueltos = true;
@@ -31607,6 +31915,8 @@ function construirAndes(escena2, colisiones) {
   fuegos.fogata.visible = false;
   lugar.add(fuegos.casucha);
   lugar.add(fuegos.fogata);
+  alud = new Alud();
+  alud.armar(lugar);
   escena2.add(lugar);
   return lugar;
 }
@@ -34463,6 +34773,49 @@ var Sonido = class {
     return t;
   }
   // la metralla pasando cerca: perdigones cortando el aire
+  // EL DERRUMBE. No es una explosión: una explosión arranca fuerte y se apaga,
+  // un derrumbe arranca sordo, crece y se te viene encima. Son tres capas —el
+  // retumbo grave que sube, el roce de la ladera y el golpeteo suelto de la
+  // piedra— y ninguna es un archivo.
+  derrumbe() {
+    if (!this.ctx) return;
+    this._ruido(2.8, 0.5, "lowpass", 240, 0.9, { ataque: 0.55 });
+    this._ruido(2.3, 0.2, "bandpass", 820, 0.8, { ataque: 0.8, cuando: 0.2 });
+    this._tono(68, 32, 2.5, 0.26, "sine");
+    for (let i = 0; i < 8; i++) {
+      this._ruido(
+        0.14,
+        0.13,
+        "bandpass",
+        620 + Math.random() * 1700,
+        2.4,
+        { cuando: 0.35 + Math.random() * 2, ataque: 2e-3 }
+      );
+    }
+  }
+  // una piedra sola que pega en el piso
+  piedra(origen) {
+    if (!this.ctx) return;
+    const l = this._lejania(origen);
+    if (!l) return;
+    const a = this._salida(l);
+    this._ruido(
+      0.13,
+      0.3 * l.gan,
+      "bandpass",
+      520 + Math.random() * 900,
+      2.6,
+      { cuando: l.retardo, ataque: 2e-3, a }
+    );
+    this._tono(
+      96 + Math.random() * 50,
+      44,
+      0.16,
+      0.2 * l.gan,
+      "square",
+      { cuando: l.retardo, a }
+    );
+  }
   metralla() {
     if (this.ctx) {
       this._ruido(0.45, 0.34, "highpass", 2100, 1.6);
@@ -36620,134 +36973,6 @@ var Figura = class {
     if (this.h.hombroD) this.h.hombroD.rotation.z = e * c.brazoD;
   }
 };
-
-// src/balance.js
-var VIDA_TROPA = 8;
-var VIDA_CABALLO = 18;
-var DANO_BALA = 26;
-var DANO_BAYONETA = 14;
-var DANO_METRALLA = 58;
-var CAIDA = 12;
-var BAYONETA_PARADA = 0.18;
-var BALA_CERCA = 12;
-var BALA_LEJOS = 55;
-var BALA_RESTA = 0.46;
-function caidaBala(dist) {
-  const t = Math.max(0, Math.min(1, (dist - BALA_CERCA) / (BALA_LEJOS - BALA_CERCA)));
-  return 1 - BALA_RESTA * t;
-}
-function danoBalaEnemiga(dist) {
-  return DANO_BALA * caidaBala(dist);
-}
-function balaContraTropa(dist) {
-  return BALA_TROPA * caidaBala(dist);
-}
-var ZONA_CABEZA = 0.93;
-var ZONA_PECHO = 0.55;
-var BALA_JUGADOR = 8;
-var BALA_MIEMBRO = 4;
-var DANO_SABLE = 8;
-var DANO_REMATE = 10;
-var CULATAZO = 4;
-var BAYONETAZO = 6;
-var BALA_TROPA = 0.9;
-var BAYONETA_TROPA = 1.5;
-var LANZA_TROPA = 1;
-var METRALLA_TROPA = 6;
-var CABALLO_COME = 0.6;
-var BALA_AL_CABALLO = 2;
-var METRALLA_CABALLO = 20;
-var METRALLA_PLENA = 0.55;
-var METRALLA_JINETE = 0.28;
-function metrallaAlCaballo(g) {
-  if (g < METRALLA_JINETE) return 0;
-  return Math.round(METRALLA_CABALLO * (METRALLA_PLENA + (1 - METRALLA_PLENA) * g));
-}
-var CONO_FUSIL = 0.105;
-var CONO_HINCADO = 0.62;
-var CONO_HUMO = 1.6;
-var TEMBLOR = 0.52;
-var BLANCO_HOMBRE = 0.34;
-var BLANCO_MONTADO = 0.62;
-var ZUMBIDO = 1.6;
-function desvio(cono) {
-  return (Math.random() + Math.random() - 1) * cono;
-}
-function tirar(dist, oclusion = 0, ancho = BLANCO_HOMBRE, hincado = false) {
-  let cono = CONO_FUSIL * (1 + oclusion * CONO_HUMO);
-  let temblor = TEMBLOR;
-  if (hincado) {
-    cono *= CONO_HINCADO;
-    temblor *= CONO_HINCADO;
-  }
-  const dx = desvio(cono) * dist + desvio(temblor);
-  const dy = desvio(cono) * dist + desvio(temblor);
-  const fuera = Math.hypot(dx, dy);
-  return { acierto: fuera < ancho, fuera, dx, dy };
-}
-var VOLTEO = {
-  bala: 0.2,
-  bayoneta: 0.34,
-  lanza: 0.58,
-  metralla: 1
-};
-var OFICIO = 0.62;
-var OFICIO_TROPA = 0.75;
-var AGARRE_AFLOJA = 0.26;
-var ALIENTO_TROPA = 100;
-var GASTO_CARRERA = 26;
-var RECUPERO = 13;
-var CARRERA_MINIMA = 35;
-var GUARDIA_GASTO = 11;
-var BLOQUEO_GASTO = 26;
-var PECHADA_GASTO = 18;
-var SATURACION = 7;
-var TERQUEDAD = 11;
-var ALIADOS_MAX = 20;
-var ENEMIGOS_MAX = 34;
-var MONTADOS = 0.66;
-var OLEADA_REALISTA = [3, 3];
-var OLEADA_GRANADERO = [4, 4];
-var ATROPELLO = 4;
-var ATROPELLO_VEL = 7;
-var ATROPELLO_ESPERA = 1.2;
-var ATROPELLO_EMPUJE = 1.5;
-var ATROPELLO_TIRADO = 1.4;
-var PECHADA_ALCANCE = 2.2;
-var SABLE_ALCANCE = 2.4;
-var ALCANCE_MONTADO = 3.3;
-var ANIMO_TROPA = 72;
-var CAIDO_CERCA = 6;
-var CAIDO_RADIO = 6.5;
-var FLANCO = 0.22;
-var FLANCO_RADIO = 22;
-var FLANCO_CONO = 1;
-var FLANCO_LLENO = 3;
-var FRENTE_GIRO = 0.08;
-var CABALLO_ENCIMA = 0.23;
-var CABALLO_RADIO = 38;
-var CABALLO_LLENO = 2;
-var CABALLO_FLANCO = 2.4;
-var SOLEDAD = 0.12;
-var JUNTOS_RADIO = 9;
-var JUNTOS_MINIMO = 3;
-var HERIDO = 0.1;
-var PIEZA_CALLADA = 4;
-var PIEZA_RADIO = 30;
-var APLOMO = 0.3;
-var DESGASTE = 0.5;
-var PERSEGUIR = 22;
-var CONTAGIO = 0.42;
-var CONTAGIO_RADIO = 20;
-var TEMPLE = [0.72, 0.62];
-var LINEA_MINIMA = 30;
-var LINEA_ROTA = 0.17;
-var DESBANDE = 14;
-var TAMBOR_APLOMO = 0.26;
-var TAMBOR_RADIO = 14;
-var DESALIENTO = 1 / 3;
-var REFUGIO_REALISTA = -82;
-var REFUGIO_GRANADERO = 58;
 
 // src/caballo.js
 var ASENTADO_CABALLO = 0.12;
@@ -46773,7 +46998,7 @@ function simular(dt) {
   if (!red.esInvitado) moral.actualizar(dt);
   if (mundo.capitulo === "andes") {
     marcha.actualizar(dt, { jugador, agachado: jugador.postura !== "pie" });
-    mision.actualizar(dt, { jugador, sigilo, hud, sonido });
+    mision.actualizar(dt, { jugador, sigilo, hud, sonido, colisiones: mundo.colisiones });
     sigilo.actualizar(dt, {
       jugador,
       // QUIETO ES QUIETO, no «sin apretar teclas»: lo que delata es el

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Horno, MAT } from './sanlorenzo.js';
+import { PIEDRA_ALUD } from './balance.js';
 
 // ===========================================================================
 // EL PASO · Cruce de los Andes, enero de 1817
@@ -443,6 +444,7 @@ function llama (x, z, escala = 1) {
 // misma cosa —el capítulo 2— y hacerlos viajar por tres archivos para volver al
 // mismo sitio no compra nada.
 const fuegos = { casucha: null, fogata: null };
+let alud = null;   // se arma con el escenario, más abajo
 
 // ------------------------------------------------------------ los peñones
 //
@@ -904,6 +906,214 @@ export class Sigilo {
 }
 
 // ===========================================================================
+// EL DESPRENDIMIENTO
+// ===========================================================================
+//
+// La primera cosa del paso que no es un hombre. Antes de la casucha, en el
+// tramo donde el valle se cierra, la ladera se viene abajo al pasar: hay que
+// mirar arriba, esperar y cruzar. Es lo que el guion pedía —«esquivando
+// desprendimientos de roca»— y es lo que le saca al capítulo la cara de
+// caminata, porque llega ANTES que el primer realista.
+//
+// DOCE PIEDRAS EN UNA SOLA MALLA INSTANCIADA. Una llamada de dibujo para las
+// doce, con el mismo dodecaedro de los peñones. Lo que se escribe por cuadro
+// son doce matrices, o sea números: no se crea una geometría ni un material
+// adentro del bucle, que es la regla de siempre.
+//
+// LA FÍSICA ES DE JUGUETE Y ALCANZA: gravedad, un rebote y rodada con
+// rozamiento hasta frenar. Nadie va a medir la parábola. Lo que tiene que pasar
+// es que caigan, que peguen fuerte, que te lastimen si estás abajo y que queden
+// ahí tiradas, y para eso no hace falta un motor de física.
+//
+// Y CUANDO PARAN, TAPAN. Las piedras quietas dejan una caja baja en las
+// colisiones del mundo, así que el desprendimiento no es sólo un susto: te
+// deja cobertura nueva justo donde antes no había nada. El sigilo se entera
+// solo, porque `tapado()` mira esas mismas cajas.
+export const Z_ALUD = -17;
+const ALUD_N = 12;
+const ALUD_GRAVEDAD = 19;
+const ALUD_REBOTE = 0.34;
+const ALUD_ROCE = 0.72;
+const ALUD_AVISO = 18;         // a esta distancia del alud, la ladera cruje
+const ALUD_CERCA = 1.7;        // te pasa a menos de esto y te lleva puesto
+
+export class Alud {
+  constructor () {
+    this.malla = null;
+    this.piedras = [];
+    this.caja = null;
+    this.donde = null;
+    this.estado = 'quieto';    // quieto → cayendo → caido
+    this.t = 0;
+    this._m = new THREE.Matrix4();
+    this._q = new THREE.Quaternion();
+    this._e = new THREE.Euler();
+    this._v = new THREE.Vector3();
+    this._uno = new THREE.Vector3(1, 1, 1);
+  }
+
+  // Se arma UNA VEZ con el escenario, invisible. Igual que todo lo demás del
+  // capítulo: no se carga nada cuando pasa, se prende.
+  armar (lugar) {
+        // ROCA_CLARA y no ROCA: la piedra oscura del escenario se lee bien plantada
+    // en el piso, pero cayendo contra la pared —que ya es oscura y está a
+    // contraluz— doce piedras negras parecen doce agujeros.
+    const mat = new THREE.MeshStandardMaterial({ color: ROCA_CLARA, roughness: 0.95, flatShading: true });
+    this.malla = new THREE.InstancedMesh(ROCA_GEO, mat, ALUD_N);
+    this.malla.name = 'paso-alud';
+    this.malla.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.malla.visible = false;
+    this.malla.frustumCulled = false;
+    lugar.add(this.malla);
+    this.reiniciar();
+  }
+
+  reiniciar () {
+    this.estado = 'quieto';
+    this.t = 0;
+    this.piedras = [];
+    // la caja que dejó la corrida anterior se saca del mundo: sin esto, volver
+    // a formar el paso apila una caja arriba de la otra
+    if (this.caja && this.donde) {
+      const i = this.donde.indexOf(this.caja);
+      if (i >= 0) this.donde.splice(i, 1);
+    }
+    this.caja = null;
+    if (this.malla) this.malla.visible = false;
+    const e = eje(Z_ALUD), m = medio(Z_ALUD);
+    for (let i = 0; i < ALUD_N; i++) {
+      const r = ruido(i * 3.7, 9.1), r2 = ruido(i * 5.3, 2.7);
+      this.piedras.push({
+        // salen del labio de la pared izquierda, escalonadas en alto y en fondo
+        x: e - m + 0.5 + r * 1.6,
+        y: 13 + i * 1.35 + r2 * 2,
+        z: Z_ALUD + (i % 4) * 2.6 - 3.6 + r * 1.4,
+        // TIRADAS HACIA EL MEDIO, pero no en abanico: con la velocidad muy
+        // repartida las doce caían desparramadas en catorce metros y eso no es
+        // un derrumbe, es un reguero. Un derrumbe deja un MONTÓN.
+        vx: 3.2 + Math.abs(r2) * 2.6,
+        vy: 0,
+        vz: r * 1.8,
+        tam: 0.7 + Math.abs(r) * 1.3,
+        gx: r * 5, gy: r2 * 6, gz: (r + r2) * 4,   // giro
+        ax: r * 3, ay: r2 * 3, az: r * 2,
+        quieta: false,
+        pego: false
+      });
+    }
+    this._pintar();
+  }
+
+  // ¿ya se vino abajo? Lo pregunta la misión y lo preguntan las pruebas.
+  get cayo () { return this.estado === 'caido'; }
+
+  actualizar (dt, ctx) {
+    const { jugador, sonido, hud, colisiones } = ctx;
+    if (this.estado === 'quieto') {
+      // SE DISPARA AL ACERCARTE, no al pisar una raya: el aviso tiene que
+      // llegar antes que la piedra o es una trampa y no un obstáculo.
+      const d = jugador.pos.z - Z_ALUD;
+      if (d > ALUD_AVISO || d < -6) return;
+      this.estado = 'cayendo';
+      this.t = 0;
+      this.malla.visible = true;
+      if (sonido) sonido.derrumbe();
+      if (hud) hud.mostrarAviso('¡Se viene la ladera abajo!', 'malo');
+      if (jugador.sacudir) jugador.sacudir(0.5);
+      return;
+    }
+    if (this.estado !== 'cayendo') return;
+
+    this.t += dt;
+    let enElAire = 0;
+    for (const p of this.piedras) {
+      if (p.quieta) continue;
+      p.vy -= ALUD_GRAVEDAD * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+      p.ax += p.gx * dt; p.ay += p.gy * dt; p.az += p.gz * dt;
+
+      // el piso
+      if (p.y <= p.tam * 0.6) {
+        p.y = p.tam * 0.6;
+        if (!p.pego) {
+          p.pego = true;
+          if (sonido && sonido.piedra) sonido.piedra({ x: p.x, y: p.y, z: p.z });
+        }
+        if (p.vy < -1.2) { p.vy = -p.vy * ALUD_REBOTE; }
+        else { p.vy = 0; }
+        p.vx *= ALUD_ROCE; p.vz *= ALUD_ROCE;
+        p.gx *= 0.7; p.gy *= 0.7; p.gz *= 0.7;
+        if (Math.hypot(p.vx, p.vz) < 0.5 && Math.abs(p.vy) < 0.6) p.quieta = true;
+      }
+      // y la pared del otro lado, que las frena
+      const dEje = Math.abs(p.x - eje(p.z));
+      if (dEje > medio(p.z) - 0.4) { p.vx = -p.vx * 0.3; p.x += p.vx * dt; }
+
+      if (!p.quieta) enElAire++;
+
+      // TE LLEVA PUESTO. Una sola vez por piedra: si cobrara por cuadro,
+      // quedar abajo del montón te mataría en tres cuadros y nadie entendería
+      // qué pasó.
+      if (!p.cobro && jugador.vivo && p.y < 2.6 && Math.abs(p.vy) > 2) {
+        const dx = jugador.pos.x - p.x, dz = jugador.pos.z - p.z;
+        if (Math.hypot(dx, dz) < ALUD_CERCA + p.tam) {
+          p.cobro = true;
+          const d = Math.hypot(dx, dz) || 1;
+          jugador.recibir(PIEDRA_ALUD, this._v.set(dx / d, 0, dz / d));
+          if (jugador.sacudir) jugador.sacudir(1.1);
+          if (hud) hud.mostrarAviso('¡Te agarró la piedra!', 'malo');
+        }
+      }
+    }
+    this._pintar();
+
+    if (enElAire === 0 || this.t > 14) {
+      this.estado = 'caido';
+      this._asentar(colisiones);
+    }
+  }
+
+  // las piedras quietas pasan a ser una caja baja: cobertura de verdad, la
+  // misma que mira el sigilo
+  _asentar (colisiones) {
+    if (!colisiones) return;
+    // EL MONTÓN Y NO EL REGUERO. Doce piedras desparramadas ocupan catorce
+    // metros de ancho, que es medio paso, y una caja de ese tamaño lo tapa
+    // entero: se pasaría de esquivar un derrumbe a no poder pasar. La caja se
+    // arma con el bulto del medio —del 20% al 80%— así que frena donde de
+    // verdad hay piedra amontonada y las sueltas de los costados quedan como
+    // lo que son: piedras sueltas por las que se camina.
+    const xs = this.piedras.map(p => p.x).sort((a, b) => a - b);
+    const zs = this.piedras.map(p => p.z).sort((a, b) => a - b);
+    const desde = Math.floor(this.piedras.length * 0.2);
+    const hasta = Math.ceil(this.piedras.length * 0.8) - 1;
+    let x0 = xs[desde] - 0.8, x1 = xs[hasta] + 0.8;
+    let z0 = zs[desde] - 0.8, z1 = zs[hasta] + 0.8;
+    let alto = 0;
+    for (const p of this.piedras) alto = Math.max(alto, p.y + p.tam * 0.5);
+    // UNA CAJA Y NO DOCE, por lo mismo que el derrumbe viejo: doce cajas chicas
+    // dejan huecos por los que el que camina se cuela y queda trabado adentro
+    // de la piedra.
+    this.caja = new THREE.Box3(
+      new THREE.Vector3(x0, 0, z0), new THREE.Vector3(x1, Math.max(1, alto), z1));
+    this.donde = colisiones;
+    colisiones.push(this.caja);
+  }
+
+  _pintar () {
+    if (!this.malla) return;
+    for (let i = 0; i < this.piedras.length; i++) {
+      const p = this.piedras[i];
+      this._e.set(p.ax, p.ay, p.az);
+      this._q.setFromEuler(this._e);
+      this._m.compose(this._v.set(p.x, p.y, p.z), this._q, this._uno.set(p.tam, p.tam, p.tam));
+      this.malla.setMatrixAt(i, this._m);
+    }
+    this.malla.instanceMatrix.needsUpdate = true;
+  }
+}
+
+// ===========================================================================
 // LA MISIÓN DEL PASO
 // ===========================================================================
 //
@@ -947,7 +1157,11 @@ export class Mision {
     this.orden = '';
     if (fuegos.fogata) fuegos.fogata.visible = false;
     if (fuegos.casucha) fuegos.casucha.visible = true;
+    if (alud) alud.reiniciar();
   }
+
+  // el desprendimiento, para el que quiera mirarlo desde afuera
+  get alud () { return alud; }
 
   // Los pone el despliegue, ya soltados al campo.
   poner ({ patrulla, guardia, canon }) {
@@ -966,8 +1180,11 @@ export class Mision {
   }
 
   actualizar (dt, ctx) {
-    const { jugador, sigilo, hud, sonido } = ctx;
+    const { jugador, sigilo, hud, sonido, colisiones } = ctx;
     this._avivar(dt);
+    // LA MONTAÑA NO ESPERA A NADIE: el desprendimiento corre en cualquier fase,
+    // incluso con el nivel ya ganado, porque no es parte de la pelea.
+    if (alud) alud.actualizar(dt, { jugador, sonido, hud, colisiones });
     if (this.fase === 'hecho') return;
 
     // la patrulla espera quieta, pero no es sorda: dada la alarma ya no hay
@@ -1227,6 +1444,10 @@ export function construirAndes (escena, colisiones) {
   fuegos.fogata.visible = false;
   lugar.add(fuegos.casucha);
   lugar.add(fuegos.fogata);
+
+  // Y LA LADERA QUE SE VIENE ABAJO, armada acá y quieta hasta que pases.
+  alud = new Alud();
+  alud.armar(lugar);
 
   escena.add(lugar);
   return lugar;

@@ -50,6 +50,12 @@ export const DANO_BALA = 26;
 export const DANO_BAYONETA = 14;
 export const DANO_METRALLA = 58;      // ya no te mata de un tarro si estás sano
 export const CAIDA = 12;              // lo que cuesta pegar contra el suelo
+// LA PIEDRA DEL DERRUMBE. Menos que un balazo y más que la caída: un peñón que
+// te pasa por encima no te mata de una —si no, el desprendimiento sería una
+// pantalla de muerte y no una cosa que hay que esquivar— pero dos te dejan sin
+// nada. Está acá y no en andes.js porque es daño contra el jugador, que es
+// exactamente lo que este archivo manda; que sea de un capítulo no lo cambia.
+export const PIEDRA_ALUD = 22;
 export const BAYONETA_PARADA = 0.18;  // el acero no entra, pero el envión sí
 
 // LA BALA QUE VIENE DE LEJOS NO ENTRA IGUAL. Una bala de plomo blando pierde

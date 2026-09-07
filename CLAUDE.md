@@ -104,8 +104,22 @@ en delatarte contra 2,4 s parado.
   mecánica: es el tiempo de un tiro. No hay pantalla de derrota a propósito: que
   prendan la fogata no te mata, te despierta un cañón encima.
 
-Falta: las mulas, la moral de la altura y el derrumbe que caiga de verdad
-—hoy `derrumbe()` son veintiséis piedras quietas puestas al armar el nivel—.
+- el **desprendimiento**, `class Alud` en `andes.js`: doce piedras que se vienen
+  abajo de la ladera al pasar, en UNA malla instanciada —una llamada de dibujo,
+  y lo que se escribe por cuadro son doce matrices—. Física de juguete
+  —gravedad, un rebote y rodada con rozamiento— y alcanza: caen, pegan, te
+  llevan media vida si te quedás debajo y quedan ahí. **Y cuando paran, tapan**:
+  dejan una caja baja en las colisiones, así que el derrumbe te deja cobertura
+  nueva y el sigilo se entera solo, porque `tapado()` mira esas mismas cajas.
+  El montón se acota al bulto del medio de las piedras: con la caja envolviendo
+  hasta la última suelta tapaba medio paso y se pasaba de esquivar un derrumbe
+  a no poder pasar.
+- el `derrumbe()` VIEJO, en z = −40, sigue donde estaba y sigue siendo
+  escenario: son veintiséis piedras quietas horneadas con el paso. Es un
+  desprendimiento de antes, no el del guion. Son dos cosas distintas y tienen
+  nombres distintos a propósito.
+
+Falta: las mulas, la moral de la altura y el Combate de Achupallas.
 El capítulo 1 no se entera de nada de esto porque lee la pinta `granadero`, que
 quedó palabra por palabra igual.
 
