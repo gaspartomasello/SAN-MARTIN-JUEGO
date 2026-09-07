@@ -60,7 +60,21 @@ export class Horno {
   cocinar (material) {
     const pos = [], nor = [], col = [];
     for (const p of this.piezas) {
-      const g = p.g.index ? p.g.toNonIndexed() : p.g;
+      // SIEMPRE UNA COPIA, y esto no es prolijidad: `applyMatrix4` MUTA la
+      // geometría y abajo se la tira con `dispose()`.
+      //
+      // Con las indexadas —caja, cilindro, cono, esfera, toro— `toNonIndexed()`
+      // ya devolvía una copia, así que nadie se enteró en dos años. Pero las
+      // POLIÉDRICAS de three vienen sin índice, y ahí `g` era la geometría del
+      // que llamó: la primera pieza se la transformaba y se la disponía, y la
+      // segunda le aplicaba SU matriz encima de la ya transformada. Medido con
+      // tres piedras iguales a 0, 20 y 40 metros: la malla salía de −0,9 a
+      // 60,9 en vez de −1 a 41.
+      //
+      // Se vio recién con los peñones del paso, que son dodecaedros y comparten
+      // una sola geometría: de doce piedras, once estaban en cualquier lado, y
+      // el derrumbe de veintiséis no aparecía en pantalla.
+      const g = p.g.index ? p.g.toNonIndexed() : p.g.clone();
       g.applyMatrix4(p.m);
       const ap = g.attributes.position, an = g.attributes.normal;
       for (let i = 0; i < ap.count; i++) {

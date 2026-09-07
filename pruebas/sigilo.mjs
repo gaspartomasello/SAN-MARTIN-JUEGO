@@ -55,9 +55,16 @@ await pag.waitForTimeout(2600);
 // DE MÁS ATRÁS, a cuarenta y tres metros, y la prueba anotaba que la piedra no
 // tapaba. Para comparar postura contra postura hay que dejar una sola variable
 // suelta, y la de la garganta es la que se encuentra primero.
-const plantar = async (x, z, postura, moviendo, tope = 40) => {
+//
+// Y LA POSICIÓN SE MIDE DESDE EL CENTINELA, no en coordenadas escritas a mano.
+// Esta prueba se rompió entera el día que el valle dejó de ser recto: los
+// puntos estaban clavados —el jugador en x = 4,5— y con el eje corrido veinte
+// metros el hombre quedaba adentro de la pared, fuera del cono, y todo daba
+// «no te ven». Ahora se le pide al juego dónde está el centinela y para dónde
+// mira, y el jugador se planta a tantos metros DELANTE de él.
+const plantar = async (metros, desvio, postura, moviendo, tope = 40) => {
   if (moviendo) await pag.keyboard.down('KeyW');
-  const r = await ev(({ x, z, postura, tope }) => {
+  const r = await ev(({ metros, desvio, postura, tope }) => {
     const j = window.juego, p = j.jugador;
     const uno = j.campo.guardia[0];
     // Y AL CENTINELA SE LO VUELVE A SU PUESTO. Sin esto la prueba se mentía
@@ -87,7 +94,11 @@ const plantar = async (x, z, postura, moviendo, tope = 40) => {
     j.sigilo.reiniciar();
     j.sigilo.poner([uno]);
     p.postura = postura;
-    p.yaw = Math.PI;                     // mirándolos, que es lo peor que podés hacer
+    // delante del centinela, sobre la línea a la que da la cara
+    const fx = -Math.sin(uno.frente), fz = -Math.cos(uno.frente);
+    const x = uno.pos.x + fx * metros - fz * desvio;
+    const z = uno.pos.z + fz * metros + fx * desvio;
+    p.yaw = uno.frente + Math.PI;         // mirándolo, que es lo peor que podés hacer
     p.pos.set(x, p.cfgPostura.altura, z);
     let t = 0;
     const dt = 1 / 30;
@@ -99,8 +110,9 @@ const plantar = async (x, z, postura, moviendo, tope = 40) => {
       t += dt;
     }
     return { segundos: +t.toFixed(1), alarma: j.sigilo.alarma,
-      sospecha: +j.sigilo.sospecha.toFixed(2) };
-  }, { x, z, postura, tope });
+      sospecha: +j.sigilo.sospecha.toFixed(2),
+      donde: [+x.toFixed(1), +z.toFixed(1)] };
+  }, { metros, desvio, postura, tope });
   if (moviendo) await pag.keyboard.up('KeyW');
   return r;
 };
@@ -126,7 +138,11 @@ dilo('y ninguno elige blanco hasta que lo despierten',
 
 // EL CENTINELA DE LA GARGANTA está en (4,5 · −66) mirando valle abajo. Todo lo
 // que sigue se mide contra él.
-const dePie = await plantar(4.5, -44, 'pie', true);
+// AL DESCUBIERTO, nueve metros al costado de la línea: justo delante del
+// centinela hay una piedra —puesta a propósito, para que el primero al que hay
+// que esquivar se pueda esquivar— y midiendo ahí la escalera de posturas se
+// estaría midiendo la sombra de la piedra en vez de la postura.
+const dePie = await plantar(22, 9, 'pie', true);
 dilo('de pie y a la vista te ven en segundos', dePie.alarma && dePie.segundos < 8,
   `${dePie.segundos} s`);
 
@@ -135,26 +151,45 @@ dilo('de pie y a la vista te ven en segundos', dePie.alarma && dePie.segundos < 
 // tarda, y eso es lo correcto— sino que cada escalón compre tiempo, que es la
 // decisión que el que juega toma. De pie y moviéndose es el piso; agachado y
 // quieto tiene que costar el doble; cuerpo a tierra, mucho más.
-const agachado = await plantar(4.5, -44, 'agachado', false, 60);
-const tierra = await plantar(4.5, -44, 'tierra', false, 60);
+const agachado = await plantar(22, 9, 'agachado', false, 60);
+const tierra = await plantar(22, 9, 'tierra', false, 60);
 dilo('agachado y quieto compra tiempo', agachado.segundos > dePie.segundos * 2,
   `${agachado.segundos} s contra ${dePie.segundos} s de pie`);
 dilo('y cuerpo a tierra, mucho más', tierra.segundos > agachado.segundos * 1.5,
   `${tierra.segundos} s contra ${agachado.segundos} s agachado`);
 
-// LA PIEDRA TAPA. El peñón de (−4 · −52) queda entre el centinela y un hombre
-// parado en la línea que los une: la prueba compara el MISMO hombre, a la misma
-// distancia, adentro y afuera de la sombra de la piedra.
-// LA PIEDRA TAPA. El peñón de (−4 · −52) queda entre el centinela de la
-// garganta y un hombre parado en la línea que los une. Se compara al MISMO
-// hombre, de pie, moviéndose y a la misma distancia: uno adentro de la sombra
-// de la piedra y otro afuera. Es lo que hace que agacharse atrás de algo sea
-// una decisión y no una pose.
-const atras = await plantar(-7.9, -45.6, 'pie', true, 18);
-const alLado = await plantar(16.9, -45.6, 'pie', true, 18);
+// LA PIEDRA TAPA. Se compara al MISMO hombre, de pie, moviéndose y a la misma
+// distancia: uno adentro de la sombra de una piedra y otro afuera.
+//
+// Y LA PIEDRA SE BUSCA, no se escribe. Antes estaba anotada a mano —«el peñón
+// de (−4 · −52)»— y el día que el valle dobló ese peñón se mudó y la prueba
+// pasó a medir dos veces el descubierto. Ahora se le pregunta al mundo cuál de
+// las cajas bajas está delante del centinela, y el hombre se planta justo
+// detrás. Si no hubiera ninguna, la prueba lo dice en vez de aprobar sola.
+const sombra = await ev(() => {
+  const j = window.juego;
+  const uno = j.campo.guardia[0], q = window.__puesto;
+  uno.pos.set(q[0], 0, q[1]); uno.malla.position.set(q[0], 0, q[1]);
+  uno.frente = q[2];
+  const fx = -Math.sin(q[2]), fz = -Math.cos(q[2]);
+  let mejor = null;
+  for (const c of j.mundo.colisiones) {
+    if (c.max.y > 4) continue;
+    const cx = (c.min.x + c.max.x) / 2 - q[0], cz = (c.min.z + c.max.z) / 2 - q[1];
+    const alo = cx * fx + cz * fz;                  // cuánto adelante
+    const aLado = Math.abs(cx * -fz + cz * fx);     // cuánto de costado
+    if (alo < 7 || alo > 22 || aLado > 2.6) continue;
+    if (!mejor || alo < mejor.alo) mejor = { alo, aLado: cx * -fz + cz * fx };
+  }
+  return mejor;
+});
+dilo('hay una piedra delante del centinela para probar la sombra', !!sombra,
+  sombra ? `a ${sombra.alo.toFixed(1)} m` : 'no se encontró ninguna caja baja en la línea');
+const atras = sombra ? await plantar(sombra.alo * 1.55, sombra.aLado, 'pie', true, 18) : null;
+const alLado = sombra ? await plantar(sombra.alo * 1.55, sombra.aLado + 9, 'pie', true, 18) : null;
 dilo('atrás de un peñón no te ven, aunque estés parado y a la vista',
-  !atras.alarma && alLado.alarma,
-  `${atras.alarma ? atras.segundos + ' s' : 'no te vieron en 18 s'} contra ${alLado.segundos} s al descubierto, a la misma distancia`);
+  !!atras && !atras.alarma && !!alLado && alLado.alarma,
+  atras ? `${atras.alarma ? atras.segundos + ' s' : 'no te vieron en 18 s'} contra ${alLado.segundos} s al descubierto, a la misma distancia` : '');
 
 // TU PROPIA GENTE TE DELATA, que es lo que convierte esto en una misión y no
 // en un juego de esconderse: podés estar vos perfecto y perderla igual porque
@@ -167,16 +202,23 @@ const teDelatan = await ev(() => {
   uno.objetivo = null; uno.frente = q[2]; uno.malla.rotation.y = q[2];
   j.sigilo.reiniciar(); j.sigilo.poner([uno]);
   p.postura = 'pie';
-  p.pos.set(0, 1.68, 80);                      // vos, lejísimos y fuera de vista
+  p.pos.set(j.paso.eje(80), 1.68, 80);         // vos, lejísimos y fuera de vista
   const mios = j.soldados.filter(g => !g.esRealista);
-  for (const g of mios) { g.objetivo = null; g.pos.set(g.pos.x, 0, 40); g.malla.position.set(g.pos.x, 0, 40); }
+  for (const g of mios) { g.objetivo = null; g.pos.set(j.paso.eje(40), 0, 40); g.malla.position.set(j.paso.eje(40), 0, 40); }
+  // el granadero, veintidós metros delante del centinela, como el jugador de arriba
+  const fx = -Math.sin(q[2]), fz = -Math.cos(q[2]);
+  // veintidós metros adelante y NUEVE DE COSTADO: en la línea derecha del
+  // centinela hay una piedra —la que tiene el paso para que haya con qué
+  // taparse— y el hombre quedaba escondido atrás. Se estaría midiendo la
+  // piedra, no al hombre.
+  const gx = q[0] + fx * 22 - fz * 9, gz = q[1] + fz * 22 + fx * 9;
   const uno2 = mios[0];
-  uno2.pos.set(4.5, 0, -44); uno2.malla.position.set(4.5, 0, -44);
+  uno2.pos.set(gx, 0, gz); uno2.malla.position.set(gx, 0, gz);
   let t = 0;
   while (!j.sigilo.alarma && t < 25) {
     j.simular(1 / 30);
-    p.pos.set(0, 1.68, 80);
-    uno2.pos.set(4.5, 0, -44); uno2.malla.position.set(4.5, 0, -44);
+    p.pos.set(j.paso.eje(80), 1.68, 80);
+    uno2.pos.set(gx, 0, gz); uno2.malla.position.set(gx, 0, gz);
     t += 1 / 30;
   }
   return { segundos: +t.toFixed(1), alarma: j.sigilo.alarma };
@@ -205,7 +247,9 @@ const tomado = await ev(() => {
   j.sigilo.reiniciar(); j.sigilo.poner(j.campo.guardia);
   for (const s of j.campo.guardia) s.vivo = false;   // la guardia, ya despachada
   p.postura = 'pie';
-  p.pos.set(-9, p.cfgPostura.altura, -114);
+  // al corral se le pregunta dónde está: se mudó cuando el valle dobló
+  const c = j.paso.corral;
+  p.pos.set(c.x, p.cfgPostura.altura, c.z + 6);
   for (let i = 0; i < 30; i++) j.simular(1 / 60);
   return { tomado: j.sigilo.tomado, alarma: j.sigilo.alarma };
 });
@@ -341,19 +385,25 @@ const esconderse = await ev(() => {
   const j = window.juego, p = j.jugador;
   const uno = j.campo.guardia[0], q = window.__puesto;
   const mio = j.campo.partida.find(s => s.vivo);
+  const fx = -Math.sin(q[2]), fz = -Math.cos(q[2]);
+  // veintidós metros adelante y NUEVE DE COSTADO: en la línea derecha del
+  // centinela hay una piedra —la que tiene el paso para que haya con qué
+  // taparse— y el hombre quedaba escondido atrás. Se estaría midiendo la
+  // piedra, no al hombre.
+  const gx = q[0] + fx * 22 - fz * 9, gz = q[1] + fz * 22 + fx * 9;
   const mide = (rodilla) => {
     uno.pos.set(q[0], 0, q[1]); uno.malla.position.set(q[0], 0, q[1]);
     uno.objetivo = null; uno.frente = q[2]; uno.malla.rotation.y = q[2];
     j.sigilo.reiniciar(); j.sigilo.poner([uno]);
-    p.pos.set(0, 1.68, 80);                      // vos, lejísimos
-    for (const g of j.campo.partida) { g.plaza = null; g.pos.set(g.pos.x, 0, 60); g.malla.position.set(g.pos.x, 0, 60); }
-    mio.pos.set(4.5, 0, -44); mio.malla.position.set(4.5, 0, -44);
+    p.pos.set(j.paso.eje(80), 1.68, 80);         // vos, lejísimos
+    for (const g of j.campo.partida) { g.plaza = null; g.pos.set(j.paso.eje(60), 0, 60); g.malla.position.set(j.paso.eje(60), 0, 60); }
+    mio.pos.set(gx, 0, gz); mio.malla.position.set(gx, 0, gz);
     mio.rodilla = rodilla; mio.fig.rodilla = rodilla;
     let t = 0;
     while (!j.sigilo.alarma && t < 30) {
       j.sigilo.actualizar(1 / 30, { jugador: p, quieto: true, postura: p.cfgPostura,
         soldados: [mio], colisiones: j.mundo.colisiones });
-      mio.pos.set(4.5, 0, -44); mio.malla.position.set(4.5, 0, -44);
+      mio.pos.set(gx, 0, gz); mio.malla.position.set(gx, 0, gz);
       mio.rodilla = rodilla;
       t += 1 / 30;
     }

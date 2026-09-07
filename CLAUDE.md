@@ -59,8 +59,15 @@ Todo lo que sirve igual en San Lorenzo, en el Cruce y en Chacabuco:
 El capítulo se elige en la portada y se entra. Lo que existe hoy:
 
 - el **paso**, en `andes.js`: el piso de nieve y las dos paredes en UNA malla,
-  el corral de pircas, los peñones, la cordillera del fondo, los límites del
-  mundo y el plano de dónde va la partida;
+  el corral de pircas, los peñones, el derrumbe, las pircas caídas, el arroyo
+  helado, la cordillera del fondo, los límites del mundo y el plano de dónde va
+  la partida. **El valle DOBLA**: `PLANTA` lleva el eje además del ancho, y
+  todo lo que se planta en el paso —la fila, la guardia, el corral, las
+  piedras— cuelga de `eje(z)` y no de una x escrita a mano. La primera versión
+  sólo tenía el ancho, o sea que era un pasillo recto de trescientos metros:
+  desde la boca se veía el fondo, el corral y la salida de un saque, no había
+  una sola esquina y el sigilo tenía una sola solución. **Si tocás la planta,
+  se mueve todo solo; si escribís una coordenada a mano, la rompés.**
 - el **vestuario**, en el núcleo a propósito: la pinta `granaderoAndes` de
   `figura.js` —poncho y pañuelo, con variación por hombre— y su silueta
   horneada en `lejania.js`;
@@ -301,6 +308,23 @@ están limpios; el balance no. Casos reales, ya medidos:
   dan quiebre a los 201 s con 92 granaderos en pie. La reunión les baja el ritmo
   de matar para que la moral llegue a tiempo; la otra los mantiene vivos.
 
+- **`Horno.cocinar` mutaba y DISPONÍA la geometría del que llamaba.** Vivió dos
+  años sin que se notara porque las geometrías indexadas —caja, cilindro, cono,
+  esfera, toro— pasaban por `toNonIndexed()`, que ya devuelve una copia. Las
+  POLIÉDRICAS de three vienen sin índice: ahí `g` era la geometría original, la
+  primera pieza se la transformaba y se la tiraba, y la segunda le aplicaba SU
+  matriz encima de la ya transformada. Medido con tres piedras iguales a 0, 20 y
+  40 metros: la malla salía de −0,9 a 60,9 en vez de −1 a 41. Se vio recién con
+  los peñones del paso, que comparten un dodecaedro: de doce piedras once
+  estaban en cualquier lado y el derrumbe de veintiséis no aparecía. Ahora
+  siempre se clona. **Si agregás una geometría compartida a un Horno, fijate si
+  tiene índice.**
+- **Una coordenada escrita a mano en una prueba es una bomba de tiempo.**
+  `sigilo.mjs` plantaba al jugador en x = 4,5 y al peñón en (−4 · −52). El día
+  que el valle dobló, el hombre quedó adentro de la pared y la piedra se mudó:
+  cinco pruebas en rojo y ninguna era un defecto del juego. Ahora la prueba le
+  PREGUNTA al mundo —dónde está el centinela, para dónde mira, qué caja baja
+  tiene en la línea— y se planta respecto de eso.
 - **Un banco de pruebas que no vuelve el mundo a cero mide la corrida
   anterior.** `sigilo.mjs` comparaba posturas una atrás de otra y daba que
   agacharse no servía y que la piedra no tapaba. Eran las dos cosas que arrastra

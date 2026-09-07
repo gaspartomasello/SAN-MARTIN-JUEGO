@@ -43,7 +43,7 @@ import { armarMoral } from './moral.js';
 import { armarPlano } from './plano.js';
 import { armarRed } from './red.js';
 import { Z_BARRANCA } from './sanlorenzo.js';
-import { Sigilo, Marcha } from './andes.js';
+import { Sigilo, Marcha, eje as ejeDelPaso, medio as medioDelPaso, Z_DERRUMBE, CORRAL } from './andes.js';
 import { VOLTEO, OFICIO, METRALLA_CABALLO, CAIDA } from './balance.js';
 
 // ---------------------------------------------------------------------------
@@ -822,6 +822,9 @@ window.juego = {
   jugador, sable, humo, fuego, soldados, caballos, escena, camara, camaraArma, render, mundo,
   lejania, pasadaVel, pinza, canones, acto, victoria, apertura, opciones, hud, simular,
   entrarCapitulo, sigilo, marcha,
+  // la planta del paso, para las pruebas y para el que quiera mirar dónde está
+  // el eje del valle sin tener que leerse andes.js
+  paso: { eje: ejeDelPaso, medio: medioDelPaso, zDerrumbe: Z_DERRUMBE, corral: CORRAL },
   get capitulo () { return mundo.capitulo; },
   formarCordillera: campo.formarCordillera,
   get armas () { return arsenal.armas; },

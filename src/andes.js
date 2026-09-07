@@ -40,14 +40,36 @@ const ROCA = 0x4b4a52;
 const ROCA_CLARA = 0x74727c;
 const PIEDRA_PIRCA = 0x6e6a63;
 const PIEDRA_PIRCA_OSC = 0x514e49;
+// el hielo del arroyo: más oscuro y más frío que la nieve, que si no se funde
+// con el piso y no se ve la línea
+const HIELO = 0x9fb4c8;
 
-// LA PLANTA DEL PASO. Media anchura del piso pisable, metro a metro de Z. El
-// que necesite plantar algo —la partida, el corral, mañana los centinelas—
-// pregunta acá y no inventa un número: si el paso se angosta, se angosta para
-// todos.
+// LA PLANTA DEL PASO, metro a metro de Z: dónde está el EJE del valle y cuánta
+// media anchura de piso hay a cada lado. El que necesite plantar algo —la
+// partida, el corral, la guardia, un peñón— pregunta acá y no inventa un
+// número: si el paso dobla o se angosta, dobla y se angosta para todos.
+//
+// EL EJE ES LO QUE ARREGLÓ ESTE NIVEL. La primera versión sólo tenía el ancho:
+// el valle se abría y se cerraba pero el eje estaba clavado en x = 0, o sea que
+// era un PASILLO RECTO de trescientos metros. Desde la boca se veía el fondo,
+// el corral y la salida de un saque; no había una sola esquina en todo el
+// capítulo, así que no había nada que descubrir ni motivo para moverse de
+// costado, y el sigilo tenía una sola solución: agacharse y caminar derecho.
+// Con tres codos, la mitad del nivel deja de verse desde la entrada y el corral
+// aparece recién cuando doblás.
 const PLANTA = [
-  [90, 40], [60, 34], [10, 26], [-40, 14],
-  [-62, 8], [-88, 16], [-118, 24], [-150, 15], [-190, 7], [-210, 5]
+  //  z   eje  medio
+  [  90,   0, 42],   // la boca del valle
+  [  55,   6, 34],
+  [  15,  24, 24],   // PRIMER CODO, a la derecha
+  [ -25,  30, 13],
+  [ -50,  16,  9],   // y vuelve, cerrándose
+  [ -70,  -6,  8],   // LA GARGANTA, en el medio del segundo codo
+  [ -95, -22, 15],
+  [-120, -26, 26],   // la hoyada del corral
+  [-150, -10, 14],
+  [-180,  14,  8],   // el último codo, ya sobre la salida
+  [-210,  20,  5]
 ];
 export const Z_BOCA = 90;
 export const Z_FONDO = -210;
@@ -55,20 +77,30 @@ export const ANCHO = 260;
 // Hasta dónde llega el mundo acá: unos metros por dentro de las puntas del
 // terreno, que del borde de la malla para afuera no hay nada dibujado.
 export const LIMITES = { x: 126, z0: -206, z1: 86 };
-// dónde está el corral, y dónde entra la tropa
-export const CORRAL = { x: -9, z: -118 };
-export const ENTRADA = { x: 0, z: 46 };
 
 const suave = t => t * t * (3 - 2 * t);
 
-export function medio (z) {
-  if (z >= PLANTA[0][0]) return PLANTA[0][1];
+// Los dos de la planta salen del mismo recorrido, así que van juntos: `cual`
+// es 1 para el eje y 2 para la media anchura.
+function planta (z, cual) {
+  if (z >= PLANTA[0][0]) return PLANTA[0][cual];
   for (let i = 0; i < PLANTA.length - 1; i++) {
-    const [z0, a0] = PLANTA[i], [z1, a1] = PLANTA[i + 1];
-    if (z <= z0 && z >= z1) return a0 + (a1 - a0) * suave((z0 - z) / (z0 - z1));
+    const a = PLANTA[i], b = PLANTA[i + 1];
+    if (z <= a[0] && z >= b[0]) {
+      return a[cual] + (b[cual] - a[cual]) * suave((a[0] - z) / (a[0] - b[0]));
+    }
   }
-  return PLANTA[PLANTA.length - 1][1];
+  return PLANTA[PLANTA.length - 1][cual];
 }
+
+export const eje = z => planta(z, 1);
+export function medio (z) { return planta(z, 2); }
+
+// EL CORRAL Y LA ENTRADA CUELGAN DEL EJE, no de un número escrito a mano. Con
+// el eje clavado en cero daba igual; ahora, si el valle dobla un poco más, el
+// corral se mueve con él en vez de quedar metido adentro de la pared.
+export const CORRAL = { x: eje(-120) - 4, z: -120 };
+export const ENTRADA = { x: eje(46), z: 46 };
 
 // El ruido, sin Math.random: la misma montaña en las dos máquinas de una
 // partida de a dos y entre una corrida de las pruebas y la siguiente.
@@ -90,13 +122,17 @@ const TOPE = 78;
 // Y MANDA EL RUIDO, no los senos. Con dos senos parejos el piso ondulaba como
 // agua; el viento no hace olas regulares, hace costras y bancos.
 function ondas (x, z) {
-  return ruido(x * 0.42, z * 0.36) * 0.10 +
-         ruido(x * 1.3, z * 0.9) * 0.035 +
-         Math.sin(x * 0.17 + z * 0.07) * 0.03;
+  const o = ruido(x * 0.42, z * 0.36) * 0.10 +
+            ruido(x * 1.3, z * 0.9) * 0.035 +
+            Math.sin(x * 0.17 + z * 0.07) * 0.03;
+  // y se planchan sobre el arroyo: el hielo apoya ahí y con las olas debajo le
+  // asomaba la nieve por entre medio
+  const d = Math.abs(x - eje(z));
+  return o * Math.min(1, Math.max(0, (d - 1.8) / 2.6));
 }
 
 function altura (x, z) {
-  const d = Math.abs(x) - medio(z);
+  const d = Math.abs(x - eje(z)) - medio(z);
   if (d <= 0) return ondas(x, z);           // el piso: plano, con el viento encima
   // El pie ARRANCA PARADO y después sigue la potencia: a un metro del borde ya
   // hay un metro y medio de piedra, que es lo que dice «acá no se pasa».
@@ -141,13 +177,14 @@ function terreno () {
   // y fila y eso no molesta: son triángulos, no una grilla.
   const punto = (i, k) => {
     const z = Z_BOCA + (Z_FONDO - Z_BOCA) * (i / FILAS);
-    const m = medio(z);
+    const m = medio(z), e = eje(z);
     const t = (k / COLS) * 2 - 1;
     const lado = t < 0 ? -1 : 1, a = Math.abs(t);
     const PISO = 0.38;
-    const x = a <= PISO
+    // y todo cuelga del EJE, que ahora se mueve: la rejilla dobla con el valle
+    const x = e + (a <= PISO
       ? t / PISO * m
-      : lado * (m + Math.pow((a - PISO) / (1 - PISO), 1.7) * (ANCHO / 2 - m));
+      : lado * (m + Math.pow((a - PISO) / (1 - PISO), 1.7) * (ANCHO / 2 - m)));
     return [x, altura(x, z), z];
   };
   const v = [], n = [], c = [], uv = [];
@@ -175,7 +212,7 @@ function terreno () {
       const mancha = 0.5 + ruido(w[0] * 0.07, w[2] * 0.06) * 0.9;
       _c.copy(bajo).lerp(alto, Math.min(1, mancha * 0.8 + w[1] / TOPE * 0.5));
       // y la del piso se ensucia por donde ya pasó la tropa
-      const pisada = Math.min(1, Math.abs(w[0]) / Math.max(4, medio(w[2])));
+      const pisada = Math.min(1, Math.abs(w[0] - eje(w[2])) / Math.max(4, medio(w[2])));
       _c.lerp(nieve.clone().lerp(sucia, 1 - pisada * 0.85), manto);
       c.push(_c.r, _c.g, _c.b);
     }
@@ -227,17 +264,30 @@ function nieveTextura () {
   return t;
 }
 
-// LO QUE FRENA. Una tira de cajas pegada al pie de cada pared, una cada ocho
-// metros de Z. Ocho y no dos: el paso se angosta despacio y en ocho metros la
-// media anchura se mueve menos de un metro, así que la caja miente menos que
-// lo que ocupa un hombre. Son 52 cajas contra las 54 de San Lorenzo, o sea que
-// el costo de chocar no se movió.
+// LO QUE FRENA. Una tira de cajas pegada al pie de cada pared, una cada CUATRO
+// metros de Z.
+//
+// Eran ocho, y con el eje clavado en cero alcanzaban: en ocho metros el ancho
+// se movía menos de un metro. Ahora el valle DOBLA, y en el codo el borde del
+// piso se corre cinco o seis metros en ese mismo tramo: con cajas de ocho, o
+// la pared te frenaba en el aire o te dejaba meterte adentro de la piedra.
+// Con dos y medio son 240 cajas —contra 54 en San Lorenzo— y el costo de chocar
+// sigue siendo nada: probar una caja son seis restas y en la cordillera hay
+// veinte hombres, no trescientos setenta. Y el largo del tramo ES la precisión
+// de la pared: con cuatro metros, en el codo la caja se plantaba metro y medio
+// por fuera del borde del piso y quedaba nieve pisable arriba de la roca.
+//
+// Y EL BORDE SE TOMA CONSERVADOR dentro de cada tramo: del lado izquierdo, el
+// punto más a la izquierda que alcanza el piso en esos cuatro metros; del
+// derecho, el más a la derecha. Así la caja nunca se come piso pisable, que es
+// el error que se ve —una pared invisible arriba de la nieve— contra el que no
+// se ve, que es poder arrimarse un palmo de más a la roca.
 function murallas (colisiones) {
-  const PASO = 8;
+  const PASO = 2.5;
   for (let z = Z_BOCA; z > Z_FONDO; z -= PASO) {
-    const a = Math.min(medio(z), medio(z - PASO));
-    for (const s of [-1, 1]) {
-      const x0 = s * a, x1 = s * (ANCHO / 2);
+    const izq = Math.min(eje(z) - medio(z), eje(z - PASO) - medio(z - PASO));
+    const der = Math.max(eje(z) + medio(z), eje(z - PASO) + medio(z - PASO));
+    for (const [x0, x1] of [[-ANCHO / 2, izq], [der, ANCHO / 2]]) {
       colisiones.push(new THREE.Box3(
         new THREE.Vector3(Math.min(x0, x1), 0, z - PASO),
         new THREE.Vector3(Math.max(x0, x1), TOPE, z)));
@@ -304,29 +354,164 @@ function pircas (horno, colisiones) {
 //
 // Piedra desprendida de la pared, en el piso. Es cobertura —lo único que hay
 // en todo el paso— y es lo que le saca al desfiladero la cara de pasillo.
-function penones (horno, colisiones) {
-  const donde = [
-    [-11, 24], [13, 6], [-6, -18], [9, -34], [-4, -52],
-    [5, -74], [-12, -92], [16, -110], [-19, -126], [7, -140],
-    [-8, -158], [4, -176]
-  ];
-  // UN DODECAEDRO Y NO CAJAS. La primera versión eran dos prismas cruzados con
-  // una tapa de nieve encima y de lejos parecían cajones de munición: una
-  // piedra no tiene aristas verticales. Doce caras irregulares escaladas a lo
-  // bruto dan un peñón de una sola pieza y con la mitad de triángulos.
-  const roca = new THREE.DodecahedronGeometry(1, 0);
-  donde.forEach(([x, z], i) => {
-    const r = ruido(i * 2.3, 7.1), r2 = ruido(i * 5.1, 2.7);
-    const an = 1.5 + r * 0.9, al = 1.2 + r2 * 0.7, la = 1.4 + r2 * 0.8;
-    horno.pieza(roca, [x, al * 0.78, z], [r2 * 0.5, r * 3, r * 0.4], [an, al, la], ROCA_CLARA);
-    // la nieve que se le junta arriba: la misma piedra, aplastada y corrida
-    horno.pieza(roca, [x + r * 0.16, al * 1.16, z - r2 * 0.14],
-      [r2 * 0.5, r * 3, r * 0.4], [an * 0.82, al * 0.30, la * 0.82], NIEVE);
+// UNA PIEDRA, con su gorro de nieve. Un dodecaedro y no cajas: la primera
+// versión eran dos prismas cruzados con una tapa encima y de lejos parecían
+// cajones de munición. Una piedra no tiene aristas verticales.
+const ROCA_GEO = new THREE.DodecahedronGeometry(1, 0);
+function penon (horno, colisiones, x, z, tam, semilla) {
+  const r = ruido(semilla * 2.3, 7.1), r2 = ruido(semilla * 5.1, 2.7);
+  const an = (1.5 + r * 0.9) * tam, al = (1.2 + r2 * 0.7) * tam, la = (1.4 + r2 * 0.8) * tam;
+  horno.pieza(ROCA_GEO, [x, al * 0.78, z], [r2 * 0.5, r * 3, r * 0.4], [an, al, la], ROCA_CLARA);
+  // la nieve que se le junta arriba: la misma piedra, aplastada y corrida
+  horno.pieza(ROCA_GEO, [x + r * 0.16 * tam, al * 1.16, z - r2 * 0.14 * tam],
+    [r2 * 0.5, r * 3, r * 0.4], [an * 0.82, al * 0.30, la * 0.82], NIEVE);
+  if (colisiones) {
     colisiones.push(new THREE.Box3(
       new THREE.Vector3(x - an * 0.8, 0, z - la * 0.8),
       new THREE.Vector3(x + an * 0.8, al * 1.5, z + la * 0.8)));
-  });
+  }
 }
+
+// LOS PEÑONES, EN GRUPOS Y COLGADOS DEL EJE.
+//
+// Eran doce piedras sueltas repartidas parejo por trescientos metros, y con
+// eso el piso seguía siendo una alfombra: una piedra sola en el medio de la
+// nada no es cobertura, es un adorno del que se sale de un paso. La piedra que
+// baja de una pared cae AMONTONADA, y un montón sí es cobertura: te podés
+// quedar atrás, elegir de qué lado salir, y esperar a que el centinela mire
+// para el otro lado.
+//
+// Y van por DESVÍO del eje, no por x absoluta. Con el valle derecho daba
+// igual; ahora, escritas a mano, la mitad terminaba adentro de la roca y la
+// otra mitad en el medio del camino.
+function penones (horno, colisiones) {
+  //  desvío del eje, z, cuántas piedras, tamaño
+  const grupos = [
+    [  7,  62, 3, 1.0], [-10,  34, 2, 1.2], [ 12,  10, 4, 0.9],
+    [-14, -14, 3, 1.1], [  8, -34, 2, 1.3],
+    // ÉSTE ES A PROPÓSITO Y NO DECORACIÓN: cae justo delante del centinela de
+    // la garganta, que es el primero que te encontrás. Sin él, el primer
+    // hombre al que hay que esquivar en todo el capítulo no tenía UNA piedra
+    // en su línea de vista: la única jugada posible era tirarse al piso y
+    // esperar. Con esto, lo primero que te enseña el paso es a usar la roca.
+    [  2, -58, 3, 1.1],
+    [ -7, -76, 4, 1.0],
+    [ 11, -100, 3, 1.2], [-16, -134, 3, 1.0], [ 10, -162, 2, 1.1],
+    [ -9, -186, 3, 0.9]
+  ];
+  let n = 0;
+  for (const [desvio, z, cuantas, tam] of grupos) {
+    const cx = eje(z) + desvio;
+    for (let k = 0; k < cuantas; k++) {
+      n++;
+      const a = ruido(n * 1.7, 3.3), b = ruido(n * 4.1, 9.7);
+      penon(horno, colisiones, cx + a * 5.2, z + b * 5.2,
+        tam * (0.7 + Math.abs(a) * 0.9), n);
+    }
+  }
+}
+
+// ------------------------------------------------------------ el derrumbe
+//
+// LA PARED SE VINO ABAJO Y TAPÓ MEDIO PASO. Es el único obstáculo del nivel
+// que obliga a DECIDIR: el camino sigue, pero por el lado que el derrumbe
+// dejó libre, y ese lado es el que mira el centinela de la garganta. Sin algo
+// así, el paso se cruza caminando derecho de punta a punta.
+//
+// Baja de la pared izquierda y come el 60% del piso; queda un portillo contra
+// la pared derecha por el que se pasa de a uno.
+export const Z_DERRUMBE = -40;
+function derrumbe (horno, colisiones) {
+  const z = Z_DERRUMBE, e = eje(z), m = medio(z);
+  const desde = e - m;                     // el pie de la pared izquierda
+  const hasta = e + m * 0.22;              // hasta dónde llega la lengua
+  let n = 500;
+  for (let i = 0; i < 26; i++) {
+    n++;
+    const t = i / 25;
+    const a = ruido(n * 2.9, 1.3), b = ruido(n * 6.7, 5.1);
+    // más grande y más alto contra la pared, y se va deshaciendo hacia el medio
+    const tam = (2.4 - t * 1.5) * (0.8 + Math.abs(b) * 0.5);
+    penon(horno, null, desde + (hasta - desde) * t + a * 3.4, z + b * 7.0, tam, n);
+  }
+  // la colisión es UNA caja y no veintiséis: lo que importa es que no se pase
+  // por arriba del montón, y veintiséis cajas chicas dejan huecos por los que
+  // el que camina se cuela y queda trabado adentro de la piedra.
+  colisiones.push(new THREE.Box3(
+    new THREE.Vector3(desde - 4, 0, z - 4.6),
+    new THREE.Vector3(hasta, 3.2, z + 4.6)));
+}
+
+// ------------------------------------------------------- las pircas caídas
+//
+// Restos de corrales viejos: por acá pasa gente desde antes que nosotros. Son
+// cobertura baja —te tapan agachado, no parado— y eso las hace distintas del
+// peñón, que tapa siempre. Dos tramos, uno a cada lado del camino.
+function pircasCaidas (horno, colisiones) {
+  const tramos = [[10, 22, 9, 0.35], [-12, -92, 11, -0.28]];
+  let n = 900;
+  for (const [desvio, z, largo, giro] of tramos) {
+    const cx = eje(z) + desvio;
+    const co = Math.cos(giro), si = Math.sin(giro);
+    for (let t = -largo / 2; t < largo / 2; t += 0.58) {
+      n++;
+      const a = ruido(n * 1.9, 2.7);
+      // se va cayendo hacia las puntas: en el medio quedan dos hiladas, en las
+      // puntas una sola y desparramada
+      const entero = 1 - Math.abs(t) / (largo / 2);
+      const hiladas = entero > 0.45 ? 2 : 1;
+      for (let h = 0; h < hiladas; h++) {
+        horno.caja(cx + t * co + a * 0.5 * si, 0.2 + h * 0.36, z + t * si - a * 0.5 * co,
+          0.5 + a * 0.2, 0.34 + a * 0.08, 0.44 + a * 0.16,
+          a > 0 ? PIEDRA_PIRCA : PIEDRA_PIRCA_OSC, a * 0.7);
+      }
+    }
+    const ex = Math.abs(largo / 2 * co) + 0.5, ez = Math.abs(largo / 2 * si) + 0.5;
+    colisiones.push(new THREE.Box3(
+      new THREE.Vector3(cx - ex, 0, z - ez),
+      new THREE.Vector3(cx + ex, 0.75, z + ez)));
+  }
+}
+
+// ------------------------------------------------------------ el arroyo
+//
+// EL AGUA HELADA DEL FONDO DEL VALLE. No es adorno: es la línea que te dice
+// dónde está el eje cuando el paso dobla y no ves el final. Un desfiladero sin
+// nada en el piso no tiene dirección; con el arroyo, siempre sabés para dónde
+// sigue.
+//
+// VA A NIVEL DEL PISO, no en una cañada hundida: acá se camina sobre y = 0 y
+// una cañada de verdad dejaría a la tropa flotando arriba del agua. Lo que sí
+// se hace es APLANAR los sastrugi por donde pasa —el hielo no tiene olas de
+// viento— así que el hielo apoya sobre un piso liso y no le asoma la nieve por
+// abajo.
+const ARROYO_ANCHO = 3.4;
+function arroyo (escena) {
+  const v = [], uv = [];
+  const PASOS = 90;
+  for (let i = 0; i < PASOS; i++) {
+    const z0 = 70 + (Z_FONDO + 8 - 70) * (i / PASOS);
+    const z1 = 70 + (Z_FONDO + 8 - 70) * ((i + 1) / PASOS);
+    const a0 = eje(z0), a1 = eje(z1);
+    const w = ARROYO_ANCHO / 2;
+    const p = [[a0 - w, z0], [a0 + w, z0], [a1 + w, z1], [a1 - w, z1]];
+    for (const idx of [0, 1, 2, 0, 2, 3]) {
+      v.push(p[idx][0], 0.055, p[idx][1]);
+      uv.push(p[idx][0] / 7, p[idx][1] / 7);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    color: HIELO, roughness: 0.24, metalness: 0.12
+  }));
+  m.receiveShadow = true;
+  return m;
+}
+
 
 // ------------------------------------------------------------ la cordillera
 //
@@ -373,7 +558,9 @@ export function columnaDelPaso (n = 14) {
     const r = ruido(k * 1.9, 4.3);
     const ancho = Math.min(2.6, medio(z) * 0.28);
     puestos.push({
-      x: ENTRADA.x + Math.sin(z * 0.09) * ancho + r * 0.9,
+      // sobre el EJE del valle, que ahora dobla: sin esto la fila arrancaba
+      // recta mientras el paso se iba para un costado
+      x: eje(z) + Math.sin(z * 0.09) * ancho + r * 0.9,
       z,
       rumbo: 0                       // todos mirando al paso, o sea a −Z
     });
@@ -410,13 +597,18 @@ const ALARMA = 1;            // acá te vieron
 // funciona y la segunda es la que hay que pensar.
 export function guardiaDelCorral () {
   const { x: CX, z: CZ } = CORRAL;
+  // Las dos avanzadas cuelgan del eje —si el valle dobla, se mueven con él— y
+  // MIRAN POR EL EJE y no a −Z a secas: un centinela plantado en un codo
+  // mirando a la nada es un poste. `rumbo` es hacia dónde da la cara, y en este
+  // modelo el frente es −Z, así que se le suma lo que el valle se tuerce.
+  const mirando = z => Math.PI + Math.atan2(eje(z + 14) - eje(z - 14), 28);
   return [
-    { x: 4.5, z: -66, rumbo: Math.PI },        // la avanzada de la garganta
-    { x: -3.0, z: -88, rumbo: Math.PI },       // la segunda, en la hoyada
-    { x: CX - 5.5, z: CZ + 7.5, rumbo: Math.PI },
-    { x: CX + 4.0, z: CZ + 7.0, rumbo: Math.PI + 0.35 },
-    { x: CX - 9.5, z: CZ - 1.0, rumbo: Math.PI - 0.9 },
-    { x: CX + 6.5, z: CZ - 2.0, rumbo: Math.PI + 0.9 }
+    { x: eje(-66) + 4.5, z: -66, rumbo: mirando(-66) },   // la avanzada de la garganta
+    { x: eje(-88) - 3.0, z: -88, rumbo: mirando(-88) },   // la segunda, en la hoyada
+    { x: CX - 5.5, z: CZ + 7.5, rumbo: mirando(CZ + 7.5) },
+    { x: CX + 4.0, z: CZ + 7.0, rumbo: mirando(CZ + 7) + 0.35 },
+    { x: CX - 9.5, z: CZ - 1.0, rumbo: mirando(CZ) - 0.9 },
+    { x: CX + 6.5, z: CZ - 2.0, rumbo: mirando(CZ) + 0.9 }
   ];
 }
 
@@ -699,12 +891,20 @@ export class Marcha {
 export function construirAndes (escena, colisiones) {
   const lugar = new THREE.Group();
   lugar.name = 'andes';
-  lugar.add(terreno());
+  const piso = terreno(); piso.name = 'paso-terreno';
+  lugar.add(piso);
+  const hielo = arroyo(); hielo.name = 'paso-arroyo';
+  lugar.add(hielo);
   const horno = new Horno();
   pircas(horno, colisiones);
   penones(horno, colisiones);
+  derrumbe(horno, colisiones);
+  pircasCaidas(horno, colisiones);
   cordillera(horno);
-  lugar.add(horno.cocinar(MAT()));
+  const piedras = horno.cocinar(MAT());
+  // con nombre para que las pruebas puedan preguntarle dónde quedó cada cosa
+  piedras.name = 'paso-piedras';
+  lugar.add(piedras);
   murallas(colisiones);
   escena.add(lugar);
   return lugar;

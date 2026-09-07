@@ -30497,7 +30497,7 @@ var Horno = class {
   cocinar(material) {
     const pos = [], nor = [], col = [];
     for (const p of this.piezas) {
-      const g = p.g.index ? p.g.toNonIndexed() : p.g;
+      const g = p.g.index ? p.g.toNonIndexed() : p.g.clone();
       g.applyMatrix4(p.m);
       const ap = g.attributes.position, an = g.attributes.normal;
       for (let i = 0; i < ap.count; i++) {
@@ -30767,43 +30767,60 @@ var ROCA = 4934226;
 var ROCA_CLARA = 7631484;
 var PIEDRA_PIRCA = 7236195;
 var PIEDRA_PIRCA_OSC = 5328457;
+var HIELO = 10466504;
 var PLANTA = [
-  [90, 40],
-  [60, 34],
-  [10, 26],
-  [-40, 14],
-  [-62, 8],
-  [-88, 16],
-  [-118, 24],
-  [-150, 15],
-  [-190, 7],
-  [-210, 5]
+  //  z   eje  medio
+  [90, 0, 42],
+  // la boca del valle
+  [55, 6, 34],
+  [15, 24, 24],
+  // PRIMER CODO, a la derecha
+  [-25, 30, 13],
+  [-50, 16, 9],
+  // y vuelve, cerrándose
+  [-70, -6, 8],
+  // LA GARGANTA, en el medio del segundo codo
+  [-95, -22, 15],
+  [-120, -26, 26],
+  // la hoyada del corral
+  [-150, -10, 14],
+  [-180, 14, 8],
+  // el último codo, ya sobre la salida
+  [-210, 20, 5]
 ];
 var Z_BOCA = 90;
 var Z_FONDO = -210;
 var ANCHO = 260;
 var LIMITES2 = { x: 126, z0: -206, z1: 86 };
-var CORRAL = { x: -9, z: -118 };
-var ENTRADA = { x: 0, z: 46 };
 var suave = (t) => t * t * (3 - 2 * t);
-function medio(z) {
-  if (z >= PLANTA[0][0]) return PLANTA[0][1];
+function planta(z, cual) {
+  if (z >= PLANTA[0][0]) return PLANTA[0][cual];
   for (let i = 0; i < PLANTA.length - 1; i++) {
-    const [z0, a0] = PLANTA[i], [z1, a1] = PLANTA[i + 1];
-    if (z <= z0 && z >= z1) return a0 + (a1 - a0) * suave((z0 - z) / (z0 - z1));
+    const a = PLANTA[i], b = PLANTA[i + 1];
+    if (z <= a[0] && z >= b[0]) {
+      return a[cual] + (b[cual] - a[cual]) * suave((a[0] - z) / (a[0] - b[0]));
+    }
   }
-  return PLANTA[PLANTA.length - 1][1];
+  return PLANTA[PLANTA.length - 1][cual];
 }
+var eje = (z) => planta(z, 1);
+function medio(z) {
+  return planta(z, 2);
+}
+var CORRAL = { x: eje(-120) - 4, z: -120 };
+var ENTRADA = { x: eje(46), z: 46 };
 var ruido = (a, b) => {
   const s = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
   return s - Math.floor(s) - 0.5;
 };
 var TOPE = 78;
 function ondas(x, z) {
-  return ruido(x * 0.42, z * 0.36) * 0.1 + ruido(x * 1.3, z * 0.9) * 0.035 + Math.sin(x * 0.17 + z * 0.07) * 0.03;
+  const o = ruido(x * 0.42, z * 0.36) * 0.1 + ruido(x * 1.3, z * 0.9) * 0.035 + Math.sin(x * 0.17 + z * 0.07) * 0.03;
+  const d = Math.abs(x - eje(z));
+  return o * Math.min(1, Math.max(0, (d - 1.8) / 2.6));
 }
 function altura(x, z) {
-  const d = Math.abs(x) - medio(z);
+  const d = Math.abs(x - eje(z)) - medio(z);
   if (d <= 0) return ondas(x, z);
   const base = Math.min(TOPE, Math.pow(d, 1.22) * 0.62 + Math.min(d, 2.5) * 1.5);
   const cerca = Math.min(1, d / 5);
@@ -30816,11 +30833,11 @@ function terreno() {
   const nieve = new Color(NIEVE), sucia = new Color(NIEVE_SUCIA);
   const punto = (i, k) => {
     const z = Z_BOCA + (Z_FONDO - Z_BOCA) * (i / FILAS);
-    const m2 = medio(z);
+    const m2 = medio(z), e = eje(z);
     const t = k / COLS * 2 - 1;
     const lado = t < 0 ? -1 : 1, a = Math.abs(t);
     const PISO = 0.38;
-    const x = a <= PISO ? t / PISO * m2 : lado * (m2 + Math.pow((a - PISO) / (1 - PISO), 1.7) * (ANCHO / 2 - m2));
+    const x = e + (a <= PISO ? t / PISO * m2 : lado * (m2 + Math.pow((a - PISO) / (1 - PISO), 1.7) * (ANCHO / 2 - m2)));
     return [x, altura(x, z), z];
   };
   const v = [], n = [], c = [], uv = [];
@@ -30839,7 +30856,7 @@ function terreno() {
       const manto = suave(Math.min(1, Math.max(0, (N.y - 0.55) / 0.35)));
       const mancha = 0.5 + ruido(w[0] * 0.07, w[2] * 0.06) * 0.9;
       _c.copy(bajo).lerp(alto, Math.min(1, mancha * 0.8 + w[1] / TOPE * 0.5));
-      const pisada = Math.min(1, Math.abs(w[0]) / Math.max(4, medio(w[2])));
+      const pisada = Math.min(1, Math.abs(w[0] - eje(w[2])) / Math.max(4, medio(w[2])));
       _c.lerp(nieve.clone().lerp(sucia, 1 - pisada * 0.85), manto);
       c.push(_c.r, _c.g, _c.b);
     }
@@ -30886,11 +30903,11 @@ function nieveTextura() {
   return t;
 }
 function murallas(colisiones) {
-  const PASO2 = 8;
+  const PASO2 = 2.5;
   for (let z = Z_BOCA; z > Z_FONDO; z -= PASO2) {
-    const a = Math.min(medio(z), medio(z - PASO2));
-    for (const s of [-1, 1]) {
-      const x0 = s * a, x1 = s * (ANCHO / 2);
+    const izq = Math.min(eje(z) - medio(z), eje(z - PASO2) - medio(z - PASO2));
+    const der = Math.max(eje(z) + medio(z), eje(z - PASO2) + medio(z - PASO2));
+    for (const [x0, x1] of [[-ANCHO / 2, izq], [der, ANCHO / 2]]) {
       colisiones.push(new Box3(
         new Vector3(Math.min(x0, x1), 0, z - PASO2),
         new Vector3(Math.max(x0, x1), TOPE, z)
@@ -30948,38 +30965,137 @@ function pircas(horno, colisiones) {
     ));
   }
 }
-function penones(horno, colisiones) {
-  const donde = [
-    [-11, 24],
-    [13, 6],
-    [-6, -18],
-    [9, -34],
-    [-4, -52],
-    [5, -74],
-    [-12, -92],
-    [16, -110],
-    [-19, -126],
-    [7, -140],
-    [-8, -158],
-    [4, -176]
-  ];
-  const roca = new DodecahedronGeometry(1, 0);
-  donde.forEach(([x, z], i) => {
-    const r = ruido(i * 2.3, 7.1), r2 = ruido(i * 5.1, 2.7);
-    const an = 1.5 + r * 0.9, al = 1.2 + r2 * 0.7, la = 1.4 + r2 * 0.8;
-    horno.pieza(roca, [x, al * 0.78, z], [r2 * 0.5, r * 3, r * 0.4], [an, al, la], ROCA_CLARA);
-    horno.pieza(
-      roca,
-      [x + r * 0.16, al * 1.16, z - r2 * 0.14],
-      [r2 * 0.5, r * 3, r * 0.4],
-      [an * 0.82, al * 0.3, la * 0.82],
-      NIEVE
-    );
+var ROCA_GEO = new DodecahedronGeometry(1, 0);
+function penon(horno, colisiones, x, z, tam, semilla) {
+  const r = ruido(semilla * 2.3, 7.1), r2 = ruido(semilla * 5.1, 2.7);
+  const an = (1.5 + r * 0.9) * tam, al = (1.2 + r2 * 0.7) * tam, la = (1.4 + r2 * 0.8) * tam;
+  horno.pieza(ROCA_GEO, [x, al * 0.78, z], [r2 * 0.5, r * 3, r * 0.4], [an, al, la], ROCA_CLARA);
+  horno.pieza(
+    ROCA_GEO,
+    [x + r * 0.16 * tam, al * 1.16, z - r2 * 0.14 * tam],
+    [r2 * 0.5, r * 3, r * 0.4],
+    [an * 0.82, al * 0.3, la * 0.82],
+    NIEVE
+  );
+  if (colisiones) {
     colisiones.push(new Box3(
       new Vector3(x - an * 0.8, 0, z - la * 0.8),
       new Vector3(x + an * 0.8, al * 1.5, z + la * 0.8)
     ));
-  });
+  }
+}
+function penones(horno, colisiones) {
+  const grupos = [
+    [7, 62, 3, 1],
+    [-10, 34, 2, 1.2],
+    [12, 10, 4, 0.9],
+    [-14, -14, 3, 1.1],
+    [8, -34, 2, 1.3],
+    // ÉSTE ES A PROPÓSITO Y NO DECORACIÓN: cae justo delante del centinela de
+    // la garganta, que es el primero que te encontrás. Sin él, el primer
+    // hombre al que hay que esquivar en todo el capítulo no tenía UNA piedra
+    // en su línea de vista: la única jugada posible era tirarse al piso y
+    // esperar. Con esto, lo primero que te enseña el paso es a usar la roca.
+    [2, -58, 3, 1.1],
+    [-7, -76, 4, 1],
+    [11, -100, 3, 1.2],
+    [-16, -134, 3, 1],
+    [10, -162, 2, 1.1],
+    [-9, -186, 3, 0.9]
+  ];
+  let n = 0;
+  for (const [desvio2, z, cuantas, tam] of grupos) {
+    const cx = eje(z) + desvio2;
+    for (let k = 0; k < cuantas; k++) {
+      n++;
+      const a = ruido(n * 1.7, 3.3), b = ruido(n * 4.1, 9.7);
+      penon(
+        horno,
+        colisiones,
+        cx + a * 5.2,
+        z + b * 5.2,
+        tam * (0.7 + Math.abs(a) * 0.9),
+        n
+      );
+    }
+  }
+}
+var Z_DERRUMBE = -40;
+function derrumbe(horno, colisiones) {
+  const z = Z_DERRUMBE, e = eje(z), m = medio(z);
+  const desde = e - m;
+  const hasta = e + m * 0.22;
+  let n = 500;
+  for (let i = 0; i < 26; i++) {
+    n++;
+    const t = i / 25;
+    const a = ruido(n * 2.9, 1.3), b = ruido(n * 6.7, 5.1);
+    const tam = (2.4 - t * 1.5) * (0.8 + Math.abs(b) * 0.5);
+    penon(horno, null, desde + (hasta - desde) * t + a * 3.4, z + b * 7, tam, n);
+  }
+  colisiones.push(new Box3(
+    new Vector3(desde - 4, 0, z - 4.6),
+    new Vector3(hasta, 3.2, z + 4.6)
+  ));
+}
+function pircasCaidas(horno, colisiones) {
+  const tramos = [[10, 22, 9, 0.35], [-12, -92, 11, -0.28]];
+  let n = 900;
+  for (const [desvio2, z, largo, giro] of tramos) {
+    const cx = eje(z) + desvio2;
+    const co = Math.cos(giro), si = Math.sin(giro);
+    for (let t = -largo / 2; t < largo / 2; t += 0.58) {
+      n++;
+      const a = ruido(n * 1.9, 2.7);
+      const entero = 1 - Math.abs(t) / (largo / 2);
+      const hiladas = entero > 0.45 ? 2 : 1;
+      for (let h = 0; h < hiladas; h++) {
+        horno.caja(
+          cx + t * co + a * 0.5 * si,
+          0.2 + h * 0.36,
+          z + t * si - a * 0.5 * co,
+          0.5 + a * 0.2,
+          0.34 + a * 0.08,
+          0.44 + a * 0.16,
+          a > 0 ? PIEDRA_PIRCA : PIEDRA_PIRCA_OSC,
+          a * 0.7
+        );
+      }
+    }
+    const ex = Math.abs(largo / 2 * co) + 0.5, ez = Math.abs(largo / 2 * si) + 0.5;
+    colisiones.push(new Box3(
+      new Vector3(cx - ex, 0, z - ez),
+      new Vector3(cx + ex, 0.75, z + ez)
+    ));
+  }
+}
+var ARROYO_ANCHO = 3.4;
+function arroyo(escena2) {
+  const v = [], uv = [];
+  const PASOS2 = 90;
+  for (let i = 0; i < PASOS2; i++) {
+    const z0 = 70 + (Z_FONDO + 8 - 70) * (i / PASOS2);
+    const z1 = 70 + (Z_FONDO + 8 - 70) * ((i + 1) / PASOS2);
+    const a0 = eje(z0), a1 = eje(z1);
+    const w = ARROYO_ANCHO / 2;
+    const p = [[a0 - w, z0], [a0 + w, z0], [a1 + w, z1], [a1 - w, z1]];
+    for (const idx of [0, 1, 2, 0, 2, 3]) {
+      v.push(p[idx][0], 0.055, p[idx][1]);
+      uv.push(p[idx][0] / 7, p[idx][1] / 7);
+    }
+  }
+  const geo = new BufferGeometry();
+  geo.setAttribute("position", new Float32BufferAttribute(v, 3));
+  geo.setAttribute("uv", new Float32BufferAttribute(uv, 2));
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  const m = new Mesh(geo, new MeshStandardMaterial({
+    color: HIELO,
+    roughness: 0.24,
+    metalness: 0.12
+  }));
+  m.receiveShadow = true;
+  return m;
 }
 function cordillera(horno) {
   const picos = [
@@ -31005,7 +31121,9 @@ function columnaDelPaso(n = 14) {
     const r = ruido(k * 1.9, 4.3);
     const ancho = Math.min(2.6, medio(z) * 0.28);
     puestos.push({
-      x: ENTRADA.x + Math.sin(z * 0.09) * ancho + r * 0.9,
+      // sobre el EJE del valle, que ahora dobla: sin esto la fila arrancaba
+      // recta mientras el paso se iba para un costado
+      x: eje(z) + Math.sin(z * 0.09) * ancho + r * 0.9,
       z,
       rumbo: 0
       // todos mirando al paso, o sea a −Z
@@ -31023,15 +31141,16 @@ var QUIETO = 0.45;
 var ALARMA = 1;
 function guardiaDelCorral() {
   const { x: CX, z: CZ } = CORRAL;
+  const mirando = (z) => Math.PI + Math.atan2(eje(z + 14) - eje(z - 14), 28);
   return [
-    { x: 4.5, z: -66, rumbo: Math.PI },
+    { x: eje(-66) + 4.5, z: -66, rumbo: mirando(-66) },
     // la avanzada de la garganta
-    { x: -3, z: -88, rumbo: Math.PI },
+    { x: eje(-88) - 3, z: -88, rumbo: mirando(-88) },
     // la segunda, en la hoyada
-    { x: CX - 5.5, z: CZ + 7.5, rumbo: Math.PI },
-    { x: CX + 4, z: CZ + 7, rumbo: Math.PI + 0.35 },
-    { x: CX - 9.5, z: CZ - 1, rumbo: Math.PI - 0.9 },
-    { x: CX + 6.5, z: CZ - 2, rumbo: Math.PI + 0.9 }
+    { x: CX - 5.5, z: CZ + 7.5, rumbo: mirando(CZ + 7.5) },
+    { x: CX + 4, z: CZ + 7, rumbo: mirando(CZ + 7) + 0.35 },
+    { x: CX - 9.5, z: CZ - 1, rumbo: mirando(CZ) - 0.9 },
+    { x: CX + 6.5, z: CZ - 2, rumbo: mirando(CZ) + 0.9 }
   ];
 }
 function tapado(ax, ay, az, bx, by, bz, colisiones) {
@@ -31271,12 +31390,21 @@ var Marcha = class {
 function construirAndes(escena2, colisiones) {
   const lugar = new Group();
   lugar.name = "andes";
-  lugar.add(terreno());
+  const piso = terreno();
+  piso.name = "paso-terreno";
+  lugar.add(piso);
+  const hielo = arroyo();
+  hielo.name = "paso-arroyo";
+  lugar.add(hielo);
   const horno = new Horno();
   pircas(horno, colisiones);
   penones(horno, colisiones);
+  derrumbe(horno, colisiones);
+  pircasCaidas(horno, colisiones);
   cordillera(horno);
-  lugar.add(horno.cocinar(MAT()));
+  const piedras = horno.cocinar(MAT());
+  piedras.name = "paso-piedras";
+  lugar.add(piedras);
   murallas(colisiones);
   escena2.add(lugar);
   return lugar;
@@ -39353,10 +39481,10 @@ function armarCombate(ctx) {
     }
   }
   function falloVisible(origen, blanco, tiro, contraVos) {
-    const eje = new Vector3().subVectors(blanco, origen);
-    const d = eje.length() || 1;
-    eje.divideScalar(d);
-    const lado = new Vector3(-eje.z, 0, eje.x);
+    const eje2 = new Vector3().subVectors(blanco, origen);
+    const d = eje2.length() || 1;
+    eje2.divideScalar(d);
+    const lado = new Vector3(-eje2.z, 0, eje2.x);
     const paso = new Vector3().copy(blanco).addScaledVector(lado, tiro.dx).add(new Vector3(0, tiro.dy, 0));
     if (contraVos) {
       if (tiro.fuera < ZUMBIDO) {
@@ -45985,6 +46113,9 @@ window.juego = {
   entrarCapitulo,
   sigilo,
   marcha,
+  // la planta del paso, para las pruebas y para el que quiera mirar dónde está
+  // el eje del valle sin tener que leerse andes.js
+  paso: { eje, medio, zDerrumbe: Z_DERRUMBE, corral: CORRAL },
   get capitulo() {
     return mundo.capitulo;
   },
