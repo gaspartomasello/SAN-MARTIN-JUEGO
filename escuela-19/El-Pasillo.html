@@ -3978,13 +3978,6 @@ for(const x of [256,263])for(const z of [231,238,245]){Q(W(x),.74,Y(z),1.05,.065
 for(const x of [243,260])Q(W(x),1.8,Y(255)-.13,2.7,1.35,.035,white);
 for(const x of [262,266])Q(W(x),1.1,Y(222)+.38,.65,2.2,.55,mn,true);
 for(const z of [230,246])kn(W(253),Y(z),3.3);
-// Main school gate across the courtyard; white mesh, four leaves, shallow sloped canopy.
-for(const z of [218,244])Q(W(100),1.65,Y(z),.18,3.3,.18,green,true);
-ri(W(100),Y(231),5,.65,Math.PI/2,2.5);
-for(const z of [221,226,240]){ri(W(100),Y(z),.9,2.4,Math.PI/2);for(const y of [.12,1.1,2.4])Q(W(100),y,Y(z),.07,.07,.95,white);}
-let gateRoof=Q(W(105),3.5,Y(231),3.2,.09,5.6,white);gateRoof.rotation.z=-.12;
-for(const z of [218,244]){Q(W(112),1.7,Y(z),.13,3.4,.13,white);beam(W(100),2.8,Y(z),W(111),3.2,Y(z),.07,white);}
-label('SALIDA',100.6,2.85,231,1.2,Math.PI/2);
 // Memorial recess and ladybug panel at the outer boundary beside the SUM.
 _e(112,192,139,218,'PATIO',0,true);
 Q(W(113),1.75,Y(201),.12,3.5,5.2,green);
@@ -3993,7 +3986,7 @@ Q(W(119),.55,Y(202),.65,.05,2,Te);for(const z of [198,206])Q(W(119),.28,Y(z),.05
 Q(W(117.5),1.15,Y(214),2.1,2.3,.12,green,true);Q(W(117.5),1.15,Y(214)+.07,1.55,1.85,.025,black);
 // Ladybug drawn as a native canvas texture.
 const cv=document.createElement('canvas');cv.width=cv.height=256;const c=cv.getContext('2d');c.fillStyle='#18201d';c.fillRect(0,0,256,256);c.fillStyle='#bd7b62';c.beginPath();c.ellipse(122,130,65,43,-.2,0,Math.PI*2);c.fill();c.fillStyle='#222c25';for(const [x,y]of [[90,110],[125,100],[155,119],[105,147],[142,145]]){c.beginPath();c.ellipse(x,y,8,11,0,0,7);c.fill();}c.fillStyle='#c29e77';c.beginPath();c.arc(190,111,24,0,7);c.fill();c.fillStyle='#eee9d1';for(const x of [181,196]){c.beginPath();c.ellipse(x,105,4,9,0,0,7);c.fill();}const tx=new ns(cv);tx.colorSpace=Se;const bug=new me(new ti(1.48,1.6),new dn({map:tx}));bug.position.set(W(117.5),1.2,Y(214)+.09);de.add(bug);
-for(const [z,col]of [[216,'#675341'],[212,'#a6b829'],[208,'#6b5844']]){Q(W(111.5),.55,Y(z),.6,1.1,.65,jt(col),true);Q(W(111.5),1.12,Y(z),.66,.1,.7,jt(col));}
+for(const [z,col]of [[216,'#675341'],[212,'#a6b829'],[208,'#6b5844']]){Q(W(109.6),.55,Y(z),.6,1.1,.65,jt(col),true);Q(W(109.6),1.12,Y(z),.66,.1,.7,jt(col));}
 // Expose named survey landmarks to enable deterministic route verification.
 de.userData.photoRevision={school:'19 DE 19',diningFacade:170,initialHallFacade:170,sumInscriptionCount:1,rooms:['4º B','Nivelación','Biblioteca','Plástica','Música']};
 })();
@@ -4094,6 +4087,56 @@ schoolDoor(W(266),Y(666),0,4.4,false);for(const x of [255,277])Q(W(x),1.7,Y(666)
 const prompt=document.createElement('div');prompt.id='doorPrompt';prompt.style.cssText='position:fixed;left:50%;bottom:100px;transform:translateX(-50%);color:#e5eedc;background:#10241bbb;padding:8px 12px;border-radius:5px;pointer-events:none;font:14px monospace;z-index:15';document.body.appendChild(prompt);
 const button=document.createElement('button');button.textContent='E · Puerta';button.style.cssText='position:fixed;right:16px;bottom:140px;padding:12px;background:#18382de6;color:white;border:1px solid #84a395;border-radius:6px;z-index:15';button.onclick=useSchoolDoor;button.className='tactil';document.body.appendChild(button);const salto=document.createElement('button');salto.textContent='⤒ Saltar';salto.style.cssText=button.style.cssText.replace('bottom:140px','bottom:200px');salto.className='tactil';salto.onpointerdown=e=>{e.preventDefault();saltar();};document.body.appendChild(salto);const css=document.createElement('style');css.textContent='.tactil{display:none}@media(pointer:coarse){body.playing .tactil{display:block}}';document.head.appendChild(css);
 document.addEventListener('keydown',e=>{if(e.code==='KeyE'&&!e.repeat){e.preventDefault();useSchoolDoor();}});
+})();
+// Entrada por Pasaje L: portón de metal desplegado retirado de la línea de la vereda,
+// alero de chapa de una sola caída, baldosa y escalón; cerco de ladrillo con reja.
+(function portonDeEntrada(){
+ const blanco=jt('#e9e8e0',.5),verde=jt('#8fbf9a'),LX=112,GX=120,ZA=218,ZB=244,ZP=229.2;
+ function lienzo(w,h,dib){const c=document.createElement('canvas');c.width=w;c.height=h;dib(c.getContext('2d'));const t=new ns(c);t.wrapS=t.wrapT=Ji;t.colorSpace=Se;return t;}
+ const tejido=lienzo(64,64,g=>{g.strokeStyle='#f1f0ea';g.lineWidth=6;g.beginPath();g.moveTo(0,32);g.lineTo(32,0);g.lineTo(64,32);g.lineTo(32,64);g.closePath();g.stroke();});
+ function malla(w,h){const t=tejido.clone();t.needsUpdate=true;t.repeat.set(Math.max(1,w/.09),Math.max(1,h/.055));return new dn({map:t,transparent:true,alphaTest:.3,side:je,roughness:.6});}
+ function panel(x,y,z,ancho,alto,rot){const m=new me(new ti(ancho,alto),malla(ancho,alto));m.position.set(x,y,z);m.rotation.y=rot;de.add(m);return m;}
+ function cano(x1,y1,z1,x2,y2,z2,g,mat){const a=new N(x1,y1,z1),b=new N(x2,y2,z2),v=b.clone().sub(a);const m=Q((x1+x2)/2,(y1+y2)/2,(z1+z2)/2,g,v.length(),g,mat);m.quaternion.setFromUnitVectors(new N(0,1,0),v.normalize());return m;}
+ // Cerco: murete de ladrillo pintado con zócalo verde, reja de metal desplegado, postes verdes y alambre arriba.
+ function valla(x1,z1,x2,z2){const a=W(x1),b=Y(z1),c=W(x2),d=Y(z2),cx=(a+c)/2,cz=(b+d)/2,enX=Math.abs(c-a)>Math.abs(d-b),L=Math.max(Math.abs(c-a),Math.abs(d-b));
+  const caja=(y,h,g,mat,col)=>Q(cx,y,cz,enX?L:g,h,enX?g:L,mat,col);
+  caja(.6,1.2,.22,Nl,true);caja(.11,.22,.25,verde);
+  panel(cx,1.85,cz,L,1.25,enX?0:Math.PI/2);caja(2.47,.05,.05,blanco);caja(2.66,.012,.012,jt('#777b78'));
+  const n=Math.max(1,Math.round(L/2.2));for(let k=0;k<=n;k++){const t=k/n,px=enX?a+(c-a)*t:cx,pz=enX?cz:b+(d-b)*t;Q(px,1.85,pz,.05,1.25,.05,blanco);if(k%2===0)Q(px,1.35,pz,.22,2.7,.22,verde,true);}}
+ valla(LX,166,LX,ZA);valla(LX,ZB,LX,248);valla(LX,ZA,GX,ZA);valla(LX,ZB,GX,ZB);
+ // Marco del portón, montantes y paño fijo de arriba.
+ for(const z of [ZA,ZB])Q(W(GX),1.6,Y(z),.14,3.2,.16,blanco,true);
+ Q(W(GX),1.6,Y(ZP),.14,3.2,.2,blanco,true);Q(W(GX),1.2,Y(230.2),.1,2.4,.22,blanco,true);Q(W(GX),1.2,Y(243.3),.1,2.4,.22,blanco,true);
+ Q(W(GX),2.43,Y(231),.1,.06,5.2,blanco);Q(W(GX),3.17,Y(231),.14,.1,5.3,blanco);panel(W(GX),2.8,Y(231),5.2,.68,Math.PI/2);
+ Q(W(GX)-.16,1.6,Y(ZB)-.12,.07,3.2,.07,blanco);
+ // Hojas: la de la izquierda abierta, como en la foto; todas de metal desplegado con marco blanco.
+ for(const [z,ancho,abierta] of [[220.5,.9,true],[225.85,1.2,false],[236.8,2.4,false]]){
+  const d=schoolDoor(W(GX),Y(z),Math.PI/2,ancho,abierta);
+  for(const l of d.leaves)l.leaf.traverse(m=>{if(!m.isMesh||m.material===Te)return;m.material=m.material.transparent||m.material===jt('#d7d7c5')?malla(m.scale.x,m.scale.y):blanco;});
+ }
+ // Alero de chapa acanalada: una sola caída hacia el portón, con tornapuntas desde los parantes.
+ const chapa=lienzo(4,32,g=>{const gr=g.createLinearGradient(0,0,0,32);gr.addColorStop(0,'#bfc1bc');gr.addColorStop(.5,'#f2f2ec');gr.addColorStop(1,'#bfc1bc');g.fillStyle=gr;g.fillRect(0,0,4,32);});
+ chapa.repeat.set(1,6.6/.08);
+ const xa=W(GX),xb=W(107.5),ya=3.22,yb=3.62,alto=x=>ya+(xa-x)/(xa-xb)*(yb-ya);
+ const techo=Q((xa+xb)/2,(ya+yb)/2,Y(231),Math.hypot(xa-xb,yb-ya),.04,6.6,new dn({map:chapa,roughness:.5,side:je}));techo.rotation.z=-Math.atan2(yb-ya,xa-xb);
+ Q(xb+.05,yb-.07,Y(231),.08,.12,6.6,blanco);Q(W(113.5),alto(W(113.5))-.08,Y(231),.1,.1,6.6,blanco);
+ for(const z of [ZA,ZP,ZB])cano(xa,2.25,Y(z),W(109),alto(W(109))-.08,Y(z),.06,blanco);
+ // Baldosa clara entre los muretes y escalón contra la vereda; guía táctil amarilla.
+ const baldosa=lienzo(64,64,g=>{g.fillStyle='#dcd9cf';g.fillRect(0,0,64,64);g.fillStyle='#b3afa4';g.fillRect(0,0,64,2);g.fillRect(0,0,2,64);});
+ baldosa.repeat.set(1.6/.4,5.2/.4);
+ Q(W((LX+GX)/2),.012,Y(231),W(GX)-W(LX),.024,5.2,new dn({map:baldosa,roughness:.7}));
+ Q(W(LX)-.14,.06,Y(231),.28,.12,5.4,jt('#b9b6ad',.95));
+ Q(W(110.4),.008,Y(212),.7,.016,2.6,jt('#c9a640',.9));
+ // Vereda de cemento, cordón, la calle y la vereda de enfrente con casas bajas.
+ _e(97,50,112,671,'VEREDA',0,!0);_e(57,50,97,671,'PASAJE L',0,!0);_e(47,50,57,671,'VEREDA',0,!0);
+ Q(W(97)-.06,.06,Y(360.5),.14,.12,124.2,jt('#a9a79f'));Q(W(57)+.06,.06,Y(360.5),.14,.12,124.2,jt('#a9a79f'));
+ Q(W(77),.006,Y(360.5),7.9,.012,124.2,jt('#34363a',.95));
+ let z=50,k=0;const fachadas=['#b9b2a6','#8c3b2c','#d8cfba','#9aa3a0','#c7b08a','#7e7f7a'];
+ while(z<671){const largo=Math.min(671-z,22+(k*37)%28),h=3.2+(k*53)%5;Q(W(42),h/2,Y(z+largo/2),2,h,largo*.2-.1,jt(fachadas[k%fachadas.length],.9),true);
+  Q(W(46.9),1.1,Y(z+largo/2),.04,1,1.4,Te);Q(W(46.9),1.05,Y(z+largo/2)+2,.04,2.1,1,jt('#4b3a2e'));z+=largo;k++;}
+ // Postes de luz con los cables sobre la vereda.
+ for(const zp of [205,300,400,520,630]){Q(W(99),4.5,Y(zp),.26,9,.26,jt('#3a3129',.9),true);Q(W(99),8.4,Y(zp),1.3,.08,.08,jt('#3a3129',.9));}
+ for(const [dx,y] of [[-.6,8.3],[0,7.9],[.6,8.3]])Q(W(99)+dx,y,Y(360.5),.02,.02,124.2,Te);
 })();
 // Puertas que no se abren: se ven, avisan y nada más.
 var puertasConLlave=[];
