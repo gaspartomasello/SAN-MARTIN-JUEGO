@@ -3855,7 +3855,7 @@ function placeSchoolDoor(d){
   const l=d.leaves[k];if(d.kind==='slide'){l.hinge.position.x=l.closedX+(k===0?-1:1)*d.amount*d.width*(d.recorrido??.47);}else l.hinge.rotation.y=-l.direction*d.amount*Math.PI*.5;
   l.hinge.updateMatrixWorld(true);d.root.updateMatrixWorld(true);
   const pos=new N();l.leaf.getWorldPosition(pos);const angle=d.rot+l.hinge.rotation.y,w=d.width/d.leaves.length/2;
-  Object.assign(d.colliders[k],{x:pos.x,z:pos.z,w:Math.abs(Math.cos(angle))*w+.03,d:Math.abs(Math.sin(angle))*w+.03,minY:d.kind==="slide"&&d.amount>.95?-10:d.floor,maxY:d.kind==="slide"&&d.amount>.95?-9:d.floor+2.4});
+  Object.assign(d.colliders[k],{x:pos.x,z:pos.z,w:(Math.abs(Math.cos(angle))*w+.03)*(d.escala??1),d:(Math.abs(Math.sin(angle))*w+.03)*(d.escala??1),minY:d.kind==="slide"&&d.amount>.95?-10:d.floor,maxY:d.kind==="slide"&&d.amount>.95?-9:d.floor+2.4});
  }
 }
 var avisoPuerta=0;function nearestSchoolDoor(){const look=new N();Qt.getWorldDirection(look);let best=null,score=Infinity;
@@ -4184,6 +4184,14 @@ var puertasConLlave=[];
  for(let k=qh.length-1;k>=0;k--){const p=qh[k].position;if(adentro(p.x,p.y,p.z))qh.splice(k,1);}
  for(let k=vs.length-1;k>=0;k--){const r=vs[k];if(adentro(W((r.x1+r.x2)/2),r.floor?Ue+.1:.1,Y((r.y1+r.y2)/2)))vs.splice(k,1);}
  for(let k=Zh.length-1;k>=0;k--){const l=Zh[k];if(adentro(W((l[0]+l[2])/2),l[4]?Ue+.1:.1,Y((l[1]+l[3])/2)))Zh.splice(k,1);}
+ // El primer piso viejo sobre el hall del SUM, el casero y el 4º B (metegol, puertas, paredes)
+ // también se va: el primer piso se arma de nuevo según su plano.
+ const arriba=(x,y,z)=>{const px=x/Ae+222,pz=z/Ae+451;return px>=173&&px<=272.6&&pz>195&&pz<=256.5&&y>3.9&&y<9;};
+ for(const d of [...schoolDoors])if(arriba(d.x,d.floor+1,d.z)){d.root.removeFromParent();for(const c of d.colliders){const k=cr.indexOf(c);k>=0&&cr.splice(k,1);}schoolDoors.splice(schoolDoors.indexOf(d),1);}
+ for(const o of [...de.children]){if(o.isCamera||o.isLight)continue;if(arriba(o.position.x,o.position.y,o.position.z))o.removeFromParent();}
+ for(let k=cr.length-1;k>=0;k--){const c=cr[k];if(!c.door&&arriba(c.x,(c.minY??0)+.1,c.z))cr.splice(k,1);}
+ for(let k=qh.length-1;k>=0;k--){const p=qh[k].position;if(arriba(p.x,p.y,p.z))qh.splice(k,1);}
+ for(let k=vs.length-1;k>=0;k--){const r=vs[k];if(r.floor&&arriba(W((r.x1+r.x2)/2),Ue+.1,Y((r.y1+r.y2)/2)))vs.splice(k,1);}
  for(const z1 of [450,335]){const k=kl.findIndex(o=>Math.abs(o.z1-Y(z1))<.01);k>=0&&kl.splice(k,1);}
 
  // 2. Apretar el terreno: lo que acompaña al pasillo (patios de los costados) pasa de 37 m a
@@ -4247,31 +4255,37 @@ var puertasConLlave=[];
  // 3. Pasillo de aulas: 3,55 m entre paredes de ladrillo, tres aulas por lado, columnas
  //    crema de 25 cm, ventanas altas sobre el ladrillo, piso colorado y cielorraso con tubos.
  const XO=213.8,XE=232.2,Z0=254,Z1=369;
- const puertasO=[[258,263],[324,329],[332.5,337.5]],puertasE=[[262,266],[270.2,276.6],[287,291],[299,304],[335,340]];
+ const puertasO=[[258,263],[324,329],[332.5,337.5]],puertasE=[[257.5,260.2],[261.6,267.9],[268.4,276.1],[286.3,293.6],[296,301],[332,337]];
  we(174,254,XO,292.3,'AULA','E',puertasO[0]);we(174,292.3,XO,330.6,'AULA','E',puertasO[1]);we(174,330.6,XO,369,'AULA','E',puertasO[2]);
- we(XE,256,272,270,'BAÑO','W',puertasE[0]);we(XE,284,272,297,'BAÑO','W',puertasE[2]);we(XE,297,272,333,'AULA','W',puertasE[3]);we(XE,333,272,369,'AULA','W',puertasE[4]);
+ we(XE,256,272,261,'DEPÓSITO','W',puertasE[0]);we(XE,294,272,330,'AULA','W',puertasE[4]);we(XE,330,272,369,'AULA','W',puertasE[5]);
+ // Baños detrás de la escalera, como en el plano del primer piso: varones y nenas, cada uno con su pasillito.
+ function banosEscalera(){we(256,261,272,277,'BAÑO VARONES','W',[262.5,266.5]);we(256,277,272,294,'BAÑO NENAS','W',[287.5,291.5]);
+  _e(XE,261,256,268,'ACCESO A LOS BAÑOS');_e(XE,286,256,294,'ACCESO A LOS BAÑOS');Ze(XE,261,256,261,[],3.3,!1);
+  for(const [z,t] of [[264.5,'VARONES'],[289.5,'NENAS']])En(t,W(256)-.11,2.62,Y(z),.7,-Math.PI/2,'#d3ceb4','#303c36');
+  for(const [z1,z2] of [[261,277],[277,294]]){for(let z=z1+3;z<z2-1;z+=4)Q(W(272)-.36,.8,Y(z),.44,.26,.6,acero,true);}}
+ banosEscalera();
  // Escalera del pasillo, con los colores de la wiphala en las alzadas.
- Ze(XE,270,XE,284,[puertasE[1]],3.3,!1);Ze(XE,270,272,270,[],7.4,!1);Ze(XE,284,272,284,[],7.4,!1);Ze(272,270,272,284,[],7.4,!1);
- Q(W(XE),5.35,Y(273.45),.16,4.1,(276.9-270)*Ae,Ee);Q(W(XE),3.75,Y(280.45),.16,.9,(284-276.9)*Ae,Ee);Q(W(XE),(Ue+2.4+7.4)/2,Y(280.45),.16,7.4-Ue-2.4,(284-276.9)*Ae,Ee);
- escalera(233,255,271,273.4,280.6,1.3,['#d52b1e','#f28c28','#f7d117','#f4f4f0','#2e9a45','#1f5aa6','#6d2f8f']);
- vs.push({x1:XE,y1:270,x2:272,y2:284,name:'ESCALERA',floor:0});kn(W(266),Y(277),6.2);
- Q((W(XE)+W(233))/2,Ue-.08,Y(280.6),W(233)-W(XE),.16,1.3,Ee);
+ Ze(XE,261,XE,294,[puertasE[1],puertasE[2],puertasE[3]],3.3,!1);Ze(XE,268,256,268,[],7.4,!1);Ze(XE,286,256,286,[],7.4,!1);Ze(256,268,256,286,[],7.4,!1);
+ Q(W(XE),5.35,Y(272.2),.16,4.1,(277-268)*Ae,Ee);Q(W(XE),3.75,Y(281.5),.16,.9,(286-277)*Ae,Ee);Q(W(XE),(Ue+2.4+7.4)/2,Y(281.5),.16,7.4-Ue-2.4,(286-277)*Ae,Ee);
+ escalera(233,250,255.4,272.2,281.8,1.55,['#d52b1e','#f28c28','#f7d117','#f4f4f0','#2e9a45','#1f5aa6','#6d2f8f']);
+ vs.push({x1:XE,y1:268,x2:256,y2:286,name:'ESCALERA',floor:0});kn(W(252),Y(277),6.2);
+ Q((W(XE)+W(233))/2,Ue-.08,Y(281.8),W(233)-W(XE),.16,1.55,Ee);
  _e(XO,Z0,XE,Z1,'PASILLO');
  piso(XO,232,XE,Z1,baldosaRoja,.4);cielorraso(XO,232,XE,Z1,3.2);
  for(let z=240;z<Z1;z+=13)kn(W(223),Y(z),3.2);oo(W(223),Y(300),2.9);oo(W(223),Y(345),2.9);
  // Caras del pasillo: ladrillo hasta 2,5 m entre aberturas, vidrio alto corrido y columnas.
- function caraPasillo(xw,lado,huecos,desde,tabiques){const xf=W(xw)+lado*.09;let z=desde;
+ function caraPasillo(xw,lado,huecos,desde,tabiques,hasta){const Z1=hasta||369,xf=W(xw)+lado*.09;let z=desde;
   for(const [a,b] of [...huecos,[Z1,Z1]]){if(a-z>.5){const L=(a-z)*Ae;Q(xf,1.25,Y((z+a)/2),.016,2.5,L,ladrillo(L));}z=b;}
   const L=(Z1-desde)*Ae;Q(xf,2.84,Y((desde+Z1)/2),.012,.62,L,ventanaClara);Q(xf+lado*.006,2.52,Y((desde+Z1)/2),.02,.05,L,blanco);Q(xf+lado*.006,3.16,Y((desde+Z1)/2),.02,.05,L,blanco);
   for(let k=desde+5;k<Z1;k+=5)Q(xf+lado*.008,2.84,Y(k),.02,.62,.04,blanco);
   const cols=[];for(const [a,b] of huecos){cols.push(a-.75,b+.75);}for(const t of tabiques)if(!cols.some(c=>Math.abs(c-t)<2.2))cols.push(t);
   for(const c of cols)if(c>desde+.8&&c<Z1-.8)Q(W(xw)+lado*(.08+.125),1.6,Y(c),.25,3.2,.3,crema,true);}
- caraPasillo(XO,1,puertasO,Z0,[292.3,330.6]);caraPasillo(XE,-1,puertasE,256,[270,284,297,333]);
+ caraPasillo(XO,1,puertasO,Z0,[292.3,330.6]);caraPasillo(XE,-1,puertasE,256,[261,268,286,294,330]);
  // Bandeja de cables y caño rojo de incendio contra el techo, del lado de Somellera.
  Q(W(XE)-.42,3.08,Y(312),.3,.06,(366-256)*Ae,aceroOsc);Q(W(XE)-.16,3.0,Y(312),.07,.07,(366-256)*Ae,rojo);
  // Bebedero de acero y nicho hidrante junto a la escalera; matafuegos.
- Q(W(XE)-.08-.2,.5,Y(281.6),.38,1,.32,acero,true);Q(W(XE)-.08-.2,1.02,Y(281.6),.3,.04,.24,jt('#dfe3e2',.2));
- Q(W(XE)-.17,1.35,Y(279.4),.18,.75,.55,rojo,true);
+ Q(W(XE)-.08-.2,.5,Y(283.4),.38,1,.32,acero,true);Q(W(XE)-.08-.2,1.02,Y(283.4),.3,.04,.24,jt('#dfe3e2',.2));
+ Q(W(XE)-.17,1.35,Y(279.6),.18,.75,.55,rojo,true);
  for(const [x,z] of [[XO+.6,300],[XE-.6,345],[XE-.6,253]]){const t=new me(new is(.08,.08,.5,10),rojo);t.position.set(W(x),1.0,Y(z));de.add(t);}
  // Carteleras y el busto de José Martí con la rosa blanca, sobre la pared del 4º B.
  En('FELIZ PRIMAVERA',W(232)-.1,1.55,Y(259.5),1.9,-Math.PI/2,'#f08a1c','#5a2d82');
@@ -4293,19 +4307,60 @@ var puertasConLlave=[];
  Q(W(223),2.78,zr,3.55,.6,.01,vidrio);for(const x of [214.2,219.5,225.65,231.8])Q(W(x),2.78,zr,.05,.62,.06,blanco);Q(W(223),2.47,zr,3.6,.05,.08,blanco);Q(W(223),3.12,zr,3.6,.07,.1,blanco);
 
  // 5. Fachadas del bloque de aulas, con ventanas en las dos plantas y postes verde agua.
- for(const [xw,lado,aulas] of [[174,1,[[254,292.3],[292.3,330.6],[330.6,369]]],[272,-1,[[297,333],[333,369]]]]){
+ for(const [xw,lado,aulas] of [[174,1,[[254,292.3],[292.3,330.6],[330.6,369]]],[272,-1,[[294,330],[330,369]]]]){
   Q(W(xw)-lado*.095,3.7,Y((254+369)/2),.014,7.4,(369-254)*Ae,ladrillo((369-254)*Ae));
   for(const [a,b] of aulas){for(const y of [2.15,Ue+2.15])ventanaFachada(xw,lado,(a+b)/2,Math.min(4.2,(b-a)*Ae-1.2),1.8,y);Q(W(xw)-lado*.13,3.7,Y(a),.18,7.4,.2,verdeAgua);}
   for(const y of [.1,Ue-.1,Ue+.1,7.3])Q(W(xw)-lado*.12,y,Y((254+369)/2),.06,.16,(369-254)*Ae,verdeAgua);}
 
- // 6. Planta alta del bloque: mismas aulas, sanitarios y el pasillo hasta el hall de arriba.
- {const altoAntes=Je;Je=Ue;
-  we(174,254,XO,292.3,'AULA','E',puertasO[0]);we(174,292.3,XO,330.6,'AULA','E',puertasO[1]);we(174,330.6,XO,369,'AULA','E',puertasO[2]);
-  we(XE,256,272,270,'SANITARIOS','W',puertasE[0]);we(XE,284,272,297,'SANITARIOS','W',puertasE[2]);we(XE,297,272,333,'AULA','W',puertasE[3]);we(XE,333,272,369,'AULA','W',puertasE[4]);
-  // La pared de los sanitarios que da sobre el segundo tramo no frena: el hueco ya tiene la suya.
-  for(let k=cr.length-1;k>=0;k--){const c=cr[k];if(c.minY===Ue&&Math.abs(c.z-Y(284))<.05&&c.x>W(XE)&&c.x<W(272))cr.splice(k,1);}
-  _e(XO,234,XE,385,'PASILLO PLANTA ALTA');for(let z=246;z<385;z+=20)kn(W(223),Y(z),3.3);
+ // 6. Primer piso según su plano: del casero hasta la escalera principal. Del lado de
+ //    Pasaje L, seis aulas; del lado de Somellera, el laboratorio de informática, un aula, los
+ //    baños detrás de la escalera del pasillo, dos aulas, el ascensor y la escalera principal.
+ //    Las dos escaleras caen justo encima de las de planta baja.
+ {for(const o of [...de.children])if(o.position.y>3.9&&o.position.y<8&&Math.abs(o.position.z-Y(232))<.2&&Math.abs(o.position.x-W(224))<.6)o.removeFromParent();
+  for(let k=cr.length-1;k>=0;k--){const c=cr[k];if(c.minY>3.9&&Math.abs(c.z-Y(232))<.2&&Math.abs(c.x-W(224))<.6)cr.splice(k,1);}
+  for(let k=vs.length-1;k>=0;k--)if(vs[k].floor===1&&vs[k].x1>=173&&vs[k].x2<=215&&vs[k].y1>=360)vs.splice(k,1);
+  const altoAntes=Je;Je=Ue;
+  const oeste=[[196,227,[217,221.5]],[227,259,[230,234.5]],[259,294,[262,266.5]],[294,330,[324.5,329]],[330,367,[331.5,336]],[367,405,[399,403.5]]];
+  for(const [a,b,p] of oeste)we(174,a,XO,b,'AULA','E',p);
+  we(XE,196,272,231,'LABORATORIO DE INFORMÁTICA','W',[222,226.5]);we(XE,231,272,261,'AULA','W',[235,239.5]);
+  banosEscalera();Ze(XE,261,XE,294,[puertasE[1],[277.4,285.6],puertasE[3]],3.3,!1);
+  we(XE,294,272,330,'AULA','W',[296,300.5]);we(XE,330,272,366,'AULA','W',[332,336.5]);
+  Ze(XE,366,243,366,[],3.3,!1);Ze(243,366,272,366,[],3.3,!1);Ze(XE,366,XE,369,[],3.3,!1);
+  _e(XO,196,XE,405,'PASILLO PLANTA ALTA');Ze(XO,196,XE,196,[],3.3,!1);Ze(XO,405,243,405,[],3.3,!1);cielorraso(XO,366,243,405,3.3);for(const z of [376,392])kn(W(228),Y(z),3.3);
+  for(let z=204;z<405;z+=14)kn(W(223),Y(z),3.3);
+  caraPasillo(XO,1,oeste.map(o=>o[2]),196,oeste.map(o=>o[1]),405);
+  caraPasillo(XE,-1,[[222,226.5],[235,239.5],puertasE[1],[277.4,285.6],puertasE[3],[296,300.5],[332,336.5]],196,[231,261,268,286,294,330,366],366);
+  piso(XO,196,XE,405,baldosaRoja,.4);
+  En('LABORATORIO DE INFORMÁTICA',W(XE)-.1,2.62,Y(224.25),1.6,-Math.PI/2,'#d3ceb4','#303c36');
+  // Pozo del ascensor cerrado arriba, con la puerta de acero.
+  Ze(243,366,243,385.5,[],3.3,!1);Q(W(243)-.1,1.15,Y(381.5),.04,2.3,1.1,acero);En('1º',W(243)-.14,2.38,Y(384.25),.3,-Math.PI/2,'#140c0c','#ff3b30');
   Je=altoAntes;}
+ // 7. Aulas amuebladas: pizarrón, escritorio, bancos de a dos con sillas, cartelera,
+ //    ventilador de techo y cortinas; el laboratorio con computadoras.
+ const maderaClara=jt('#c9a77a',.7),patas=jt('#3d4446',.5),sillaAzul=jt('#2f4f8f',.6),pizarra=jt('#2e4a3c',.9),corcho=jt('#b58a5a',.9),cortina=jt('#5b8fc0',.95);
+ function amueblar(x1,z1,x2,z2,fx,compu){const cx=W((x1+x2)/2),A=(x2-x1)*Ae,L=(z2-z1)*Ae,P=Math.min(3.6,A-1.6);
+  Q(cx,1.55,Y(z1)+.1,P,1.15,.03,pizarra);Q(cx,1.55,Y(z1)+.09,P+.1,1.25,.02,madera);Q(cx,.95,Y(z1)+.14,P,.04,.08,madera);
+  Q(cx-A*.22,.75,Y(z1)+1.5,1.3,.05,.65,madera,true);Q(cx-A*.22,.37,Y(z1)+1.8,1.2,.7,.04,madera);
+  Q(cx,1.6,Y(z2)-.1,Math.min(2.4,A-2),1,.02,corcho);
+  const filas=Math.max(2,Math.floor((L-3.2)/1.25));
+  for(const c of [-.3,0,.3])for(let r=0;r<filas;r++){const x=cx+c*A,z=Y(z1)+2.8+r*1.25;
+   if(compu){Q(x,.75,z,1.2,.05,.6,jt('#d9d6cc'),true);Q(x,1.0,z-.1,.5,.32,.04,jt('#1c2124',.4));Q(x,.85,z-.13,.12,.18,.08,patas);Q(x,.78,z+.12,.4,.02,.14,patas);}
+   else{Q(x,.72,z,1.1,.04,.5,maderaClara,true);Q(x,.36,z-.2,1.05,.7,.03,patas);}
+   for(const s2 of [-.27,.27]){Q(x+s2,.43,z+.48,.38,.04,.38,sillaAzul);Q(x+s2,.66,z+.67,.38,.42,.03,sillaAzul);for(const t of [-.16,.16])Q(x+s2+t,.21,z+.48,.025,.42,.025,patas);}}
+  oo(cx,Y((z1+z2)/2),2.95);
+  const lado=fx<(x1+x2)/2?1:-1;for(const s2 of [-1,1])Q(W(fx)+lado*.16,2.2,Y((z1+z2)/2)+s2*Math.min(2.4,L/2-.6),.03,1.9,.7,cortina);}
+ for(const [a,b] of [[254,292.3],[292.3,330.6],[330.6,369]])amueblar(174,a,XO,b,174);
+ for(const [a,b] of [[294,330],[330,369]])amueblar(XE,a,272,b,272);
+ {const altoAntes=Je;Je=Ue;
+  for(const [a,b] of [[196,227],[227,259],[259,294],[294,330],[330,367],[367,405]])amueblar(174,a,XO,b,174);
+  amueblar(XE,196,272,231,272,true);for(const [a,b] of [[231,261],[294,330],[330,366]])amueblar(XE,a,272,b,272);
+  Je=altoAntes;}
+
+ // Ventanas del primer piso sobre las aulas que no están encima del bloque de abajo.
+ for(const [a,b] of [[196,227],[227,259],[367,405]])ventanaFachada(174,1,(a+b)/2,Math.min(4.2,(b-a)*Ae-1.2),1.8,Ue+2.15);
+ for(const [a,b] of [[196,231],[231,261]])ventanaFachada(272,-1,(a+b)/2,Math.min(4.2,(b-a)*Ae-1.2),1.8,Ue+2.15);
+ Q(W(174)-.095,Ue+1.65,Y(225.5),.014,3.3,(254-196)*Ae,ladrillo((254-196)*Ae));Q(W(174)-.095,Ue+1.65,Y(387),.014,3.3,(405-369)*Ae,ladrillo((405-369)*Ae));
+ Q(W(272)+.095,Ue+1.65,Y(225),.014,3.3,(254-196)*Ae,ladrillo((254-196)*Ae));
 
  // 7. Hall: 8 m de fondo, de la fachada (x 170) al ascensor (x 243).
  _e(170,369,243,409,'HALL');_e(210,409,230,439,'ACCESO AL COMEDOR');
@@ -4466,10 +4521,23 @@ var puertasConLlave=[];
  de.userData.escala1a1={pasillo:{ancho:3.55,largo:23,columnas:.25},hall:[170,369,243,409],banos:[170,409,214,439],comedorDesde:439};
 })();
 
+// La escuela entera un 20% más grande en planta: pasillos más anchos, aulas más largas,
+// puertas y muebles en proporción. Las alturas no cambian. Todo lo construido pasa a un
+// grupo escalado y los datos de juego (choques, puertas, escaleras, luces) se escalan igual;
+// los ambientes y el plano siguen en unidades de plano porque cambia la escala Ae.
+(function agrandarEscuela(){const F=1.2,G=new Xe();G.scale.set(F,1,F);
+ for(const o of [...de.children]){if(o.isCamera)continue;G.add(o);}de.add(G);
+ for(const c of cr){c.x*=F;c.z*=F;c.w*=F;c.d*=F;}
+ for(const d of schoolDoors){d.x*=F;d.z*=F;d.escala=F;placeSchoolDoor(d);}
+ for(const p of puertasConLlave){p.x*=F;p.z*=F;}
+ for(const l of qh){l.position.x*=F;l.position.z*=F;}
+ for(const s of kl){s.x0*=F;s.x1*=F;s.x2*=F;s.z1*=F;s.z2*=F;s.width*=F;}
+ Qt.position.x*=F;Qt.position.z*=F;Ae*=F;de.userData.escalaPlanta=F;})();
+
 // Día y noche: arranca de día; la N pasa a la noche de antes y vuelve.
 var dia=!0,sol=new as("#fff2dc",0,0,0);sol.position.set(-120,260,90);de.add(sol);
 function aplicarHora(){de.background.set(dia?"#a8cdea":"#091013");de.fog.color.set(dia?"#d9e3e8":"#0b1417");de.fog.density=dia?.0035:gs?.006:.018;
- Kh.color.set(dia?"#f4f8ff":"#bcccd1");Kh.groundColor.set(dia?"#c4beb0":"#37251d");Kh.intensity=dia?1.35:gs?.85:.3;sol.intensity=dia?1.6:0;
+ Kh.color.set(dia?"#f4f8ff":"#bcccd1");Kh.groundColor.set(dia?"#c4beb0":"#37251d");Kh.intensity=dia?1.1:gs?.85:.3;sol.intensity=dia?2.2:0;
  const b=ge("noche");b&&(b.textContent=dia?"N · Noche":"N · Día");}
 function cambiarHora(){dia=!dia;io=!dia;lr.visible=io;ge("flash").textContent="F · Linterna "+(io?"●":"○");aplicarHora();}
 io=!1;lr.visible=!1;ge("flash").textContent="F · Linterna ○";ge("noche").onclick=cambiarHora;aplicarHora();
