@@ -4308,10 +4308,10 @@ var puertasConLlave=[];
   Je=altoAntes;}
 
  // 7. Hall: 8 m de fondo, de la fachada (x 170) al ascensor (x 243).
- _e(170,369,243,409,'HALL');_e(208.2,409,214,414,'HALL');_e(214,409,234,439,'ACCESO AL COMEDOR');
- piso(170,369,243,409,granito,1.2);piso(208.2,409,214,414,granito,1.2);piso(214,409,234,439,granito,1.2);
- cielorraso(170,369,243,409,3);cielorraso(208.2,409,214,414,3);cielorraso(214,409,234,439,3);
- for(const x of [182,198,214.5,231])for(const z of [377,396])luz(x,z,3);luz(224,417,3);luz(224,431,3);
+ _e(170,369,243,409,'HALL');_e(210,409,230,439,'ACCESO AL COMEDOR');
+ piso(170,369,243,409,granito,1.2);piso(210,409,230,439,granito,1.2);
+ cielorraso(170,369,243,409,3);cielorraso(210,409,230,439,3);
+ for(const x of [182,198,214.5,231])for(const z of [377,396])luz(x,z,3);luz(220,417,3);luz(220,431,3);
  Ze(170,369,174,369,[],3.3,!1);Ze(170,369,170,386,[],3.3,!1);Ze(170,406,170,409,[],3.3,!1);
  Ze(243,369,243,409,[[378.75,384.25],[386,394]],3.3,!1);
  Q(W(223),3.15,Y(369),3.6,.3,.26,Ee);
@@ -4377,71 +4377,70 @@ var puertasConLlave=[];
  for(const [x,w,c] of [[173.6,1,'#1d1f1f'],[178.4,.9,'#5b5f5c'],[183,.9,'#8e938f'],[188.3,1.2,'#c9ccc6']])armario(x,409-1.65,w,.5,1.95,jt(c,.45),Math.PI);
  const carrete=new me(new is(.28,.28,.08,18),jt('#d68a21',.5));carrete.rotation.x=Math.PI/2;carrete.position.set(W(189.5),2.25,Y(409)-.45);de.add(carrete);
 
- // 11. Sur: tres baños en 6 m de fondo, con las puertas sobre el pasillo del comedor. De sur a
- //     norte: el de la puerta en el nicho, el accesible y el de varones. La cara que mira al
- //     hall es pared lisa, con la fila de armarios hasta la salida al patio.
- Ze(170,409,214,409,[],3.3,!1);Ze(214,409,214,439,[[414.5,418.5],[423.5,427.5],[431,436]],3.3,!1);Ze(170,409,170,439,[],3.3,!1);
- Ze(170,421.5,205,421.5,[],3.3,!1);Ze(205,421.5,214,421.5,[],3.3,!1);Ze(205,421.5,205,430.5,[],3.3,!1);Ze(205,430.5,214,430.5,[],3.3,!1);
- Ze(209,431,214,431,[],3.3,!1);Ze(209,436,214,436,[],3.3,!1);Ze(209,431,209,436,[[431.5,435.5]],3.3,!1);
- for(const [x,z,rot] of [[214,416.5,Math.PI/2],[214,425.5,Math.PI/2],[209,433.5,Math.PI/2]]){const d=schoolDoor(W(x),Y(z),rot,.8,true);vestir(d,blanco,blanco,blanco);}
- for(const z of [416.5,425.5])Q(W(214)+.09,2.68,Y(z),.012,.38,.8,ventanaClara);
- for(const [z,t] of [[416.5,'VARONES'],[425.5,'ACCESIBLE'],[433.5,'NENAS']])En(t,W(214)+.11,2.62,Y(z),.7,Math.PI/2,'#d3ceb4','#303c36');
- _e(170,409,214,421.5,'BAÑO VARONES');_e(205,421.5,214,430.5,'BAÑO ACCESIBLE');_e(209,431,214,436,'ACCESO AL COMEDOR');
- _e(170,421.5,205,439,'BAÑO NENAS');_e(205,430.5,209,439,'BAÑO NENAS');_e(209,436,214,439,'BAÑO NENAS');
- for(const [x1,z1,x2,z2] of [[170,409,214,421.5],[205,421.5,214,430.5],[170,421.5,205,439],[205,430.5,209,439]])piso(x1,z1,x2,z2,baldosaBano,.6);
- piso(209,431,214,436,granito,1.2);cielorraso(209,431,214,436,3);
- kn(W(192),Y(415.25),3.3);kn(W(209.5),Y(426),3.3);kn(W(188),Y(430),3.3);
+ // 11. Sur, como el plano: nenas al norte y varones al sur, contra la fachada, con las puertas
+ //     sobre un pasillito propio; en el medio el accesible, que abre al pasillo del comedor.
+ //     La cara que mira al hall es pared lisa. Fondo de 6 m, en la proporción del plano.
+ // Las puertas del comedor pasan al eje del pasillo nuevo (x 210 a 230).
+ {const zc=Y(439.4);
+  for(const d of [...schoolDoors])if(Math.abs(d.x-W(224))<.15&&Math.abs(d.z-zc)<.4){d.root.removeFromParent();for(const c of d.colliders){const k=cr.indexOf(c);k>=0&&cr.splice(k,1);}schoolDoors.splice(schoolDoors.indexOf(d),1);}
+  for(const o of [...de.children])if(!o.isLight&&o.position.y<3.6&&Math.abs(o.position.z-zc)<.2&&o.position.x>W(176)&&o.position.x<W(240))o.removeFromParent();
+  for(let k=cr.length-1;k>=0;k--){const c=cr[k];if(!c.door&&Math.abs(c.z-zc)<.2&&c.x>W(176)&&c.x<W(240))cr.splice(k,1);}
+  Ze(170,439.4,210,439.4,[],3.5,!1);Ze(230,439.4,234,439.4,[],3.5,!1);Q(W(220),3,zc,4,1,.16,Ee);
+  const com=schoolDoor(W(220),zc,0,4,true);vestir(com,blanco,blanco,blanco);}
+ Ze(170,409,210,409,[],3.3,!1);Ze(170,409,170,439,[],3.3,!1);Ze(170,424,196,424,[],3.3,!1);
+ Ze(199.5,409,199.5,419.5,[[412.75,416.5]],3.3,!1);Ze(199.5,429.25,199.5,439,[[432.25,436]],3.3,!1);
+ Ze(196,419.5,210,419.5,[],3.3,!1);Ze(196,429.25,210,429.25,[],3.3,!1);Ze(196,419.5,196,429.25,[],3.3,!1);Ze(210,419.5,210,429.25,[[421.75,426.25]],3.3,!1);
+ for(const [x,z,w] of [[199.5,414.625,.75],[199.5,434.125,.75],[210,424,.9]]){const d=schoolDoor(W(x),Y(z),Math.PI/2,w,true);vestir(d,blanco,blanco,blanco);Q(W(x)+.09,2.68,Y(z),.012,.38,w,ventanaClara);}
+ for(const [x,z,t] of [[199.5,414.625,'NENAS'],[199.5,434.125,'VARONES'],[210,424,'ACCESIBLE']])En(t,W(x)+.11,2.62,Y(z),.7,Math.PI/2,'#d3ceb4','#303c36');
+ _e(170,409,199.5,424,'BAÑO NENAS');_e(170,424,199.5,439,'BAÑO VARONES');_e(196,419.5,210,429.25,'BAÑO ACCESIBLE');
+ _e(199.5,409,210,419.5,'ACCESO A LOS BAÑOS');_e(199.5,429.25,210,439,'ACCESO A LOS BAÑOS');
+ for(const [x1,z1,x2,z2] of [[170,409,199.5,424],[170,424,199.5,439],[196,419.5,210,429.25]])piso(x1,z1,x2,z2,baldosaBano,.6);
+ for(const [x1,z1,x2,z2] of [[199.5,409,210,419.5],[199.5,429.25,210,439]]){piso(x1,z1,x2,z2,granito,1.2);cielorraso(x1,z1,x2,z2,3);}
+ kn(W(185),Y(416.5),3.3);kn(W(185),Y(431.5),3.3);kn(W(203),Y(424.4),3.3);luz(205,414,3);luz(205,434,3);
  // Fachada de ladrillo del lado del patio.
  Q(W(170)-.025,1.75,Y(424),.16,3.5,(439-409)*Ae,Nl);for(const y of [.1,3.45])Q(W(170)-.1,y,Y(424),.04,.18,(439-409)*Ae,verdeAgua);
- for(const z of [415,431])Q(W(170)-.11,2.75,Y(z),.03,.45,1.4,vidrioOsc);
+ for(const z of [416,431])Q(W(170)-.11,2.75,Y(z),.03,.45,1.4,vidrioOsc);
  // Azulejo blanco hasta 2,1 m en cada cara interior, sin tapar las puertas.
  const azul=(x,z,w,d)=>{if(Math.max(w,d)>.05)Q(x,1.05,z,w,2.1,d,conRepeticion(azulejo,Math.max(w,d)/.8,2.1/.8,{roughness:.25}));};
  const enX=(x,lado,z1,z2)=>azul(W(x)+lado*.09,Y((z1+z2)/2),.012,(z2-z1)*Ae-.18),enZ=(z,lado,x1,x2)=>azul(W((x1+x2)/2),Y(z)+lado*.09,(x2-x1)*Ae-.18,.012);
- enZ(409,1,170,214);enZ(421.5,-1,170,214);enX(170,1,409,421.5);enX(214,-1,409,414.5);enX(214,-1,418.5,421.5);
- enX(205,1,421.5,430.5);enX(214,-1,421.5,423.5);enX(214,-1,427.5,430.5);enZ(421.5,1,205,214);enZ(430.5,-1,205,214);
- enX(170,1,421.5,439);enZ(439,-1,170,214);enZ(421.5,1,170,205);enX(205,-1,421.5,430.5);enZ(430.5,1,205,209);enX(209,-1,436,439);enX(209,-1,430.5,431.5);enX(209,-1,435.5,436);
+ enZ(409,1,170,199.5);enX(170,1,409,424);enZ(424,-1,170,196);enX(199.5,-1,409,412.75);enX(199.5,-1,416.5,419.5);enX(196,-1,419.5,424);
+ enZ(424,1,170,196);enX(170,1,424,439);enZ(439,-1,170,199.5);enX(196,-1,424,429.25);enX(199.5,-1,429.25,432.25);enX(199.5,-1,436,439);
+ enZ(419.5,1,196,210);enZ(429.25,-1,196,210);enX(196,1,419.5,429.25);enX(210,-1,419.5,421.75);enX(210,-1,426.25,429.25);
  function piletaZ(zp,x1,x2,lado){const L=(x2-x1)*Ae,z=Y(zp)+lado*(.08+.23),xc=W((x1+x2)/2);Q(xc,.8,z,L,.26,.44,acero,true);Q(xc,.935,z,L-.06,.012,.36,jt('#3b4041',.4));
   for(let x=x1+2;x<x2-1;x+=3.5)Q(W(x),1.08,Y(zp)+lado*.15,.035,.035,.15,acero);for(const x of [x1+1.5,x2-1.5])Q(W(x),.42,z,.06,.5,.06,jt('#b23a2a',.6));}
- function pileta(xp,z1,z2,lado){const L=(z2-z1)*Ae,x=W(xp)+lado*(.08+.23),zc=Y((z1+z2)/2);Q(x,.8,zc,.44,.26,L,acero,true);Q(x,.935,zc,.36,.012,L-.06,jt('#3b4041',.4));
-  for(let z=z1+2;z<z2-1;z+=3.5)Q(W(xp)+lado*.15,1.08,Y(z),.15,.035,.035,acero);for(const z of [z1+1.5,z2-1.5])Q(x,.42,Y(z),.06,.5,.06,jt('#b23a2a',.6));}
  function mingitorioZ(zp,x,lado){Q(W(x),.88,Y(zp)+lado*.25,.36,.62,.3,blanco,true);Q(W(x),1.5,Y(zp)+lado*.13,.04,.55,.04,acero);}
  function inodoro(x,z,rot,barras){const g=new Xe();g.position.set(x,0,z);g.rotation.y=rot;de.add(g);Q(0,.62,-.24,.42,.42,.18,blanco,false,g);
   const taza=new me(new is(.2,.16,.4,14),blanco);taza.position.set(0,.2,.04);taza.scale.z=1.3;g.add(taza);Q(0,.415,.05,.38,.035,.5,blanco,false,g);
   if(barras)for(const s of [-.38,.38]){Q(s,.75,.05,.04,.04,.7,blanco,false,g);Q(s,.4,-.28,.04,.72,.04,blanco,false,g);}
   cr.push({x,z,w:.25,d:.25,minY:0,maxY:.8});}
  const borde=jt('#6b3b22',.6),hoja=jt('#e6dcb8',.75);
- // Retretes en fila: frente a lo largo de x (puertas al norte) o a lo largo de z (puertas al este).
- function cubiculos(x1,x2,zf,zb,n){const ancho=(x2-x1)/n;
-  for(let k=0;k<n;k++){const xa=x1+k*ancho,xc=xa+ancho/2,anchoW=ancho*Ae,puerta=Math.min(.65,anchoW-.25);
-   if(k>0)Q(W(xa),1.05,Y((zf+zb)/2),.04,2,(zb-zf)*Ae,hoja,true);
-   const lado=(anchoW-puerta)/2;for(const s of [-1,1])Q(W(xc)+s*(puerta/2+lado/2),1.05,Y(zf),lado,2,.04,hoja,true);
-   const d=schoolDoor(W(xc),Y(zf),0,puerta,k%2===1);vestir(d,hoja,hoja,borde);inodoro(W(xc),Y(zb)-.42,Math.PI,false);}}
+ // Retretes en fila contra la fachada, con las puertas mirando al este.
  function cubiculosX(xf,xb,z1,z2,n){const ancho=(z2-z1)/n;
   for(let k=0;k<n;k++){const za=z1+k*ancho,zc=za+ancho/2,anchoW=ancho*Ae,puerta=Math.min(.65,anchoW-.25);
    if(k>0)Q(W((xf+xb)/2),1.05,Y(za),(xf-xb)*Ae,2,.04,hoja,true);
    const lado=(anchoW-puerta)/2;for(const s of [-1,1])Q(W(xf),1.05,Y(zc)+s*(puerta/2+lado/2),.04,2,lado,hoja,true);
    const d=schoolDoor(W(xf),Y(zc),Math.PI/2,puerta,k%2===0);vestir(d,hoja,hoja,borde);inodoro(W(xb)+.42,Y(zc),Math.PI/2,false);}}
- // Varones: pileta corrida y mingitorios contra la pared del hall; dos retretes al oeste.
- piletaZ(409,192,208,1);mingitorioZ(409,185,1);mingitorioZ(409,188,1);cubiculosX(177.5,170,409.8,421,2);
- // Nenas: pileta contra la pared del accesible y tres retretes al fondo, contra el comedor.
- pileta(205,422.5,429.5,-1);cubiculos(176,203,431,439,3);
- // Accesible: inodoro con barras contra la pared del nicho; lavatorio y espejo al oeste.
- inodoro(W(210),Y(430.5)-.45,Math.PI,true);
- Q(W(205)+.3,.82,Y(425),.42,.14,.55,blanco,true);Q(W(205)+.12,.5,Y(425),.05,.6,.05,acero);Q(W(205)+.1,1.62,Y(425),.02,.7,.5,espejo);for(const s of [-.42,.42])Q(W(205)+.3,.85,Y(425)+s,.5,.04,.04,blanco);
+ // Nenas: pileta corrida contra la pared del hall y tres retretes contra la fachada.
+ piletaZ(409,181,195,1);cubiculosX(177.5,170,409.6,423.6,3);
+ // Varones: pileta corrida contra el comedor, dos mingitorios contra las nenas, dos retretes.
+ piletaZ(439,181,194,-1);mingitorioZ(424,186,1);mingitorioZ(424,189,1);cubiculosX(177.5,170,424.5,438.6,2);
+ // Accesible: inodoro con barras contra la pared del oeste; lavatorio y espejo al norte.
+ inodoro(W(196)+.45,Y(425.5),Math.PI/2,true);
+ Q(W(205),.82,Y(419.5)+.3,.55,.14,.42,blanco,true);Q(W(205),.5,Y(419.5)+.12,.05,.6,.05,acero);Q(W(205),1.62,Y(419.5)+.1,.5,.7,.02,espejo);for(const s of [-.42,.42])Q(W(205)+s,.85,Y(419.5)+.3,.04,.04,.5,blanco);
 
  // 12. Sala de maestros: puerta y ventana al pasillo del comedor, mesa, sillas y armarios.
- _e(234,409,272,439,'SALA DE MAESTROS');
- Ze(234,409,272,409,[],3.3,!1);Ze(272,409,272,439,[],3.3,!1);Ze(234,409,234,439,[[412,416.5],[418,424]],3.3,!1);
- const sala=schoolDoor(W(234),Y(414.25),Math.PI/2,.9,false);vestir(sala,blanco,blanco,blanco);
- Q(W(234),.5,Y(421),.16,1,1.2,Sn,true);Q(W(234),1.65,Y(421),.04,1.3,1.2,vidrio);cr.push({x:W(234),z:Y(421),w:.08,d:.6,minY:0,maxY:2.4});
- for(const y of [1,2.3])Q(W(234),y,Y(421),.1,.06,1.25,blanco);for(const z of [-.6,.6])Q(W(234),1.65,Y(421)+z,.1,1.3,.06,blanco);
- En('SALA DE MAESTROS',W(234)-.1,2.62,Y(414.25),1.4,-Math.PI/2,'#d3ceb4','#303c36');
+ _e(230,409,272,439,'SALA DE MAESTROS');
+ Ze(230,409,272,409,[],3.3,!1);Ze(272,409,272,439,[],3.3,!1);Ze(230,409,230,439,[[412,416.5],[418,424]],3.3,!1);
+ const sala=schoolDoor(W(230),Y(414.25),Math.PI/2,.9,false);vestir(sala,blanco,blanco,blanco);
+ Q(W(230),.5,Y(421),.16,1,1.2,Sn,true);Q(W(230),1.65,Y(421),.04,1.3,1.2,vidrio);cr.push({x:W(230),z:Y(421),w:.08,d:.6,minY:0,maxY:2.4});
+ for(const y of [1,2.3])Q(W(230),y,Y(421),.1,.06,1.25,blanco);for(const z of [-.6,.6])Q(W(230),1.65,Y(421)+z,.1,1.3,.06,blanco);
+ En('SALA DE MAESTROS',W(230)-.1,2.62,Y(414.25),1.4,-Math.PI/2,'#d3ceb4','#303c36');
  kn(W(253),Y(424),3.3);
  Q(W(253),.75,Y(424),2.4,.05,1,madera,true);for(const a of [-1.1,1.1])for(const b of [-.42,.42])Q(W(253)+a,.37,Y(424)+b,.05,.74,.05,Te);
  for(const a of [-.8,0,.8])for(const s of [-1,1]){Q(W(253)+a,.45,Y(424)+s*.75,.42,.05,.42,jt('#3c4a63'));Q(W(253)+a,.72,Y(424)+s*.95,.42,.5,.04,jt('#3c4a63'));}
  armario(270.35,413,1,.5,1.9,jt('#cfcab9',.8),-Math.PI/2);armario(270.35,434,1,.5,1.9,jt('#7b6d58',.8),-Math.PI/2);
  Q(W(272)-.12,1.6,Y(424),.03,1.1,2.4,jt('#f1efe6'));
- Q(W(230.5),2.8,Y(439)-.2,.28,.14,.05,new Qn({color:'#38f07a'}));
+ Q(W(226.5),2.8,Y(439)-.2,.28,.14,.05,new Qn({color:'#38f07a'}));
 
  // 13. Portón de Avda. Lacarra: va donde el plano dice SALIDA, del lado de Pasaje L, y es
  //     corredizo de una hoja; corre hacia Somellera (a la izquierda mirando desde adentro).
