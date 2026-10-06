@@ -3852,7 +3852,7 @@ function schoolDoor(x,z,rot,width,opened=true,kind='swing'){
 }
 function placeSchoolDoor(d){
  for(let k=0;k<d.leaves.length;k++){
-  const l=d.leaves[k];if(d.kind==='slide'){l.hinge.position.x=l.closedX+(k===0?-1:1)*d.amount*d.width*.47;}else l.hinge.rotation.y=-l.direction*d.amount*Math.PI*.5;
+  const l=d.leaves[k];if(d.kind==='slide'){l.hinge.position.x=l.closedX+(k===0?-1:1)*d.amount*d.width*(d.recorrido??.47);}else l.hinge.rotation.y=-l.direction*d.amount*Math.PI*.5;
   l.hinge.updateMatrixWorld(true);d.root.updateMatrixWorld(true);
   const pos=new N();l.leaf.getWorldPosition(pos);const angle=d.rot+l.hinge.rotation.y,w=d.width/d.leaves.length/2;
   Object.assign(d.colliders[k],{x:pos.x,z:pos.z,w:Math.abs(Math.cos(angle))*w+.03,d:Math.abs(Math.sin(angle))*w+.03,minY:d.kind==="slide"&&d.amount>.95?-10:d.floor,maxY:d.kind==="slide"&&d.amount>.95?-9:d.floor+2.4});
@@ -3873,7 +3873,7 @@ function ai(i,t,e=0,n=1.1,s=!1){let r=new Xe;r.position.set(i,Je,t),r.rotation.y
 Ze(170,493,272,493,[[214,234]],5.8,false);schoolDoor(W(224),Y(493),0,4,true);Ze(170,595,272,595,[],5.8,false);Ze(272,493,272,595,[],3.5,false);
 
 Ze(170,468,170,595,[[578,584]],3.5,true);schoolDoor(W(170),Y(581),Math.PI/2,1.2,false);
-kn(W(222),Y(450));kn(W(222),Y(478));En("SALIDA",W(170)+.12,2.85,Y(452),1.4,Math.PI/2);ys(FOTOS[0],W(265),1.8,Y(440)+.11,.6,1);_e(214,254,232,440,"PASILLO");_e(214,232,232,254,"HALL DEL SUM");for(let i of[[174,254,214,310,257,265],[174,310,214,350,313,321],[174,350,214,392,382,390],[174,392,214,440,395,403]])we(i[0],i[1],i[2],i[3],"AULA","E",[i[4],i[5]]);for(let i of[[232,280,272,310,283,291],[232,368,272,392,382,390],[232,392,272,440,395,403]])we(i[0],i[1],i[2],i[3],"AULA","W",[i[4],i[5]]);we(232,256,249,280,"DEPENDENCIA","W",[262,269]);we(249,256,272,280,"DEPENDENCIA","S",[254,262]);we(232,310,272,330,"BA\xD1O","W",[314,322]);we(232,350,272,368,"BAÑO NIÑOS","W",[353,361]);_e(232,330,272,350,"ESCALERA");Ze(232,330,232,350,[[333,348]]);for(let i=267;i<440;i+=27)kn(W(223),Y(i)),Q(W(223),3.1,Y(i),3.6,.25,.22,Sn);for(let i of[282,347,416])oo(W(223),Y(i));for(let i of[276,335,370,418])for(let t of[194,252])if(!(t===252&&i===335)){Q(W(t),.76,Y(i),1.4,.08,.7,ao,!0);for(let e of[-.6,.6])for(let n of[-.27,.27])Q(W(t)+e,.38,Y(i)+n,.05,.76,.05,Te)}_e(112,192,176,254,"PATIO",0,!0);_e(176,232,232,254,"HALL DEL SUM");_e(214,192,232,232,"HALL DEL SUM");we(176,192,214,232,"NIVELACIÓN","E",[223.5,230.5]);we(232,222,272,256,"4º B","W",[223.5,230.5]);Ze(232,196,232,222,[],3.3,!1);Ze(272,196,272,222,[],3.3,!1);Ol(W(252),Y(209),8,5.2);Ze(176,232,176,254,[[235,251]]);Ze(139,192,232,192,[[145,177],[213,231]],5.8);for(let i of[[223,239],[223,204]])kn(W(i[0]),Y(i[1]));for(let i of[237,249])ai(W(176),Y(i),Math.PI/2,.6),ri(W(175.8),Y(i),.5,2.3,Math.PI/2);En("HALL",W(176)-.14,2.9,Y(241),1.6,-Math.PI/2);En("SUM",W(222),2.9,Y(192)+.12,1.25);Q(W(195),.76,Y(238),1.5,.09,.85,ao,!0);for(let[i,t,e]of[[190,236,"#66528c"],[200,236,"#559649"],[190,242,"#376789"],[200,242,"#b0a77b"]])Q(W(i),.45,Y(t),.43,.07,.44,jt(e)),Q(W(i),.8,Y(t)+.2,.43,.65,.055,jt(e));Q(W(210),.5,Y(234),.55,1,.55,jt("#778c22"),!0);ys(FOTOS[1],W(195),1.9,Y(232)+.12,2.2,1.1);_e(139,50,232,192,"SUM",5.8);Ze(139,50,232,50,[],5.8,!1);Ze(139,50,139,192,[[86,94],[117,151]],5.8,!1);we(112,50,139,102,"DEPENDENCIA","E",[86,94]);we(112,102,139,166,"MÚSICA","E",[117,151]);_e(112,166,139,192,"PATIO",0,!0);we(232,50,272,118,"BIBLIOTECA","W",[108,116]);we(232,118,272,155,"PLÁSTICA","W",[125,133]);we(232,155,272,196,"AULA","W",[176,184]);for(let i of[70,105,140,176])for(let t of[161,208])kn(W(t),Y(i),5.8);for(let i=248;i<451;i+=20)Q(W(112),.6,Y(i+10),.2,1.2,4,Nl,!0),Q(W(112),1.7,Y(i),.2,3.4,.2,zl,!0),ri(W(112),Y(i+10),4,2,Math.PI/2,1.2);Q(W(143),4.5,Y(301),12.4,.12,18.8,mn);for(let i of[254,277,301,324,348])Q(W(143),4.35,Y(i),12.4,.14,.12,Te),Q(W(114),2.2,Y(i),.16,4.4,.16,zl,!0);oi(112,451,112,671,7,!1);oi(112,671,290,671,3.3);oi(290,50,290,671,3.3);oi(272,50,290,50,3.3);ys(FOTOS[2],W(112)+.12,3.2,Y(560),18,6.4,Math.PI/2);var Jh=new as("#91b7d0",35,32,1.3);Jh.position.set(W(142),8,Y(365));de.add(Jh);var zh=jt("#2b7d9a",.45),Ii=jt("#527279",.2);for(let i of[499,518,537]){Q(W(272)-.11,4.15,Y(i),.035,.7,3,Ii);for(let t of[202,250]){Q(W(t),.78,Y(i),4.7,.1,.78,zh,!0);for(let e of[-.7,.7])Q(W(t),.43,Y(i)+e,4.7,.1,.32,zh);for(let e of[-2,2])Q(W(t)+e,.39,Y(i),.07,.78,.5,Te);kn(W(t),Y(i),5.5)}}oo(W(220),Y(513),5.3);oo(W(220),Y(540),5.3);var Bg=cr.filter(i=>(Math.abs(i.x-W(214))<.01||Math.abs(i.x-W(232))<.01)&&i.z>Y(254)&&i.z<Y(440)&&i.d>.2);for(let i of Bg){let t=i.x<0?1:-1,e=i.x+t*(i.w+.014),n=new dn({map:hr("brick",1,Math.max(1,i.d*2/1.5)),roughness:.9});Q(e,1.25,i.z,.018,2.5,i.d*2,n),Q(e,2.82,i.z,.026,.4,i.d*2,mn),Q(e+t*.022,2.82,i.z,.018,.28,Math.max(.1,i.d*2-.1),Ii);for(let s=i.z-i.d+.2;s<i.z+i.d;s+=.75)Q(e+t*.034,2.82,s,.035,.4,.035,Sn)}for(let i of[257,310,350,392,438])for(let t of[214,232])Q(W(t)+(t===214?.1:-.1),1.65,Y(i),.18,3.3,.3,Sn);Q(W(230),3.05,Y(347),.4,.07,36,Te);for(let i=258;i<439;i+=2.5)Q(W(230),3.1,Y(i),.48,.035,.04,mn);for(let i of[275,326,383,432])Q(W(229),2.83,Y(i),.7,.35,.8,mn),Q(W(229),2.81,Y(i)+.405,.6,.2,.02,Te);for(let[i,t]of[[214,286],[232,302],[214,333],[232,370],[214,424]]){let e=i===214?1:-1;Q(W(i)+e*.12,1.65,Y(t),.055,1.05,1.6,ao);for(let n=0;n<4;n++)Q(W(i)+e*.16,1.64+n%2*.17,Y(t)-.5+Math.floor(n/2)*.8,.012,.48,.52,jt(["#b9b89a","#879eae","#bd987d","#c9c4b3"][n]))}ai(W(223),Y(438),0,3.42,!0);for(let i of[215.8,228.8])ai(W(i),Y(438),0,i<220?.55:1.12),ri(W(i),Y(438)+.06,i<220?.45:1,1.1,0,1.15);var Ms=new Xe;Ms.position.set(W(225.3),0,Y(438));Ms.rotation.y=-Math.PI*.46;de.add(Ms);Q(-.53,1.18,0,1.06,2.36,.05,mn,!1,Ms);Q(-.53,1.72,.033,.88,.9,.018,Ii,!1,Ms);Q(-.88,1,.08,.05,.15,.06,Te,!1,Ms);Q(W(223),2.78,Y(438),3.55,.42,.055,Ii);for(let i of[214,220,226,232])Q(W(i),2.78,Y(438)+.04,.045,.48,.05,Sn);Q(W(223),.012,Y(440),3.5,.024,.22,Te);for(let i=214.5;i<232;i+=.5)Q(W(i),.032,Y(440),.025,.02,.22,mn);En("SALIDA",W(223),2.8,Y(432),1.1);ys(FOTOS[0],W(211.8),1.8,Y(440)+.12,.58,1);Q(W(207),.48,Y(442),.56,.96,.52,jt("#8b9e25"),!0);En("RECICLABLES",W(207),.78,Y(442)+.27,.46,0,"#718c2b");Q(W(222),1.65,Y(192),.28,3.3,.28,Sn,!0);function ar(i,t,e,n,s,r=0){let a=new Xe;a.position.set(i,s,t),a.rotation.y=r,de.add(a),Q(0,0,0,e,n,.035,Ii,!1,a);for(let o of[-e/2,0,e/2])Q(o,0,.025,.055,n+.1,.045,Ee,!1,a);for(let o of[-n/2,n/2])Q(0,o,.025,e+.1,.05,.045,Ee,!1,a)}for(let i of[155,185,215])ar(W(i),Y(50)+.12,4,1.25,2.1),ar(W(i),Y(50)+.14,5,.6,4.9);for(let i of[65,95,145,166])ar(W(232)-.12,Y(i),2.2,.85,2,-Math.PI/2);for(let i of[60,90,120,150,180])for(let t of[139.5,231.5])ar(W(t),Y(i),4.8,.65,5.15,Math.PI/2);for(let[i,t]of[[167,85],[198,104],[181,145],[212,160]]){let e=new me(new Zs(.12,.15,8),jt("#b67b29"));e.position.set(W(i),.075,Y(t)),de.add(e)}var MAIN_STAIR_WIDTH=1.45,Ue=4.2,kl=[];function $h(i,t,e=!1){let n=W(234),s=W(263),r=W(270),a=Y(i),o=Y(t),l=MAIN_STAIR_WIDTH,c={x0:n,x1:s,x2:r,z1:a,z2:o,width:l};kl.push(c);for(let h=0;h<14;h++){let u=(s-n)/14,f=n+(h+.5)*u,p=(h+1)*Ue/28,_=Ue-h*Ue/28;if(Q(f,p/2,a,u+.006,p,l,e?jt("#74453c"):Ee),Q(f,_-.08,o,u+.006,.16,l,e?jt("#74453c"):Ee),e)for(let v=0;v<3;v++)Q(f-u/2-.004,p-.09,a+(v-1)*.32,.012,.15,.28,jt(["#ab933c","#41624d","#74494c"][v]))}Q((s+r)/2,Ue/2-.08,(a+o)/2,r-s,.16,o-a+l,Ee),Q((W(232)+n)/2,Ue-.08,o,n-W(232),.16,l,Ee);for(let h of[a-l/2-.09,o+l/2+.09])Q((n+r)/2,3.1,h,r-n,6.2,.14,Sn);Q((n+s)/2,2.1,(a+o)/2,s-n,4.2,.14,Ee);for(let[h,u,f]of[[a-l/2+.07,1,3.1],[o+l/2-.07,5.2,3.1]]){let p=Q((n+s)/2,(u+f)/2,h,Math.hypot(s-n,f-u),.045,.045,Ee);p.rotation.z=Math.atan2(f-u,s-n)}Q(n-.22,.016,a,.4,.03,l,jt("#b6a550")),Q(n-.22,Ue+.016,o,.4,.03,l,jt("#b6a550")),ri(n-.07,a-l/2-.12,.45,2.5,Math.PI/2),ri(n-.07,o+l/2+.12,.45,2.5,Math.PI/2),En("PLANTA ALTA \u2191",n-.2,2.65,a,1.4,-Math.PI/2),kn(s,(a+o)/2,6.5)}$h(450,461);$h(335,345,!0);Ol(W(202),Y(454),12.8,5.6);Je=Ue;_e(214,232,234,468,"PASILLO PLANTA ALTA");_e(174,440,214,468,"HALL PLANTA ALTA");var Vl=[];for(let[i,t]of[[232,268],[268,304],[304,340],[340,377],[377,411],[411,440]])we(174,i,214,t,"AULA","E",[t-12,t-4]),Vl.push([194,(i+t)/2]);for(let[i,t]of[[232,275],[275,310],[350,395],[395,440]])we(234,i,272,t,"AULA","W",[i+5,i+13]),Vl.push([252,(i+t)/2]);we(234,310,272,330,"SANITARIOS","W",[316,324]);vs.push({x1:234,y1:330,x2:272,y2:350,name:"ESCALERA",floor:1},{x1:234,y1:440,x2:272,y2:468,name:"ESCALERA",floor:1});for(let i=244;i<458;i+=24)kn(W(224),Y(i)),i%48===4&&oo(W(224),Y(i));for(let[i,t]of Vl){Q(W(i),.76,Y(t),1.3,.08,.7,ao,!0);for(let e of[-.55,.55])Q(W(i)+e,.38,Y(t),.05,.76,.55,Te)}for(let i of cr.filter(t=>t.minY===Ue&&(Math.abs(t.x-W(214))<.01||Math.abs(t.x-W(234))<.01)&&t.d>.4)){let t=i.x<0?1:-1,e=i.x+t*(i.w+.014);Q(e,1.35,i.z,.02,2.7,i.d*2,new dn({map:hr("brick",1,i.d*1.4),roughness:.9})),Q(e,2.92,i.z,.03,.4,i.d*2,Ii)}for(let i of[260,298,375,410])for(let t of[214,234]){let e=t===214?1:-1;Q(W(t)+e*.12,1.65,Y(i),.045,1.1,2.3,Te);for(let n=0;n<6;n++)Q(W(t)+e*.15,1.5+n%2*.32,Y(i)-.8+Math.floor(n/2)*.7,.012,.25,.45,jt("#b7c3be"))}Fl(W(224),Y(232),4,.16);ar(W(224),Y(232)+.12,3.4,2.3,Ue+1.9);En("PLANTA ALTA",W(223),2.8,Y(440),1.8);var or=W(224),lo=Y(241);Q(or,.87,lo,.85,.23,1.45,Xh,!0);Q(or,1,lo,.74,.02,1.3,jt("#65744d"));for(let i of[-.35,.35])for(let t of[-.6,.6])Q(or+i,.4,lo+t,.06,.8,.06,mn);for(let i=0;i<8;i++){let t=lo-.56+i*.16;Q(or,1.09,t,1.25,.025,.025,Te);for(let e of[-.23,0,.23])Q(or+e,1.06,t,.045,.16,.045,i%2?Xh:jt("#315379"))}for(let i of[216,232])Q(W(i),1,Y(235),.6,2,.65,mn,!0);Q(W(220),.65,Y(234),.6,1.3,.4,jt("#457c94"));ys(FOTOS[3],W(214)+.12,Ue+1.8,Y(427),1.2,.9,Math.PI/2);Je=0;var sn=0;function kg(i,t){for(let e of kl){if(i>=W(232)-.32&&i<=e.x1&&Math.abs(t-e.z1)<=e.width/2-.2)return Math.max(0,(i-e.x0)/(e.x1-e.x0))*Ue/2;if(i>=W(232)-.32&&i<=e.x1&&Math.abs(t-e.z2)<=e.width/2-.2)return Ue-Math.max(0,(i-e.x0)/(e.x1-e.x0))*Ue/2;if(i>=e.x1&&i<=e.x2-.2&&t>=e.z1-e.width/2+.2&&t<=e.z2+e.width/2-.2)return Ue/2}return null}function Ll(i,t,e=sn){let n=kg(i,t);if(n!==null&&Math.abs(n-e)<.3)return n;let s=e>Ue-.3?1:0;if(s===0&&e>.3)return null;let r=s*Ue,a=.22;for(let o=0;o<8;o++){let l=(i+Math.cos(o*Math.PI/4)*a)/Ae+222,c=(t+Math.sin(o*Math.PI/4)*a)/Ae+451;if(!vs.some(h=>h.floor===s&&h.name!=="ESCALERA"&&l>=h.x1&&l<=h.x2&&c>=h.y1&&c<=h.y2))return null}return kl.some(o=>i>o.x0-.05&&i<o.x2&&t>o.z1-o.width/2-.1&&t<o.z2+o.width/2+.1)?null:r}Qt.position.set(W(222),1.68,Y(451));function Vg(i,t){let e=i/Ae+222,n=t/Ae+451;return[...vs].reverse().find(s=>s.floor===(sn>3.9?1:0)&&e>=s.x1&&e<=s.x2&&n>=s.y1&&n<=s.y2)?.name??"PATIO"}var Kh=new Ks("#bcccd1","#37251d",.3);de.add(Kh);var lr=new Qs("#f3f0cf",38,25,.48,.65,1.3);lr.position.set(.16,-.13,-.15);lr.target.position.set(0,-.05,-10);Qt.add(lr,lr.target);var altSalto=0,velSalto=0;function saltar(){zn&&altSalto<=0&&(velSalto=4.2)}var gs=!1,io=!0,zn=!1,_s=0,Dl=0,en={},Ri={x:0,y:0},Cl=0,Ul=0,nn,Ci,Qh=matchMedia("(pointer:coarse)").matches;function Hg(){try{if(nn??=new(window.AudioContext||window.webkitAudioContext),nn.resume(),!Ci){Ci=nn.createGain(),Ci.gain.value=.008;let i=nn.createOscillator();i.frequency.value=58,i.type="sine",i.connect(Ci).connect(nn.destination),i.start()}Ci.gain.value=.008}catch{}}function Gg(){if(!nn)return;let i=nn.createBuffer(1,Math.floor(nn.sampleRate*.07),nn.sampleRate),t=i.getChannelData(0);for(let s=0;s<t.length;s++)t[s]=(Math.random()*2-1)*(1-s/t.length)**3;let e=nn.createBufferSource(),n=nn.createGain();n.gain.value=.045,e.buffer=i,e.connect(n).connect(nn.destination),e.start()}function Ss(){zn=!1,document.body.classList.remove("playing"),en={},Ri={x:0,y:0},document.pointerLockElement&&document.exitPointerLock(),Ci&&(Ci.gain.value=0),ge("start").textContent="Continuar recorrido"}ge("start").disabled=!1;ge("start").textContent="Entrar al escenario \u2192";ge("start").onclick=()=>{if(zn=!0,document.body.classList.add("playing"),Hg(),!Qh)try{xs.requestPointerLock()?.catch(()=>{ge("caption").textContent="Arrastr\xE1 para mirar"})}catch{}};ge("pause").onclick=Ss;document.addEventListener("pointerlockchange",()=>{!document.pointerLockElement&&zn&&!Qh&&Ss()});function jh(i,t){_s-=i*.0025,Dl=ol.clamp(Dl-t*.0025,-1.35,1.35)}document.addEventListener("mousemove",i=>{zn&&document.pointerLockElement&&jh(i.movementX,i.movementY)});function tu(){io=!io,lr.visible=io,ge("flash").textContent=`F \xB7 Linterna ${io?"\u25CF":"\u25CB"}`}function eu(){gs=!gs,aplicarHora(),ge("mode").textContent=gs?"L \xB7 Apagar luces":"L \xB7 Encender luces"}function nu(){Ss(),ge("mapPanel").hidden=!1,Wg()}ge("flash").onclick=tu;ge("mode").onclick=eu;ge("mapButton").onclick=nu;ge("closeMap").onclick=()=>{ge("mapPanel").hidden=!0};document.addEventListener("keydown",i=>{["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(i.code)&&i.preventDefault(),en[i.code]=!0,!i.repeat&&(i.code==="Escape"&&Ss(),i.code==="KeyF"&&tu(),i.code==="KeyL"&&eu(),i.code==="KeyM"&&nu(),i.code==="Space"&&saltar(),i.code==="KeyN"&&cambiarHora())});document.addEventListener("keyup",i=>en[i.code]=!1);window.addEventListener("blur",Ss);document.addEventListener("visibilitychange",()=>{document.hidden&&Ss()});var Hl=null,ro={};xs.addEventListener("pointerdown",i=>{!zn||document.pointerLockElement||(Hl=i.pointerId,ro={x:i.clientX,y:i.clientY},xs.setPointerCapture(i.pointerId))});xs.addEventListener("pointermove",i=>{zn&&i.pointerId===Hl&&(jh(i.clientX-ro.x,i.clientY-ro.y),ro={x:i.clientX,y:i.clientY})});for(let i of["pointerup","pointercancel"])xs.addEventListener(i,()=>Hl=null);var Gl=null,Pi=ge("stick");function iu(i){let t=Pi.getBoundingClientRect(),e=(i.clientX-t.left-56)/40,n=(i.clientY-t.top-56)/40,s=Math.max(1,Math.hypot(e,n));Ri={x:e/s,y:n/s},Pi.firstElementChild.style.transform=`translate(${Ri.x*32}px,${Ri.y*32}px)`}Pi.onpointerdown=i=>{Gl=i.pointerId,Pi.setPointerCapture(i.pointerId),iu(i)};Pi.onpointermove=i=>{i.pointerId===Gl&&iu(i)};for(let i of["onpointerup","onpointercancel"])Pi[i]=()=>{Gl=null,Ri={x:0,y:0},Pi.firstElementChild.style.transform=""};var pv=vs.map(i=>[W(i.x1),W(i.x2),Y(i.y1),Y(i.y2)]);function choca(s,x,z,n){return n+.1<(s.maxY??3.3)&&n+1.65>(s.minY??0)&&Math.abs(x-s.x)<s.w+.22&&Math.abs(z-s.z)<s.d+.22}function kh(i,t,e=sn){let n=Ll(i,t,e);if(n===null)return!1;let px=Qt.position.x,pz=Qt.position.z;return!cr.some(s=>choca(s,i,t,n)&&!(choca(s,px,pz,e)&&Math.hypot(i-s.x,t-s.z)>=Math.hypot(px-s.x,pz-s.z)))}function Wg(){let i=ge("map"),t=i.getContext("2d"),e=.88,n=3,s=-30;t.fillStyle="#172321",t.fillRect(0,0,320,640),t.fillStyle="#50635b";for(let r of vs.filter(a=>a.floor===(sn>3.9?1:0)))t.fillStyle=r.outdoor?"#9bdce7":"#50635b",r.name==="PATIO"&&r.y1===244&&(t.fillStyle="#50635b"),t.fillRect(n+r.x1*e,s+r.y1*e,(r.x2-r.x1)*e,(r.y2-r.y1)*e);sn<3.9&&(t.fillStyle="#9bdce7",t.fillRect(n+112*e,s+348*e,62*e,103*e)),t.strokeStyle="#050c0b",t.lineWidth=2;for(let[r,a,o,l]of Zh.filter(c=>c[4]===(sn>3.9?1:0)))t.beginPath(),t.moveTo(n+r*e,s+a*e),t.lineTo(n+o*e,s+l*e),t.stroke();t.fillStyle="#dee5da",t.font="10px Arial",t.textAlign="center";for(let[r,a,o]of sn>3.9?[["PLANTA ALTA",220,215],["METEGOL",224,242],["ESCALERA",252,340],["ESCALERA",251,453]]:[["SUM",185,125],["SALIDA 1",97,237],["PASILLO",223,366],["HALL",214,460],["COMEDOR",226,570],["PATIO",141,348],["PATIO",198,680]])t.fillText(r,n+a*e,s+o*e);t.strokeStyle="#d8e1b4",t.beginPath(),t.arc(n+222*e,s+460*e,5,0,Math.PI*2),t.stroke(),t.fillStyle="#d8e1b4",t.beginPath(),t.arc(n+(Qt.position.x/Ae+222)*e,s+(Qt.position.z/Ae+451)*e,3,0,Math.PI*2),t.fill()}function Xg(){de.updateMatrixWorld(!0);let i=new Map,t=new Set;for(let s of Bl)s.traverse(r=>t.add(r));de.traverse(s=>{if(!s.isMesh||s.geometry!==Pl||t.has(s)||s.material.transparent||s.userData.movingDoor)return;let r=new N().setFromMatrixPosition(s.matrixWorld),a=s.material.uuid+":"+Math.floor(r.x/12)+":"+Math.floor(r.z/12);i.has(a)||i.set(a,[]),i.get(a).push(s)});let e=0,n=0;for(let s of i.values()){if(s.length<2)continue;let r=new Xs(Pl,s[0].material,s.length);s.forEach((a,o)=>{r.setMatrixAt(o,a.matrixWorld),a.removeFromParent()}),r.instanceMatrix.needsUpdate=!0,r.computeBoundingSphere(),r.matrixAutoUpdate=!1,de.add(r),e+=s.length,n++}de.userData.batching={pieces:e,batches:n}}
+kn(W(222),Y(450));kn(W(222),Y(478));En("SALIDA",W(170)+.12,2.85,Y(452),1.4,Math.PI/2);ys(FOTOS[0],W(265),1.8,Y(440)+.11,.6,1);_e(214,254,232,440,"PASILLO");_e(214,232,232,254,"HALL DEL SUM");for(let i of[[174,254,214,310,257,265],[174,310,214,350,313,321],[174,350,214,392,382,390],[174,392,214,440,395,403]])we(i[0],i[1],i[2],i[3],"AULA","E",[i[4],i[5]]);for(let i of[[232,280,272,310,283,291],[232,368,272,392,382,390],[232,392,272,440,395,403]])we(i[0],i[1],i[2],i[3],"AULA","W",[i[4],i[5]]);we(232,256,249,280,"DEPENDENCIA","W",[262,269]);we(249,256,272,280,"DEPENDENCIA","S",[254,262]);we(232,310,272,330,"BA\xD1O","W",[314,322]);we(232,350,272,368,"BAÑO NIÑOS","W",[353,361]);_e(232,330,272,350,"ESCALERA");Ze(232,330,232,350,[[333,348]]);for(let i=267;i<440;i+=27)kn(W(223),Y(i)),Q(W(223),3.1,Y(i),3.6,.25,.22,Sn);for(let i of[282,347,416])oo(W(223),Y(i));for(let i of[276,335,370,418])for(let t of[194,252])if(!(t===252&&i===335)){Q(W(t),.76,Y(i),1.4,.08,.7,ao,!0);for(let e of[-.6,.6])for(let n of[-.27,.27])Q(W(t)+e,.38,Y(i)+n,.05,.76,.05,Te)}_e(112,192,176,254,"PATIO",0,!0);_e(176,232,232,254,"HALL DEL SUM");_e(214,192,232,232,"HALL DEL SUM");we(176,192,214,232,"NIVELACIÓN","E",[223.5,230.5]);we(232,222,272,256,"4º B","W",[223.5,230.5]);Ze(232,196,232,222,[],3.3,!1);Ze(272,196,272,222,[],3.3,!1);Ol(W(252),Y(209),8,5.2);Ze(176,232,176,254,[[235,251]]);Ze(139,192,232,192,[[145,177],[213,231]],5.8);for(let i of[[223,239],[223,204]])kn(W(i[0]),Y(i[1]));for(let i of[237,249])ai(W(176),Y(i),Math.PI/2,.6),ri(W(175.8),Y(i),.5,2.3,Math.PI/2);En("HALL",W(176)-.14,2.9,Y(241),1.6,-Math.PI/2);En("SUM",W(222),2.9,Y(192)+.12,1.25);Q(W(195),.76,Y(238),1.5,.09,.85,ao,!0);for(let[i,t,e]of[[190,236,"#66528c"],[200,236,"#559649"],[190,242,"#376789"],[200,242,"#b0a77b"]])Q(W(i),.45,Y(t),.43,.07,.44,jt(e)),Q(W(i),.8,Y(t)+.2,.43,.65,.055,jt(e));Q(W(210),.5,Y(234),.55,1,.55,jt("#778c22"),!0);ys(FOTOS[1],W(195),1.9,Y(232)+.12,2.2,1.1);_e(139,50,232,192,"SUM",5.8);Ze(139,50,232,50,[],5.8,!1);Ze(139,50,139,192,[[86,94],[117,151]],5.8,!1);we(112,50,139,102,"DEPENDENCIA","E",[86,94]);we(112,102,139,166,"MÚSICA","E",[117,151]);_e(112,166,139,192,"PATIO",0,!0);we(232,50,272,118,"BIBLIOTECA","W",[108,116]);we(232,118,272,155,"PLÁSTICA","W",[125,133]);we(232,155,272,196,"AULA","W",[176,184]);for(let i of[70,105,140,176])for(let t of[161,208])kn(W(t),Y(i),5.8);for(let i=248;i<451;i+=20)Q(W(112),.6,Y(i+10),.2,1.2,4,Nl,!0),Q(W(112),1.7,Y(i),.2,3.4,.2,zl,!0),ri(W(112),Y(i+10),4,2,Math.PI/2,1.2);Q(W(143),4.5,Y(301),12.4,.12,18.8,mn);for(let i of[254,277,301,324,348])Q(W(143),4.35,Y(i),12.4,.14,.12,Te),Q(W(114),2.2,Y(i),.16,4.4,.16,zl,!0);oi(112,451,112,671,7,!1);oi(112,671,290,671,3.3);oi(290,50,290,671,3.3);oi(272,50,290,50,3.3);ys(FOTOS[2],W(112)+.12,3.2,Y(560),18,6.4,Math.PI/2);var Jh=new as("#91b7d0",35,32,1.3);Jh.position.set(W(142),8,Y(365));de.add(Jh);var zh=jt("#2b7d9a",.45),Ii=jt("#527279",.2);for(let i of[499,518,537]){Q(W(272)-.11,4.15,Y(i),.035,.7,3,Ii);for(let t of[202,250]){Q(W(t),.78,Y(i),4.7,.1,.78,zh,!0);for(let e of[-.7,.7])Q(W(t),.43,Y(i)+e,4.7,.1,.32,zh);for(let e of[-2,2])Q(W(t)+e,.39,Y(i),.07,.78,.5,Te);kn(W(t),Y(i),5.5)}}oo(W(220),Y(513),5.3);oo(W(220),Y(540),5.3);var Bg=cr.filter(i=>(Math.abs(i.x-W(214))<.01||Math.abs(i.x-W(232))<.01)&&i.z>Y(254)&&i.z<Y(440)&&i.d>.2);for(let i of Bg){let t=i.x<0?1:-1,e=i.x+t*(i.w+.014),n=new dn({map:hr("brick",1,Math.max(1,i.d*2/1.5)),roughness:.9});Q(e,1.25,i.z,.018,2.5,i.d*2,n),Q(e,2.82,i.z,.026,.4,i.d*2,mn),Q(e+t*.022,2.82,i.z,.018,.28,Math.max(.1,i.d*2-.1),Ii);for(let s=i.z-i.d+.2;s<i.z+i.d;s+=.75)Q(e+t*.034,2.82,s,.035,.4,.035,Sn)}for(let i of[257,310,350,392,438])for(let t of[214,232])Q(W(t)+(t===214?.1:-.1),1.65,Y(i),.18,3.3,.3,Sn);Q(W(230),3.05,Y(347),.4,.07,36,Te);for(let i=258;i<439;i+=2.5)Q(W(230),3.1,Y(i),.48,.035,.04,mn);for(let i of[275,326,383,432])Q(W(229),2.83,Y(i),.7,.35,.8,mn),Q(W(229),2.81,Y(i)+.405,.6,.2,.02,Te);for(let[i,t]of[[214,286],[232,302],[214,333],[232,370],[214,424]]){let e=i===214?1:-1;Q(W(i)+e*.12,1.65,Y(t),.055,1.05,1.6,ao);for(let n=0;n<4;n++)Q(W(i)+e*.16,1.64+n%2*.17,Y(t)-.5+Math.floor(n/2)*.8,.012,.48,.52,jt(["#b9b89a","#879eae","#bd987d","#c9c4b3"][n]))}ai(W(223),Y(438),0,3.42,!0);for(let i of[215.8,228.8])ai(W(i),Y(438),0,i<220?.55:1.12),ri(W(i),Y(438)+.06,i<220?.45:1,1.1,0,1.15);var Ms=new Xe;Ms.position.set(W(225.3),0,Y(438));Ms.rotation.y=-Math.PI*.46;de.add(Ms);Q(-.53,1.18,0,1.06,2.36,.05,mn,!1,Ms);Q(-.53,1.72,.033,.88,.9,.018,Ii,!1,Ms);Q(-.88,1,.08,.05,.15,.06,Te,!1,Ms);Q(W(223),2.78,Y(438),3.55,.42,.055,Ii);for(let i of[214,220,226,232])Q(W(i),2.78,Y(438)+.04,.045,.48,.05,Sn);Q(W(223),.012,Y(440),3.5,.024,.22,Te);for(let i=214.5;i<232;i+=.5)Q(W(i),.032,Y(440),.025,.02,.22,mn);En("SALIDA",W(223),2.8,Y(432),1.1);ys(FOTOS[0],W(211.8),1.8,Y(440)+.12,.58,1);Q(W(207),.48,Y(442),.56,.96,.52,jt("#8b9e25"),!0);En("RECICLABLES",W(207),.78,Y(442)+.27,.46,0,"#718c2b");Q(W(222),1.65,Y(192),.28,3.3,.28,Sn,!0);function ar(i,t,e,n,s,r=0){let a=new Xe;a.position.set(i,s,t),a.rotation.y=r,de.add(a),Q(0,0,0,e,n,.035,Ii,!1,a);for(let o of[-e/2,0,e/2])Q(o,0,.025,.055,n+.1,.045,Ee,!1,a);for(let o of[-n/2,n/2])Q(0,o,.025,e+.1,.05,.045,Ee,!1,a)}for(let i of[155,185,215])ar(W(i),Y(50)+.12,4,1.25,2.1),ar(W(i),Y(50)+.14,5,.6,4.9);for(let i of[65,95,145,166])ar(W(232)-.12,Y(i),2.2,.85,2,-Math.PI/2);for(let i of[60,90,120,150,180])for(let t of[139.5,231.5])ar(W(t),Y(i),4.8,.65,5.15,Math.PI/2);for(let[i,t]of[[167,85],[198,104],[181,145],[212,160]]){let e=new me(new Zs(.12,.15,8),jt("#b67b29"));e.position.set(W(i),.075,Y(t)),de.add(e)}var MAIN_STAIR_WIDTH=1.45,Ue=4.2,kl=[];function $h(i,t,e=!1){let n=W(234),s=W(263),r=W(270),a=Y(i),o=Y(t),l=MAIN_STAIR_WIDTH,c={x0:n,x1:s,x2:r,z1:a,z2:o,width:l};kl.push(c);for(let h=0;h<14;h++){let u=(s-n)/14,f=n+(h+.5)*u,p=(h+1)*Ue/28,_=Ue-h*Ue/28;if(Q(f,p/2,a,u+.006,p,l,e?jt("#74453c"):Ee),Q(f,_-.08,o,u+.006,.16,l,e?jt("#74453c"):Ee),e)for(let v=0;v<3;v++)Q(f-u/2-.004,p-.09,a+(v-1)*.32,.012,.15,.28,jt(["#ab933c","#41624d","#74494c"][v]))}Q((s+r)/2,Ue/2-.08,(a+o)/2,r-s,.16,o-a+l,Ee),Q((W(232)+n)/2,Ue-.08,o,n-W(232),.16,l,Ee);for(let h of[a-l/2-.09,o+l/2+.09])Q((n+r)/2,3.1,h,r-n,6.2,.14,Sn);Q((n+s)/2,2.1,(a+o)/2,s-n,4.2,.14,Ee);for(let[h,u,f]of[[a-l/2+.07,1,3.1],[o+l/2-.07,5.2,3.1]]){let p=Q((n+s)/2,(u+f)/2,h,Math.hypot(s-n,f-u),.045,.045,Ee);p.rotation.z=Math.atan2(f-u,s-n)}Q(n-.22,.016,a,.4,.03,l,jt("#b6a550")),Q(n-.22,Ue+.016,o,.4,.03,l,jt("#b6a550")),ri(n-.07,a-l/2-.12,.45,2.5,Math.PI/2),ri(n-.07,o+l/2+.12,.45,2.5,Math.PI/2),En("PLANTA ALTA \u2191",n-.2,2.65,a,1.4,-Math.PI/2),kn(s,(a+o)/2,6.5)}$h(450,461);$h(335,345,!0);Ol(W(202),Y(454),12.8,5.6);Je=Ue;_e(214,232,234,468,"PASILLO PLANTA ALTA");_e(174,440,214,468,"HALL PLANTA ALTA");var Vl=[];for(let[i,t]of[[232,268],[268,304],[304,340],[340,377],[377,411],[411,440]])we(174,i,214,t,"AULA","E",[t-12,t-4]),Vl.push([194,(i+t)/2]);for(let[i,t]of[[232,275],[275,310],[350,395],[395,440]])we(234,i,272,t,"AULA","W",[i+5,i+13]),Vl.push([252,(i+t)/2]);we(234,310,272,330,"SANITARIOS","W",[316,324]);vs.push({x1:234,y1:330,x2:272,y2:350,name:"ESCALERA",floor:1},{x1:234,y1:440,x2:272,y2:468,name:"ESCALERA",floor:1});for(let i=244;i<458;i+=24)kn(W(224),Y(i)),i%48===4&&oo(W(224),Y(i));for(let[i,t]of Vl){Q(W(i),.76,Y(t),1.3,.08,.7,ao,!0);for(let e of[-.55,.55])Q(W(i)+e,.38,Y(t),.05,.76,.55,Te)}for(let i of cr.filter(t=>t.minY===Ue&&(Math.abs(t.x-W(214))<.01||Math.abs(t.x-W(234))<.01)&&t.d>.4)){let t=i.x<0?1:-1,e=i.x+t*(i.w+.014);Q(e,1.35,i.z,.02,2.7,i.d*2,new dn({map:hr("brick",1,i.d*1.4),roughness:.9})),Q(e,2.92,i.z,.03,.4,i.d*2,Ii)}for(let i of[260,298,375,410])for(let t of[214,234]){let e=t===214?1:-1;Q(W(t)+e*.12,1.65,Y(i),.045,1.1,2.3,Te);for(let n=0;n<6;n++)Q(W(t)+e*.15,1.5+n%2*.32,Y(i)-.8+Math.floor(n/2)*.7,.012,.25,.45,jt("#b7c3be"))}Fl(W(224),Y(232),4,.16);ar(W(224),Y(232)+.12,3.4,2.3,Ue+1.9);En("PLANTA ALTA",W(223),2.8,Y(440),1.8);var or=W(224),lo=Y(241);Q(or,.87,lo,.85,.23,1.45,Xh,!0);Q(or,1,lo,.74,.02,1.3,jt("#65744d"));for(let i of[-.35,.35])for(let t of[-.6,.6])Q(or+i,.4,lo+t,.06,.8,.06,mn);for(let i=0;i<8;i++){let t=lo-.56+i*.16;Q(or,1.09,t,1.25,.025,.025,Te);for(let e of[-.23,0,.23])Q(or+e,1.06,t,.045,.16,.045,i%2?Xh:jt("#315379"))}for(let i of[216,232])Q(W(i),1,Y(235),.6,2,.65,mn,!0);Q(W(220),.65,Y(234),.6,1.3,.4,jt("#457c94"));ys(FOTOS[3],W(214)+.12,Ue+1.8,Y(427),1.2,.9,Math.PI/2);Je=0;var sn=0;function kg(i,t){for(let e of kl){if(i>=W(232)-.32&&i<=e.x1&&Math.abs(t-e.z1)<=e.width/2-.2)return Math.max(0,(i-e.x0)/(e.x1-e.x0))*Ue/2;if(i>=W(232)-.32&&i<=e.x1&&Math.abs(t-e.z2)<=e.width/2-.2)return Ue-Math.max(0,(i-e.x0)/(e.x1-e.x0))*Ue/2;if(i>=e.x1&&i<=e.x2-.2&&t>=e.z1-e.width/2+.2&&t<=e.z2+e.width/2-.2)return Ue/2}return null}function Ll(i,t,e=sn){let n=kg(i,t);if(n!==null&&Math.abs(n-e)<.3)return n;let s=e>Ue-.3?1:0;if(s===0&&e>.3)return null;let r=s*Ue,a=.22;for(let o=0;o<8;o++){let l=(i+Math.cos(o*Math.PI/4)*a)/Ae+222,c=(t+Math.sin(o*Math.PI/4)*a)/Ae+451;if(!vs.some(h=>h.floor===s&&h.name!=="ESCALERA"&&l>=h.x1&&l<=h.x2&&c>=h.y1&&c<=h.y2))return null}return kl.some(o=>i>o.x0-.05&&i<o.x2&&t>o.z1-o.width/2-.1&&t<o.z2+o.width/2+.1)?null:r}Qt.position.set(W(222),1.68,Y(451));function Vg(i,t){let e=i/Ae+222,n=t/Ae+451;return[...vs].reverse().find(s=>s.floor===(sn>3.9?1:0)&&e>=s.x1&&e<=s.x2&&n>=s.y1&&n<=s.y2)?.name??"PATIO"}var Kh=new Ks("#bcccd1","#37251d",.3);de.add(Kh);var lr=new Qs("#f3f0cf",38,25,.48,.65,1.3);lr.position.set(.16,-.13,-.15);lr.target.position.set(0,-.05,-10);Qt.add(lr,lr.target);var altSalto=0,velSalto=0;function saltar(){zn&&altSalto<=0&&(velSalto=4.2)}var gs=!1,io=!0,zn=!1,_s=0,Dl=0,en={},Ri={x:0,y:0},Cl=0,Ul=0,nn,Ci,Qh=matchMedia("(pointer:coarse)").matches;function Hg(){try{if(nn??=new(window.AudioContext||window.webkitAudioContext),nn.resume(),!Ci){Ci=nn.createGain(),Ci.gain.value=.008;let i=nn.createOscillator();i.frequency.value=58,i.type="sine",i.connect(Ci).connect(nn.destination),i.start()}Ci.gain.value=.008}catch{}}function Gg(){if(!nn)return;let i=nn.createBuffer(1,Math.floor(nn.sampleRate*.07),nn.sampleRate),t=i.getChannelData(0);for(let s=0;s<t.length;s++)t[s]=(Math.random()*2-1)*(1-s/t.length)**3;let e=nn.createBufferSource(),n=nn.createGain();n.gain.value=.045,e.buffer=i,e.connect(n).connect(nn.destination),e.start()}function Ss(){zn=!1,document.body.classList.remove("playing"),en={},Ri={x:0,y:0},document.pointerLockElement&&document.exitPointerLock(),Ci&&(Ci.gain.value=0),ge("start").textContent="Continuar recorrido"}ge("start").disabled=!1;ge("start").textContent="Entrar al escenario \u2192";ge("start").onclick=()=>{if(zn=!0,document.body.classList.add("playing"),Hg(),!Qh)try{xs.requestPointerLock()?.catch(()=>{ge("caption").textContent="Arrastr\xE1 para mirar"})}catch{}};ge("pause").onclick=Ss;document.addEventListener("pointerlockchange",()=>{!document.pointerLockElement&&zn&&!Qh&&Ss()});function jh(i,t){_s-=i*.0025,Dl=ol.clamp(Dl-t*.0025,-1.35,1.35)}document.addEventListener("mousemove",i=>{zn&&document.pointerLockElement&&jh(i.movementX,i.movementY)});function tu(){io=!io,lr.visible=io,ge("flash").textContent=`F \xB7 Linterna ${io?"\u25CF":"\u25CB"}`}function eu(){gs=!gs,aplicarHora(),ge("mode").textContent=gs?"L \xB7 Apagar luces":"L \xB7 Encender luces"}function nu(){Ss(),ge("mapPanel").hidden=!1,Wg()}ge("flash").onclick=tu;ge("mode").onclick=eu;ge("mapButton").onclick=nu;ge("closeMap").onclick=()=>{ge("mapPanel").hidden=!0};document.addEventListener("keydown",i=>{["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(i.code)&&i.preventDefault(),en[i.code]=!0,!i.repeat&&(i.code==="Escape"&&Ss(),i.code==="KeyF"&&tu(),i.code==="KeyL"&&eu(),i.code==="KeyM"&&nu(),i.code==="Space"&&saltar(),i.code==="KeyN"&&cambiarHora())});document.addEventListener("keyup",i=>en[i.code]=!1);window.addEventListener("blur",Ss);document.addEventListener("visibilitychange",()=>{document.hidden&&Ss()});var Hl=null,ro={};xs.addEventListener("pointerdown",i=>{!zn||document.pointerLockElement||(Hl=i.pointerId,ro={x:i.clientX,y:i.clientY},xs.setPointerCapture(i.pointerId))});xs.addEventListener("pointermove",i=>{zn&&i.pointerId===Hl&&(jh(i.clientX-ro.x,i.clientY-ro.y),ro={x:i.clientX,y:i.clientY})});for(let i of["pointerup","pointercancel"])xs.addEventListener(i,()=>Hl=null);var Gl=null,Pi=ge("stick");function iu(i){let t=Pi.getBoundingClientRect(),e=(i.clientX-t.left-56)/40,n=(i.clientY-t.top-56)/40,s=Math.max(1,Math.hypot(e,n));Ri={x:e/s,y:n/s},Pi.firstElementChild.style.transform=`translate(${Ri.x*32}px,${Ri.y*32}px)`}Pi.onpointerdown=i=>{Gl=i.pointerId,Pi.setPointerCapture(i.pointerId),iu(i)};Pi.onpointermove=i=>{i.pointerId===Gl&&iu(i)};for(let i of["onpointerup","onpointercancel"])Pi[i]=()=>{Gl=null,Ri={x:0,y:0},Pi.firstElementChild.style.transform=""};var pv=vs.map(i=>[W(i.x1),W(i.x2),Y(i.y1),Y(i.y2)]);function choca(s,x,z,n){return n+.1<(s.maxY??3.3)&&n+1.65>(s.minY??0)&&Math.abs(x-s.x)<s.w+.22&&Math.abs(z-s.z)<s.d+.22}function kh(i,t,e=sn){let n=Ll(i,t,e);if(n===null)return!1;let px=Qt.position.x,pz=Qt.position.z;return!cr.some(s=>choca(s,i,t,n)&&!(choca(s,px,pz,e)&&Math.hypot(i-s.x,t-s.z)>=Math.hypot(px-s.x,pz-s.z)))}function Wg(){let i=ge("map"),t=i.getContext("2d"),e=.88,n=3,s=-30;t.fillStyle="#172321",t.fillRect(0,0,320,640),t.fillStyle="#50635b";for(let r of vs.filter(a=>a.floor===(sn>3.9?1:0)))t.fillStyle=r.outdoor?"#9bdce7":"#50635b",r.name==="PATIO"&&r.y1===244&&(t.fillStyle="#50635b"),t.fillRect(n+r.x1*e,s+r.y1*e,(r.x2-r.x1)*e,(r.y2-r.y1)*e);sn<3.9&&(t.fillStyle="#9bdce7",t.fillRect(n+112*e,s+348*e,62*e,103*e)),t.strokeStyle="#050c0b",t.lineWidth=2;for(let[r,a,o,l]of Zh.filter(c=>c[4]===(sn>3.9?1:0)))t.beginPath(),t.moveTo(n+r*e,s+a*e),t.lineTo(n+o*e,s+l*e),t.stroke();t.fillStyle="#dee5da",t.font="10px Arial",t.textAlign="center";for(let[r,a,o]of sn>3.9?[["PLANTA ALTA",220,215],["METEGOL",224,242],["ESCALERA",252,340],["ESCALERA",251,453]]:[["SUM",185,125],["SALIDA 1",97,237],["PASILLO",223,310],["HALL",206,389],["COMEDOR",226,485],["PATIO",141,348],["PATIO",198,600]])t.fillText(r,n+a*e,s+o*e);t.strokeStyle="#d8e1b4",t.beginPath(),t.arc(n+222*e,s+389*e,5,0,Math.PI*2),t.stroke(),t.fillStyle="#d8e1b4",t.beginPath(),t.arc(n+(Qt.position.x/Ae+222)*e,s+(Qt.position.z/Ae+451)*e,3,0,Math.PI*2),t.fill()}function Xg(){de.updateMatrixWorld(!0);let i=new Map,t=new Set;for(let s of Bl)s.traverse(r=>t.add(r));de.traverse(s=>{if(!s.isMesh||s.geometry!==Pl||t.has(s)||s.material.transparent||s.userData.movingDoor)return;let r=new N().setFromMatrixPosition(s.matrixWorld),a=s.material.uuid+":"+Math.floor(r.x/12)+":"+Math.floor(r.z/12);i.has(a)||i.set(a,[]),i.get(a).push(s)});let e=0,n=0;for(let s of i.values()){if(s.length<2)continue;let r=new Xs(Pl,s[0].material,s.length);s.forEach((a,o)=>{r.setMatrixAt(o,a.matrixWorld),a.removeFromParent()}),r.instanceMatrix.needsUpdate=!0,r.computeBoundingSphere(),r.matrixAutoUpdate=!1,de.add(r),e+=s.length,n++}de.userData.batching={pieces:e,batches:n}}
 // Photo survey, September 2026: Escuela 19 DE 19.
 (function revisePhotoSurvey(){
 const white=jt('#e5e3d4'),green=jt('#89b99b'),red=jt('#923f32'),glass=new dn({color:'#b5d3cf',transparent:true,opacity:.12,roughness:.25,depthWrite:false}),black=jt('#181c1b'),purple=jt('#775995');
@@ -4168,34 +4168,40 @@ var puertasConLlave=[];
  de.userData.octoberRevision={diningDepthBefore:b-a,diningDepthAfter:(b-a)*1.25,windowCenter:1.85,windowSize:[3.15,1.65],stairWidth:MAIN_STAIR_WIDTH,sliderPhotoOrder:'swapped'};
 })();
 
-// Hall de inicio según el plano de evacuación y las fotos: 8 m de fondo hasta los baños y
-// la sala de maestros, que tienen 9 m hasta el comedor. Se borra el hall viejo, se corre
-// todo lo que está al sur 6,4 m hacia Lacarra y se arma de nuevo.
-(function hallDeInicio(){
- // 1. Borrar lo viejo: hall, vestíbulo, baños, sala, ascensor, escalera y puertas del pasillo.
- const cajas=[[169,272.6,440.3,492.6,3.9],[213,233,428.9,440.3,3.6],[231.5,271.5,445,467,6.4],[233,246,438.5,440.3,3]];
+// Planta baja a escala 1:1 con el plano de evacuación y las fotos: pasillo de aulas de 23 m
+// (tres aulas por lado, 3,55 m de ancho, columnas de 25 cm), hall de 8 m que llega a la
+// fachada, y baños y pasillo al comedor de 6 m. Se borra lo viejo, se aprieta y corre el
+// resto del terreno, y se arma de nuevo.
+(function plantaBajaAEscala(){
+ // 1. Borrar lo viejo: hall, baños, sala, ascensor, escaleras, el bloque de aulas (las dos
+ //    plantas), el tabique del SUM y el busto suelto.
+ const cajas=[[169,272.6,440.3,492.6,3.9],[213,233,428.9,440.3,3.6],[231.5,271.5,445,467,6.4],[233,246,438.5,440.3,3],
+  [173,272.6,256.5,440.3,9],[213.5,232.5,230.5,233.5,3.6],[213.9,216.5,243,251,3.2]];
  const adentro=(x,y,z)=>{const px=x/Ae+222,pz=z/Ae+451;return cajas.some(([a,b,c,d,h])=>px>=a&&px<=b&&pz>c&&pz<d&&y<h);};
- for(const d of [...schoolDoors])if(d.floor<1&&adentro(d.x,1,d.z)){d.root.removeFromParent();for(const c of d.colliders){const k=cr.indexOf(c);k>=0&&cr.splice(k,1);}schoolDoors.splice(schoolDoors.indexOf(d),1);}
+ for(const d of [...schoolDoors])if(adentro(d.x,d.floor+1,d.z)){d.root.removeFromParent();for(const c of d.colliders){const k=cr.indexOf(c);k>=0&&cr.splice(k,1);}schoolDoors.splice(schoolDoors.indexOf(d),1);}
  for(const m of [...de.children]){if(m.isCamera||m.isLight)continue;if(m.userData.foto&&m.position.x<W(243))continue;if(adentro(m.position.x,m.position.y,m.position.z))m.removeFromParent();}
- for(let k=cr.length-1;k>=0;k--){const c=cr[k];if(!c.door&&adentro(c.x,c.minY??0,c.z))cr.splice(k,1);}
+ for(let k=cr.length-1;k>=0;k--){const c=cr[k];if(!c.door&&adentro(c.x,(c.minY??0)+.1,c.z))cr.splice(k,1);}
  for(let k=qh.length-1;k>=0;k--){const p=qh[k].position;if(adentro(p.x,p.y,p.z))qh.splice(k,1);}
- for(let k=vs.length-1;k>=0;k--){const r=vs[k];if(r.floor===0&&adentro(W((r.x1+r.x2)/2),0,Y((r.y1+r.y2)/2)))vs.splice(k,1);}
- for(let k=Zh.length-1;k>=0;k--){const l=Zh[k];if(l[4]===0&&adentro(W((l[0]+l[2])/2),0,Y((l[1]+l[3])/2)))Zh.splice(k,1);}
- const vieja=kl.findIndex(o=>Math.abs(o.z1-Y(450))<.01);vieja>=0&&kl.splice(vieja,1);
+ for(let k=vs.length-1;k>=0;k--){const r=vs[k];if(adentro(W((r.x1+r.x2)/2),r.floor?Ue+.1:.1,Y((r.y1+r.y2)/2)))vs.splice(k,1);}
+ for(let k=Zh.length-1;k>=0;k--){const l=Zh[k];if(adentro(W((l[0]+l[2])/2),l[4]?Ue+.1:.1,Y((l[1]+l[3])/2)))Zh.splice(k,1);}
+ for(const z1 of [450,335]){const k=kl.findIndex(o=>Math.abs(o.z1-Y(z1))<.01);k>=0&&kl.splice(k,1);}
 
- // 2. Correr todo lo que está al sur del hall: comedor, cocina, patio y estacionamiento.
- const corte=Y(492.6),dz=32*Ae,mz=z=>z<corte?z:z+dz,mp=p=>p<492.6?p:p+32;
- for(const m of de.children){if(m.isCamera||m.isLight)continue;
-  if(!m.userData.preserveDepth&&m.isMesh&&m.geometry===Pl&&Math.abs(m.rotation.x)<.001&&Math.abs(m.rotation.y)<.001&&m.scale.z>3){const lo=m.position.z-m.scale.z/2,hi=m.position.z+m.scale.z/2;m.position.z=(mz(lo)+mz(hi))/2;m.scale.z=mz(hi)-mz(lo);}
-  else m.position.z=mz(m.position.z);}
+ // 2. Apretar el terreno: lo que acompaña al pasillo (patios de los costados) pasa de 37 m a
+ //    23 m, y lo que está al sur del hall viejo sube 10,7 m.
+ const m=p=>p<=256.5?p:p<=440.3?256.5+(p-256.5)*(369-256.5)/(440.3-256.5):p<=492.6?369+(p-440.3)*(439-369)/(492.6-440.3):p-53.6;
+ const mz=z=>Y(m(z/Ae+451));
+ for(const o of de.children){if(o.isCamera||o.isLight)continue;
+  if(!o.userData.preserveDepth&&o.isMesh&&o.geometry===Pl&&Math.abs(o.rotation.x)<.001&&Math.abs(o.rotation.y)<.001&&o.scale.z>3){const lo=o.position.z-o.scale.z/2,hi=o.position.z+o.scale.z/2;o.position.z=(mz(lo)+mz(hi))/2;o.scale.z=mz(hi)-mz(lo);}
+  else o.position.z=mz(o.position.z);}
  for(const c of cr){if(c.door)continue;const lo=c.z-c.d,hi=c.z+c.d;c.z=(mz(lo)+mz(hi))/2;c.d=(mz(hi)-mz(lo))/2;}
  for(const d of schoolDoors){d.z=mz(d.z);placeSchoolDoor(d);}
  for(const p of puertasConLlave)p.z=mz(p.z);
- for(const r of vs){r.y1=mp(r.y1);r.y2=mp(r.y2);}
- for(const l of Zh){l[1]=mp(l[1]);l[3]=mp(l[3]);}
+ for(const r of vs){r.y1=m(r.y1);r.y2=m(r.y2);}
+ for(const l of Zh){l[1]=m(l[1]);l[3]=m(l[3]);}
  for(const l of qh)l.position.z=mz(l.position.z);
+ for(const s of kl){const a=s.z1,b=s.z2;s.z1=mz(a);s.z2=mz(b);}
 
- // 3. Materiales y texturas del hall.
+ // Materiales y texturas.
  function lienzo(w,h,dib){const c=document.createElement('canvas');c.width=w;c.height=h;dib(c.getContext('2d'));const t=new ns(c);t.wrapS=t.wrapT=Ji;t.colorSpace=Se;return t;}
  function conRepeticion(tex,rx,ry,extra){const t=tex.clone();t.needsUpdate=true;t.repeat.set(rx,ry);return new dn(Object.assign({map:t,roughness:.6},extra||{}));}
  const blanco=jt('#ecebe4',.6),crema=jt('#e7e0c2',.85),acero=jt('#b4bcbb',.28),aceroOsc=jt('#6d7473',.35),madera=jt('#8a6a48',.7),
@@ -4221,139 +4227,244 @@ var puertasConLlave=[];
  function vestir(d,abajo,arriba,marco){for(const l of d.leaves)l.leaf.traverse(m=>{if(!m.isMesh||m.material===Te)return;if(m.material===jt('#d7d7c5'))m.material=abajo;else if(m.material.transparent)m.material=arriba;else if(marco)m.material=marco;});}
  function barrotes(d,desde,hasta){for(const l of d.leaves){const lw=d.width/d.leaves.length;for(let k=1;k<5;k++){const m=Q(-lw/2+k*lw/5,(desde+hasta)/2,0,.022,hasta-desde,.03,blanco,false,l.leaf);m.userData.movingDoor=true;}const m=Q(0,(desde+hasta)/2,0,lw-.05,.035,.035,blanco,false,l.leaf);m.userData.movingDoor=true;}}
  function rejaFija(x,z1,z2){const zc=(z1+z2)/2,L=(z2-z1)*Ae;for(let s=-L/2+.07;s<L/2;s+=.12)Q(W(x),1.2,Y(zc)+s,.024,2.3,.024,blanco);for(const y of [.08,1.2,2.36])Q(W(x),y,Y(zc),.05,.05,L,blanco);cr.push({x:W(x),z:Y(zc),w:.06,d:L/2,minY:0,maxY:2.4});}
-
- // 4. Ambientes: hall, salida al patio, pasillo al comedor.
- _e(186,440,243,480,'HALL');_e(170,444,186,468,'SALIDA AL PATIO');_e(214,480,234,525,'ACCESO AL COMEDOR');
- piso(186,440,243,480,granito,1.2);piso(170,444,186,468,granito,1.2);piso(214,480,234,525,granito,1.2);
- cielorraso(186,440,243,480,3);cielorraso(214,480,234,525,3);
- for(const x of [198,214.5,231])for(const z of [448,467])luz(x,z,3);luz(224,493,3);luz(224,512,3);
- // Paredes: la del oeste con las puertas al patio, la del este con el ascensor y la escalera.
- Ze(170,440,174,440,[],3.3,!1);Ze(170,440,170,444,[],3.3,!1);
- Ze(170,444,186,444,[],3.3,!0);Ze(170,468,186,468,[],3.3,!0);
- Ze(186,440,186,480,[[447,465]],3.3,!1);
- Ze(243,440,243,480,[[449.75,455.25],[457,465]],3.3,!1);
- Q(W(223),3.15,Y(440),3.6,.3,.26,Ee);
- // Cañería y bandeja de cables pegadas al techo sobre la pared norte.
- Q(W(214.5),2.86,Y(440)+.35,W(243)-W(186),.06,.3,aceroOsc);Q(W(214.5),2.93,Y(440)+.62,W(243)-W(186),.07,.07,jt('#8d9290',.5));
-
- // 5. Norte: el entrante de piso colorado, la rejilla y las puertas al pasillo de aulas.
- piso(214,428,232,440,granito,1.2,'#7a3b31');
- Q(W(223),.008,Y(439.6),3.6,.014,.3,conRepeticion(rejilla,3.6/.2,1,{roughness:.6}));
- const zp=Y(430);
- Q(W(216.65),1.2,zp,.86,2.4,.06,blanco,true);for(const s of [-1,1])Q(W(216.65),1.62,zp+s*.035,.6,.75,.012,malla(.6,.75));
- for(const x of [214.4,218.85,227.05,231.6])Q(W(x),1.2,zp,.08,2.4,.1,blanco,true);
- const dobles=schoolDoor(W(222.95),zp,0,1.6,false),simple=schoolDoor(W(229.33),zp,0,.82,true);
- for(const d of [dobles,simple])vestir(d,blanco,malla(.6,1),blanco);
- Q(W(223),2.44,zp,3.6,.06,.08,blanco);Q(W(223),3.08,zp,3.6,.06,.08,blanco);Q(W(223),3.2,zp,3.6,.2,.12,Ee);
- for(let k=0;k<4;k++){const x=214.4+k*4.3+2.15;Q(W(x),2.76,zp,.84,.6,.02,malla(.84,.6));Q(W(x+2.15),2.76,zp,.05,.62,.06,blanco);}
- Q(W(222),2.72,Y(437.4),1.1,.36,.72,jt('#e1dfd6',.7));Q(W(222),2.72,Y(437.4)+.37,.95,.24,.012,Te);Q(W(222.6),2.72,Y(437.4)-.37,.55,.26,.04,jt('#c9b48a'));
- luz(223,434,3.2);
-
- // 6. Este: armarios, ascensor, escalera con la ventana del descanso, depósito y matafuego.
- armario(241.35,442.75,.9,.5,1.9,jt('#dcd6c6',.8),-Math.PI/2);
- armario(241.35,447,.76,.5,1.85,jt('#5d5e45',.7),-Math.PI/2);
- armario(241.35,475.2,1,.55,1.85,jt('#d8cdb0',.85),-Math.PI/2);
- Q(W(241.75),.008,Y(457.3),.55,.014,(465-449.5)*Ae,conRepeticion(tactil,.55/.15,(465-449.5)*Ae/.15,{roughness:.7}));
- // Ascensor: cabina de acero con pasamanos, puerta corrediza y el cartel rojo de PB.
- _e(243,449.5,255.5,455.5,'ASCENSOR');
- Q(W(255.5),1.15,Y(452.5),.08,2.3,1.2,acero,true);for(const z of [449.5,455.5])Q(W(249.25),1.15,Y(z),2.5,2.3,.08,acero,true);
- Q(W(249.25),2.32,Y(452.5),2.5,.04,1.2,jt('#3a3e3e'));
- for(const [x,z,w,d] of [[255.5,452.5,.04,1],[249.25,449.5,2.2,.04],[249.25,455.5,2.2,.04]])Q(W(x)+(x===255.5?-.1:0),.95,Y(z)+(z===449.5?.1:z===455.5?-.1:0),w,.04,d,jt('#d8dddc',.2));
- kn(W(249.25),Y(452.5),2.3);
- const asc=schoolDoor(W(243),Y(452.5),Math.PI/2,1.1,false,'slide');vestir(asc,acero,acero,acero);
- for(const z of [449.6,455.4])Q(W(243)-.1,1.15,Y(z),.06,2.3,.18,acero);Q(W(243)-.1,2.38,Y(452.5),.06,.28,1.5,acero);
- En('PB',W(243)-.14,2.38,Y(455.25),.3,-Math.PI/2,'#140c0c','#ff3b30');Q(W(243)-.12,1.2,Y(455.9),.03,.12,.07,acero);
- // Escalera de dos tramos que sube hacia el este; el segundo vuelve al pasillo de la planta alta.
- (function escalera(x0,x1,x2,z1,z2,ancho){const n=W(x0),s=W(x1),r=W(x2),a=Y(z1),o=Y(z2),l=ancho;kl.push({x0:n,x1:s,x2:r,z1:a,z2:o,width:l});
+ const rojo=jt('#b3261e',.5),ladrilloTex=hr('brick',1,1),ladrillo=L=>conRepeticion(ladrilloTex,Math.max(1,L/1.5),2,{roughness:.9}),
+  ventanaClara=new Qn({color:'#d9ecf3'}),vidrioOsc=jt('#3c5560',.15),verdeAgua=jt('#89b99b');
+ const baldosaRoja=lienzo(128,128,g=>{g.fillStyle='#7c3328';g.fillRect(0,0,128,128);for(let k=0;k<2000;k++){g.fillStyle=Math.random()<.5?'rgba(40,10,8,.25)':'rgba(190,110,95,.2)';g.fillRect(Math.random()*128,Math.random()*128,1.5,1.5);}g.fillStyle='#5a241d';g.fillRect(0,0,128,2);g.fillRect(0,0,2,128);});
+ // Escalera de dos tramos que sube hacia el este; el segundo vuelve al oeste y llega arriba.
+ function escalera(x0,x1,x2,z1,z2,ancho,colores){const n=W(x0),s=W(x1),r=W(x2),a=Y(z1),o=Y(z2),l=ancho;kl.push({x0:n,x1:s,x2:r,z1:a,z2:o,width:l});
   const piedra=jt('#9b9d99',.55);
-  for(let h=0;h<14;h++){const u=(s-n)/14,f=n+(h+.5)*u,p=(h+1)*Ue/28,_=Ue-h*Ue/28;Q(f,p/2,a,u+.006,p,l,piedra);Q(f-u/2+.03,p+.006,a,.06,.012,l,aceroOsc);Q(f,_-.08,o,u+.006,.16,l,piedra);}
+  for(let h=0;h<14;h++){const u=(s-n)/14,f=n+(h+.5)*u,p=(h+1)*Ue/28,_=Ue-h*Ue/28;Q(f,p/2,a,u+.006,p,l,piedra);Q(f-u/2+.03,p+.006,a,.06,.012,l,aceroOsc);Q(f,_-.08,o,u+.006,.16,l,piedra);
+   if(colores){Q(f-u/2-.004,p-Ue/56,a,.01,Ue/28-.02,l-.04,jt(colores[h%colores.length],.7));Q(f+u/2+.004,_-.16-Ue/56,o,.01,Ue/28-.02,l-.04,jt(colores[(h+3)%colores.length],.7));}}
   Q(n+.03,Ue/28+.008,a,.06,.014,l,jt('#d6a531',.6));
   Q((s+r)/2,Ue/2-.08,(a+o)/2,r-s,.16,o-a+l,piedra);
   Q((n+s)/2,Ue/2,(a+o)/2,s-n,Ue,.14,crema);
   for(const zz of [a-l/2+.07,a+l/2-.07])cano(n-.1,.95,zz,s,Ue/2+.95,zz,.045,blanco);
-  for(const zz of [o-l/2+.07,o+l/2-.07])cano(s,Ue/2+.95,zz,n,Ue+.95,zz,.045,blanco);
- })(243,263,271,461,469,1.5);
- Q(W(243),5.35,Y(460.75),.16,4.1,(465-456.5)*Ae,Ee);Q(W(243),3.75,Y(469),.16,.9,1.6,Ee);
- Ze(243,456.5,272,456.5,[],7.4,!1);Ze(243,473,272,473,[],7.4,!1);
- Ze(272,440,272,461,[],7.4,!1);Ze(272,469,272,480,[],7.4,!1);
- Q(W(272),1.5,Y(465),.16,3,1.6,Ee,true);Q(W(272),5.9,Y(465),.16,3,1.6,Ee);
- Q(W(272),3.7,Y(465),.04,1.4,1.6,vidrio);for(const z of [-.78,0,.78])Q(W(272)-.06,3.7,Y(465)+z,.06,1.44,.06,blanco);for(const y of [3.02,3.7,4.38])Q(W(272)-.06,y,Y(465),.06,.06,1.6,blanco);
- kn(W(267),Y(465),6.2);
- // Losa y baranda de la planta alta donde llega el segundo tramo.
- Q((W(214)+W(243))/2,Ue-.08,(Y(440)+Y(475))/2,W(243)-W(214),.16,Y(475)-Y(440),Ee);
- vs.push({x1:214,y1:456,x2:243,y2:474.5,name:'PLANTA ALTA',floor:1},{x1:243,y1:456.5,x2:272,y2:473,name:'ESCALERA',floor:0});
- Q((W(214)+W(243))/2,Ue+.55,Y(474.6),W(243)-W(214),1.1,.12,crema);cr.push({x:(W(214)+W(243))/2,z:Y(474.6),w:(W(243)-W(214))/2,d:.06,minY:Ue,maxY:Ue+1.1});
- // Puerta del depósito bajo la escalera y el rincón del matafuego.
- Q(W(243)-.1,1.05,Y(469.6),.05,2.1,.85,jt('#e2dcc7',.8));for(const z of [-.45,.45])Q(W(243)-.11,1.07,Y(469.6)+z,.06,2.14,.05,blanco);Q(W(243)-.14,1,Y(469.6)-.32,.05,.04,.14,Te);
- puertasConLlave.push({x:W(243)-.1,z:Y(469.6),floor:0,nombre:'Depósito'});
- Q(W(240),1.35,Y(480)-.17,.6,.75,.18,jt('#b3261e',.5),true);Q(W(240),1.35,Y(480)-.27,.42,.5,.012,jt('#e8e3dc'));Q(W(241.3),2.25,Y(480)-.13,.07,1.6,.07,jt('#b3261e',.5));
- Q(W(237),.75,Y(478.6),.6,.04,.45,jt('#c9c2b0'),true);for(const a of [-.27,.27])for(const b of [-.2,.2])Q(W(237)+a,.37,Y(478.6)+b,.025,.74,.025,acero);
- for(const [x,z] of [[239.3,478.3],[207,441.7]]){const t=new me(new is(.21,.17,.56,14),jt('#c7d630',.6));t.position.set(W(x),.28,Y(z));de.add(t);cr.push({x:W(x),z:Y(z),w:.2,d:.2,minY:0,maxY:.56});}
- En('RECICLABLES',W(207),.46,Y(441.7)+.22,.42,0,'#6f8f2a');
+  for(const zz of [o-l/2+.07,o+l/2-.07])cano(s,Ue/2+.95,zz,n,Ue+.95,zz,.045,blanco);}
+ // Ventana de fachada vista de los dos lados: vidrio y marco blanco; afuera se ve oscura.
+ function ventanaFachada(x,lado,z,ancho,alto,y){Q(W(x)+lado*.095,y,Y(z),.012,alto,ancho,ventanaClara);Q(W(x)-lado*.095,y,Y(z),.012,alto,ancho,vidrioOsc);
+  for(const s of [-1,1]){for(const k of [-.5,0,.5])Q(W(x)+s*.1,y,Y(z)+k*ancho,.03,alto+.06,.05,blanco);for(const k of [-.5,.5,.2])Q(W(x)+s*.1,y+k*alto,Y(z),.03,.05,ancho,blanco);}}
 
- // 7. Oeste: puertas de vidrio con barrotes, el vestíbulo de ladrillo y las rejas que también abren.
- const pv=[schoolDoor(W(186),Y(449.25),Math.PI/2,.9,true),schoolDoor(W(186),Y(456),Math.PI/2,1.8,false),schoolDoor(W(186),Y(462.75),Math.PI/2,.9,true)];
+ // 3. Pasillo de aulas: 3,55 m entre paredes de ladrillo, tres aulas por lado, columnas
+ //    crema de 25 cm, ventanas altas sobre el ladrillo, piso colorado y cielorraso con tubos.
+ const XO=213.8,XE=232.2,Z0=254,Z1=369;
+ const puertasO=[[258,263],[324,329],[332.5,337.5]],puertasE=[[262,266],[270.2,276.6],[287,291],[299,304],[335,340]];
+ we(174,254,XO,292.3,'AULA','E',puertasO[0]);we(174,292.3,XO,330.6,'AULA','E',puertasO[1]);we(174,330.6,XO,369,'AULA','E',puertasO[2]);
+ we(XE,256,272,270,'BAÑO','W',puertasE[0]);we(XE,284,272,297,'BAÑO','W',puertasE[2]);we(XE,297,272,333,'AULA','W',puertasE[3]);we(XE,333,272,369,'AULA','W',puertasE[4]);
+ // Escalera del pasillo, con los colores de la wiphala en las alzadas.
+ Ze(XE,270,XE,284,[puertasE[1]],3.3,!1);Ze(XE,270,272,270,[],7.4,!1);Ze(XE,284,272,284,[],7.4,!1);Ze(272,270,272,284,[],7.4,!1);
+ Q(W(XE),5.35,Y(273.45),.16,4.1,(276.9-270)*Ae,Ee);Q(W(XE),3.75,Y(280.45),.16,.9,(284-276.9)*Ae,Ee);Q(W(XE),(Ue+2.4+7.4)/2,Y(280.45),.16,7.4-Ue-2.4,(284-276.9)*Ae,Ee);
+ escalera(233,255,271,273.4,280.6,1.3,['#d52b1e','#f28c28','#f7d117','#f4f4f0','#2e9a45','#1f5aa6','#6d2f8f']);
+ vs.push({x1:XE,y1:270,x2:272,y2:284,name:'ESCALERA',floor:0});kn(W(266),Y(277),6.2);
+ Q((W(XE)+W(233))/2,Ue-.08,Y(280.6),W(233)-W(XE),.16,1.3,Ee);
+ _e(XO,Z0,XE,Z1,'PASILLO');
+ piso(XO,232,XE,Z1,baldosaRoja,.4);cielorraso(XO,232,XE,Z1,3.2);
+ for(let z=240;z<Z1;z+=13)kn(W(223),Y(z),3.2);oo(W(223),Y(300),2.9);oo(W(223),Y(345),2.9);
+ // Caras del pasillo: ladrillo hasta 2,5 m entre aberturas, vidrio alto corrido y columnas.
+ function caraPasillo(xw,lado,huecos,desde,tabiques){const xf=W(xw)+lado*.09;let z=desde;
+  for(const [a,b] of [...huecos,[Z1,Z1]]){if(a-z>.5){const L=(a-z)*Ae;Q(xf,1.25,Y((z+a)/2),.016,2.5,L,ladrillo(L));}z=b;}
+  const L=(Z1-desde)*Ae;Q(xf,2.84,Y((desde+Z1)/2),.012,.62,L,ventanaClara);Q(xf+lado*.006,2.52,Y((desde+Z1)/2),.02,.05,L,blanco);Q(xf+lado*.006,3.16,Y((desde+Z1)/2),.02,.05,L,blanco);
+  for(let k=desde+5;k<Z1;k+=5)Q(xf+lado*.008,2.84,Y(k),.02,.62,.04,blanco);
+  const cols=[];for(const [a,b] of huecos){cols.push(a-.75,b+.75);}for(const t of tabiques)if(!cols.some(c=>Math.abs(c-t)<2.2))cols.push(t);
+  for(const c of cols)if(c>desde+.8&&c<Z1-.8)Q(W(xw)+lado*(.08+.125),1.6,Y(c),.25,3.2,.3,crema,true);}
+ caraPasillo(XO,1,puertasO,Z0,[292.3,330.6]);caraPasillo(XE,-1,puertasE,256,[270,284,297,333]);
+ // Bandeja de cables y caño rojo de incendio contra el techo, del lado de Somellera.
+ Q(W(XE)-.42,3.08,Y(312),.3,.06,(366-256)*Ae,aceroOsc);Q(W(XE)-.16,3.0,Y(312),.07,.07,(366-256)*Ae,rojo);
+ // Bebedero de acero y nicho hidrante junto a la escalera; matafuegos.
+ Q(W(XE)-.08-.2,.5,Y(281.6),.38,1,.32,acero,true);Q(W(XE)-.08-.2,1.02,Y(281.6),.3,.04,.24,jt('#dfe3e2',.2));
+ Q(W(XE)-.17,1.35,Y(279.4),.18,.75,.55,rojo,true);
+ for(const [x,z] of [[XO+.6,300],[XE-.6,345],[XE-.6,253]]){const t=new me(new is(.08,.08,.5,10),rojo);t.position.set(W(x),1.0,Y(z));de.add(t);}
+ // Carteleras y el busto de José Martí con la rosa blanca, sobre la pared del 4º B.
+ En('FELIZ PRIMAVERA',W(232)-.1,1.55,Y(259.5),1.9,-Math.PI/2,'#f08a1c','#5a2d82');
+ En('SEPTIEMBRE',W(XE)-.1,1.6,Y(318),1.7,-Math.PI/2,'#d9cba8','#c0392b');
+ En('BIENVENIDOS',W(XO)+.1,1.6,Y(277),2.6,Math.PI/2,'#1d2421','#d9f0dc');
+ for(const z of [310,350])Q(W(XO)+.11,1.55,Y(z),.02,1,1.4,jt('#b58a5a',.9));
+ Q(W(232)-.25,2.0,Y(251),.5,.05,.7,Te);const busto=new me(new is(.16,.24,.28,8),jt('#6f6a52'));busto.position.set(W(232)-.3,2.18,Y(251));de.add(busto);
+ const cabeza=new me(new is(.11,.13,.3,10),jt('#77705a'));cabeza.position.set(W(232)-.3,2.45,Y(251));de.add(cabeza);
+ En('LA ROSA BLANCA · JOSÉ MARTÍ',W(232)-.1,2.55,Y(247.5),1.2,-Math.PI/2,'#f2efe4','#2a2a2a');En('MATAFUEGO ↓',W(232)-.1,2.3,Y(253.6),.5,-Math.PI/2,'#f4f4f0','#c0392b');
+
+ // 4. Entrada al pasillo desde el SUM: reja blanca de una hoja y ventana con barrotes sobre
+ //    un murete de ladrillo pintado de crema.
+ const zr=Y(232);
+ for(const x of [214.2,219.5,231.8])Q(W(x),1.6,zr,.09,3.2,.12,blanco,true);
+ const reja1=schoolDoor(W(216.85),zr,0,.95,true);vestir(reja1,vidrio,vidrio,blanco);barrotes(reja1,.1,2.32);
+ Q(W(225.65),.55,zr,(231.8-219.5)*Ae,1.1,.25,conRepeticion(ladrilloTex,2,1,{color:'#efe6c8',roughness:.9}),true);
+ for(let x=219.5+.7;x<231.8;x+=.75)Q(W(x),1.78,zr,.025,1.26,.025,blanco);for(const y of [1.13,1.78,2.42])Q(W(225.65),y,zr,(231.8-219.5)*Ae,.045,.05,blanco);
+ Q(W(225.65),1.78,zr,(231.8-219.5)*Ae,1.26,.01,vidrio);cr.push({x:W(225.65),z:zr,w:(231.8-219.5)*Ae/2,d:.08,minY:0,maxY:2.45});
+ Q(W(223),2.78,zr,3.55,.6,.01,vidrio);for(const x of [214.2,219.5,225.65,231.8])Q(W(x),2.78,zr,.05,.62,.06,blanco);Q(W(223),2.47,zr,3.6,.05,.08,blanco);Q(W(223),3.12,zr,3.6,.07,.1,blanco);
+
+ // 5. Fachadas del bloque de aulas, con ventanas en las dos plantas y postes verde agua.
+ for(const [xw,lado,aulas] of [[174,1,[[254,292.3],[292.3,330.6],[330.6,369]]],[272,-1,[[297,333],[333,369]]]]){
+  Q(W(xw)-lado*.095,3.7,Y((254+369)/2),.014,7.4,(369-254)*Ae,ladrillo((369-254)*Ae));
+  for(const [a,b] of aulas){for(const y of [2.15,Ue+2.15])ventanaFachada(xw,lado,(a+b)/2,Math.min(4.2,(b-a)*Ae-1.2),1.8,y);Q(W(xw)-lado*.13,3.7,Y(a),.18,7.4,.2,verdeAgua);}
+  for(const y of [.1,Ue-.1,Ue+.1,7.3])Q(W(xw)-lado*.12,y,Y((254+369)/2),.06,.16,(369-254)*Ae,verdeAgua);}
+
+ // 6. Planta alta del bloque: mismas aulas, sanitarios y el pasillo hasta el hall de arriba.
+ {const altoAntes=Je;Je=Ue;
+  we(174,254,XO,292.3,'AULA','E',puertasO[0]);we(174,292.3,XO,330.6,'AULA','E',puertasO[1]);we(174,330.6,XO,369,'AULA','E',puertasO[2]);
+  we(XE,256,272,270,'SANITARIOS','W',puertasE[0]);we(XE,284,272,297,'SANITARIOS','W',puertasE[2]);we(XE,297,272,333,'AULA','W',puertasE[3]);we(XE,333,272,369,'AULA','W',puertasE[4]);
+  // La pared de los sanitarios que da sobre el segundo tramo no frena: el hueco ya tiene la suya.
+  for(let k=cr.length-1;k>=0;k--){const c=cr[k];if(c.minY===Ue&&Math.abs(c.z-Y(284))<.05&&c.x>W(XE)&&c.x<W(272))cr.splice(k,1);}
+  _e(XO,234,XE,385,'PASILLO PLANTA ALTA');for(let z=246;z<385;z+=20)kn(W(223),Y(z),3.3);
+  Je=altoAntes;}
+
+ // 7. Hall: 8 m de fondo, de la fachada (x 170) al ascensor (x 243).
+ _e(170,369,243,409,'HALL');_e(208.2,409,214,414,'HALL');_e(214,409,234,439,'ACCESO AL COMEDOR');
+ piso(170,369,243,409,granito,1.2);piso(208.2,409,214,414,granito,1.2);piso(214,409,234,439,granito,1.2);
+ cielorraso(170,369,243,409,3);cielorraso(208.2,409,214,414,3);cielorraso(214,409,234,439,3);
+ for(const x of [182,198,214.5,231])for(const z of [377,396])luz(x,z,3);luz(224,417,3);luz(224,431,3);
+ Ze(170,369,174,369,[],3.3,!1);Ze(170,369,170,386,[],3.3,!1);Ze(170,406,170,409,[],3.3,!1);
+ Ze(243,369,243,409,[[378.75,384.25],[386,394]],3.3,!1);
+ Q(W(223),3.15,Y(369),3.6,.3,.26,Ee);
+ Q(W(206.5),2.86,Y(369)+.35,W(243)-W(170),.06,.3,aceroOsc);Q(W(206.5),2.93,Y(369)+.62,W(243)-W(170),.07,.07,jt('#8d9290',.5));
+
+ // 8. Norte: el entrante de piso colorado al final del pasillo, con la rejilla y las puertas.
+ piso(XO,357,XE,369,baldosaRoja,.4);
+ Q(W(223),.008,Y(368.6),3.6,.014,.3,conRepeticion(rejilla,3.6/.2,1,{roughness:.6}));
+ const zp=Y(359);
+ Q(W(216.65),1.2,zp,.86,2.4,.06,blanco,true);for(const s of [-1,1])Q(W(216.65),1.62,zp+s*.035,.6,.75,.012,malla(.6,.75));
+ for(const x of [214.3,218.85,227.05,231.7])Q(W(x),1.2,zp,.08,2.4,.1,blanco,true);
+ const dobles=schoolDoor(W(222.95),zp,0,1.6,false),simple=schoolDoor(W(229.37),zp,0,.82,true);
+ for(const d of [dobles,simple])vestir(d,blanco,malla(.6,1),blanco);
+ Q(W(223),2.44,zp,3.6,.06,.08,blanco);Q(W(223),3.08,zp,3.6,.06,.08,blanco);
+ for(let k=0;k<4;k++){const x=214.4+k*4.3+2.15;Q(W(x),2.76,zp,.84,.6,.02,malla(.84,.6));Q(W(x+2.15),2.76,zp,.05,.62,.06,blanco);}
+ En('SALIDA',W(223),2.95,zp-.07,.7,Math.PI,'#1f7a3a','#e8ffe8');
+ Q(W(222),2.72,Y(366.4),1.1,.36,.72,jt('#e1dfd6',.7));Q(W(222),2.72,Y(366.4)+.37,.95,.24,.012,Te);Q(W(222.6),2.72,Y(366.4)-.37,.55,.26,.04,jt('#c9b48a'));
+ luz(223,363,3.2);
+
+ // 9. Este: armarios, ascensor, escalera principal con su ventana, depósito y matafuego.
+ armario(241.35,371.75,.9,.5,1.9,jt('#dcd6c6',.8),-Math.PI/2);
+ armario(241.35,376,.76,.5,1.85,jt('#5d5e45',.7),-Math.PI/2);
+ armario(241.35,404.2,1,.55,1.85,jt('#d8cdb0',.85),-Math.PI/2);
+ Q(W(241.75),.008,Y(386.3),.55,.014,(394-378.5)*Ae,conRepeticion(tactil,.55/.15,(394-378.5)*Ae/.15,{roughness:.7}));
+ _e(243,378.5,255.5,384.5,'ASCENSOR');
+ Q(W(255.5),1.15,Y(381.5),.08,2.3,1.2,acero,true);for(const z of [378.5,384.5])Q(W(249.25),1.15,Y(z),2.5,2.3,.08,acero,true);
+ Q(W(249.25),2.32,Y(381.5),2.5,.04,1.2,jt('#3a3e3e'));
+ Q(W(255.5)-.1,.95,Y(381.5),.04,.04,1,jt('#d8dddc',.2));Q(W(249.25),.95,Y(378.5)+.1,2.2,.04,.04,jt('#d8dddc',.2));Q(W(249.25),.95,Y(384.5)-.1,2.2,.04,.04,jt('#d8dddc',.2));
+ kn(W(249.25),Y(381.5),2.3);
+ const asc=schoolDoor(W(243),Y(381.5),Math.PI/2,1.1,false,'slide');vestir(asc,acero,acero,acero);
+ for(const z of [378.6,384.4])Q(W(243)-.1,1.15,Y(z),.06,2.3,.18,acero);Q(W(243)-.1,2.38,Y(381.5),.06,.28,1.5,acero);
+ En('PB',W(243)-.14,2.38,Y(384.25),.3,-Math.PI/2,'#140c0c','#ff3b30');Q(W(243)-.12,1.2,Y(384.9),.03,.12,.07,acero);
+ escalera(243,263,271,390,398,1.5);
+ Q(W(243),5.35,Y(389.75),.16,4.1,(394-385.5)*Ae,Ee);Q(W(243),3.75,Y(398),.16,.9,1.6,Ee);
+ Ze(243,385.5,272,385.5,[],7.4,!1);Ze(243,402,272,402,[],7.4,!1);
+ Ze(272,369,272,390,[],7.4,!1);Ze(272,398,272,409,[],7.4,!1);
+ Q(W(272),1.5,Y(394),.16,3,1.6,Ee,true);Q(W(272),5.9,Y(394),.16,3,1.6,Ee);
+ Q(W(272),3.7,Y(394),.04,1.4,1.6,vidrio);for(const z of [-.78,0,.78])Q(W(272)-.06,3.7,Y(394)+z,.06,1.44,.06,blanco);for(const y of [3.02,3.7,4.38])Q(W(272)-.06,y,Y(394),.06,.06,1.6,blanco);
+ kn(W(267),Y(394),6.2);
+ Q((W(214)+W(243))/2,Ue-.08,(Y(369)+Y(404))/2,W(243)-W(214),.16,Y(404)-Y(369),Ee);
+ vs.push({x1:214,y1:369,x2:243,y2:403.5,name:'PLANTA ALTA',floor:1},{x1:243,y1:385.5,x2:272,y2:402,name:'ESCALERA',floor:0});
+ Q((W(214)+W(243))/2,Ue+.55,Y(403.6),W(243)-W(214),1.1,.12,crema);cr.push({x:(W(214)+W(243))/2,z:Y(403.6),w:(W(243)-W(214))/2,d:.06,minY:Ue,maxY:Ue+1.1});
+ Q(W(243)-.1,1.05,Y(398.6),.05,2.1,.85,jt('#e2dcc7',.8));for(const z of [-.45,.45])Q(W(243)-.11,1.07,Y(398.6)+z,.06,2.14,.05,blanco);Q(W(243)-.14,1,Y(398.6)-.32,.05,.04,.14,Te);
+ puertasConLlave.push({x:W(243)-.1,z:Y(398.6),floor:0,nombre:'Depósito'});
+ Q(W(240),1.35,Y(409)-.17,.6,.75,.18,rojo,true);Q(W(240),1.35,Y(409)-.27,.42,.5,.012,jt('#e8e3dc'));Q(W(241.3),2.25,Y(409)-.13,.07,1.6,.07,rojo);
+ Q(W(237),.75,Y(407.6),.6,.04,.45,jt('#c9c2b0'),true);for(const a of [-.27,.27])for(const b of [-.2,.2])Q(W(237)+a,.37,Y(407.6)+b,.025,.74,.025,acero);
+ for(const [x,z] of [[239.3,407.3],[207,370.7]]){const t=new me(new is(.21,.17,.56,14),jt('#c7d630',.6));t.position.set(W(x),.28,Y(z));de.add(t);cr.push({x:W(x),z:Y(z),w:.2,d:.2,minY:0,maxY:.56});}
+ En('RECICLABLES',W(207),.46,Y(370.7)+.22,.42,0,'#6f8f2a');
+
+ // 10. Oeste: la salida al patio está en la fachada, al final de la pared de los armarios.
+ //     Puertas de vidrio con barrotes; a 2 m, en el patio, las rejas blancas entre muros.
+ const pv=[schoolDoor(W(170),Y(388.25),Math.PI/2,.9,true),schoolDoor(W(170),Y(395),Math.PI/2,1.8,false),schoolDoor(W(170),Y(401.75),Math.PI/2,.9,true)];
  for(const d of pv){vestir(d,vidrio,vidrio,blanco);barrotes(d,.12,2.3);}
- En('SALIDA',W(186)+.1,2.72,Y(456),.9,Math.PI/2,'#1f7a3a','#e8ffe8');
- rejaFija(170,444,450.9);rejaFija(170,461.1,468);Q(W(170),2.85,Y(456),.16,.9,4.8,Ee);
- const reja=schoolDoor(W(170),Y(456),Math.PI/2,2.2,false);vestir(reja,vidrio,vidrio,blanco);
- for(const l of reja.leaves){for(let k=-4;k<=4;k++){const m=Q(k*.12,1.2,0,.024,2.3,.024,blanco,false,l.leaf);m.userData.movingDoor=true;}}
- for(const [x,c] of [[188.5,'#9aa09d'],[193,'#5b5f5c'],[197.5,'#b9bcb6']])armario(x,441.65,.9,.5,1.95,jt(c,.45),0);
- const carrete=new me(new is(.28,.28,.08,18),jt('#d68a21',.5));carrete.rotation.x=Math.PI/2;carrete.position.set(W(201.5),2.1,Y(440)+.14);de.add(carrete);
+ Q(W(170),1.2,Y(405),.06,2.4,.4,vidrio);cr.push({x:W(170),z:Y(405),w:.05,d:.2,minY:0,maxY:2.4});for(const z of [386,404,406])Q(W(170),1.2,Y(z),.08,2.4,.08,blanco,true);
+ Q(W(170),2.85,Y(396),.16,.9,(406-386)*Ae,Ee);Q(W(170)+.09,2.62,Y(396),.012,.36,(406-386)*Ae-.1,ventanaClara);
+ En('SALIDA',W(170)+.11,2.95,Y(395),.9,Math.PI/2,'#1f7a3a','#e8ffe8');
+ _e(160,386,170,406,'SALIDA AL PATIO');piso(160,386,170,406,granito,1.2);
+ Ze(160,386,170,386,[],3.3,!0);Ze(160,406,170,406,[],3.3,!0);Q(W(165),3.3,Y(396),2.1,.1,4.2,Ee);
+ rejaFija(160,386,390.5);rejaFija(160,401.5,406);Q(W(160),2.85,Y(396),.16,.9,4,Ee);
+ const reja=schoolDoor(W(160),Y(396),Math.PI/2,2.2,false);vestir(reja,vidrio,vidrio,blanco);
+ for(const l of reja.leaves){for(let k=-4;k<=4;k++){const o=Q(k*.12,1.2,0,.024,2.3,.024,blanco,false,l.leaf);o.userData.movingDoor=true;}}
+ // Fila de armarios contra el frente de los baños, mirando al norte, y el carrete naranja arriba.
+ for(const [x,w,c] of [[173.6,1,'#1d1f1f'],[178.4,.9,'#5b5f5c'],[183,.9,'#8e938f'],[188.3,1.2,'#c9ccc6']])armario(x,409-1.65,w,.5,1.95,jt(c,.45),Math.PI);
+ const carrete=new me(new is(.28,.28,.08,18),jt('#d68a21',.5));carrete.rotation.x=Math.PI/2;carrete.position.set(W(189.5),2.25,Y(409)-.45);de.add(carrete);
 
- // 8. Sur: los tres baños, el pasillo al comedor y la sala de maestros.
- we(170,480,191,525,'BAÑO','N',[186.5,190.5]);
- // Fachada de ladrillo del lado del patio, apenas hacia afuera para no pelear con la pared pintada del baño.
- Q(W(170)-.025,1.75,Y(496.5),.16,3.5,(525-468)*Ae,Nl);Q(W(170)-.1,.1,Y(496.5),.04,.2,(525-468)*Ae,jt('#89b99b'));Q(W(170)-.1,3.45,Y(496.5),.04,.16,(525-468)*Ae,jt('#89b99b'));
- for(const z of [486,506])Q(W(170)-.11,2.75,Y(z),.03,.45,1.4,vidrio);
- we(191,480,201,494,'BAÑO ACCESIBLE','N',[193.75,198.25]);
- we(201,480,214,525,'BAÑO','N',[203.5,208]);
- for(const [x,t] of [[188.5,'BAÑO'],[196,'ACCESIBLE'],[205.75,'BAÑO']])En(t,W(x),2.62,Y(480)-.1,.7,Math.PI,'#d3ceb4','#303c36');
- for(const [x1,x2,z1,z2] of [[170,191,480,525],[191,201,480,494],[201,214,480,525]])piso(x1+.4,z1+.4,x2-.4,z2-.4,baldosaBano,.6);
- // Azulejo blanco hasta 2,1 m adentro de cada baño, sin tapar la puerta.
- function azulejar(x1,z1,x2,z2,pa,pb){const pan=(x,z,w,d)=>{if(Math.max(w,d)>.05)Q(x,1.05,z,w,2.1,d,conRepeticion(azulejo,Math.max(w,d)/.8,2.1/.8,{roughness:.25}));};
-  pan(W(x1)+.09,Y((z1+z2)/2),.012,(z2-z1)*Ae-.2,0);pan(W(x2)-.09,Y((z1+z2)/2),.012,(z2-z1)*Ae-.2);pan(W((x1+x2)/2),Y(z2)-.09,(x2-x1)*Ae-.2,.012);
-  pan(W((x1+pa)/2),Y(z1)+.09,(pa-x1)*Ae-.1,.012);pan(W((pb+x2)/2),Y(z1)+.09,(x2-pb)*Ae-.1,.012);}
- azulejar(170,480,191,525,186.5,190.5);azulejar(191,480,201,494,193.75,198.25);azulejar(201,480,214,525,203.5,208);
+ // 11. Sur: tres baños en 6 m de fondo, con las puertas sobre el pasillo del comedor. De sur a
+ //     norte: el de la puerta en el nicho, el accesible y el de varones. La cara que mira al
+ //     hall es pared lisa, con la fila de armarios hasta la salida al patio.
+ Ze(170,409,214,409,[],3.3,!1);Ze(214,409,214,439,[[414.5,418.5],[423.5,427.5],[431,436]],3.3,!1);Ze(170,409,170,439,[],3.3,!1);
+ Ze(170,421.5,205,421.5,[],3.3,!1);Ze(205,421.5,214,421.5,[],3.3,!1);Ze(205,421.5,205,430.5,[],3.3,!1);Ze(205,430.5,214,430.5,[],3.3,!1);
+ Ze(209,431,214,431,[],3.3,!1);Ze(209,436,214,436,[],3.3,!1);Ze(209,431,209,436,[[431.5,435.5]],3.3,!1);
+ for(const [x,z,rot] of [[214,416.5,Math.PI/2],[214,425.5,Math.PI/2],[209,433.5,Math.PI/2]]){const d=schoolDoor(W(x),Y(z),rot,.8,true);vestir(d,blanco,blanco,blanco);}
+ for(const z of [416.5,425.5])Q(W(214)+.09,2.68,Y(z),.012,.38,.8,ventanaClara);
+ for(const [z,t] of [[416.5,'VARONES'],[425.5,'ACCESIBLE'],[433.5,'NENAS']])En(t,W(214)+.11,2.62,Y(z),.7,Math.PI/2,'#d3ceb4','#303c36');
+ _e(170,409,214,421.5,'BAÑO VARONES');_e(205,421.5,214,430.5,'BAÑO ACCESIBLE');_e(209,431,214,436,'ACCESO AL COMEDOR');
+ _e(170,421.5,205,439,'BAÑO NENAS');_e(205,430.5,209,439,'BAÑO NENAS');_e(209,436,214,439,'BAÑO NENAS');
+ for(const [x1,z1,x2,z2] of [[170,409,214,421.5],[205,421.5,214,430.5],[170,421.5,205,439],[205,430.5,209,439]])piso(x1,z1,x2,z2,baldosaBano,.6);
+ piso(209,431,214,436,granito,1.2);cielorraso(209,431,214,436,3);
+ kn(W(192),Y(415.25),3.3);kn(W(209.5),Y(426),3.3);kn(W(188),Y(430),3.3);
+ // Fachada de ladrillo del lado del patio.
+ Q(W(170)-.025,1.75,Y(424),.16,3.5,(439-409)*Ae,Nl);for(const y of [.1,3.45])Q(W(170)-.1,y,Y(424),.04,.18,(439-409)*Ae,verdeAgua);
+ for(const z of [415,431])Q(W(170)-.11,2.75,Y(z),.03,.45,1.4,vidrioOsc);
+ // Azulejo blanco hasta 2,1 m en cada cara interior, sin tapar las puertas.
+ const azul=(x,z,w,d)=>{if(Math.max(w,d)>.05)Q(x,1.05,z,w,2.1,d,conRepeticion(azulejo,Math.max(w,d)/.8,2.1/.8,{roughness:.25}));};
+ const enX=(x,lado,z1,z2)=>azul(W(x)+lado*.09,Y((z1+z2)/2),.012,(z2-z1)*Ae-.18),enZ=(z,lado,x1,x2)=>azul(W((x1+x2)/2),Y(z)+lado*.09,(x2-x1)*Ae-.18,.012);
+ enZ(409,1,170,214);enZ(421.5,-1,170,214);enX(170,1,409,421.5);enX(214,-1,409,414.5);enX(214,-1,418.5,421.5);
+ enX(205,1,421.5,430.5);enX(214,-1,421.5,423.5);enX(214,-1,427.5,430.5);enZ(421.5,1,205,214);enZ(430.5,-1,205,214);
+ enX(170,1,421.5,439);enZ(439,-1,170,214);enZ(421.5,1,170,205);enX(205,-1,421.5,430.5);enZ(430.5,1,205,209);enX(209,-1,436,439);enX(209,-1,430.5,431.5);enX(209,-1,435.5,436);
+ function piletaZ(zp,x1,x2,lado){const L=(x2-x1)*Ae,z=Y(zp)+lado*(.08+.23),xc=W((x1+x2)/2);Q(xc,.8,z,L,.26,.44,acero,true);Q(xc,.935,z,L-.06,.012,.36,jt('#3b4041',.4));
+  for(let x=x1+2;x<x2-1;x+=3.5)Q(W(x),1.08,Y(zp)+lado*.15,.035,.035,.15,acero);for(const x of [x1+1.5,x2-1.5])Q(W(x),.42,z,.06,.5,.06,jt('#b23a2a',.6));}
  function pileta(xp,z1,z2,lado){const L=(z2-z1)*Ae,x=W(xp)+lado*(.08+.23),zc=Y((z1+z2)/2);Q(x,.8,zc,.44,.26,L,acero,true);Q(x,.935,zc,.36,.012,L-.06,jt('#3b4041',.4));
-  for(let z=z1+3;z<z2-1;z+=4){Q(W(xp)+lado*.15,1.08,Y(z),.15,.035,.035,acero);}for(const z of [z1+2,z2-2])Q(x,.42,Y(z),.06,.5,.06,jt('#b23a2a',.6));}
- function mingitorio(xp,z,lado){Q(W(xp)+lado*.25,.88,Y(z),.3,.62,.36,blanco,true);Q(W(xp)+lado*.13,1.5,Y(z),.04,.55,.04,acero);}
+  for(let z=z1+2;z<z2-1;z+=3.5)Q(W(xp)+lado*.15,1.08,Y(z),.15,.035,.035,acero);for(const z of [z1+1.5,z2-1.5])Q(x,.42,Y(z),.06,.5,.06,jt('#b23a2a',.6));}
+ function mingitorioZ(zp,x,lado){Q(W(x),.88,Y(zp)+lado*.25,.36,.62,.3,blanco,true);Q(W(x),1.5,Y(zp)+lado*.13,.04,.55,.04,acero);}
  function inodoro(x,z,rot,barras){const g=new Xe();g.position.set(x,0,z);g.rotation.y=rot;de.add(g);Q(0,.62,-.24,.42,.42,.18,blanco,false,g);
   const taza=new me(new is(.2,.16,.4,14),blanco);taza.position.set(0,.2,.04);taza.scale.z=1.3;g.add(taza);Q(0,.415,.05,.38,.035,.5,blanco,false,g);
   if(barras)for(const s of [-.38,.38]){Q(s,.75,.05,.04,.04,.7,blanco,false,g);Q(s,.4,-.28,.04,.72,.04,blanco,false,g);}
   cr.push({x,z,w:.25,d:.25,minY:0,maxY:.8});}
- function cubiculos(x1,x2,zf,zb,n,cerrar){const ancho=(x2-x1)/n,borde=jt('#6b3b22',.6),hoja=jt('#e6dcb8',.75);
+ const borde=jt('#6b3b22',.6),hoja=jt('#e6dcb8',.75);
+ // Retretes en fila: frente a lo largo de x (puertas al norte) o a lo largo de z (puertas al este).
+ function cubiculos(x1,x2,zf,zb,n){const ancho=(x2-x1)/n;
   for(let k=0;k<n;k++){const xa=x1+k*ancho,xc=xa+ancho/2,anchoW=ancho*Ae,puerta=Math.min(.65,anchoW-.25);
    if(k>0)Q(W(xa),1.05,Y((zf+zb)/2),.04,2,(zb-zf)*Ae,hoja,true);
-   if(cerrar&&k===n-1)Q(W(x2),1.05,Y((zf+zb)/2),.04,2,(zb-zf)*Ae,hoja,true);
    const lado=(anchoW-puerta)/2;for(const s of [-1,1])Q(W(xc)+s*(puerta/2+lado/2),1.05,Y(zf),lado,2,.04,hoja,true);
-   const d=schoolDoor(W(xc),Y(zf),0,puerta,k%2===1);vestir(d,hoja,hoja,borde);
-   inodoro(W(xc),Y(zb)-.42,Math.PI,false);}}
- // Baño del oeste: pileta corrida y dos mingitorios contra la pared del accesible, un retrete al fondo.
- pileta(191,484,496,-1);mingitorio(191,499,-1);mingitorio(191,502.5,-1);cubiculos(170,184,516,525,2,true);
- // Baño del este: pileta corrida contra la pared del pasillo y tres retretes al fondo.
- pileta(214,486,500,-1);cubiculos(201,214,514,525,3);
- // Accesible: inodoro con barras contra la pared del este, lavatorio y espejo al fondo.
- inodoro(W(201)-.45,Y(490.5),-Math.PI/2,true);
- Q(W(194.5),.82,Y(494)-.3,.55,.14,.42,blanco,true);Q(W(194.5),.5,Y(494)-.12,.05,.6,.05,acero);Q(W(194.5),1.62,Y(494)-.1,.5,.7,.02,espejo);for(const s of [-.42,.42])Q(W(194.5)+s,.85,Y(494)-.3,.04,.04,.5,blanco);
- // Sala de maestros: puerta y ventana al pasillo del comedor, mesa larga, sillas y armario.
- _e(234,480,272,525,'SALA DE MAESTROS');
- Ze(234,480,272,480,[],3.3,!1);Ze(272,480,272,525,[],3.3,!1);Ze(234,480,234,525,[[484.5,489],[491,497]],3.3,!1);
- const sala=schoolDoor(W(234),Y(486.75),Math.PI/2,.9,false);vestir(sala,blanco,blanco,blanco);
- Q(W(234),.5,Y(494),.16,1,1.2,Sn,true);Q(W(234),1.65,Y(494),.04,1.3,1.2,vidrio);cr.push({x:W(234),z:Y(494),w:.08,d:.6,minY:0,maxY:2.4});
- for(const y of [1,2.3])Q(W(234),y,Y(494),.1,.06,1.25,blanco);for(const z of [-.6,.6])Q(W(234),1.65,Y(494)+z,.1,1.3,.06,blanco);
- En('SALA DE MAESTROS',W(234)-.1,2.62,Y(486.75),1.4,-Math.PI/2,'#d3ceb4','#303c36');
- kn(W(253),Y(502.5),3.3);
- Q(W(253),.75,Y(502),2.4,.05,1,madera,true);for(const a of [-1.1,1.1])for(const b of [-.42,.42])Q(W(253)+a,.37,Y(502)+b,.05,.74,.05,Te);
- for(const a of [-.8,0,.8])for(const s of [-1,1]){Q(W(253)+a,.45,Y(502)+s*.75,.42,.05,.42,jt('#3c4a63'));Q(W(253)+a,.72,Y(502)+s*.95,.42,.5,.04,jt('#3c4a63'));}
- armario(270.35,490,1,.5,1.9,jt('#cfcab9',.8),-Math.PI/2);armario(270.35,515,1,.5,1.9,jt('#7b6d58',.8),-Math.PI/2);
- Q(W(272)-.12,1.6,Y(503),.03,1.1,2.4,jt('#f1efe6'));
- // Cartel verde de salida sobre las puertas del comedor.
- Q(W(230.5),2.8,Y(525)-.2,.28,.14,.05,new Qn({color:'#38f07a'}));
+   const d=schoolDoor(W(xc),Y(zf),0,puerta,k%2===1);vestir(d,hoja,hoja,borde);inodoro(W(xc),Y(zb)-.42,Math.PI,false);}}
+ function cubiculosX(xf,xb,z1,z2,n){const ancho=(z2-z1)/n;
+  for(let k=0;k<n;k++){const za=z1+k*ancho,zc=za+ancho/2,anchoW=ancho*Ae,puerta=Math.min(.65,anchoW-.25);
+   if(k>0)Q(W((xf+xb)/2),1.05,Y(za),(xf-xb)*Ae,2,.04,hoja,true);
+   const lado=(anchoW-puerta)/2;for(const s of [-1,1])Q(W(xf),1.05,Y(zc)+s*(puerta/2+lado/2),.04,2,lado,hoja,true);
+   const d=schoolDoor(W(xf),Y(zc),Math.PI/2,puerta,k%2===0);vestir(d,hoja,hoja,borde);inodoro(W(xb)+.42,Y(zc),Math.PI/2,false);}}
+ // Varones: pileta corrida y mingitorios contra la pared del hall; dos retretes al oeste.
+ piletaZ(409,192,208,1);mingitorioZ(409,185,1);mingitorioZ(409,188,1);cubiculosX(177.5,170,409.8,421,2);
+ // Nenas: pileta contra la pared del accesible y tres retretes al fondo, contra el comedor.
+ pileta(205,422.5,429.5,-1);cubiculos(176,203,431,439,3);
+ // Accesible: inodoro con barras contra la pared del nicho; lavatorio y espejo al oeste.
+ inodoro(W(210),Y(430.5)-.45,Math.PI,true);
+ Q(W(205)+.3,.82,Y(425),.42,.14,.55,blanco,true);Q(W(205)+.12,.5,Y(425),.05,.6,.05,acero);Q(W(205)+.1,1.62,Y(425),.02,.7,.5,espejo);for(const s of [-.42,.42])Q(W(205)+.3,.85,Y(425)+s,.5,.04,.04,blanco);
 
- // 9. Arranque: parado en el hall, mirando las puertas del pasillo de aulas.
- Qt.position.set(W(222),1.68,Y(460));
- de.userData.hallRevision={hall:[186,440,243,480],banos:[170,480,214,525],sala:[234,480,272,525],comedorCorrido:6.4};
+ // 12. Sala de maestros: puerta y ventana al pasillo del comedor, mesa, sillas y armarios.
+ _e(234,409,272,439,'SALA DE MAESTROS');
+ Ze(234,409,272,409,[],3.3,!1);Ze(272,409,272,439,[],3.3,!1);Ze(234,409,234,439,[[412,416.5],[418,424]],3.3,!1);
+ const sala=schoolDoor(W(234),Y(414.25),Math.PI/2,.9,false);vestir(sala,blanco,blanco,blanco);
+ Q(W(234),.5,Y(421),.16,1,1.2,Sn,true);Q(W(234),1.65,Y(421),.04,1.3,1.2,vidrio);cr.push({x:W(234),z:Y(421),w:.08,d:.6,minY:0,maxY:2.4});
+ for(const y of [1,2.3])Q(W(234),y,Y(421),.1,.06,1.25,blanco);for(const z of [-.6,.6])Q(W(234),1.65,Y(421)+z,.1,1.3,.06,blanco);
+ En('SALA DE MAESTROS',W(234)-.1,2.62,Y(414.25),1.4,-Math.PI/2,'#d3ceb4','#303c36');
+ kn(W(253),Y(424),3.3);
+ Q(W(253),.75,Y(424),2.4,.05,1,madera,true);for(const a of [-1.1,1.1])for(const b of [-.42,.42])Q(W(253)+a,.37,Y(424)+b,.05,.74,.05,Te);
+ for(const a of [-.8,0,.8])for(const s of [-1,1]){Q(W(253)+a,.45,Y(424)+s*.75,.42,.05,.42,jt('#3c4a63'));Q(W(253)+a,.72,Y(424)+s*.95,.42,.5,.04,jt('#3c4a63'));}
+ armario(270.35,413,1,.5,1.9,jt('#cfcab9',.8),-Math.PI/2);armario(270.35,434,1,.5,1.9,jt('#7b6d58',.8),-Math.PI/2);
+ Q(W(272)-.12,1.6,Y(424),.03,1.1,2.4,jt('#f1efe6'));
+ Q(W(230.5),2.8,Y(439)-.2,.28,.14,.05,new Qn({color:'#38f07a'}));
+
+ // 13. Portón de Avda. Lacarra: va donde el plano dice SALIDA, del lado de Pasaje L, y es
+ //     corredizo de una hoja; corre hacia Somellera (a la izquierda mirando desde adentro).
+ {const zl=Y(635.9),cerca=(o,x,z)=>Math.abs(o.position.x-x)<.06&&Math.abs(o.position.z-z)<.06;
+  for(const d of [...schoolDoors])if(Math.abs(d.x-W(266))<.2&&Math.abs(d.z-Y(630.9))<.3){d.root.removeFromParent();for(const c of d.colliders){const k=cr.indexOf(c);k>=0&&cr.splice(k,1);}schoolDoors.splice(schoolDoors.indexOf(d),1);}
+  for(const o of [...de.children]){if(cerca(o,W(255),Y(630.9))||cerca(o,W(277),Y(630.9)))o.removeFromParent();
+   if(Math.abs(o.position.z-zl)<.06&&[122,142,162].some(x=>Math.abs(o.position.x-W(x))<.06))o.removeFromParent();}
+  for(const [x,w] of [[118,2.4],[165,2.8]]){Q(W(x),.4,zl,w,.8,.16,jt('#70776b'),true);ri(W(x),zl,w,2.2,0,.8);}
+  for(const x of [124,158])Q(W(x),1.3,zl,.2,2.6,.2,blanco,true);
+  Q(W(158+17),.02,zl-.25,(192-124)*Ae,.04,.08,aceroOsc);
+  const root=new Xe();root.position.set(W(141),0,zl-.25);root.rotation.y=Math.PI;de.add(root);
+  const hinge=new Xe();root.add(hinge);const leaf=new Xe();hinge.add(leaf);const ancho=(158-124)*Ae;
+  for(const y of [.12,1.15,2.18])Q(0,y,0,ancho,.07,.07,blanco,false,leaf);for(const x of [-ancho/2,ancho/2])Q(x,1.15,0,.08,2.12,.08,blanco,false,leaf);
+  for(let x=-ancho/2+.12;x<ancho/2;x+=.12)Q(x,1.15,0,.025,2.06,.025,blanco,false,leaf);
+  for(const x of [-ancho/2+.4,ancho/2-.4]){const r=new me(new is(.07,.07,.05,12),Te);r.rotation.x=Math.PI/2;r.position.set(x,.07,0);leaf.add(r);}
+  leaf.traverse(o=>o.userData.movingDoor=true);
+  const col={x:0,z:0,w:0,d:0,minY:0,maxY:2.4,door:true};cr.push(col);
+  const d={x:W(141),z:zl-.25,rot:Math.PI,width:ancho,floor:0,root,leaves:[{hinge,leaf,direction:1,closedX:0,index:0}],colliders:[col],open:false,amount:0,kind:'slide',recorrido:.98};
+  schoolDoors.push(d);placeSchoolDoor(d);}
+
+ // 13. Arranque: parado en el hall, mirando las puertas del pasillo de aulas.
+ Qt.position.set(W(222),1.68,Y(389));
+ de.userData.escala1a1={pasillo:{ancho:3.55,largo:23,columnas:.25},hall:[170,369,243,409],banos:[170,409,214,439],comedorDesde:439};
 })();
 
 // Día y noche: arranca de día; la N pasa a la noche de antes y vuelve.
@@ -4364,7 +4475,7 @@ function aplicarHora(){de.background.set(dia?"#a8cdea":"#091013");de.fog.color.s
 function cambiarHora(){dia=!dia;io=!dia;lr.visible=io;ge("flash").textContent="F · Linterna "+(io?"●":"○");aplicarHora();}
 io=!1;lr.visible=!1;ge("flash").textContent="F · Linterna ○";ge("noche").onclick=cambiarHora;aplicarHora();
 
-Xg();window.pasillo={render:bn,camara:Qt,puertas:schoolDoors,colisiones:cr,escena:de,get suelo(){return sn},get salto(){return altSalto},get giro(){return _s},set giro(v){_s=v},set cabeceo(v){Dl=v},set suelo(v){sn=v}};var Vh=Array.from({length:4},()=>{let i=new as("#c4dfde",0,9,1.65);return de.add(i),i}),Rl=0,Hh=[];function qg(i){Rl-=i,Rl<=0&&(Rl=.2,Hh=qh.slice().sort((t,e)=>t.position.distanceToSquared(Qt.position)-e.position.distanceToSquared(Qt.position)).slice(0,Vh.length)),Vh.forEach((t,e)=>{let n=Hh[e];if(!n){t.intensity=0;return}t.position.copy(n.position),t.intensity=gs?17:10*(.48+.08*Math.sin(Ul*.7+n.seed))})}var wi=Math.min(devicePixelRatio,1.25),so=16.7,Il=0,Gh=0;bn.setPixelRatio(wi);function Yg(i,t){if(so=so*.95+Math.min(i,100)*.05,Il+=t,Il<3)return;Il=0;let e=so>24?Math.max(.65,wi-.15):so<18?Math.min(devicePixelRatio,1.25,wi+.1):wi;Math.abs(e-wi)>.01&&(wi=e,bn.setPixelRatio(wi))}var Wh=performance.now();function su(i){requestAnimationFrame(su);let t=Math.min((i-Wh)/1e3,.04);if(Wh=i,!document.hidden&&!(!zn&&i-Gh<100)){if(Gh=i,zn&&Yg(t*1e3,t),Ul+=t,zn){let e=(en.KeyW||en.ArrowUp?1:0)-(en.KeyS||en.ArrowDown?1:0)-Ri.y,n=(en.KeyD||en.ArrowRight?1:0)-(en.KeyA||en.ArrowLeft?1:0)+Ri.x,s=Math.max(1,Math.hypot(e,n)),r=en.ShiftLeft?3.6:2.05,a=(-Math.sin(_s)*e+Math.cos(_s)*n)/s*r*t,o=(-Math.cos(_s)*e-Math.sin(_s)*n)/s*r*t;kh(Qt.position.x+a,Qt.position.z)&&(sn=Ll(Qt.position.x+a,Qt.position.z),Qt.position.x+=a),kh(Qt.position.x,Qt.position.z+o)&&(sn=Ll(Qt.position.x,Qt.position.z+o),Qt.position.z+=o);let l=Math.hypot(a,o)>.001;l&&(Cl+=t*r,Cl>.85&&(Cl=0,Gg())),(velSalto||altSalto>0)&&(velSalto-=11*t,altSalto+=velSalto*t,altSalto<=0&&(altSalto=0,velSalto=0,Gg())),Qt.position.y=sn+1.68+altSalto+(l&&altSalto<=0?Math.sin(Ul*r*4)*.022:0),Qt.rotation.set(Dl,_s,0),ge("zone").textContent=(sn>3.9?"PLANTA ALTA / ":sn>.2?"ESCALERA / ":"PLANTA BAJA / ")+Vg(Qt.position.x,Qt.position.z),ge("distance").textContent=`${Math.round(Math.hypot(Qt.position.x,Qt.position.z-Y(460)))} m DEL INICIO`}animateSchoolDoors(t);qg(t);for(let e of Bl)e.rotation.y+=t*.35;bn.render(de,Qt)}}requestAnimationFrame(su);addEventListener("resize",()=>{Qt.aspect=innerWidth/innerHeight,Qt.updateProjectionMatrix(),bn.setSize(innerWidth,innerHeight)});})();
+Xg();window.pasillo={render:bn,camara:Qt,puertas:schoolDoors,colisiones:cr,escena:de,get suelo(){return sn},get salto(){return altSalto},get giro(){return _s},set giro(v){_s=v},set cabeceo(v){Dl=v},set suelo(v){sn=v}};var Vh=Array.from({length:4},()=>{let i=new as("#c4dfde",0,9,1.65);return de.add(i),i}),Rl=0,Hh=[];function qg(i){Rl-=i,Rl<=0&&(Rl=.2,Hh=qh.slice().sort((t,e)=>t.position.distanceToSquared(Qt.position)-e.position.distanceToSquared(Qt.position)).slice(0,Vh.length)),Vh.forEach((t,e)=>{let n=Hh[e];if(!n){t.intensity=0;return}t.position.copy(n.position),t.intensity=gs?17:10*(.48+.08*Math.sin(Ul*.7+n.seed))})}var wi=Math.min(devicePixelRatio,1.25),so=16.7,Il=0,Gh=0;bn.setPixelRatio(wi);function Yg(i,t){if(so=so*.95+Math.min(i,100)*.05,Il+=t,Il<3)return;Il=0;let e=so>24?Math.max(.65,wi-.15):so<18?Math.min(devicePixelRatio,1.25,wi+.1):wi;Math.abs(e-wi)>.01&&(wi=e,bn.setPixelRatio(wi))}var Wh=performance.now();function su(i){requestAnimationFrame(su);let t=Math.min((i-Wh)/1e3,.04);if(Wh=i,!document.hidden&&!(!zn&&i-Gh<100)){if(Gh=i,zn&&Yg(t*1e3,t),Ul+=t,zn){let e=(en.KeyW||en.ArrowUp?1:0)-(en.KeyS||en.ArrowDown?1:0)-Ri.y,n=(en.KeyD||en.ArrowRight?1:0)-(en.KeyA||en.ArrowLeft?1:0)+Ri.x,s=Math.max(1,Math.hypot(e,n)),r=en.ShiftLeft?3.6:2.05,a=(-Math.sin(_s)*e+Math.cos(_s)*n)/s*r*t,o=(-Math.cos(_s)*e-Math.sin(_s)*n)/s*r*t;kh(Qt.position.x+a,Qt.position.z)&&(sn=Ll(Qt.position.x+a,Qt.position.z),Qt.position.x+=a),kh(Qt.position.x,Qt.position.z+o)&&(sn=Ll(Qt.position.x,Qt.position.z+o),Qt.position.z+=o);let l=Math.hypot(a,o)>.001;l&&(Cl+=t*r,Cl>.85&&(Cl=0,Gg())),(velSalto||altSalto>0)&&(velSalto-=11*t,altSalto+=velSalto*t,altSalto<=0&&(altSalto=0,velSalto=0,Gg())),Qt.position.y=sn+1.68+altSalto+(l&&altSalto<=0?Math.sin(Ul*r*4)*.022:0),Qt.rotation.set(Dl,_s,0),ge("zone").textContent=(sn>3.9?"PLANTA ALTA / ":sn>.2?"ESCALERA / ":"PLANTA BAJA / ")+Vg(Qt.position.x,Qt.position.z),ge("distance").textContent=`${Math.round(Math.hypot(Qt.position.x,Qt.position.z-Y(389)))} m DEL INICIO`}animateSchoolDoors(t);qg(t);for(let e of Bl)e.rotation.y+=t*.35;bn.render(de,Qt)}}requestAnimationFrame(su);addEventListener("resize",()=>{Qt.aspect=innerWidth/innerHeight,Qt.updateProjectionMatrix(),bn.setSize(innerWidth,innerHeight)});})();
 /**
  * @license
  * Copyright 2010-2025 Three.js Authors
